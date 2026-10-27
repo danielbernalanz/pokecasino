@@ -80,3 +80,14 @@ test('Blackjack: los ases cuentan 1 u 11', () => {
   assert.strictEqual(blackjack.total(['As', 'Ad', '9c']).t, 21);
   assert.strictEqual(blackjack.total(['Ks', 'Qd', '5c']).t, 25);
 });
+
+test('duelos a ciegas: la lista pública no revela el Pokémon del retador', () => {
+  const duel = require('../server/games/duel');
+  const u = user('retador', { collection: { 6: { n: 1, s: 0 } } });
+  const { duel: d } = duel.create(u, { pokeId: 6, shiny: false, wager: 0 });
+  const pub = duel.listPublic().find((x) => x.id === d.id);
+  assert.ok(pub);
+  assert.strictEqual(pub.poke, undefined);
+  assert.ok(!JSON.stringify(pub).includes('"id":6'));
+  duel.cancel(u, { id: d.id });
+});

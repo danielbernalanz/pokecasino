@@ -61,6 +61,9 @@ export function playBattle(record) {
   })();
 }
 
+// Pokémon elegidos en los retos que he creado (solo en esta sesión).
+const myPicks = {};
+
 export default {
   id: 'duels', title: 'Duelos PvP', icon: '⚔️',
   mount(root) {
@@ -80,20 +83,21 @@ export default {
       const list = S.duels || [];
       if (!list.length) { openBox.replaceChildren(h('p', { class: 'muted' }, 'No hay retos abiertos. ¡Crea el primero!')); return; }
       openBox.replaceChildren(...list.map((d) => {
-        const p = S.dexById.get(d.poke.id);
         const mine = d.creator === S.me.username;
         const forOther = d.target && d.target !== S.me.username && !mine;
+        // El Pokémon del rival está oculto; solo el creador recuerda el suyo en esta sesión.
+        const own = mine && myPicks[d.id];
         return h('div', { class: 'duel-row' + (d.target === S.me.username ? ' for-me' : '') },
-          animImg(d.poke.id, d.poke.shiny, 'duel-sprite'),
+          own ? animImg(own.id, own.shiny, 'duel-sprite') : h('div', { class: 'duel-hidden' }, '?'),
           h('div', { class: 'grow' },
-            h('b', {}, d.creator), ' reta con ', h('b', {}, p.name + (d.poke.shiny ? ' ✨' : '')), ' ', '★'.repeat(d.poke.stars),
-            h('div', { class: 'types' }, p.types.map(typeBadge)),
-            h('div', { class: 'muted small' }, d.target ? `Reto directo a ${d.target}` : 'Reto abierto')),
+            h('b', {}, d.creator), mine ? ' (tú) ' : ' ', own ? `retas con ${S.dexById.get(own.id).name}${own.shiny ? ' ✨' : ''}` : 'reta con un Pokémon oculto',
+            h('div', { class: 'muted small' }, d.target ? `Reto directo a ${d.target}` : 'Reto abierto'),
+            mine ? h('div', { class: 'muted small' }, 'Tu rival no ve tu Pokémon hasta que empieza el combate.') : null),
           h('div', { class: 'wager' }, d.wager ? fmt(d.wager) : 'Amistoso'),
           mine
             ? h('button', { class: 'btn danger', onclick: (e) => act('duel:cancel', { id: d.id }, e.target) }, 'Cancelar')
             : h('button', { class: 'btn primary', disabled: forOther, onclick: async (e) => {
-              const pick = await pickPokemon({ title: `Elige quién se enfrenta a ${p.name}`, vs: d.poke.id });
+              const pick = await pickPokemon({ title: `Elige tu Pokémon a ciegas contra ${d.creator}` });
               if (!pick) return;
               const r = await act('duel:accept', { id: d.id, pokeId: pick.id, shiny: pick.shiny }, e.target);
               if (r) playBattle(r.record);
@@ -113,7 +117,7 @@ export default {
     }
 
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '⚔️ Duelos PvP'), h('p', { class: 'muted' }, 'Combate 1 contra 1 a nivel 50. Cuentan la rareza, las estrellas (copias), la versión variocolor y, sobre todo, la tabla de tipos.')),
+      h('div', { class: 'game-head' }, h('h1', {}, '⚔️ Duelos PvP'), h('p', { class: 'muted' }, 'Combate 1 contra 1 a nivel 50 con elección a ciegas: ninguno ve el Pokémon del otro hasta que empieza. Cuentan las estadísticas, las estrellas, la versión variocolor y la tabla de tipos.')),
       h('div', { class: 'duel-layout' },
         h('div', { class: 'card stack' },
           h('h3', {}, 'Crear reto'),
@@ -124,7 +128,7 @@ export default {
           h('button', { class: 'btn primary big', onclick: async (e) => {
             if (!chosen) return pickPokemon().then((p) => { if (p) { chosen = p; showChosen(); } });
             const r = await act('duel:create', { pokeId: chosen.id, shiny: chosen.shiny, wager: Number(wager.value) || 0, target: target.value.trim() || null }, e.target);
-            if (r) sfx('click');
+            if (r) { myPicks[r.duel.id] = { id: chosen.id, shiny: chosen.shiny }; sfx('click'); renderOpen(); }
           } }, 'Publicar reto'),
           h('p', { class: 'muted small' }, 'El ganador se lleva el bote menos un 5 % de comisión de la casa. Los retos caducan a los 10 minutos.')),
         h('div', { class: 'stack' }, h('h3', {}, 'Retos abiertos'), openBox, h('h3', {}, 'Últimos combates'), histBox)));

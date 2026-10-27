@@ -19,9 +19,11 @@ function ownedPick(user, { pokeId, shiny }) {
   return { id, shiny: !!shiny, stars: Math.min(5, c.n), owner: user.username };
 }
 
+// Elección a ciegas: el Pokémon del retador no se revela hasta que empieza el combate,
+// para que nadie pueda elegir un counter.
 function listPublic() {
   return [...open.values()].map((d) => ({
-    id: d.id, creator: d.creator, wager: d.wager, poke: d.poke, target: d.target, createdAt: d.createdAt,
+    id: d.id, creator: d.creator, wager: d.wager, target: d.target, createdAt: d.createdAt,
   }));
 }
 const push = () => hub.broadcast('duel:list', listPublic());
