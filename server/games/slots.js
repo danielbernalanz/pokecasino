@@ -88,7 +88,7 @@ function computeRTP() {
 }
 
 function spin(user, { bet }) {
-  const stake = hub.takeBet(user, bet);
+  const stake = hub.takeBet(user, bet, 'slots');
   const cut = Math.floor(stake * JACKPOT_CUT);
   db.data.state.jackpot += cut;
   const stops = REELS.map((r) => randInt(0, r.length - 1));
@@ -101,7 +101,7 @@ function spin(user, { bet }) {
     db.data.state.jackpot = JACKPOT_SEED;
     hub.feed('jackpot', `💥 ¡${user.username} se llevó el BOTE de ${jackpotWon.toLocaleString('es')} monedas en Pika-Slots!`);
   }
-  const { paid, bonus } = win + jackpotWon > 0 ? hub.pay(user, win + jackpotWon, stake, 'Pika-Slots') : { paid: 0, bonus: 0 };
+  const { paid, bonus } = win + jackpotWon > 0 ? hub.pay(user, win + jackpotWon, stake, 'slots') : { paid: 0, bonus: 0 };
   hub.broadcast('jackpot', db.data.state.jackpot);
   db.save();
   return { grid: g, wins: res.wins, paid, bonus, jackpotWon, jackpot: db.data.state.jackpot };

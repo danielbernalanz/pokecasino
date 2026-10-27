@@ -22,12 +22,12 @@ function rtp(risk) {
 
 function drop(user, { bet, risk }) {
   if (!TABLES[risk]) throw new Error('Riesgo no válido.');
-  const stake = hub.takeBet(user, bet);
+  const stake = hub.takeBet(user, bet, 'plinko');
   const path = Array.from({ length: ROWS }, () => randInt(0, 1));
   const bucket = path.reduce((a, b) => a + b, 0);
   const mult = TABLES[risk][bucket];
   const win = Math.floor(stake * mult);
-  const paid = win > 0 ? hub.pay(user, win, stake, 'Plinko').paid : 0;
+  const paid = win > 0 ? hub.pay(user, win, stake, 'plinko').paid : 0;
   return { path, bucket, mult, paid };
 }
 

@@ -133,11 +133,13 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
   }
   user.stats.pulls += count;
   hub.addXp(user, count * 15);
+  hub.track(user, 'pull', { count });
   // Las tiradas x10 pueden traer objetos de regalo.
   const bonus = [];
   if (count === 10) {
     if (rand() < 0.05) bonus.push('master-ball');
     if (rand() < 0.10) bonus.push('shiny-charm');
+    if (rand() < 0.30) bonus.push('mystery-egg');
     for (const it of bonus) user.items[it] = (user.items[it] || 0) + 1;
   }
   db.save();

@@ -6,9 +6,9 @@ const hub = require('../hub');
 const { deck, best } = require('../cards');
 
 const TABLES = [
-  { id: 'pallet', name: 'Mesa Pueblo Paleta', sb: 10, bb: 20, min: 400, max: 4000 },
-  { id: 'azulona', name: 'Mesa Ciudad Azulona', sb: 50, bb: 100, min: 2000, max: 20000 },
-  { id: 'meseta', name: 'Mesa Meseta Añil', sb: 250, bb: 500, min: 10000, max: 100000 },
+  { id: 'pallet', name: 'Mesa Pueblo Paleta', sb: 10, bb: 20, min: 400, max: 4000, badges: 0 },
+  { id: 'azulona', name: 'Mesa Ciudad Azulona', sb: 50, bb: 100, min: 2000, max: 20000, badges: 2 },
+  { id: 'meseta', name: 'Mesa Meseta Añil', sb: 250, bb: 500, min: 10000, max: 100000, badges: 5 },
 ];
 const SEATS = 6;
 // POKER_SPEED solo se usa en las pruebas para acelerar los tiempos.
@@ -28,9 +28,9 @@ function note(t, text) { t.log.push({ text, at: Date.now() }); if (t.log.length 
 function publicTable(t) {
   const h = t.hand;
   return {
-    id: t.id, name: t.name, sb: t.sb, bb: t.bb, min: t.min, max: t.max, dealer: t.dealer,
+    id: t.id, name: t.name, sb: t.sb, bb: t.bb, min: t.min, max: t.max, badges: t.badges, dealer: t.dealer,
     seats: t.seats.map((s, i) => s && {
-      username: s.username, buddy: s.buddy, stack: s.stack, sittingOut: s.sittingOut,
+      username: s.username, buddy: s.buddy, frame: s.frame, cardback: s.cardback, title: s.title, stack: s.stack, sittingOut: s.sittingOut,
       inHand: !!(h && h.players.includes(i)), folded: !!(h && h.folded[i]), allIn: !!(h && h.allIn[i]),
       bet: h ? h.bets[i] || 0 : 0,
       cards: h && h.shown && h.shown[i] ? h.hole[i] : null,
@@ -39,6 +39,7 @@ function publicTable(t) {
     hand: h && {
       no: h.no, board: h.board, pot: h.pot + h.bets.reduce((a, b) => a + (b || 0), 0), toAct: h.toAct, street: h.street,
       currentBet: h.currentBet, minRaise: h.minRaise, deadline: h.deadline, winners: h.winners || null,
+      canRaise: h.toAct >= 0 && !h.acted[h.toAct],
     },
     log: t.log.slice(-12),
   };
@@ -58,7 +59,7 @@ function push(t) {
 }
 
 function lobby() {
-  return [...tables.values()].map((t) => ({ id: t.id, name: t.name, sb: t.sb, bb: t.bb, min: t.min, max: t.max, players: t.seats.filter(Boolean).length, seats: SEATS }));
+  return [...tables.values()].map((t) => ({ id: t.id, name: t.name, sb: t.sb, bb: t.bb, min: t.min, max: t.max, badges: t.badges, players: t.seats.filter(Boolean).length, seats: SEATS }));
 }
 
 // ---- Sentarse / levantarse ----
@@ -72,8 +73,9 @@ function sit(user, { table, seat, buyIn }) {
   if (t.hand && t.hand.players.includes(seat)) throw new Error('Ese asiento se libera al terminar la mano.');
   if (!Number.isInteger(buyIn) || buyIn < t.min || buyIn > t.max) throw new Error(`Compra entre ${t.min} y ${t.max} fichas.`);
   if (user.coins < buyIn) throw new Error('No tienes suficientes monedas.');
+  if ((user.progress ? user.progress.badges.length : 0) < t.badges) throw new Error(`Necesitas ${t.badges} medallas para sentarte en esta mesa.`);
   user.coins -= buyIn;
-  t.seats[seat] = { userId: user.id, username: user.username, buddy: user.buddy, stack: buyIn, sittingOut: false, missed: 0, leaving: false };
+  t.seats[seat] = { userId: user.id, username: user.username, buddy: user.buddy, ...hub.looks(user), stack: buyIn, sittingOut: false, missed: 0, leaving: false };
   note(t, `${user.username} se sienta con ${buyIn} fichas.`);
   db.save();
   push(t);
@@ -168,7 +170,11 @@ function startHand(t) {
     folded: {}, allIn: {}, acted: {}, pot: 0, street: 'preflop', currentBet: 0, minRaise: t.bb, toAct: -1, finished: false,
   };
   t.hand = h;
-  for (const i of players) h.hole[i] = [d.pop(), d.pop()];
+  for (const i of players) {
+    h.hole[i] = [d.pop(), d.pop()];
+    const u = db.userById(t.seats[i].userId);
+    if (u) hub.track(u, 'play', { game: 'poker' });
+  }
   const inHand = (i) => players.includes(i);
   const headsUp = players.length === 2;
   const sbSeat = headsUp ? t.dealer : nextFrom(t, t.dealer, inHand);
@@ -240,6 +246,8 @@ function doAction(t, i, type, amount) {
     const maxTo = h.bets[i] + s.stack;
     let to = type === 'allin' ? maxTo : amount;
     if (!Number.isInteger(to) || to <= h.currentBet) throw new Error('La subida debe superar la apuesta actual.');
+    // Una subida all-in menor que la mínima no reabre la acción para quien ya habló.
+    if (h.acted[i]) throw new Error('Solo puedes igualar o retirarte: la subida all-in no reabre la apuesta.');
     if (to > maxTo) throw new Error('No tienes tantas fichas.');
     const raiseBy = to - h.currentBet;
     if (raiseBy < h.minRaise && to < maxTo) throw new Error(`La subida mínima es hasta ${h.currentBet + h.minRaise}.`);
@@ -351,6 +359,12 @@ function finish(t, awards, showdownReached, pots, values) {
       if (t.seats[i]) t.seats[i].stack += won;
       winners[i] = (winners[i] || 0) + won;
     }
+  });
+  Object.keys(winners).forEach((i) => {
+    const s = t.seats[i];
+    const u = s && db.userById(s.userId);
+    // Solo cuenta como victoria si ganó más de lo que puso.
+    if (u && winners[i] > h.contrib[i]) hub.track(u, 'win', { game: 'poker', mult: winners[i] / Math.max(1, h.contrib[i]) });
   });
   h.winners = Object.entries(winners).map(([i, amount]) => ({ seat: Number(i), username: t.seats[i] && t.seats[i].username, amount, hand: values ? values[i].name : null }));
   for (const w of h.winners) {

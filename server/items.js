@@ -11,7 +11,33 @@ const ITEMS = {
   'amulet-coin': { name: 'Moneda Amuleto', sprite: 'amulet-coin', price: 2500, desc: '+10 % sobre tus ganancias netas durante 1 hora.' },
   'shiny-charm': { name: 'Amuleto Iris', sprite: 'shiny-charm', price: null, desc: 'Las próximas 10 tiradas tienen 4 veces más probabilidad de variocolor. Solo como premio.' },
   'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada individual es legendaria seguro. Solo como premio.' },
+  'mystery-egg': { name: 'Huevo Misterioso', sprite: 'mystery-egg', price: null, desc: 'Ábrelo para obtener un cosmético al azar (marco, dorso de carta o título).' },
 };
+
+// Cosméticos: solo salen de Huevos Misteriosos. Se equipan, los ven los demás y se comercian.
+const COSMETICS = {
+  'frame-poke': { slot: 'frame', rarity: 'C', name: 'Marco Poké Ball', sprite: 'poke-ball' },
+  'frame-great': { slot: 'frame', rarity: 'U', name: 'Marco Super Ball', sprite: 'great-ball' },
+  'frame-ultra': { slot: 'frame', rarity: 'R', name: 'Marco Ultra Ball', sprite: 'ultra-ball' },
+  'frame-master': { slot: 'frame', rarity: 'E', name: 'Marco Master Ball', sprite: 'master-ball' },
+  'frame-rainbow': { slot: 'frame', rarity: 'L', name: 'Marco Arcoíris', sprite: 'rainbow-wing' },
+  'frame-shiny': { slot: 'frame', rarity: 'L', name: 'Marco Destello', sprite: 'shiny-stone' },
+  'back-pika': { slot: 'cardback', rarity: 'C', name: 'Dorso Pikachu', pokemon: 25 },
+  'back-gengar': { slot: 'cardback', rarity: 'U', name: 'Dorso Gengar', pokemon: 94 },
+  'back-rocket': { slot: 'cardback', rarity: 'R', name: 'Dorso Team Rocket', pokemon: 52 },
+  'back-dragonite': { slot: 'cardback', rarity: 'E', name: 'Dorso Dragonite', pokemon: 149 },
+  'back-mew': { slot: 'cardback', rarity: 'L', name: 'Dorso Mew', pokemon: 151 },
+  'title-lucky': { slot: 'title', rarity: 'C', name: 'Título «Suertudo»', title: 'Suertudo', sprite: 'tm-normal' },
+  'title-highroller': { slot: 'title', rarity: 'U', name: 'Título «Gran Apostador»', title: 'Gran Apostador', sprite: 'gold-bottle-cap' },
+  'title-rocket': { slot: 'title', rarity: 'R', name: 'Título «Agente Rocket»', title: 'Agente Rocket', sprite: 'odd-keystone' },
+  'title-shinyhunter': { slot: 'title', rarity: 'E', name: 'Título «Cazavariocolores»', title: 'Cazavariocolores', sprite: 'comet-shard' },
+  'title-legend': { slot: 'title', rarity: 'L', name: 'Título «Leyenda de Kanto»', title: 'Leyenda de Kanto', sprite: 'silver-wing' },
+};
+const SLOT_NAMES = { frame: 'marco', cardback: 'dorso de carta', title: 'título' };
+for (const [id, c] of Object.entries(COSMETICS)) {
+  ITEMS[id] = { ...c, price: null, cosmetic: true, desc: `Cosmético (${SLOT_NAMES[c.slot]}). Equípalo en «Mi Entrenador»: los demás jugadores lo verán.` };
+}
+const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
 
 function give(user, itemId, qty = 1, reason) {
@@ -24,7 +50,37 @@ function take(user, itemId, qty = 1) {
   if (!ITEMS[itemId]) throw new Error('Objeto desconocido.');
   if ((user.items[itemId] || 0) < qty) throw new Error(`No tienes suficientes ${ITEMS[itemId].name}.`);
   user.items[itemId] -= qty;
-  if (!user.items[itemId]) delete user.items[itemId];
+  if (!user.items[itemId]) {
+    delete user.items[itemId];
+    // Si vendes o usas tu último cosmético equipado, se desequipa.
+    const c = COSMETICS[itemId];
+    if (c && user.equip && user.equip[c.slot] === itemId) user.equip[c.slot] = null;
+  }
+}
+
+function openEgg(user) {
+  const { weighted, pick } = require('./rng');
+  const rarity = weighted(Object.keys(EGG_WEIGHTS), (r) => EGG_WEIGHTS[r]);
+  const id = pick(Object.keys(COSMETICS).filter((k) => COSMETICS[k].rarity === rarity));
+  user.items[id] = (user.items[id] || 0) + 1;
+  if (rarity === 'L' || rarity === 'E') hub.feed('egg', `🥚 ${user.username} abrió un Huevo Misterioso: ¡${COSMETICS[id].name}!`);
+  return id;
+}
+
+// Equipar cosmético (o título ganado, que no es un objeto).
+function equip(user, { slot, id }) {
+  if (!['frame', 'cardback', 'title'].includes(slot)) throw new Error('Hueco no válido.');
+  user.equip ||= { frame: null, cardback: null, title: null };
+  if (!id) { user.equip[slot] = null; db.save(); return {}; }
+  const c = COSMETICS[id];
+  const earned = slot === 'title' && user.progress && user.progress.titles.includes(id);
+  if (!earned) {
+    if (!c || c.slot !== slot) throw new Error('Ese cosmético no va en ese hueco.');
+    if (!user.items[id]) throw new Error('No tienes ese cosmético.');
+  }
+  user.equip[slot] = id;
+  db.save();
+  return {};
 }
 
 function buy(user, { itemId, qty }) {
@@ -56,15 +112,24 @@ function use(user, { itemId, pokeId }) {
   } else if (itemId === 'shiny-charm') {
     take(user, itemId);
     user.buffs.shinyCharges += 10;
+  } else if (itemId === 'mystery-egg') {
+    take(user, itemId);
+    const got = openEgg(user);
+    hub.track(user, 'item_use', { itemId });
+    db.save();
+    return { used: itemId, got };
   } else if (itemId === 'master-ball') {
     if (user.buffs.masterBall) throw new Error('Ya tienes una Master Ball preparada.');
     take(user, itemId);
     user.buffs.masterBall = true;
+  } else if (COSMETICS[itemId]) {
+    return equip(user, { slot: COSMETICS[itemId].slot, id: itemId });
   } else {
     throw new Error('Ese objeto se usa desde el Gacha.');
   }
+  hub.track(user, 'item_use', { itemId });
   db.save();
   return { used: itemId };
 }
 
-module.exports = { ITEMS, give, take, buy, use };
+module.exports = { ITEMS, COSMETICS, give, take, buy, use, equip, openEgg };

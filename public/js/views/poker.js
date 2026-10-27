@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, bus, playingCard, sprite, modal } from '../core.js';
+import { S, h, fmt, act, sfx, bus, playingCard, modal, avatar, titleTag } from '../core.js';
 
 let currentTable = null;
 
@@ -16,8 +16,9 @@ export default {
     const mySeat = () => (t ? t.seats.findIndex((s) => s && s.username === S.me.username) : -1);
 
     function renderLobby(list) {
+      const myBadges = S.me.progress.badges.filter((b) => b.got).length;
       lobbyBox.replaceChildren(...(list || []).map((x) => h('button', { class: 'poker-room' + (x.id === currentTable ? ' active' : ''), onclick: () => watch(x.id) },
-        h('b', {}, x.name), h('span', { class: 'muted small' }, `Ciegas ${fmt(x.sb)}/${fmt(x.bb)} · Compra ${fmt(x.min)}–${fmt(x.max)}`),
+        h('b', {}, x.name, myBadges < x.badges ? ` 🔒 ${x.badges} medallas` : ''), h('span', { class: 'muted small' }, `Ciegas ${fmt(x.sb)}/${fmt(x.bb)} · Compra ${fmt(x.min)}–${fmt(x.max)}`),
         h('span', { class: 'chip' }, `${x.players}/${x.seats} jugadores`))));
     }
 
@@ -51,6 +52,8 @@ export default {
       const seats = t.seats.map((s, i) => {
         const pos = 'seat-' + i;
         if (!s) {
+          const locked = S.me.progress.badges.filter((b) => b.got).length < (t.badges || 0);
+          if (locked) return h('div', { class: 'p-seat empty ' + pos }, h('span', { class: 'muted small' }, '🔒'));
           return h('div', { class: 'p-seat empty ' + pos }, me === -1 ? h('button', { class: 'btn small', onclick: () => sitDialog(i) }, 'Sentarse') : h('span', { class: 'muted small' }, 'Libre'));
         }
         const turn = hd && hd.toAct === i;
@@ -58,13 +61,13 @@ export default {
         let cards = null;
         if (s.cards) cards = s.cards.map((c) => playingCard(c, { cls: 'small' }));
         else if (isMe && hole && s.inHand && !s.folded) cards = hole.cards.map((c) => playingCard(c, { cls: 'small' }));
-        else if (s.inHand && !s.folded) cards = [playingCard(null, { cls: 'small' }), playingCard(null, { cls: 'small' })];
+        else if (s.inHand && !s.folded) cards = [playingCard(null, { cls: 'small', back: s.cardback }), playingCard(null, { cls: 'small', back: s.cardback })];
         const won = hd && hd.winners && hd.winners.find((w) => w.seat === i);
         return h('div', { class: `p-seat ${pos}${turn ? ' turn' : ''}${s.folded ? ' folded' : ''}${isMe ? ' me' : ''}${won ? ' winner' : ''}${s.sittingOut ? ' out' : ''}` },
           h('div', { class: 'p-cards' }, cards),
           h('div', { class: 'p-info' },
-            s.buddy ? h('img', { class: 'pixel', src: sprite(s.buddy.id, s.buddy.shiny), alt: '' }) : h('span', { class: 'p-avatar' }, '🧢'),
-            h('div', {}, h('b', {}, s.username), h('div', { class: 'p-stack' }, fmt(s.stack)), s.handName ? h('div', { class: 'small good' }, s.handName) : null,
+            avatar(s.buddy, s),
+            h('div', {}, h('b', {}, s.username), s.title ? h('div', {}, titleTag(s.title)) : null, h('div', { class: 'p-stack' }, fmt(s.stack)), s.handName ? h('div', { class: 'small good' }, s.handName) : null,
               s.allIn ? h('div', { class: 'small bad' }, 'ALL-IN') : s.sittingOut ? h('div', { class: 'small muted' }, 'Ausente') : null)),
           turn ? h('div', { class: 'p-timer' }, h('i', { 'data-deadline': hd.deadline })) : null,
           s.bet ? h('div', { class: 'p-bet' }, fmt(s.bet)) : null,
@@ -74,8 +77,10 @@ export default {
       const center = h('div', { class: 'p-center' },
         h('div', { class: 'p-board' }, (hd ? hd.board : []).map((c) => playingCard(c, { cls: 'deal' }))),
         hd ? h('div', { class: 'p-pot' }, `Bote ${fmt(hd.pot)}`) : h('div', { class: 'muted' }, t.seats.filter(Boolean).length < 2 ? 'Esperando jugadores…' : 'Nueva mano en breve…'));
+      const needs = (t.badges || 0) - S.me.progress.badges.filter((b) => b.got).length;
       tableBox.replaceChildren(
         h('div', { class: 'row between wrap gap' }, h('h2', {}, t.name), h('span', { class: 'muted' }, `Ciegas ${fmt(t.sb)}/${fmt(t.bb)}`)),
+        needs > 0 ? h('a', { class: 'card lock-note', href: '#/trainer' }, `🔒 Puedes mirar, pero para jugar aquí necesitas ${t.badges} medallas de gimnasio (te faltan ${needs}). Míralas en «Mi Entrenador».`) : null,
         h('div', { class: 'p-table' }, h('div', { class: 'p-felt' }, center), seats),
         controls(me),
         h('div', { class: 'p-log' }, t.log.slice().reverse().map((l) => h('div', {}, l.text))));
@@ -107,10 +112,10 @@ export default {
         box.append(h('div', { class: 'row gap wrap center' },
           h('button', { class: 'btn big danger', onclick: () => send('fold') }, 'Retirarse'),
           toCall > 0 ? h('button', { class: 'btn big', onclick: () => send('call') }, `Igualar ${fmt(Math.min(toCall, s.stack))}`) : h('button', { class: 'btn big', onclick: () => send('check') }, 'Pasar'),
-          maxTo > hd.currentBet ? h('div', { class: 'raise-box' },
+          maxTo > hd.currentBet && hd.canRaise ? h('div', { class: 'raise-box' },
             h('div', { class: 'row gap' }, ...[0.5, 1].map((f) => h('button', { class: 'chip', onclick: () => { raise.value = Math.max(minTo, Math.min(maxTo, Math.round(hd.currentBet + pot * f))); raiseLbl.textContent = fmt(raise.value); } }, f === 1 ? 'Bote' : '½ bote')), raise, raiseLbl),
             h('button', { class: 'btn big primary', onclick: () => send(Number(raise.value) >= maxTo ? 'allin' : 'raise', Number(raise.value)) }, hd.currentBet ? 'Subir' : 'Apostar')) : null,
-          h('button', { class: 'btn big gold', onclick: () => send('allin') }, 'All-in')));
+          hd.canRaise || toCall >= s.stack ? h('button', { class: 'btn big gold', onclick: () => send('allin') }, 'All-in') : null));
       }
       box.append(mgmt);
       return box;

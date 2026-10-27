@@ -42,7 +42,7 @@ function canSplit(user, g) {
 
 function deal(user, { bet }) {
   if (user.games.blackjack && !user.games.blackjack.done) throw new Error('Termina la mano actual.');
-  const stake = hub.takeBet(user, bet);
+  const stake = hub.takeBet(user, bet, 'blackjack');
   const shoe = deck(6);
   const g = { shoe, hands: [{ cards: [shoe.pop(), shoe.pop()], bet: stake, done: false }], dealer: [shoe.pop(), shoe.pop()], active: 0, done: false, paid: 0 };
   user.games.blackjack = g;
@@ -116,7 +116,7 @@ function settle(user) {
     h.done = true;
   }
   g.done = true;
-  g.paid = win > 0 ? hub.pay(user, win, staked, 'Blackjack').paid : 0;
+  g.paid = win > 0 ? hub.pay(user, win, staked, 'blackjack').paid : 0;
   delete g.shoe;
   db.save();
   return view(user, true);

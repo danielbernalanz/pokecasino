@@ -1,17 +1,16 @@
 // Chat, actividad en vivo y jugadores conectados.
-import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER } from './core.js';
+import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg } from './core.js';
 
 const time = (t) => new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-const buddyIco = (b) => (b ? h('img', { class: 'pixel mini', src: sprite(b.id, b.shiny), alt: '' }) : h('span', { class: 'mini' }));
 
 export function addChat(m, silent) {
   const log = $('#chat-log');
   const near = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
   const mention = S.me && m.text.toLowerCase().includes('@' + S.me.username.toLowerCase());
   log.append(h('div', { class: 'msg' + (mention ? ' mention' : '') },
-    buddyIco(m.buddy),
+    avatar(m.buddy, m, 'sm'),
     h('div', {},
-      h('div', { class: 'msg-head' }, h('a', { class: 'uname' + (m.admin ? ' admin' : ''), onclick: () => showPlayer(m.user) }, m.user), h('span', { class: 'muted' }, time(m.at))),
+      h('div', { class: 'msg-head' }, h('a', { class: 'uname' + (m.admin ? ' admin' : ''), onclick: () => showPlayer(m.user) }, m.user), titleTag(m.title), h('span', { class: 'muted' }, time(m.at))),
       h('div', { class: 'msg-text' }, m.text))));
   while (log.children.length > 120) log.firstChild.remove();
   if (near || silent) log.scrollTop = log.scrollHeight;
@@ -36,8 +35,8 @@ export function renderOnline(list) {
   $('#online-count').textContent = list.length;
   const box = $('#online');
   box.replaceChildren(...list.map((u) => h('div', { class: 'online-row', onclick: () => showPlayer(u.username) },
-    buddyIco(u.buddy),
-    h('div', { class: 'grow' }, h('b', { class: u.isAdmin ? 'admin' : '' }, u.username), h('div', { class: 'muted small' }, `Nv ${u.level} · Pokédex ${u.dex}${u.shinies ? ' · ✨' + u.shinies : ''}`)),
+    avatar(u.buddy, u, 'sm'),
+    h('div', { class: 'grow' }, h('b', { class: u.isAdmin ? 'admin' : '' }, u.username), titleTag(u.title), h('div', { class: 'muted small' }, `Nv ${u.level} · 🏅${u.badges} · Pokédex ${u.dex}${u.shinies ? ' · ✨' + u.shinies : ''}`)),
     h('span', { class: 'online-dot' }))));
 }
 
@@ -55,9 +54,10 @@ export async function showPlayer(username) {
   } }, h('input', { name: 'amount', type: 'number', min: 1, placeholder: 'Monedas', required: true }), h('button', { class: 'btn' }, '🎁 Regalar monedas'));
   const body = h('div', { class: 'player-card' },
     h('div', { class: 'player-hero' },
-      p.buddy ? pokeImg(p.buddy.id, p.buddy.shiny, 'player-buddy') : h('div', { class: 'player-buddy empty' }, '?'),
+      h('div', { class: 'avatar xl ' + (p.frame ? 'fr ' + p.frame : '') }, p.buddy ? pokeImg(p.buddy.id, p.buddy.shiny, 'player-buddy') : h('div', { class: 'player-buddy empty' }, '?')),
       h('div', {},
-        h('h2', {}, p.username, p.isAdmin ? h('span', { class: 'tag' }, 'ANFITRIÓN') : null),
+        h('h2', {}, p.username, p.isAdmin ? h('span', { class: 'tag' }, 'ANFITRIÓN') : null, ' ', titleTag(p.title)),
+        h('div', { class: 'row gap' }, [1, 2, 3, 4, 5, 6, 7, 8].map((n) => badgeImg(n, p.badges >= n, 'tiny'))),
         h('p', { class: 'muted' }, `Nivel ${p.level} · Desde ${new Date(p.createdAt).toLocaleDateString('es-ES')}`),
         h('div', { class: 'stat-row' },
           stat('Pokédex', `${p.dex}/${S.data.dex.length}`), stat('Variocolor', p.shinies), stat('Tiradas', fmt(p.stats.pulls)),

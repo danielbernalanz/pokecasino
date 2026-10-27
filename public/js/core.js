@@ -99,16 +99,17 @@ export function modal(content, { title, wide } = {}) {
 }
 
 // ---- Selector de apuesta reutilizable ----
+export const maxBet = () => (S.me && S.me.maxBet) || S.data.maxBet;
 export function betInput(initial = 100, storeKey) {
   let saved = initial;
   try { saved = Number(localStorage.getItem('bet:' + storeKey)) || initial; } catch { /* sin almacenamiento */ }
-  const input = h('input', { type: 'number', min: S.data.minBet, max: S.data.maxBet, step: 10, value: saved, class: 'bet-input' });
+  const input = h('input', { type: 'number', min: S.data.minBet, max: maxBet(), step: 10, value: Math.min(saved, maxBet()), class: 'bet-input' });
   const persist = () => { try { localStorage.setItem('bet:' + storeKey, input.value); } catch { /* nada */ } };
   input.addEventListener('change', persist);
-  const set = (v) => { input.value = Math.max(S.data.minBet, Math.min(S.data.maxBet, Math.floor(v))); persist(); };
-  const chips = [['½', () => set(input.value / 2)], ['×2', () => set(input.value * 2)], ['MIN', () => set(S.data.minBet)], ['MAX', () => set(Math.min(S.data.maxBet, S.me.coins))]];
+  const set = (v) => { input.value = Math.max(S.data.minBet, Math.min(maxBet(), Math.floor(v))); persist(); };
+  const chips = [['½', () => set(input.value / 2)], ['×2', () => set(input.value * 2)], ['MIN', () => set(S.data.minBet)], ['MAX', () => set(Math.min(maxBet(), S.me.coins))]];
   const el = h('div', { class: 'bet-box' },
-    h('label', {}, 'Apuesta'), h('div', { class: 'bet-row' }, h('span', { class: 'coin-ico' }), input,
+    h('label', { title: 'El límite sube con las medallas de gimnasio' }, `Apuesta (máx. ${fmt(maxBet())})`), h('div', { class: 'bet-row' }, h('span', { class: 'coin-ico' }), input,
       ...chips.map(([t, fn]) => h('button', { class: 'chip', type: 'button', onclick: () => { fn(); sfx('click'); } }, t))));
   return { el, get value() { return Math.floor(Number(input.value)); }, set };
 }
@@ -148,8 +149,13 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---- Naipes ----
 const SUIT_SYM = { s: '♠', h: '♥', d: '♦', c: '♣' };
-export function playingCard(c, { cls = '', delay = 0 } = {}) {
-  if (!c || c === '??') return h('div', { class: 'pcard-play back ' + cls, style: { animationDelay: delay + 'ms' } });
+export function playingCard(c, { cls = '', delay = 0, back = null } = {}) {
+  if (!c || c === '??') {
+    // Dorso personalizado: el cosmético muestra un Pokémon en el reverso.
+    const cos = back && S.data.cosmetics[back];
+    return h('div', { class: 'pcard-play back ' + (cos ? 'custom ' : '') + cls, style: { animationDelay: delay + 'ms' } },
+      cos ? h('img', { class: 'pixel back-mon', src: sprite(cos.pokemon), alt: '' }) : null);
+  }
   const r = c[0] === 'T' ? '10' : c[0];
   const red = c[1] === 'h' || c[1] === 'd';
   return h('div', { class: `pcard-play ${red ? 'red' : ''} ${cls}`, style: { animationDelay: delay + 'ms' } },
@@ -157,5 +163,20 @@ export function playingCard(c, { cls = '', delay = 0 } = {}) {
 }
 
 // ---- Objetos ----
-export const itemImg = (id, cls = '') => h('img', { class: 'pixel item-img ' + cls, src: item(S.data.items[id].sprite), alt: S.data.items[id].name });
+export const itemImg = (id, cls = '') => {
+  const it = S.data.items[id];
+  return h('img', { class: 'pixel item-img ' + cls + (it.pokemon ? ' zoom' : ''), src: it.pokemon ? sprite(it.pokemon) : item(it.sprite), alt: it.name });
+};
+
+// ---- Aspecto del jugador: marco del avatar y título ----
+export function avatar(buddy, looks = {}, cls = '') {
+  const inner = buddy ? h('img', { class: 'pixel', src: sprite(buddy.id, buddy.shiny), alt: '' }) : h('span', { class: 'av-empty' }, '🧢');
+  return h('span', { class: `avatar ${looks.frame ? 'fr ' + looks.frame : ''} ${cls}` }, inner);
+}
+export const titleTag = (t) => (t ? h('span', { class: 'title-tag' }, t) : null);
+export const badgeImg = (n, got = true, cls = '') => h('img', { class: `pixel badge-img ${got ? '' : 'locked'} ${cls}`, src: `${SPR}/badges/${n}.png`, alt: `Medalla ${n}` });
+export const RAR_NAME = { C: 'Común', U: 'Poco común', R: 'Rara', E: 'Épica', L: 'Legendaria', M: 'Mítica' };
+
+// Abre el Mercado con una búsqueda ya escrita.
+export function goMarket(q) { S.marketQuery = q; location.hash = '#/market'; }
 export const itemName = (id) => S.data.items[id]?.name || id;

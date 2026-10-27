@@ -1,7 +1,7 @@
-import { S, h, fmt, act, sprite } from '../core.js';
+import { S, h, fmt, act, avatar, titleTag } from '../core.js';
 import { showPlayer } from '../social.js';
 
-const CATS = [['coins', '💰 Monedas'], ['dex', '📕 Pokédex'], ['shinies', '✨ Variocolor'], ['biggestWin', '🏆 Mayor premio'], ['duels', '⚔️ Duelos ganados']];
+const CATS = [['coins', '💰 Monedas'], ['badges', '🏅 Medallas'], ['dex', '📕 Pokédex'], ['shinies', '✨ Variocolor'], ['biggestWin', '🏆 Mayor premio'], ['duels', '⚔️ Duelos ganados']];
 let cat = 'coins';
 
 export default {
@@ -15,9 +15,9 @@ export default {
       if (!data) return;
       table.replaceChildren(...data[cat].map((r, i) => h('div', { class: 'rank-row' + (r.username === S.me.username ? ' me' : '') + (i < 3 ? ' top' + (i + 1) : ''), onclick: () => showPlayer(r.username) },
         h('span', { class: 'rank-pos' }, ['🥇', '🥈', '🥉'][i] || i + 1),
-        r.buddy ? h('img', { class: 'pixel', src: sprite(r.buddy.id, r.buddy.shiny), alt: '' }) : h('span', { class: 'mini' }),
-        h('b', { class: 'grow' }, r.username, h('span', { class: 'muted small' }, ` Nv ${r.level}`)),
-        h('span', { class: 'rank-val' }, fmt(r.value)))));
+        avatar(r.buddy, r),
+        h('b', { class: 'grow' }, r.username, ' ', titleTag(r.title), h('span', { class: 'muted small' }, ` Nv ${r.level}`)),
+        h('span', { class: 'rank-val' }, cat === 'badges' ? `🏅${Math.floor(r.value / 1000)} · 📚${r.value % 1000}` : fmt(r.value)))));
     };
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏆 Ranking de entrenadores')), tabs, table);
     render();

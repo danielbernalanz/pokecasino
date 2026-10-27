@@ -23,6 +23,8 @@ function migrateUser(u) {
   u.games ||= {};
   u.stats.sold ||= 0;
   u.stats.bought ||= 0;
+  u.equip ||= { frame: null, cardback: null, title: null };
+  u.progress ||= { tutorial: 0, tutProg: 0, daily: null, counters: {}, badges: [], sets: [], titles: [] };
   return u;
 }
 

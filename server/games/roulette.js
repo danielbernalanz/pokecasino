@@ -36,7 +36,7 @@ function spin(user, { bets }) {
   if (!bets.every(validate)) throw new Error('Apuesta desconocida.');
   const total = bets.reduce((s, b) => s + b.amount, 0);
   if (!bets.every((b) => hub.validAmount(b.amount))) throw new Error('Cada ficha debe ser un importe válido.');
-  const stake = hub.takeBet(user, total);
+  const stake = hub.takeBet(user, total, 'roulette');
   const slot = randInt(0, WHEEL.length - 1);
   let win = 0;
   const results = bets.map((b) => {
@@ -44,7 +44,7 @@ function spin(user, { bets }) {
     if (ok) win += b.amount * PAYOUT[b.kind];
     return { ...b, won: ok };
   });
-  const { paid, bonus } = win > 0 ? hub.pay(user, win, stake, 'la Ruleta de Tipos') : { paid: 0, bonus: 0 };
+  const { paid, bonus } = win > 0 ? hub.pay(user, win, stake, 'roulette') : { paid: 0, bonus: 0 };
   return { slot, type: WHEEL[slot], results, paid, bonus };
 }
 

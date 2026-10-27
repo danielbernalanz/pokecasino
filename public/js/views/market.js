@@ -20,6 +20,7 @@ export default {
   id: 'market', title: 'Mercado', icon: '🏪',
   async mount(root) {
     let state = null;
+    if (S.marketQuery) { filter = { kind: '', q: S.marketQuery }; tab = 'browse'; S.marketQuery = null; }
     const body = h('div', {});
     const tabs = h('div', { class: 'tabs' });
 
@@ -45,6 +46,8 @@ export default {
           h('b', {}, title(l)),
           p ? h('div', { class: 'row gap wrap' }, h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity)), ...p.types.map(typeBadge)) : null,
           p && !owned ? h('div', { class: 'small good' }, '¡Te falta en la Pokédex!') : null,
+          p && !owned ? (S.me.progress.sets.filter((s) => !s.done && s.ids.includes(p.id)).map((s) => h('div', { class: 'small gold-text' }, `📚 Completa «${s.name}» (${s.have + 1}/${s.ids.length})`))) : null,
+          l.kind === 'item' && S.data.cosmetics[l.itemId] ? h('div', { class: 'small' }, h('span', { class: 'rar r-' + S.data.cosmetics[l.itemId].rarity }, 'Cosmético ' + ({ C: 'común', U: 'poco común', R: 'raro', E: 'épico', L: 'legendario' })[S.data.cosmetics[l.itemId].rarity]), S.me.items[l.itemId] ? h('span', { class: 'muted' }, ' · ya lo tienes') : null) : null,
           p && owned && owned.n >= 5 ? h('div', { class: 'small bad' }, 'Ya tienes 5★: se convertiría en polvo') : null,
           h('div', { class: 'muted small' }, `Vende ${l.seller} · ${new Date(l.createdAt).toLocaleDateString('es-ES')}`),
           stat(l)),
@@ -61,7 +64,7 @@ export default {
     function browse() {
       const q = h('input', { placeholder: 'Buscar Pokémon u objeto…', value: filter.q, oninput: (e) => { filter.q = e.target.value; draw(); } });
       const kind = h('select', { onchange: (e) => { filter.kind = e.target.value; draw(); } },
-        [['', 'Todo'], ['poke', 'Pokémon'], ['shiny', 'Variocolor'], ['item', 'Objetos'], ['dust', 'Polvo estelar'], ['missing', 'Me faltan']].map(([v, l]) => h('option', { value: v, selected: filter.kind === v }, l)));
+        [['', 'Todo'], ['poke', 'Pokémon'], ['shiny', 'Variocolor'], ['item', 'Objetos'], ['cosmetic', 'Cosméticos'], ['dust', 'Polvo estelar'], ['missing', 'Me faltan'], ['sets', 'Para mis colecciones']].map(([v, l]) => h('option', { value: v, selected: filter.kind === v }, l)));
       const sort = h('select', { onchange: draw }, [['new', 'Más recientes'], ['cheap', 'Más baratos'], ['rare', 'Más raros']].map(([v, l]) => h('option', { value: v }, l)));
       const list = h('div', { class: 'mk-list' });
       function draw() {
@@ -69,7 +72,9 @@ export default {
         let items = state.listings.filter((l) => l.seller !== S.me.username).filter((l) => {
           if (filter.kind === 'poke' && l.kind !== 'poke') return false;
           if (filter.kind === 'shiny' && !l.shiny) return false;
-          if (filter.kind === 'item' && l.kind !== 'item') return false;
+          if (filter.kind === 'item' && !(l.kind === 'item' && !S.data.cosmetics[l.itemId])) return false;
+          if (filter.kind === 'cosmetic' && !(l.kind === 'item' && S.data.cosmetics[l.itemId])) return false;
+          if (filter.kind === 'sets' && !(l.kind === 'poke' && !S.me.collection[l.pokeId] && S.me.progress.sets.some((s) => !s.done && s.ids.includes(l.pokeId)))) return false;
           if (filter.kind === 'dust' && l.kind !== 'dust') return false;
           if (filter.kind === 'missing' && !(l.kind === 'poke' && !S.me.collection[l.pokeId])) return false;
           return !qq || title(l).toLowerCase().includes(qq);

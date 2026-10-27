@@ -27,7 +27,7 @@ function start(user, { bet, mines }) {
   if (cur && !cur.done) throw new Error('Termina la partida actual.');
   mines = Number(mines);
   if (!Number.isInteger(mines) || mines < 1 || mines > 24) throw new Error('Elige entre 1 y 24 Geodude.');
-  const stake = hub.takeBet(user, bet);
+  const stake = hub.takeBet(user, bet, 'mines');
   const board = shuffle([...Array(mines).fill(1), ...Array(CELLS - mines).fill(0)]);
   user.games.mines = { bet: stake, mines, board, revealed: [], done: false };
   db.save();
@@ -47,6 +47,7 @@ function pick(user, { index }) {
     return { game: view(g, true), boom: index };
   }
   g.revealed.push(index);
+  hub.track(user, 'mines_safe', { streak: g.revealed.length });
   if (g.revealed.length === CELLS - g.mines) return cashout(user);
   db.save();
   return { game: view(g) };
@@ -58,7 +59,7 @@ function cashout(user) {
   if (!g.revealed.length) throw new Error('Descubre al menos una casilla.');
   g.done = true;
   const mult = multiplier(g.mines, g.revealed.length);
-  const paid = hub.pay(user, g.bet * mult, g.bet, 'Minas Geodude').paid;
+  const paid = hub.pay(user, g.bet * mult, g.bet, 'mines').paid;
   db.save();
   return { game: view(g, true), paid, mult };
 }

@@ -28,6 +28,7 @@ test('300 manos aleatorias conservan todas las fichas', async () => {
   const users = ['ana', 'ben', 'cris', 'dani'].map((name, k) => {
     const u = { id: 'u' + k, username: name, coins: 1000000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: {}, stats: {}, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 1 };
     db.addUser(u);
+    delete u.progress; // sin misiones: solo se mide el dinero de la mesa
     return u;
   });
   const total = () => users.reduce((s, u) => s + u.coins, 0) + table().seats.reduce((s, x) => s + (x ? x.stack : 0), 0) + pot();

@@ -63,7 +63,7 @@ const payout = (g) => (g.score === 0 ? 0 : Math.floor((g.bet * g.score) / diviso
 
 function start(user, { bet }) {
   if (user.voltorb.game) throw new Error('Ya tienes una partida en curso.');
-  const stake = hub.takeBet(user, bet);
+  const stake = hub.takeBet(user, bet, 'voltorb');
   const level = user.voltorb.level;
   user.voltorb.game = { bet: stake, level, board: makeBoard(level), flipped: Array(25).fill(false), score: 0 };
   db.save();
@@ -76,7 +76,7 @@ function finish(user, won) {
   let res;
   if (won) {
     const amount = payout(g);
-    res = hub.pay(user, amount, g.bet, 'Voltorb Flip');
+    res = hub.pay(user, amount, g.bet, 'voltorb');
   } else {
     res = { paid: 0, bonus: 0 };
   }

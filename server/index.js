@@ -81,7 +81,8 @@ const STATIC = {
   roulette: { wheel: roulette.WHEEL, groups: roulette.GROUPS, payout: roulette.PAYOUT },
   racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS,
   items: items.ITEMS, marketFee: market.FEE, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
-  plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET,
+  plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
+  cosmetics: items.COSMETICS,
 };
 app.get('/api/static', (req, res) => res.json(STATIC));
 
@@ -108,6 +109,7 @@ function claimDaily(user) {
   user.items.ticket = (user.items.ticket || 0) + 1;
   const charm = user.daily.streak % 7 === 0;
   if (charm) user.items['shiny-charm'] = (user.items['shiny-charm'] || 0) + 1;
+  hub.track(user, 'daily');
   db.save();
   return { reward, streak: user.daily.streak, charm };
 }
@@ -125,12 +127,13 @@ function heal(user) {
 
 function leaderboard() {
   const users = Object.values(db.data.users).filter((u) => !u.banned);
-  const top = (fn) => users.map((u) => ({ username: u.username, level: u.level, buddy: u.buddy, value: fn(u) }))
+  const top = (fn) => users.map((u) => ({ username: u.username, level: u.level, buddy: u.buddy, ...hub.looks(u), value: fn(u) }))
     .sort((a, b) => b.value - a.value).slice(0, 10);
   return {
     coins: top((u) => u.coins),
     dex: top((u) => Object.keys(u.collection).length),
     shinies: top((u) => Object.values(u.collection).reduce((s, c) => s + (c.s > 0 ? 1 : 0), 0)),
+    badges: top((u) => (u.progress ? u.progress.badges.length * 1000 + u.progress.sets.length : 0)),
     biggestWin: top((u) => u.stats.biggestWin),
     duels: top((u) => u.stats.duelsWon),
   };
@@ -142,6 +145,7 @@ function viewPlayer(_user, { username }) {
   return {
     player: {
       ...hub.publicUser(u), createdAt: u.createdAt, collection: u.collection,
+      progress: { badges: u.progress.badges, sets: u.progress.sets },
       stats: { pulls: u.stats.pulls, duelsWon: u.stats.duelsWon, duelsLost: u.stats.duelsLost, biggestWin: u.stats.biggestWin },
     },
   };
@@ -153,6 +157,7 @@ function setBuddy(user, { id, shiny }) {
   if (!c) throw new Error('No tienes ese Pokémon.');
   if (shiny && !c.s) throw new Error('No tienes la versión variocolor.');
   user.buddy = { id: Number(id), shiny: !!shiny };
+  hub.track(user, 'buddy');
   db.save();
   pushOnline();
   return {};
@@ -176,6 +181,7 @@ function giftPoke(user, { to, id, shiny }) {
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
   const p = gacha.takePoke(user, id, !!shiny);
   gacha.grant(t, p.id, !!shiny);
+  hub.track(t, 'gift_recv');
   db.save();
   hub.emitUser(t.id, 'toast', { kind: 'gift', text: `🎁 ${user.username} te envió un ${shiny ? p.name + ' variocolor' : p.name}` });
   hub.feed('trade', `🤝 ${user.username} le regaló ${shiny ? 'un ' + p.name + ' variocolor' : p.name} a ${t.username}`);
@@ -191,7 +197,7 @@ function chat(user, { text }) {
   const last = lastMsg.get(user.id) || 0;
   if (Date.now() - last < 800) throw new Error('Más despacio, entrenador.');
   lastMsg.set(user.id, Date.now());
-  const msg = { user: user.username, buddy: user.buddy, admin: user.isAdmin, text, at: Date.now() };
+  const msg = { user: user.username, buddy: user.buddy, admin: user.isAdmin, ...hub.looks(user), text, at: Date.now() };
   db.data.chat.push(msg);
   if (db.data.chat.length > 100) db.data.chat.splice(0, db.data.chat.length - 100);
   db.save();
@@ -331,6 +337,7 @@ io.on('connection', (socket) => {
   on('buddy:set', setBuddy);
   on('item:buy', items.buy);
   on('item:use', items.use);
+  on('equip', items.equip);
   on('market:state', () => market.state(), { push: false });
   on('market:create', market.create);
   on('market:cancel', market.cancel);

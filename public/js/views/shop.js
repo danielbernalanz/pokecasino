@@ -22,7 +22,7 @@ export default {
     }
 
     function itemsTab() {
-      return h('div', { class: 'shop-grid wide' }, Object.entries(S.data.items).map(([id, it]) => {
+      return h('div', { class: 'shop-grid wide' }, Object.entries(S.data.items).filter(([id]) => !S.data.cosmetics[id]).map(([id, it]) => {
         const qty = h('input', { type: 'number', min: 1, max: 99, value: 1, class: 'qty' });
         return h('div', { class: 'shop-item item-card' },
           itemImg(id, 'big'),
@@ -47,8 +47,11 @@ export default {
         active.length ? h('div', { class: 'card' }, h('h3', {}, 'Efectos activos'), active.map((a) => h('div', {}, a))) : null,
         owned.length ? h('div', { class: 'shop-grid wide' }, owned.map(([id, n]) => {
           const it = S.data.items[id];
+          const cos = S.data.cosmetics[id];
+          const equipped = cos && S.me.equip[cos.slot] === id;
           const useBtn = id === 'ticket'
             ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
+            : cos ? h('button', { class: 'btn' + (equipped ? ' active' : ''), disabled: equipped, onclick: async (e) => { if (await act('item:use', { itemId: id }, e.target)) { sfx('click'); toast(`${it.name} equipado`, 'success'); } } }, equipped ? 'Equipado' : 'Equipar')
             : h('button', { class: 'btn primary', onclick: async (e) => {
               let payload = { itemId: id };
               if (id === 'rare-candy') {
@@ -57,8 +60,9 @@ export default {
                 payload.pokeId = p.id;
               }
               const r = await act('item:use', payload, e.target);
-              if (r) { sfx('shiny'); toast(`Usaste ${it.name}`, 'success'); }
-            } }, 'Usar');
+              if (r && r.got) { const c = S.data.cosmetics[r.got]; sfx('big'); toast(`🥚 ¡${c.name}! Equípalo en «Mi Entrenador» o véndelo en el Mercado.`, 'success', 6000); }
+              else if (r) { sfx('shiny'); toast(`Usaste ${it.name}`, 'success'); }
+            } }, id === 'mystery-egg' ? 'Abrir' : 'Usar');
           return h('div', { class: 'shop-item item-card' }, itemImg(id, 'big'), h('div', { class: 'grow' }, h('b', {}, `${it.name} ×${n}`), h('div', { class: 'small muted' }, it.desc)),
             h('div', { class: 'stack' }, useBtn, h('a', { class: 'btn small', href: '#/market' }, 'Vender')));
         })) : h('p', { class: 'muted' }, 'Tu mochila está vacía. Consigue objetos en la Tienda Poké, subiendo de nivel, con la recompensa diaria o en el Mercado.'));

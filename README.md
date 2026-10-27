@@ -28,6 +28,16 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 - 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
 - 🏪 **Mercado** entre jugadores: vende Pokémon (normales o variocolor), objetos y polvo estelar a precio fijo. Lo publicado queda en depósito hasta que se vende, se retira o caduca (7 días); el comprador confirma el precio, nadie puede comprar su propio anuncio y la casa cobra un 5 %. Muestra el precio medio de las últimas ventas.
 
+**Progresión (de novato a campeón)**
+
+1. **Ruta del Entrenador**: 10 pasos guiados con premio (recompensa diaria → primera tirada → compañero → primeras partidas → mesas → multijugador → Huevo Misterioso → Mercado → duelo → primera medalla). Los pasos que ya hayas cumplido se completan solos.
+2. **Misiones diarias**: 3 al día de una lista de 12, más un Huevo Misterioso si completas las tres.
+3. **8 medallas de Kanto** (Brock, Misty, Surge, Erika, Koga, Sabrina, Blaine y Giovanni), cada una con un reto distinto: nivel, Pokédex, victorias, colecciones, ventas en el Mercado, duelos/póker, variocolor y la final. Suben la apuesta máxima (de 10.000 a 100.000), abren las mesas de póker de Azulona (2 medallas) y Meseta Añil (5) y dan títulos. Con las 8 eres **Campeón de la Liga**.
+4. **Colecciones** (iniciales, Eeveelutions, fósiles, aves legendarias, Equipo Rocket…): cada una da +1 % permanente a tus ganancias (hasta +8 %), un título y un Huevo Misterioso.
+5. **Aspecto**: marcos de avatar, dorsos de carta (los ven los demás en la mesa de póker) y títulos, visibles en chat, ranking, mesas y fichas.
+
+**¿Por qué usar el Mercado?** Los cosméticos solo salen de **Huevos Misteriosos** aleatorios, así que los repetidos se venden y el que quieres se compra. Las colecciones piden Pokémon concretos: el Mercado muestra cuántos hay a la venta de los que te faltan, con un filtro «Para mis colecciones». Además, la Medalla Alma exige vender 3 cosas, y el Mercado aparece en el tutorial y en las misiones diarias.
+
 **Social**: chat con menciones `@nombre`, actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha, niveles y panel de anfitrión (invitaciones, monedas, suspensiones, contraseñas).
 
 Todos los resultados se calculan en el servidor con `crypto`. RTP aproximados: Video Póker 99,5 % (juego óptimo), Blackjack ~99,5 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ~96 %, Voltorb Flip ~95 %, Ruleta 94,7 %, Carrera ≤ 90 %. Subir de nivel devuelve ~2,5 % de lo apostado.
@@ -102,7 +112,7 @@ Todo se hace desde el navegador, también desde el móvil. En la nube no hay red
 ## Desarrollo
 
 ```bash
-npm test   # RTP, pity, póker (conservación de fichas en 300 manos), mercado, combate y filtro de red
+npm test   # RTP, pity, póker (conservación de fichas en 300 manos), mercado, progresión, combate y filtro de red
 ```
 
 ```
@@ -116,6 +126,7 @@ server/
   gacha.js        Banners, pity, variocolores y tienda de polvo
   items.js        Objetos, Tienda Poké y efectos
   market.js       Mercado entre jugadores con depósito
+  progress.js     Ruta del Entrenador, misiones, medallas y colecciones
   cards.js        Baraja y evaluador de manos de póker
   games/          holdem, crash, race, duel, battle, blackjack, videopoker,
                   baccarat, roulette, slots, plinko, mines, voltorb

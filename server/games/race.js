@@ -65,7 +65,7 @@ function settle() {
     user.stats.races++;
     const stake = bets.reduce((s, b) => s + b.amount, 0);
     const win = bets.filter((b) => b.lane === winner).reduce((s, b) => s + b.amount * runner.odds, 0);
-    const res = win > 0 ? hub.pay(user, win, stake, 'la Gran Carrera') : { paid: 0, bonus: 0 };
+    const res = win > 0 ? hub.pay(user, win, stake, 'race') : { paid: 0, bonus: 0 };
     hub.emitUser(uid, 'race:payout', { round: race.round, stake, ...res });
     hub.pushMe(user);
   }
@@ -99,7 +99,7 @@ function placeBet(user, { lane, amount }) {
   const mine = race.bets[user.id] || [];
   const already = mine.reduce((s, b) => s + b.amount, 0);
   if (already + Number(amount) > MAX_PER_ROUND) throw new Error('Límite de apuesta por carrera alcanzado.');
-  const stake = hub.takeBet(user, amount);
+  const stake = hub.takeBet(user, amount, 'race');
   mine.push({ lane, amount: stake });
   race.bets[user.id] = mine;
   broadcastState();

@@ -37,14 +37,14 @@ function play(user, { bets }) {
   const list = Object.entries(bets).filter(([k, v]) => PAYOUT[k] && Number(v) > 0).map(([k, v]) => [k, Number(v)]);
   if (!list.length) throw new Error('Apuesta a Punto, Banca o Empate.');
   if (!list.every(([, v]) => hub.validAmount(v))) throw new Error('Importe no válido.');
-  const stake = hub.takeBet(user, list.reduce((s, [, v]) => s + v, 0));
+  const stake = hub.takeBet(user, list.reduce((s, [, v]) => s + v, 0), 'baccarat');
   const r = coup();
   let win = 0;
   for (const [k, v] of list) {
     if (k === r.winner) win += v * PAYOUT[k];
     else if (r.winner === 'tie' && k !== 'tie') win += v; // en empate se devuelven Punto y Banca
   }
-  const paid = win > 0 ? hub.pay(user, win, stake, 'Baccarat').paid : 0;
+  const paid = win > 0 ? hub.pay(user, win, stake, 'baccarat').paid : 0;
   return { ...r, paid };
 }
 

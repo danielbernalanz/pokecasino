@@ -31,7 +31,7 @@ const payFor = (name) => (PAYTABLE.find((p) => p[0] === name) || [null, 0])[1];
 
 function deal(user, { bet }) {
   if (user.games.vpoker && !user.games.vpoker.done) throw new Error('Termina la mano actual.');
-  const stake = hub.takeBet(user, bet);
+  const stake = hub.takeBet(user, bet, 'videopoker');
   const d = deck(1);
   const hand = d.splice(0, 5);
   user.games.vpoker = { bet: stake, hand, rest: d, done: false };
@@ -48,7 +48,7 @@ function draw(user, { hold }) {
   delete g.rest;
   const name = classify(g.hand);
   const mult = payFor(name);
-  const paid = mult ? hub.pay(user, g.bet * mult, g.bet, 'Video Póker').paid : 0;
+  const paid = mult ? hub.pay(user, g.bet * mult, g.bet, 'videopoker').paid : 0;
   db.save();
   return { hand: g.hand, result: name, mult, paid };
 }

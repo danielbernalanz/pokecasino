@@ -1,4 +1,12 @@
-import { S, h, fmt, act, sfx, toast, art, item, pokeImg } from '../core.js';
+import { S, h, fmt, act, sfx, toast, art, item, pokeImg, badgeImg } from '../core.js';
+
+function rewardText(r) {
+  const parts = [];
+  if (r.coins) parts.push(`${fmt(r.coins)} monedas`);
+  for (const [id, n] of Object.entries(r.items || {})) parts.push(`${n}× ${S.data.items[id].name}`);
+  if (r.title) parts.push('un título');
+  return parts.join(' + ');
+}
 
 const GAMES = [
   { id: 'poker', name: "Texas Hold'em", desc: 'Póker No-Limit contra tus amigos, en mesas en directo.', art: 94, ico: 'nugget', tag: 'MULTIJUGADOR' },
@@ -39,6 +47,27 @@ export default {
 
     const days = h('div', { class: 'streak' }, [1, 2, 3, 4, 5, 6, 7].map((d) => h('span', { class: 'sday' + (d <= (dailyDone ? me.daily.streak : streak - 1) ? ' on' : '') }, d)));
 
+    const pr = me.progress;
+    const tut = pr.tutorial;
+    const route = tut.done
+      ? h('div', { class: 'card route done' }, h('h3', {}, '🎓 Ruta del Entrenador completada'), h('p', { class: 'muted' }, 'Ahora a por las 8 medallas, las colecciones y el Mercado. ¡Suerte, entrenador!'), h('a', { class: 'btn', href: '#/trainer' }, '🏅 Mi Entrenador'))
+      : h('div', { class: 'card route' },
+        h('div', { class: 'row between' }, h('h3', {}, `🧭 Ruta del Entrenador · paso ${tut.index + 1}/${tut.total}`), h('span', { class: 'muted small' }, `Premio: ${rewardText(tut.reward)}`)),
+        h('div', { class: 'route-steps' }, Array.from({ length: tut.total }, (_, k) => h('i', { class: k < tut.index ? 'done' : k === tut.index ? 'now' : '' }))),
+        h('b', { class: 'route-title' }, tut.title), h('p', {}, tut.desc),
+        tut.n > 1 ? h('div', { class: 'pity-bar' }, h('i', { style: { width: (tut.prog / tut.n) * 100 + '%' } })) : null,
+        h('a', { class: 'btn primary', href: '#/' + tut.link }, '¡Vamos!'));
+    const daily = h('div', { class: 'card' },
+      h('h3', {}, '📋 Misiones de hoy'),
+      ...pr.daily.missions.map((m) => h('div', { class: 'mission' + (m.done ? ' done' : '') },
+        h('span', {}, m.done ? '✅' : '⬜'), h('div', { class: 'grow' }, h('div', {}, m.title), h('div', { class: 'muted small' }, rewardText(m.reward))),
+        m.n > 1 ? h('span', { class: 'small' }, `${Math.min(m.prog, m.n)}/${m.n}`) : null)),
+      h('div', { class: 'muted small' }, pr.daily.bonus ? '🎁 Bonus diario conseguido' : 'Completa las 3 para un Huevo Misterioso extra.'));
+    const badgeStrip = h('a', { class: 'card badge-strip', href: '#/trainer' },
+      h('div', { class: 'row between' }, h('h3', {}, `🏅 Medallas ${pr.badges.filter((b) => b.got).length}/8`), h('span', { class: 'muted small' }, `Apuesta máxima ${fmt(me.maxBet)}`)),
+      h('div', { class: 'row gap wrap' }, pr.badges.map((b) => badgeImg(b.n, b.got))),
+      (() => { const next = pr.badges.find((b) => !b.got); return next ? h('div', { class: 'small' }, `Siguiente: ${next.name} — ${next.req}`) : h('div', { class: 'small good' }, '👑 Campeón de la Liga'); })());
+
     root.append(
       h('section', { class: 'hero' },
         h('div', { class: 'hero-text' },
@@ -48,6 +77,7 @@ export default {
             h('a', { class: 'btn primary big', href: '#/gacha' }, freeDone ? '🎁 Ir al Gacha' : '🎁 ¡Tirada gratis disponible!'),
             h('a', { class: 'btn big', href: '#/race' }, '🏁 Carrera en directo'))),
         h('div', { class: 'hero-mons' }, me.buddy ? pokeImg(me.buddy.id, me.buddy.shiny, 'hero-buddy float') : h('img', { class: 'hero-buddy float', src: art(52), alt: 'Meowth' }))),
+      h('div', { class: 'cards3 progress-row' }, route, daily, badgeStrip),
       h('div', { class: 'cards3' },
         h('div', { class: 'card' },
           h('h3', {}, '📅 Recompensa diaria'),
@@ -76,6 +106,7 @@ export default {
         st('Duelos', `${me.stats.duelsWon}V/${me.stats.duelsLost}D`)),
     );
   },
-  remount(root) { root.replaceChildren(); this.mount(root); },
+  // Solo se repinta si el jugador sigue en el Vestíbulo (las respuestas pueden llegar tarde).
+  remount(root) { if (S.view !== 'lobby') return; root.replaceChildren(); this.mount(root); },
 };
 const st = (l, v) => h('div', { class: 'stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v));

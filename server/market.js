@@ -66,6 +66,7 @@ function create(user, { kind, pokeId, shiny, itemId, qty, price }) {
   }
   escrowIn(user, l);
   M().listings.push(l);
+  hub.track(user, 'market_list');
   db.save();
   push();
   if (l.kind === 'poke' && (l.shiny || ['L', 'M'].includes(l.rarity))) {
@@ -109,6 +110,8 @@ function buy(user, { id, price }) {
     hub.pushMe(seller);
   }
   user.stats.bought++;
+  hub.track(user, 'market_buy');
+  if (seller) hub.track(seller, 'market_sell');
   const sale = { id: l.id, ref: refKey(l), kind: l.kind, pokeId: l.pokeId, shiny: l.shiny, itemId: l.itemId, qty: l.qty, price: l.price, seller: l.seller, buyer: user.username, at: Date.now() };
   M().sales.push(sale);
   if (M().sales.length > 300) M().sales.splice(0, M().sales.length - 300);

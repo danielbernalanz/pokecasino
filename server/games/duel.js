@@ -77,10 +77,12 @@ function accept(user, { id, pokeId, shiny }) {
   let prize = 0;
   if (d.wager) {
     prize = Math.floor(d.wager * 2 * (1 - RAKE));
-    hub.pay(winner, prize, d.wager, 'un duelo');
+    hub.pay(winner, prize, d.wager, 'duel');
   }
   winner.stats.duelsWon++;
   loser.stats.duelsLost++;
+  for (const p of players) { hub.track(p, 'duel_play'); hub.track(p, 'play', { game: 'duel' }); }
+  hub.track(winner, 'duel_win');
   hub.addXp(winner, 50);
   hub.addXp(loser, 20);
   db.save();

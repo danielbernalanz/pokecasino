@@ -78,7 +78,7 @@ function settleBet(b, at) {
   const u = db.userById(b.userId);
   b.cashedAt = at;
   if (!u) return;
-  b.paid = hub.pay(u, b.amount * at, b.amount, 'Crash').paid;
+  b.paid = hub.pay(u, b.amount * at, b.amount, 'crash').paid;
   hub.emitUser(u.id, 'crash:result', { paid: b.paid, at });
   hub.pushMe(u);
   push();
@@ -89,7 +89,7 @@ function bet(user, { amount, auto }) {
   if (round.bets[user.id]) throw new Error('Ya apostaste en esta ronda.');
   auto = auto ? Number(auto) : null;
   if (auto !== null && (!Number.isFinite(auto) || auto < 1.01 || auto > MAX_CRASH)) throw new Error('Retiro automático entre ×1.01 y ×1000.');
-  const stake = hub.takeBet(user, amount);
+  const stake = hub.takeBet(user, amount, 'crash');
   round.bets[user.id] = { userId: user.id, username: user.username, amount: stake, auto: auto ? Math.floor(auto * 100) / 100 : null, cashedAt: null, paid: 0 };
   push();
   return {};

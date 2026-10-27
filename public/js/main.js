@@ -19,8 +19,9 @@ import mines from './views/mines.js';
 import crash from './views/crash.js';
 import poker from './views/poker.js';
 import market from './views/market.js';
+import trainer from './views/trainer.js';
 
-const VIEWS = [lobby, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, gacha, pokedex, shop, market, ranking, admin];
+const VIEWS = [lobby, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, gacha, pokedex, shop, market, ranking, admin];
 const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', gacha: 'Colección', market: 'Comunidad' };
 
 // ---------- Autenticación ----------
@@ -86,6 +87,7 @@ bus.on('me', (me) => {
   $('#xpfill').style.width = Math.min(100, ((me.xp - me.xpCur) / (me.xpNext - me.xpCur)) * 100) + '%';
   $('#uname').textContent = me.username;
   $('#buddy-mini').replaceChildren(me.buddy ? h('img', { class: 'pixel', src: sprite(me.buddy.id, me.buddy.shiny), alt: '' }) : '');
+  $('#buddy-mini').className = me.looks && me.looks.frame ? 'mini-frame fr ' + me.looks.frame : '';
   document.querySelector('[data-view=admin]')?.classList.toggle('hidden', !me.isAdmin);
 });
 bus.on('toast', (t) => toast(t, 'success'));
@@ -121,6 +123,7 @@ function route() {
   const view = VIEWS.find((v) => v.id === id) || lobby;
   if (current && current.unmount) current.unmount();
   current = view;
+  S.view = view.id;
   document.querySelectorAll('.nav-link').forEach((a) => a.classList.toggle('active', a.dataset.view === view.id));
   document.body.classList.remove('nav-open');
   const root = $('#view');

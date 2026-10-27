@@ -1,4 +1,4 @@
-import { h, fmt, emit, sfx, toast, betInput, playingCard, sprite } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, betInput, playingCard, sprite } from '../core.js';
 
 const RESULT = { blackjack: '¡Blackjack!', win: 'Ganas', push: 'Empate', lose: 'Pierdes', bust: 'Te pasaste' };
 
@@ -17,7 +17,7 @@ export default {
 
     function render(g, animate) {
       if (!g) { dealerBox.replaceChildren(); handsBox.replaceChildren(); dealerTotal.textContent = ''; setButtons(null); return; }
-      dealerBox.replaceChildren(...g.dealer.map((c, i) => playingCard(c, { cls: animate ? 'deal' : '', delay: i * 120 })));
+      dealerBox.replaceChildren(...g.dealer.map((c, i) => playingCard(c, { cls: animate ? 'deal' : '', delay: i * 120, back: S.me.equip.cardback })));
       dealerTotal.textContent = g.dealerTotal;
       handsBox.replaceChildren(...g.hands.map((hd, k) => h('div', { class: 'bj-hand' + (k === g.active && !g.done ? ' active' : '') + (hd.result ? ' r-' + hd.result : '') },
         h('div', { class: 'cards-row' }, hd.cards.map((c, i) => playingCard(c, { cls: animate && i >= shown ? 'deal' : '', delay: i * 120 }))),
