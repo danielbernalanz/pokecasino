@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, art, item, pokeImg, rarityName, typeBadge, sleep } from '../core.js';
+import { S, h, fmt, emit, act, sfx, toast, art, item, pokeImg, rarityName, typeBadge, sleep, itemImg } from '../core.js';
 
 const BALL = { C: 'poke-ball', U: 'poke-ball', R: 'great-ball', E: 'ultra-ball', L: 'master-ball', M: 'master-ball' };
 const RANK = { C: 0, U: 1, R: 2, E: 3, L: 4, M: 5 };
@@ -33,20 +33,36 @@ export default {
               h('div', { class: 'small muted' }, `Rara o mejor garantizada cada 10 tiradas (${pity.sinceR}/10). Desde la ${S.data.softPity}ª tirada la probabilidad legendaria sube rápidamente.`),
               b.featuredL.length ? h('div', { class: 'small ' + (pity.guaranteed ? 'good' : 'muted') }, pity.guaranteed ? '✔ Tu próxima legendaria será destacada.' : '50 % de que tu legendaria sea destacada; si no, la siguiente lo será.') : null)),
           h('img', { class: 'banner-art float', src: art(b.art), alt: '' })),
+        buffsRow(),
         h('div', { class: 'pull-row' },
           h('button', { class: 'btn big gold', disabled: !freeAvail, onclick: (e) => pull(1, true, e.target) }, freeAvail ? '🎁 Tirada gratis' : 'Gratis mañana'),
           h('button', { class: 'btn big primary', onclick: (e) => pull(1, false, e.target) }, h('img', { class: 'pixel', src: item('poke-ball'), alt: '' }), ` ×1 · ${fmt(S.data.gachaCost[1])}`),
           h('button', { class: 'btn big primary', onclick: (e) => pull(10, false, e.target) }, h('img', { class: 'pixel', src: item('master-ball'), alt: '' }), ` ×10 · ${fmt(S.data.gachaCost[10])}`)),
+        (S.me.items.ticket || 0) > 0 ? h('div', { class: 'pull-row' },
+          h('button', { class: 'btn big', onclick: (e) => pull(1, false, e.target, true) }, itemImg('ticket'), ` Ticket ×1 (tienes ${S.me.items.ticket})`),
+          S.me.items.ticket >= 10 ? h('button', { class: 'btn big', onclick: (e) => pull(10, false, e.target, true) }, itemImg('ticket'), ' Tickets ×10') : null) : null,
         h('details', { class: 'rates' }, h('summary', {}, 'Probabilidades y reglas'),
           h('table', {}, h('tbody', {}, Object.entries(S.data.gachaRates).map(([r, p]) => h('tr', {}, h('td', {}, h('span', { class: 'rar r-' + r }, rarityName(r))), h('td', {}, (p * 100).toFixed(1) + ' %'), h('td', { class: 'muted' }, `${S.data.rarity[r].dust} ✦ por duplicado extra`))))),
           h('p', { class: 'small muted' }, `Variocolor: 1/${Math.round(1 / S.data.shinyRate)} en cualquier tirada. Cada copia (hasta 5) da una estrella al Pokémon: más fuerza en duelos y más bonus como compañero. A partir de la 5ª copia se convierte en polvo estelar.`)));
     }
 
-    async function pull(count, free, btn) {
+    // Objetos que afectan a las tiradas.
+    function buffsRow() {
+      const b = S.me.buffs || {};
+      const parts = [];
+      if (b.masterBall) parts.push(h('span', { class: 'chip active' }, itemImg('master-ball'), ' Master Ball preparada: tu próxima tirada será legendaria'));
+      else if (S.me.items['master-ball']) parts.push(h('button', { class: 'chip', onclick: async () => { if (await act('item:use', { itemId: 'master-ball' })) { sfx('shiny'); renderStage(); } } }, itemImg('master-ball'), ` Preparar Master Ball (${S.me.items['master-ball']})`));
+      if (b.shinyCharges > 0) parts.push(h('span', { class: 'chip active' }, itemImg('shiny-charm'), ` Amuleto Iris: ${b.shinyCharges} tiradas ×4 variocolor`));
+      else if (S.me.items['shiny-charm']) parts.push(h('button', { class: 'chip', onclick: async () => { if (await act('item:use', { itemId: 'shiny-charm' })) { sfx('shiny'); renderStage(); } } }, itemImg('shiny-charm'), ` Activar Amuleto Iris (${S.me.items['shiny-charm']})`));
+      return parts.length ? h('div', { class: 'row gap wrap buffs' }, parts) : null;
+    }
+
+    async function pull(count, free, btn, ticket = false) {
       btn.disabled = true;
       let res;
-      try { res = await emit('gacha:pull', { banner: selected, count, free }); } catch (e) { toast(e.message, 'error'); sfx('error'); btn.disabled = false; return; }
+      try { res = await emit('gacha:pull', { banner: selected, count, free, ticket }); } catch (e) { toast(e.message, 'error'); sfx('error'); btn.disabled = false; return; }
       await reveal(res.results);
+      for (const it of res.bonus || []) toast(`🎁 ¡Regalo de la tirada ×10: ${S.data.items[it].name}!`, 'success', 6000);
       renderStage();
     }
 

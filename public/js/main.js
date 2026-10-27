@@ -11,9 +11,17 @@ import pokedex from './views/pokedex.js';
 import shop from './views/shop.js';
 import ranking from './views/ranking.js';
 import admin from './views/admin.js';
+import blackjack from './views/blackjack.js';
+import videopoker from './views/videopoker.js';
+import baccarat from './views/baccarat.js';
+import plinko from './views/plinko.js';
+import mines from './views/mines.js';
+import crash from './views/crash.js';
+import poker from './views/poker.js';
+import market from './views/market.js';
 
-const VIEWS = [lobby, slots, roulette, voltorb, race, duels, gacha, pokedex, shop, ranking, admin];
-const SECTIONS = { slots: 'Juegos', gacha: 'Colección', ranking: 'Comunidad' };
+const VIEWS = [lobby, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, gacha, pokedex, shop, market, ranking, admin];
+const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', gacha: 'Colección', market: 'Comunidad' };
 
 // ---------- Autenticación ----------
 let mode = 'login';
@@ -149,6 +157,7 @@ function connect() {
     S.jackpot = res.jackpot; $('#jackpot').textContent = fmt(res.jackpot);
     S.race = res.race; S.raceBets = res.raceBets;
     S.duels = res.duels; S.duelHistory = res.duelHistory;
+    S.crash = res.crash; S.poker = res.poker;
     bus.emit('race', res.race);
     if (!booted) { booted = true; buildNav(); setMe(S.me); route(); }
   });
@@ -169,6 +178,12 @@ function connect() {
     }
   });
   socket.on('toast', (t) => { toast(t.text, 'success', 5000); sfx('win'); });
+  socket.on('crash:state', (c) => { S.crash = c; bus.emit('crash', c); });
+  socket.on('crash:result', (r) => bus.emit('crash:result', r));
+  socket.on('poker:lobby', (l) => { S.poker = l; bus.emit('poker:lobby', l); });
+  socket.on('poker:table', (t) => bus.emit('poker:table', t));
+  socket.on('poker:hole', (x) => bus.emit('poker:hole', x));
+  socket.on('market', (m) => bus.emit('market', m));
 }
 
 // ---------- Arranque ----------

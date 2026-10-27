@@ -145,3 +145,17 @@ export function sfx(name) {
 }
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---- Naipes ----
+const SUIT_SYM = { s: '♠', h: '♥', d: '♦', c: '♣' };
+export function playingCard(c, { cls = '', delay = 0 } = {}) {
+  if (!c || c === '??') return h('div', { class: 'pcard-play back ' + cls, style: { animationDelay: delay + 'ms' } });
+  const r = c[0] === 'T' ? '10' : c[0];
+  const red = c[1] === 'h' || c[1] === 'd';
+  return h('div', { class: `pcard-play ${red ? 'red' : ''} ${cls}`, style: { animationDelay: delay + 'ms' } },
+    h('span', { class: 'pc-r' }, r), h('span', { class: 'pc-s' }, SUIT_SYM[c[1]]), h('span', { class: 'pc-big' }, SUIT_SYM[c[1]]));
+}
+
+// ---- Objetos ----
+export const itemImg = (id, cls = '') => h('img', { class: 'pixel item-img ' + cls, src: item(S.data.items[id].sprite), alt: S.data.items[id].name });
+export const itemName = (id) => S.data.items[id]?.name || id;

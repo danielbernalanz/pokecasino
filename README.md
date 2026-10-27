@@ -4,22 +4,33 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 ## Qué incluye
 
-| Sección | Descripción |
-|---|---|
-| 🎰 **Pika-Slots** | Tragamonedas 3×3 con 5 líneas, Ditto comodín y **bote progresivo compartido** entre todos los jugadores (3 Master Ball en la línea central). |
-| 🎡 **Ruleta de Tipos** | 18 tipos + casilla Poké Ball. Apuestas a tipo (×18), grupo (×3) y par/impar (×2). |
-| ⚡ **Voltorb Flip** | El minijuego de HeartGold/SoulSilver con 8 niveles, pistas por fila/columna y notas. |
-| 🏁 **Gran Carrera** | Carreras **en directo** cada ~45 s: todos ven la misma carrera y apuestan a la vez. |
-| ⚔️ **Duelos PvP** | Reta a otros entrenadores con un Pokémon de tu colección. Combate por turnos con tabla de tipos completa. |
-| 🎁 **Poké Gacha** | 4 banners (Kanto, Aves legendarias, Mewtwo/Mew, Johto), pity suave (60) y duro (80), garantía de rara cada 10, 50/50 de destacado, variocolores 1/64 y tirada gratis diaria. |
-| 📕 **Pokédex** | 161 Pokémon (Kanto + invitados de Johto). Estrellas por copias, compañero que da bonus a tus ganancias, regalos entre jugadores. |
-| ✦ **Tienda Estelar** | Fabrica Pokémon con polvo estelar o cámbialo por monedas. |
-| 💬 **Social** | Chat con menciones `@nombre`, actividad en vivo, jugadores conectados, fichas de entrenador, ranking y regalos de monedas. |
-| 👑 **Anfitrión** | El primer usuario registrado es administrador: invitaciones de un solo uso, ajustar monedas, suspender, cambiar contraseñas. |
+**12 juegos** (4 multijugador en tiempo real), gacha, mercado y objetos:
 
-Extras: recompensa diaria con racha, Centro Pokémon (préstamo si te quedas sin monedas), niveles de entrenador, sonidos 8-bit sintetizados y diseño adaptado a móvil.
+| Juego | Tipo | Descripción |
+|---|---|---|
+| ♠️ **Texas Hold'em** | Multijugador | Póker No-Limit en 3 mesas (ciegas 10/20, 50/100, 250/500). Botes paralelos, all-in, 25 s por turno, sin comisión de la casa. |
+| 🚀 **Crash Rocket** | Multijugador | El multiplicador sube hasta que el Team Rocket sale volando; retírate a tiempo (manual o automático). |
+| 🏁 **Gran Carrera** | Multijugador | Carreras en directo cada ~45 s; todos ven la misma carrera. |
+| ⚔️ **Duelos PvP** | Multijugador | Reta a otros entrenadores con tus Pokémon; combate con tabla de tipos. |
+| 🃏 **Blackjack** | Mesa | 6 barajas, 3:2, doblar, dividir, el crupier se planta en 17. |
+| 🂡 **Video Póker** | Mesa | Jacks or Better 9/6. |
+| 🎴 **Baccarat** | Mesa | Punto, Banca (0,95:1) y Empate (8:1) con reglas oficiales de tercera carta. |
+| 🎡 **Ruleta de Tipos** | Mesa | 18 tipos + casilla Poké Ball. |
+| 🎰 **Pika-Slots** | Máquina | 5 líneas, Ditto comodín y bote progresivo compartido. |
+| 🔻 **Plinko** | Máquina | 12 filas, riesgo bajo/medio/alto, varias bolas a la vez. |
+| 💣 **Minas Geodude** | Máquina | 5×5, de 1 a 24 Geodude, retírate cuando quieras. |
+| ⚡ **Voltorb Flip** | Máquina | El minijuego de HeartGold/SoulSilver con 8 niveles. |
 
-Todas las tiradas se resuelven en el servidor con `crypto` (el cliente nunca decide un resultado). RTP aproximados: slots ~96 % (incluido el bote), ruleta 94,7 %, carrera ≤ 90 %, Voltorb Flip ~95 % con una estrategia razonable (calibrado por simulación), duelos con 5 % de comisión.
+**Colección y economía**
+
+- 🎁 **Poké Gacha**: 4 banners, pity suave (60) y duro (80), rara garantizada cada 10, 50/50 de destacado, variocolores 1/64, tirada gratis diaria.
+- 📕 **Pokédex** de 161 Pokémon con estrellas por copias y compañero que da bonus a tus ganancias.
+- 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
+- 🏪 **Mercado** entre jugadores: vende Pokémon (normales o variocolor), objetos y polvo estelar a precio fijo. Lo publicado queda en depósito hasta que se vende, se retira o caduca (7 días); el comprador confirma el precio, nadie puede comprar su propio anuncio y la casa cobra un 5 %. Muestra el precio medio de las últimas ventas.
+
+**Social**: chat con menciones `@nombre`, actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha, niveles y panel de anfitrión (invitaciones, monedas, suspensiones, contraseñas).
+
+Todos los resultados se calculan en el servidor con `crypto`. RTP aproximados: Video Póker 99,5 % (juego óptimo), Blackjack ~99,5 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ~96 %, Voltorb Flip ~95 %, Ruleta 94,7 %, Carrera ≤ 90 %. Subir de nivel devuelve ~2,5 % de lo apostado.
 
 ## Puesta en marcha
 
@@ -89,7 +100,7 @@ Todo se hace desde el navegador, también desde el móvil. En la nube no hay red
 ## Desarrollo
 
 ```bash
-npm test   # RTP de las máquinas, pity del gacha, Voltorb Flip, combate y filtro de red
+npm test   # RTP, pity, póker (conservación de fichas en 300 manos), mercado, combate y filtro de red
 ```
 
 ```
@@ -101,7 +112,11 @@ server/
   hub.js          Economía (apuestas, pagos, niveles, compañero) y difusión
   pokedex.js      Datos de Pokémon, rarezas y tabla de tipos
   gacha.js        Banners, pity, variocolores y tienda de polvo
-  games/          slots, roulette, voltorb, race, duel, battle
+  items.js        Objetos, Tienda Poké y efectos
+  market.js       Mercado entre jugadores con depósito
+  cards.js        Baraja y evaluador de manos de póker
+  games/          holdem, crash, race, duel, battle, blackjack, videopoker,
+                  baccarat, roulette, slots, plinko, mines, voltorb
 public/
   index.html, css/style.css
   js/core.js      Utilidades, sprites públicos, sonidos

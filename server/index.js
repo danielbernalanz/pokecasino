@@ -18,6 +18,15 @@ const voltorb = require('./games/voltorb');
 const race = require('./games/race');
 const duel = require('./games/duel');
 const { MOVES } = require('./games/battle');
+const items = require('./items');
+const market = require('./market');
+const blackjack = require('./games/blackjack');
+const videopoker = require('./games/videopoker');
+const baccarat = require('./games/baccarat');
+const plinko = require('./games/plinko');
+const mines = require('./games/mines');
+const crash = require('./games/crash');
+const holdem = require('./games/holdem');
 
 const app = express();
 app.set('trust proxy', config.TRUST_PROXY);
@@ -70,7 +79,9 @@ const STATIC = {
   softPity: gacha.SOFT_PITY, hardPity: gacha.HARD_PITY, dustRate: gacha.DUST_RATE,
   slots: { symbols: slots.SYMBOLS, lines: slots.LINES, reels: slots.REELS },
   roulette: { wheel: roulette.WHEEL, groups: roulette.GROUPS, payout: roulette.PAYOUT },
-  racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS, minBet: config.MIN_BET, maxBet: config.MAX_BET,
+  racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS,
+  items: items.ITEMS, marketFee: market.FEE, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
+  plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET,
 };
 app.get('/api/static', (req, res) => res.json(STATIC));
 
@@ -94,8 +105,11 @@ function claimDaily(user) {
   user.daily.last = today();
   const reward = 1000 + 250 * (Math.min(user.daily.streak, 7) - 1);
   user.coins += reward;
+  user.items.ticket = (user.items.ticket || 0) + 1;
+  const charm = user.daily.streak % 7 === 0;
+  if (charm) user.items['shiny-charm'] = (user.items['shiny-charm'] || 0) + 1;
   db.save();
-  return { reward, streak: user.daily.streak };
+  return { reward, streak: user.daily.streak, charm };
 }
 
 const HEAL_COOLDOWN = 60 * 60 * 1000;
@@ -159,18 +173,8 @@ function giftCoins(user, { to, amount }) {
 
 function giftPoke(user, { to, id, shiny }) {
   const t = db.userByName(to);
-  const p = dex.BY_ID.get(Number(id));
-  const c = p && user.collection[p.id];
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
-  if (!c) throw new Error('No tienes ese Pokémon.');
-  if (shiny && !c.s) throw new Error('No tienes la versión variocolor.');
-  c.n--;
-  if (shiny) c.s--;
-  if (c.s > c.n) c.s = c.n;
-  if (c.n <= 0) {
-    delete user.collection[p.id];
-    if (user.buddy && user.buddy.id === p.id) user.buddy = null;
-  } else if (user.buddy && user.buddy.id === p.id && user.buddy.shiny && !c.s) user.buddy.shiny = false;
+  const p = gacha.takePoke(user, id, !!shiny);
   gacha.grant(t, p.id, !!shiny);
   db.save();
   hub.emitUser(t.id, 'toast', { kind: 'gift', text: `🎁 ${user.username} te envió un ${shiny ? p.name + ' variocolor' : p.name}` });
@@ -305,6 +309,7 @@ io.on('connection', (socket) => {
     chat: db.data.chat.slice(-50), feed: db.data.feed.slice(-30), online: onlineList(),
     jackpot: db.data.state.jackpot, race: race.publicState(), raceBets: race.myBets(db.userById(uid)),
     duels: duel.listPublic(), duelHistory: duel.recent(),
+    crash: crash.publicState(), poker: holdem.lobby(),
   }), { push: false });
   on('daily:claim', claimDaily);
   on('center:heal', heal);
@@ -324,6 +329,31 @@ io.on('connection', (socket) => {
   on('shop:exchange', gacha.exchangeDust);
   on('shop:release', gacha.release);
   on('buddy:set', setBuddy);
+  on('item:buy', items.buy);
+  on('item:use', items.use);
+  on('market:state', () => market.state(), { push: false });
+  on('market:create', market.create);
+  on('market:cancel', market.cancel);
+  on('market:buy', market.buy);
+  on('bj:state', (u) => blackjack.view(u), { push: false });
+  on('bj:deal', blackjack.deal);
+  on('bj:act', blackjack.act);
+  on('vp:deal', videopoker.deal);
+  on('vp:draw', videopoker.draw);
+  on('baccarat:play', baccarat.play);
+  on('plinko:drop', plinko.drop);
+  on('mines:state', mines.state, { push: false });
+  on('mines:start', mines.start);
+  on('mines:pick', mines.pick);
+  on('mines:cashout', mines.cashout);
+  on('crash:bet', crash.bet);
+  on('crash:cashout', crash.cashout);
+  on('poker:watch', (u, p) => holdem.watch(socket, p), { push: false });
+  on('poker:sit', holdem.sit);
+  on('poker:stand', holdem.stand);
+  on('poker:sitout', holdem.setSitOut);
+  on('poker:rebuy', holdem.rebuy);
+  on('poker:action', holdem.action);
   on('gift:coins', giftCoins);
   on('gift:poke', giftPoke);
   on('chat:send', chat, { push: false });
@@ -340,10 +370,13 @@ io.on('connection', (socket) => {
 });
 
 race.start();
+crash.start();
 
 function shutdown() {
   race.refundAll();
   duel.refundAll();
+  crash.refundAll();
+  holdem.refundAll();
   db.flush();
   process.exit(0);
 }

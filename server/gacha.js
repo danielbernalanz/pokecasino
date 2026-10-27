@@ -90,7 +90,7 @@ function grant(user, id, shiny) {
   return { isNew, newShiny, dust, stars: Math.min(5, c.n) };
 }
 
-function pull(user, { banner: bannerId, count, free }) {
+function pull(user, { banner: bannerId, count, free, ticket }) {
   const banner = BANNER_BY_ID.get(bannerId);
   if (!banner) throw new Error('Banner desconocido.');
   count = Number(count) === 10 ? 10 : 1;
@@ -99,6 +99,10 @@ function pull(user, { banner: bannerId, count, free }) {
     if (count !== 1) throw new Error('La tirada gratis es individual.');
     if (user.daily.freePull === today) throw new Error('Ya usaste tu tirada gratis de hoy.');
     user.daily.freePull = today;
+  } else if (ticket) {
+    if ((user.items.ticket || 0) < count) throw new Error(`Necesitas ${count} Ticket(s) Gacha.`);
+    user.items.ticket -= count;
+    if (!user.items.ticket) delete user.items.ticket;
   } else {
     const cost = COST[count];
     if (user.coins < cost) throw new Error(`Necesitas ${cost} monedas.`);
@@ -107,9 +111,20 @@ function pull(user, { banner: bannerId, count, free }) {
   const p = pity(user, banner);
   const results = [];
   for (let i = 0; i < count; i++) {
-    const rarity = rollRarity(p, banner);
+    let rarity;
+    if (user.buffs.masterBall) {
+      // La Master Ball preparada asegura legendaria y reinicia el pity.
+      user.buffs.masterBall = false;
+      p.sinceL = 0;
+      p.sinceR = 0;
+      rarity = 'L';
+    } else {
+      rarity = rollRarity(p, banner);
+    }
     const poke = rollPokemon(rarity, p, banner);
-    const shiny = rand() < SHINY_RATE;
+    const charm = user.buffs.shinyCharges > 0;
+    if (charm) user.buffs.shinyCharges--;
+    const shiny = rand() < SHINY_RATE * (charm ? 4 : 1);
     const g = grant(user, poke.id, shiny);
     results.push({ id: poke.id, name: poke.name, rarity, shiny, ...g });
     if (rarity === 'L' || rarity === 'M' || (shiny && rarity !== 'C')) {
@@ -118,8 +133,15 @@ function pull(user, { banner: bannerId, count, free }) {
   }
   user.stats.pulls += count;
   hub.addXp(user, count * 15);
+  // Las tiradas x10 pueden traer objetos de regalo.
+  const bonus = [];
+  if (count === 10) {
+    if (rand() < 0.05) bonus.push('master-ball');
+    if (rand() < 0.10) bonus.push('shiny-charm');
+    for (const it of bonus) user.items[it] = (user.items[it] || 0) + 1;
+  }
   db.save();
-  return { results, pity: p };
+  return { results, pity: p, bonus };
 }
 
 // Tienda de polvo estelar.
@@ -160,4 +182,22 @@ function release(user, { id, count }) {
   return { dust };
 }
 
-module.exports = { pull, craft, exchangeDust, release, grant, BANNERS, COST, RATES, SHINY_RATE, SOFT_PITY, HARD_PITY, DUST_RATE, rollRarity };
+// Quita una copia de la colección (para regalos y el Mercado).
+function takePoke(user, id, shiny) {
+  const p = BY_ID.get(Number(id));
+  const c = p && user.collection[p.id];
+  if (!c || c.n < 1) throw new Error('No tienes ese Pokémon.');
+  if (shiny && !(c.s > 0)) throw new Error('No tienes la versión variocolor.');
+  if (!shiny && c.s >= c.n) throw new Error('Todas tus copias son variocolor: elige la versión variocolor.');
+  c.n--;
+  if (shiny) c.s--;
+  if (c.n <= 0) {
+    delete user.collection[p.id];
+    if (user.buddy && user.buddy.id === p.id) user.buddy = null;
+  } else if (user.buddy && user.buddy.id === p.id && user.buddy.shiny && !c.s) {
+    user.buddy.shiny = false;
+  }
+  return p;
+}
+
+module.exports = { pull, takePoke, craft, exchangeDust, release, grant, BANNERS, COST, RATES, SHINY_RATE, SOFT_PITY, HARD_PITY, DUST_RATE, rollRarity };

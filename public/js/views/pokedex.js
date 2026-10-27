@@ -14,7 +14,9 @@ export function openDetail(id) {
     h('div', { class: 'row gap wrap' },
       h('button', { class: 'btn primary', onclick: async (e) => { if (await act('buddy:set', { id, shiny: false }, e.target)) { toast(`${p.name} es tu compañero`, 'success'); sfx('win'); } } }, '🤝 Compañero'),
       c.s > 0 ? h('button', { class: 'btn gold', onclick: async (e) => { if (await act('buddy:set', { id, shiny: true }, e.target)) { toast(`${p.name} ✨ es tu compañero`, 'success'); sfx('shiny'); } } }, '✨ Compañero variocolor') : null,
-      c.n > 1 ? h('button', { class: 'btn', onclick: async (e) => { if (await act('shop:release', { id, count: 1 }, e.target)) { toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); m.close(); openDetail(id); } } }, `Liberar 1 copia (+${r.dust} ✦)`) : null),
+      c.n > 1 ? h('button', { class: 'btn', onclick: async (e) => { if (await act('shop:release', { id, count: 1 }, e.target)) { toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); m.close(); openDetail(id); } } }, `Liberar 1 copia (+${r.dust} ✦)`) : null,
+      S.me.items['rare-candy'] && c.n < 5 ? h('button', { class: 'btn', onclick: async (e) => { if (await act('item:use', { itemId: 'rare-candy', pokeId: id }, e.target)) { sfx('shiny'); toast(`¡${p.name} gana una estrella!`, 'success'); m.close(); openDetail(id); } } }, `🍬 Caramelo Raro (${S.me.items['rare-candy']})`) : null,
+      h('a', { class: 'btn', href: '#/market', onclick: () => m.close() }, '🏪 Vender en el Mercado')),
     h('div', { class: 'row gap wrap' }, giftTo,
       h('datalist', { id: 'gift-users' }, S.online.filter((u) => u.username !== S.me.username).map((u) => h('option', { value: u.username }))),
       h('button', { class: 'btn', onclick: async (e) => {

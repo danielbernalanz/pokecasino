@@ -9,6 +9,7 @@ const setIO = (server) => { io = server; };
 
 const emitUser = (userId, ev, payload) => io && io.to('u:' + userId).emit(ev, payload);
 const broadcast = (ev, payload) => io && io.emit(ev, payload);
+const emitRoom = (room, ev, payload) => io && io.to(room).emit(ev, payload);
 
 function feed(kind, text, extra = {}) {
   const item = { kind, text, at: Date.now(), ...extra };
@@ -22,27 +23,33 @@ function feed(kind, text, extra = {}) {
 const xpForLevel = (lvl) => 100 * (lvl - 1) * (lvl - 1);
 
 function addXp(user, amount) {
+  if (user.buffs && user.buffs.luckyUntil > Date.now()) amount *= 2;
   user.xp += Math.max(0, Math.floor(amount));
   let leveled = false;
   while (user.xp >= xpForLevel(user.level + 1)) {
     user.level++;
-    const reward = 250 * user.level;
+    // ~2,5 % de lo apostado: el XP sale de apostar (10 %) y cada nivel cuesta 100·(2n−1) de XP.
+    const reward = 50 * user.level;
     user.coins += reward;
     leveled = true;
-    emitUser(user.id, 'toast', { kind: 'level', text: `¡Subiste a nivel ${user.level}! +${reward} monedas` });
+    // Premios en objetos: Caramelo Raro cada nivel y Master Ball cada 5.
+    const bonusItem = user.level % 5 === 0 ? 'master-ball' : 'rare-candy';
+    user.items[bonusItem] = (user.items[bonusItem] || 0) + 1;
+    emitUser(user.id, 'toast', { kind: 'level', text: `¡Subiste a nivel ${user.level}! +${reward} monedas y ${bonusItem === 'master-ball' ? 'una Master Ball' : 'un Caramelo Raro'}` });
     if (user.level % 5 === 0) feed('level', `${user.username} alcanzó el nivel de entrenador ${user.level}`);
   }
   return leveled;
 }
 
-// ---- Compañero ----
+// ---- Compañero y Moneda Amuleto ----
 function buddyBonus(user) {
-  if (!user.buddy) return 0;
+  const amulet = user.buffs && user.buffs.amuletUntil > Date.now() ? 0.1 : 0;
+  if (!user.buddy) return amulet;
   const p = BY_ID.get(user.buddy.id);
   const owned = user.collection[user.buddy.id];
-  if (!p || !owned) return 0;
+  if (!p || !owned) return amulet;
   const stars = Math.min(5, owned.n);
-  return RARITY[p.rarity].bonus + (user.buddy.shiny ? 0.02 : 0) + (stars - 1) * 0.005;
+  return amulet + RARITY[p.rarity].bonus + (user.buddy.shiny ? 0.02 : 0) + (stars - 1) * 0.005;
 }
 
 // ---- Apuestas ----
@@ -91,9 +98,10 @@ function privateUser(u) {
     xp: u.xp, level: u.level, xpCur: xpForLevel(u.level), xpNext: xpForLevel(u.level + 1),
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy,
     buddyBonus: buddyBonus(u), pity: u.pity, stats: u.stats, voltorbLevel: u.voltorb.level,
+    items: u.items, buffs: u.buffs,
   };
 }
 
 const pushMe = (u) => emitUser(u.id, 'me', privateUser(u));
 
-module.exports = { setIO, emitUser, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };
+module.exports = { setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };
