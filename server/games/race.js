@@ -60,6 +60,7 @@ function settle() {
   const winner = race.result.order[0];
   const runner = race.runners[winner];
   for (const [uid, bets] of Object.entries(race.bets)) {
+    db.escrowDel('race:' + uid);
     const user = db.userById(uid);
     if (!user) continue;
     user.stats.races++;
@@ -102,6 +103,7 @@ function placeBet(user, { lane, amount }) {
   const stake = hub.takeBet(user, amount, 'race');
   mine.push({ lane, amount: stake });
   race.bets[user.id] = mine;
+  db.escrowSet('race:' + user.id, user.id, mine.reduce((s, b) => s + b.amount, 0));
   broadcastState();
   return { myBets: mine };
 }
@@ -114,6 +116,7 @@ function refundAll() {
   for (const [uid, bets] of Object.entries(race.bets)) {
     const u = db.userById(uid);
     if (u) u.coins += bets.reduce((s, b) => s + b.amount, 0);
+    db.escrowDel('race:' + uid);
   }
   race.bets = {};
 }

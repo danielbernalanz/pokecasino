@@ -63,6 +63,7 @@ function tick() {
     history.unshift(round.crash);
     history.length = Math.min(history.length, 30);
     for (const b of Object.values(round.bets)) {
+      db.escrowDel('crash:' + b.userId);
       if (!b.cashedAt) {
         const u = db.userById(b.userId);
         if (u) hub.emitUser(u.id, 'crash:result', { lost: b.amount, crash: round.crash });
@@ -77,6 +78,7 @@ function tick() {
 function settleBet(b, at) {
   const u = db.userById(b.userId);
   b.cashedAt = at;
+  db.escrowDel('crash:' + b.userId);
   if (!u) return;
   b.paid = hub.pay(u, b.amount * at, b.amount, 'crash').paid;
   hub.emitUser(u.id, 'crash:result', { paid: b.paid, at });
@@ -90,6 +92,7 @@ function bet(user, { amount, auto }) {
   auto = auto ? Number(auto) : null;
   if (auto !== null && (!Number.isFinite(auto) || auto < 1.01 || auto > MAX_CRASH)) throw new Error('Retiro automático entre ×1.01 y ×1000.');
   const stake = hub.takeBet(user, amount, 'crash');
+  db.escrowSet('crash:' + user.id, user.id, stake);
   round.bets[user.id] = { userId: user.id, username: user.username, amount: stake, auto: auto ? Math.floor(auto * 100) / 100 : null, cashedAt: null, paid: 0 };
   push();
   return {};
@@ -110,6 +113,7 @@ function refundAll() {
   for (const b of Object.values(round.bets)) {
     const u = db.userById(b.userId);
     if (u && !b.cashedAt) u.coins += b.amount;
+    db.escrowDel('crash:' + b.userId);
   }
   round.bets = {};
 }

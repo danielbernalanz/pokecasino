@@ -14,6 +14,7 @@ const empty = () => ({
   feed: [],
   state: { jackpot: 10000 },
   market: { listings: [], sales: [], nextId: 1 },
+  escrow: {},
 });
 
 // Campos añadidos en versiones posteriores: se rellenan al cargar cuentas antiguas.
@@ -36,6 +37,7 @@ function load(raw) {
   for (const k of Object.keys(data)) delete data[k];
   Object.assign(data, empty(), raw || {});
   data.market = Object.assign({ listings: [], sales: [], nextId: 1 }, data.market);
+  data.escrow ||= {};
   byName.clear();
   for (const u of Object.values(data.users)) { migrateUser(u); byName.set(u.username.toLowerCase(), u); }
 }
@@ -48,7 +50,7 @@ try { load(JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch { load(null); /* 
 // guarde su último estado y libere la base, y solo entonces carga los datos.
 const crypto = require('crypto');
 const INSTANCE = crypto.randomUUID();
-const LEASE_SECONDS = 45;
+const LEASE_SECONDS = 20;
 let pool = null;
 let pgPending = null;
 let pgDirty = false;
@@ -89,7 +91,7 @@ async function init() {
     pool.query('UPDATE pokecasino_state SET heartbeat = now() WHERE id = 1 AND owner = $1', [INSTANCE])
       .then((r) => { if (!r.rowCount) onLostLease(); })
       .catch((e) => console.error('Postgres (latido):', e.message));
-  }, 10000);
+  }, 5000);
   heartbeat.unref();
   console.log(`  🐘 Datos en Postgres (${Object.keys(data.users).length} jugadores cargados)`);
 }
@@ -136,7 +138,7 @@ function flush() {
 }
 function save() {
   if (!timer) timer = setTimeout(flush, 500);
-  if (pool && !pgTimer) pgTimer = setTimeout(() => { pgTimer = null; pgWrite(); }, 2000);
+  if (pool && !pgTimer) pgTimer = setTimeout(() => { pgTimer = null; pgWrite(); }, 700);
 }
 // Guardado final antes de apagar (Render envía SIGTERM al dormir o redesplegar).
 async function flushAll() {
@@ -144,6 +146,29 @@ async function flushAll() {
   clearTimeout(pgTimer);
   pgTimer = null;
   if (pool) { await pgWrite(); while (pgPending) await pgPending; }
+}
+
+// ---- Depósito de monedas en juego ----
+// Fichas en la mesa de póker, apuestas de carrera/Crash y retos con apuesta quedan apuntados aquí
+// mientras están en juego. Si el servidor se apaga de golpe, al arrancar se devuelven.
+function escrowSet(key, userId, amount) {
+  if (amount > 0) data.escrow[key] = { userId, amount };
+  else delete data.escrow[key];
+  save();
+}
+function escrowDel(key) {
+  if (data.escrow[key]) { delete data.escrow[key]; save(); }
+}
+function refundEscrow() {
+  let n = 0;
+  let total = 0;
+  for (const { userId, amount } of Object.values(data.escrow)) {
+    const u = data.users[userId];
+    if (u) { u.coins += amount; n++; total += amount; }
+  }
+  data.escrow = {};
+  save();
+  return { n, total };
 }
 
 function addUser(u) {
@@ -155,4 +180,4 @@ function addUser(u) {
 const userByName = (name) => byName.get(String(name || '').toLowerCase());
 const userById = (id) => data.users[id];
 
-module.exports = { data, save, flush, flushAll, init, release, isReadOnly, addUser, userByName, userById };
+module.exports = { escrowSet, escrowDel, refundEscrow, data, save, flush, flushAll, init, release, isReadOnly, addUser, userByName, userById };

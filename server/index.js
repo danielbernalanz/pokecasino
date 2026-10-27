@@ -407,6 +407,9 @@ process.on('SIGTERM', shutdown);
 server.listen(config.PORT, config.HOST, onListen);
 db.init().then(() => {
   if (stopping) return;
+  // Lo que quedó en juego si la versión anterior se apagó de golpe vuelve a sus dueños.
+  const back = db.refundEscrow();
+  if (back.n) console.log(`  ↩️  Devueltas ${back.total} monedas en juego a ${back.n} apuesta(s)/mesa(s) pendientes`);
   ready = true;
   race.start();
   crash.start();

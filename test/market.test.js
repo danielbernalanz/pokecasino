@@ -91,3 +91,16 @@ test('duelos a ciegas: la lista pública no revela el Pokémon del retador', () 
   assert.ok(!JSON.stringify(pub).includes('"id":6'));
   duel.cancel(u, { id: d.id });
 });
+
+test('depósito: lo que está en juego se devuelve si el servidor se apaga de golpe', () => {
+  const duel = require('../server/games/duel');
+  const u = user('apostador', { coins: 1000, collection: { 6: { n: 1, s: 0 } } });
+  duel.create(u, { pokeId: 6, shiny: false, wager: 300 });
+  assert.strictEqual(u.coins, 700);
+  assert.strictEqual(Object.values(db.data.escrow).filter((e) => e.userId === u.id).reduce((s, e) => s + e.amount, 0), 300);
+  // Simula un arranque tras un apagado brusco: el reto se pierde pero el dinero vuelve.
+  const back = db.refundEscrow();
+  assert.ok(back.total >= 300);
+  assert.strictEqual(u.coins, 1000);
+  assert.deepStrictEqual(db.data.escrow, {});
+});

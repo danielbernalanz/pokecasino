@@ -40,6 +40,7 @@ function create(user, { pokeId, shiny, wager, target }) {
   }
   const d = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, wager, poke, target: target || null, createdAt: Date.now() };
   open.set(d.id, d);
+  db.escrowSet('duel:' + d.id, user.id, wager);
   push();
   if (d.target) {
     const t = db.userByName(d.target);
@@ -49,6 +50,7 @@ function create(user, { pokeId, shiny, wager, target }) {
 }
 
 function refund(d) {
+  db.escrowDel('duel:' + d.id);
   const u = db.userById(d.creatorId);
   if (u && d.wager) { u.coins += d.wager; u.stats.wagered -= d.wager; hub.pushMe(u); }
   db.save();
@@ -71,6 +73,7 @@ function accept(user, { id, pokeId, shiny }) {
   const poke = ownedPick(user, { pokeId, shiny });
   if (d.wager) hub.takeBet(user, d.wager);
   open.delete(id);
+  db.escrowDel('duel:' + d.id);
   const creator = db.userById(d.creatorId);
   const result = simulate(d.poke, poke);
   const players = [creator, user];

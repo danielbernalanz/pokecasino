@@ -45,7 +45,18 @@ function publicTable(t) {
   };
 }
 
+// Apunta en el depósito las fichas de cada jugador sentado (más lo apostado en la mano en curso).
+function syncEscrow(t) {
+  const h = t.hand;
+  t.seats.forEach((s, i) => {
+    if (!s) return;
+    const inPot = h && !h.finished && h.players.includes(i) ? h.contrib[i] : 0;
+    db.escrowSet(`poker:${t.id}:${s.userId}`, s.userId, s.stack + inPot);
+  });
+}
+
 function push(t) {
+  syncEscrow(t);
   hub.broadcast('poker:lobby', lobby());
   // Cada jugador sentado recibe la mesa más sus propias cartas.
   const pub = publicTable(t);
@@ -86,6 +97,7 @@ function sit(user, { table, seat, buyIn }) {
 function cashOut(t, i) {
   const s = t.seats[i];
   if (!s) return;
+  db.escrowDel(`poker:${t.id}:${s.userId}`);
   const u = db.userById(s.userId);
   if (u) { u.coins += s.stack; hub.pushMe(u); }
   note(t, `${s.username} se levanta con ${s.stack} fichas.`);
@@ -404,6 +416,7 @@ function refundAll() {
       if (!s) return;
       const u = db.userById(s.userId);
       if (u) u.coins += s.stack + (t.hand && !t.hand.finished ? t.hand.contrib[i] : 0);
+      db.escrowDel(`poker:${t.id}:${s.userId}`);
     });
   }
 }
