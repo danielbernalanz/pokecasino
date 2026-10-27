@@ -66,7 +66,8 @@ export default {
       renderStage();
     }
 
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎁 Poké Gacha'), h('p', { class: 'muted' }, 'Lanza Poké Balls y descubre qué Pokémon atrapas.')), tabs, stage);
+    const ev = S.events && S.events.active.find((e) => e.id === 'shiny');
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎁 Poké Gacha'), h('p', { class: 'muted' }, 'Lanza Poké Balls y descubre qué Pokémon atrapas.', ev ? h('span', { class: 'event-pill' }, `${ev.icon} ${ev.name}: variocolor ×2`) : null)), tabs, stage);
     renderTabs(); renderStage();
   },
 };

@@ -214,11 +214,13 @@ function connect() {
     S.jackpot = res.jackpot; $('#jackpot').textContent = fmt(res.jackpot);
     S.race = res.race; S.raceBets = res.raceBets;
     S.duels = res.duels; S.duelHistory = res.duelHistory;
-    S.crash = res.crash; S.poker = res.poker;
+    S.crash = res.crash; S.poker = res.poker; S.events = res.events;
+    bus.emit('events', res.events);
     bus.emit('race', res.race);
     if (!booted) { booted = true; buildNav(); buildTabbar(); setMe(S.me); route(); }
   });
   socket.on('me', setMe);
+  socket.on('events', (e) => { S.events = e; bus.emit('events', e); });
   socket.on('chat', (m) => addChat(m));
   socket.on('feed', (f) => { addFeed(f); if (f.kind === 'duel') bus.emit('duel:feed', f); });
   socket.on('online', renderOnline);

@@ -21,6 +21,7 @@ const duel = require('./games/duel');
 const { MOVES } = require('./games/battle');
 const items = require('./items');
 const market = require('./market');
+const events = require('./events');
 const blackjack = require('./games/blackjack');
 const videopoker = require('./games/videopoker');
 const baccarat = require('./games/baccarat');
@@ -345,6 +346,13 @@ const admin = {
     db.save();
     return {};
   },
+  event(user, { id, hours }) {
+    requireAdmin(user);
+    events.force(id, hours);
+    adminLog(user, 'event', events.EVENTS[id].name, Number(hours) ? `${hours} h` : 'cancelado');
+    checkEvents();
+    return {};
+  },
   admin(user, { username, isAdmin }) {
     requireAdmin(user);
     const t = db.userByName(username);
@@ -356,6 +364,21 @@ const admin = {
     return {};
   },
 };
+
+// ---- Eventos: se avisa a todos cuando empieza o termina alguno ----
+let eventsSig = null;
+function checkEvents() {
+  const st = events.publicState();
+  const sig = st.active.map((e) => `${e.id}:${e.ends}`).join(',');
+  if (sig === eventsSig) return;
+  const before = new Set((eventsSig || '').split(',').filter(Boolean).map((x) => x.split(':')[0]));
+  const first = eventsSig === null;
+  eventsSig = sig;
+  io.emit('events', st);
+  if (first) return;
+  for (const e of st.active) if (!before.has(e.id)) hub.feed('event', `¡Empieza ${e.icon} ${e.name}! ${e.desc}`);
+}
+setInterval(checkEvents, 60 * 1000).unref();
 
 // ---- Sockets ----
 function clientIp(socket) {
@@ -408,7 +431,7 @@ io.on('connection', (socket) => {
     chat: [...db.data.chat.slice(-50), ...myDms(u)].sort((a, b) => a.at - b.at), feed: db.data.feed.slice(-30), online: onlineList(),
     jackpot: db.data.state.jackpot, race: race.publicState(), raceBets: race.myBets(db.userById(uid)),
     duels: duel.listPublic(), duelHistory: duel.recent(),
-    crash: crash.publicState(), poker: holdem.lobby(),
+    crash: crash.publicState(), poker: holdem.lobby(), events: events.publicState(),
   }), { push: false });
   on('daily:claim', claimDaily);
   on('center:heal', heal);
@@ -499,6 +522,7 @@ db.init().then(() => {
   const back = db.refundEscrow();
   if (back.n) console.log(`  ↩️  Devueltas ${back.total} monedas en juego a ${back.n} apuesta(s)/mesa(s) pendientes`);
   ready = true;
+  checkEvents();
   race.start();
   crash.start();
   console.log('  ✅ Casino abierto');

@@ -20,8 +20,10 @@ const when = (t) => new Date(t).toLocaleString('es-ES', { day: 'numeric', month:
 const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n));
 
 // Línea del saldo al cierre de cada día, con cruz y globo al pasar el dedo o el ratón.
-function balanceChart(days) {
-  const W = 640, H = 200, L = 8, R = 8, T = 14, B = 26;
+export function balanceChart(days) {
+  // En el móvil se dibuja con otra proporción para que el texto de los ejes se lea.
+  const narrow = window.innerWidth < 600;
+  const W = narrow ? 320 : 640, H = narrow ? 190 : 200, L = 8, R = 8, T = 14, B = 26;
   if (days.length < 2) return h('p', { class: 'muted small' }, 'La gráfica aparece cuando lleves al menos dos días jugando.');
   const vals = days.map((d) => d.c);
   let lo = Math.min(...days.map((d) => d.lo ?? d.c)), hi = Math.max(...days.map((d) => d.hi ?? d.c));
@@ -32,7 +34,7 @@ function balanceChart(days) {
   const area = `${path}L${x(days.length - 1)},${H - B}L${x(0)},${H - B}Z`;
   const grid = [hi, (hi + lo) / 2, lo].map((v) => svg('g', {},
     svg('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: 'hc-grid' })));
-  const step = Math.ceil(days.length / 6);
+  const step = Math.ceil(days.length / (narrow ? 3 : 6));
   const labels = days.map((d, i) => (i % step === 0 || i === days.length - 1) && !(i !== days.length - 1 && days.length - 1 - i < step / 2)
     ? svg('text', { x: x(i), y: H - 8, class: 'hc-axis', 'text-anchor': i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle' }, day(d.date)) : null);
   const cross = svg('line', { y1: T, y2: H - B, class: 'hc-cross', visibility: 'hidden' });
@@ -51,8 +53,8 @@ function balanceChart(days) {
     dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(d.c)); dot.setAttribute('visibility', 'visible');
     const net = i ? d.c - days[i - 1].c : null;
     tip.replaceChildren(h('b', {}, day(d.date)), h('div', {}, `Saldo: ${fmt(d.c)}`),
-      net === null ? null : h('div', { class: net >= 0 ? 'good' : 'bad' }, `Día: ${signed(net)}`),
-      d.hi != null ? h('div', { class: 'muted' }, `Máx ${fmt(d.hi)} · mín ${fmt(d.lo)}`) : null);
+      net === null ? '' : h('div', { class: net >= 0 ? 'good' : 'bad' }, `Día: ${signed(net)}`),
+      d.hi != null ? h('div', { class: 'muted' }, `Máx ${fmt(d.hi)} · mín ${fmt(d.lo)}`) : '');
     tip.classList.remove('hidden');
     const left = (x(i) / W) * r.width;
     tip.style.left = Math.max(0, Math.min(r.width - tip.offsetWidth, left - tip.offsetWidth / 2)) + 'px';

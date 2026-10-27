@@ -117,7 +117,8 @@ export default {
     }
 
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '⚔️ Duelos PvP'), h('p', { class: 'muted' }, 'Combate 1 contra 1 a nivel 50 con elección a ciegas: ninguno ve el Pokémon del otro hasta que empieza. Cuentan las estadísticas, las estrellas, la versión variocolor y la tabla de tipos.')),
+      h('div', { class: 'game-head' }, h('h1', {}, '⚔️ Duelos PvP'), h('p', { class: 'muted' }, 'Combate 1 contra 1 a nivel 50 con elección a ciegas: ninguno ve el Pokémon del otro hasta que empieza. Cuentan las estadísticas, las estrellas, la versión variocolor y la tabla de tipos.',
+        S.events && S.events.active.some((e) => e.id === 'duels') ? h('span', { class: 'event-pill' }, '⚔️ Lunes de Duelos: sin comisión') : null)),
       h('div', { class: 'duel-layout' },
         h('div', { class: 'card stack' },
           h('h3', {}, 'Crear reto'),

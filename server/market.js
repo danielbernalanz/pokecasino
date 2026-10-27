@@ -71,7 +71,11 @@ function validQtyPrice(a, qty, price) {
   if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY[a.kind]) throw new Error(`Cantidad entre 1 y ${MAX_QTY[a.kind]}.`);
   if (!Number.isInteger(price) || price < 1 || price > MAX_PRICE) throw new Error('Precio por unidad entre 1 y 10.000.000.');
 }
-const fee = (total) => Math.max(1, Math.ceil(total * SETUP_FEE));
+// El «Viernes de Mercado» quita el impuesto y deja la comisión a la mitad.
+const marketDay = () => require('./events').has('market');
+const setupFee = () => (marketDay() ? SETUP_FEE / 2 : SETUP_FEE);
+const salesTax = () => (marketDay() ? 0 : SALES_TAX);
+const fee = (total) => Math.max(1, Math.ceil(total * setupFee()));
 
 // ---- Historial de precios ----
 function record(a, qty, price, seller, buyer) {
@@ -95,7 +99,7 @@ function record(a, qty, price, seller, buyer) {
 // Paga al vendedor (menos impuesto) y avisa a ambas partes.
 function settle(a, qty, price, seller, buyer) {
   const gross = qty * price;
-  const tax = Math.floor(gross * SALES_TAX);
+  const tax = Math.floor(gross * salesTax());
   seller.coins += gross - tax;
   hub.ledger(seller, gross, 'market_sale', `${qty} × ${a.ref}`);
   if (tax) hub.ledger(seller, -tax, 'market_tax', `${qty} × ${a.ref}`);
@@ -239,7 +243,7 @@ function state() {
   }
   return {
     orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt })),
-    trades: m.trades.slice(-40).reverse(), stats, setupFee: SETUP_FEE, salesTax: SALES_TAX,
+    trades: m.trades.slice(-40).reverse(), stats, setupFee: setupFee(), salesTax: salesTax(),
   };
 }
 function push() { hub.broadcast('market', state()); }

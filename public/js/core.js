@@ -5,7 +5,8 @@ export const S = { me: null, data: null, dexById: new Map(), online: [], jackpot
 const listeners = {};
 export const bus = {
   on(ev, fn) { (listeners[ev] ||= new Set()).add(fn); return () => listeners[ev].delete(fn); },
-  emit(ev, data) { (listeners[ev] || []).forEach((fn) => fn(data)); },
+  // Se recorre una copia: un oyente que se vuelve a suscribir (p. ej. al repintar una vista) no se ejecuta otra vez.
+  emit(ev, data) { [...(listeners[ev] || [])].forEach((fn) => fn(data)); },
 };
 
 // ---- Sprites públicos de PokeAPI ----

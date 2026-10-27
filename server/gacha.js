@@ -160,7 +160,7 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
     const poke = rollPokemon(rarity, p, banner);
     const charm = user.buffs.shinyCharges > 0;
     if (charm) user.buffs.shinyCharges--;
-    const shiny = rand() < SHINY_RATE * (charm ? 4 : 1);
+    const shiny = rand() < SHINY_RATE * (charm ? 4 : 1) * (require('./events').has('shiny') ? 2 : 1);
     const g = grant(user, poke.id, shiny);
     results.push({ id: poke.id, name: poke.name, rarity, shiny, ...g });
     if (rarity === 'L' || rarity === 'M' || (shiny && rarity !== 'C')) {

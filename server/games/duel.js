@@ -82,7 +82,7 @@ function accept(user, { id, pokeId, shiny }) {
   const loser = players[1 - result.winner];
   let prize = 0;
   if (d.wager) {
-    prize = Math.floor(d.wager * 2 * (1 - RAKE));
+    prize = Math.floor(d.wager * 2 * (1 - (require('../events').has('duels') ? 0 : RAKE)));
     hub.pay(winner, prize, d.wager, 'duel', { noBonus: true });
   }
   winner.stats.duelsWon++;

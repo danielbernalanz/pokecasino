@@ -166,7 +166,7 @@ function takeBet(user, amount, game, { extra = false, quiet = false } = {}) {
 // Paga `amount` (incluye la apuesta devuelta). El compañero añade un % sobre la ganancia neta.
 // El bonus (compañero, colecciones, Moneda Amuleto) tiene un tope diario: aplicado sin límite haría que
 // apuestas como retirarse alto en Crash devolvieran más del 100 % a la larga.
-const bonusCap = (user) => 300 + 50 * user.level;
+const bonusCap = (user) => (300 + 50 * user.level) * (require('./events').has('buddy') ? 2 : 1);
 function bonusLeft(user) {
   const today = new Date().toISOString().slice(0, 10);
   if (!user.bonusDay || user.bonusDay.date !== today) user.bonusDay = { date: today, paid: 0 };

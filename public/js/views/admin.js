@@ -27,7 +27,8 @@ export default {
           h('div', { class: 'card stack' }, h('h3', {}, '🎟️ Invitaciones de un solo uso'),
             h('button', { class: 'btn primary', onclick: async (e) => { const x = await act('admin:invite', {}, e.target); if (x) { toast('Invitación: ' + x.code, 'success', 8000); load(); } } }, 'Generar invitación'),
             h('div', { class: 'invites' }, r.invites.slice(-12).reverse().map((i) => h('div', { class: 'row between small' }, h('code', {}, i.code), h('span', { class: i.usedBy ? 'muted' : 'good' }, i.usedBy ? 'usada por ' + i.usedBy : 'libre'))))),
-          h('div', { class: 'card stack' }, h('h3', {}, '💥 Bote actual'), h('b', { class: 'big-num' }, fmt(r.jackpot)))),
+          h('div', { class: 'card stack' }, h('h3', {}, '💥 Bote actual'), h('b', { class: 'big-num' }, fmt(r.jackpot))),
+          eventBox()),
         h('div', { class: 'table-wrap' }, h('table', { class: 'admin-table' },
           h('thead', {}, h('tr', {}, ['Entrenador', 'Monedas', '✦', 'Nv', 'Dex', 'Estado', 'Acciones'].map((t) => h('th', {}, t)))),
           h('tbody', {}, r.users.map((u) => h('tr', { class: u.banned ? 'banned' : '' },
@@ -49,6 +50,19 @@ export default {
               u.username !== S.me.username ? h('button', { class: 'btn small', onclick: async () => {
                 if (await act('admin:admin', { username: u.username, isAdmin: !u.isAdmin })) load();
               } }, u.isAdmin ? 'Quitar 👑' : 'Hacer 👑') : null))))))));
+    }
+    // Lanzar un evento durante unas horas (además del calendario semanal).
+    function eventBox() {
+      const ev = S.events || { all: [], active: [] };
+      const sel = h('select', {}, ev.all.map((e) => h('option', { value: e.id }, `${e.icon} ${e.name}`)));
+      const hours = h('input', { type: 'number', min: 0, max: 72, value: 3, style: { width: '80px' } });
+      return h('div', { class: 'card stack' }, h('h3', {}, '🎉 Eventos'),
+        h('p', { class: 'muted small' }, ev.active.length ? 'Activos: ' + ev.active.map((e) => `${e.icon} ${e.name}`).join(', ') : 'Ningún evento activo ahora.'),
+        h('div', { class: 'row gap wrap' }, sel, hours, h('span', { class: 'muted small' }, 'horas')),
+        h('div', { class: 'row gap wrap' },
+          h('button', { class: 'btn primary', onclick: async (e) => { if (await act('admin:event', { id: sel.value, hours: Number(hours.value) }, e.target)) { toast('Evento actualizado', 'success'); setTimeout(load, 300); } } }, 'Lanzar'),
+          h('button', { class: 'btn', onclick: async (e) => { if (await act('admin:event', { id: sel.value, hours: 0 }, e.target)) { toast('Evento cancelado (si era del calendario, sigue hasta medianoche)', 'info'); setTimeout(load, 300); } } }, 'Cancelar el lanzado')),
+        h('p', { class: 'muted small' }, 'Calendario fijo: lunes Duelos, miércoles Misiones, viernes Mercado, sábado y domingo Variocolor + Compañero.'));
     }
     load();
   },

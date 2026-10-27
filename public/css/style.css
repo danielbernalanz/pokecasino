@@ -967,3 +967,12 @@ details.rules[open] summary { margin-bottom: 6px; }
   .hl-row > b { grid-row: 1 / span 2; align-self: center; }
   .eb-row { grid-template-columns: 1fr 70px auto; }
 }
+
+/* ---------- Eventos ---------- */
+.event-card { border-color: var(--gold); background: linear-gradient(135deg, #ffcb0514, transparent 60%), var(--panel); display: flex; flex-direction: column; gap: 8px; }
+.event-card.soon { flex-direction: row; align-items: center; gap: 12px; border-color: var(--line); background: var(--panel); }
+.event-title { font-family: var(--pixel); font-size: 11px; color: var(--gold); }
+.event-ico { font-size: 26px; line-height: 1; }
+.event-row { align-items: center; }
+.event-pill { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #ffcb0522; color: var(--gold); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.nowrap { white-space: nowrap; }

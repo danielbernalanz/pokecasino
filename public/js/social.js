@@ -56,7 +56,7 @@ export function addChat(m, silent) {
   }
 }
 
-const FEED_ICON = { win: '💰', jackpot: '💥', gacha: '✨', duel: '⚔️', join: '🎉', level: '⭐', trade: '🤝' };
+const FEED_ICON = { event: '🎉', win: '💰', jackpot: '💥', gacha: '✨', duel: '⚔️', join: '🎉', level: '⭐', trade: '🤝' };
 export function addFeed(f, silent) {
   const box = $('#feed');
   box.prepend(h('div', { class: `feed-item fk-${f.kind}` },

@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, toast, art, item, pokeImg, badgeImg } from '../core.js';
+import { S, h, fmt, act, sfx, toast, art, item, pokeImg, badgeImg, bus } from '../core.js';
 import { canInstall, installApp } from '../main.js';
 
 function rewardText(r) {
@@ -25,6 +25,23 @@ const GAMES = [
   { id: 'gacha', name: 'Poké Gacha', desc: 'Banners legendarios, pity y variocolores.', art: 150, ico: 'great-ball' },
   { id: 'market', name: 'Mercado', desc: 'Compra y vende Pokémon y objetos.', art: 52, ico: 'amulet-coin' },
 ];
+
+// Eventos activos y el siguiente, con la cuenta atrás en palabras.
+const left = (ms) => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} días`; };
+const WEEKDAY = (t) => new Date(t).toLocaleDateString('es-ES', { weekday: 'long', timeZone: 'Europe/Madrid' });
+export function eventsCard() {
+  const ev = S.events;
+  if (!ev) return '';
+  if (!ev.active.length) {
+    return ev.next ? h('div', { class: 'card event-card soon' }, h('span', { class: 'event-ico' }, ev.next.events[0].icon),
+      h('div', { class: 'grow' }, h('b', {}, `Próximo evento: ${ev.next.events.map((e) => e.name).join(' y ')}`),
+        h('div', { class: 'small muted' }, `Empieza el ${WEEKDAY(ev.next.starts)} (en ${left(ev.next.starts - Date.now())}). ${ev.next.events.map((e) => e.desc).join(' ')}`))) : '';
+  }
+  return h('div', { class: 'card event-card' }, h('div', { class: 'event-title' }, '🎉 Evento activo'),
+    ev.active.map((e) => h('div', { class: 'row gap event-row' }, h('span', { class: 'event-ico' }, e.icon),
+      h('div', { class: 'grow' }, h('b', {}, e.name), h('div', { class: 'small' }, e.desc)),
+      h('span', { class: 'muted small nowrap' }, `quedan ${left(e.ends - Date.now())}`))));
+}
 
 export default {
   id: 'lobby', title: 'Vestíbulo', icon: '🏠',
@@ -83,6 +100,7 @@ export default {
         h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio a pantalla completa, como una app.')),
         h('button', { class: 'btn primary', onclick: () => installApp() }, 'Instalar'),
         h('button', { class: 'icon-btn', 'aria-label': 'Ocultar', onclick: (e) => { try { localStorage.setItem('installHidden', '1'); } catch { /* nada */ } e.target.closest('.install-card').remove(); } }, '✕')) : '',
+      (() => { if (this.offEv) this.offEv(); this.offEv = bus.on('events', () => this.remount(root)); return eventsCard(); })(),
       h('div', { class: 'cards3 progress-row' }, route, daily, badgeStrip),
       h('div', { class: 'cards3' },
         h('div', { class: 'card' },
@@ -114,5 +132,6 @@ export default {
   },
   // Solo se repinta si el jugador sigue en el Vestíbulo (las respuestas pueden llegar tarde).
   remount(root) { if (S.view !== 'lobby') return; root.replaceChildren(); this.mount(root); },
+  unmount() { if (this.offEv) this.offEv(); this.offEv = null; },
 };
 const st = (l, v) => h('div', { class: 'stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v));

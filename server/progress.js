@@ -152,7 +152,8 @@ function track(user, event, data = {}) {
     m.prog += def.count ? def.count(data) : 1;
     if (m.prog >= (def.n || 1)) {
       m.done = true;
-      grant(user, def.reward, `Misión diaria · ${def.title}`);
+      const x2 = def.reward.coins && require('./events').has('missions');
+      grant(user, x2 ? { ...def.reward, coins: def.reward.coins * 2 } : def.reward, `Misión diaria · ${def.title}${x2 ? ' (×2)' : ''}`);
     }
   }
   if (!daily.bonus && daily.missions.length && daily.missions.every((m) => m.done)) {

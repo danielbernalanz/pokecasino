@@ -74,8 +74,11 @@ function walk(orders, qty) {
   }
   return { filled: qty - left, total, worst };
 }
-const feeOf = (total) => Math.max(1, Math.ceil(total * S.data.marketFee));
-const taxOf = (total) => Math.floor(total * S.data.salesTax);
+// Las tasas vienen con el estado del Mercado (cambian en el «Viernes de Mercado»).
+const marketFee = () => (state && state.setupFee != null ? state.setupFee : S.data.marketFee);
+const salesTax = () => (state && state.salesTax != null ? state.salesTax : S.data.salesTax);
+const feeOf = (total) => Math.max(1, Math.ceil(total * marketFee()));
+const taxOf = (total) => Math.floor(total * salesTax());
 
 // ---- Gráfica de precios (SVG) ----
 function chart(days) {
@@ -169,7 +172,7 @@ export async function openItem(a, side = 'buy') {
       const total = q * (Number(sPrice.value) || 0);
       sOrder.disabled = !have;
       sOrder.textContent = `Crear orden: ${q} × ${fmt(sPrice.value)}`;
-      sInfo.textContent = `Cobrarías ${fmt(total - taxOf(total))} tras el ${Math.round(S.data.salesTax * 100)} % de impuesto · comisión de publicación ${fmt(feeOf(total))}.`;
+      sInfo.textContent = `Cobrarías ${fmt(total - taxOf(total))} tras el ${Math.round(salesTax() * 100)} % de impuesto · comisión de publicación ${fmt(feeOf(total))}.`;
     };
     sQty.oninput = updS; sPrice.oninput = updS; updS();
 
@@ -312,12 +315,17 @@ export default {
     function render() {
       if (!state) return;
       body.replaceChildren(tab === 'browse' ? browse() : tab === 'sell' ? sellTab() : tab === 'mine' ? mine() : historyTab());
+      paintRates();
     }
-    const fee = Math.round(S.data.marketFee * 1000) / 10;
-    const tax = Math.round(S.data.salesTax * 100);
-    root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🏪 Mercado'), h('p', { class: 'muted' }, `Órdenes de compra y venta entre entrenadores · comisión de publicación ${fee} % · impuesto de venta ${tax} %`)),
-      tabs, body);
+    const ratesLine = h('p', { class: 'muted' });
+    const paintRates = () => {
+      const fee = String(Math.round(marketFee() * 10000) / 100).replace('.', ',');
+      const tax = Math.round(salesTax() * 100);
+      ratesLine.replaceChildren(`Órdenes de compra y venta entre entrenadores · comisión de publicación ${fee} % · impuesto de venta ${tax} %`,
+        marketFee() < S.data.marketFee ? h('span', { class: 'event-pill' }, '🏪 Viernes de Mercado') : '');
+    };
+    paintRates();
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏪 Mercado'), ratesLine), tabs, body);
     renderTabs();
     this.offs = [bus.on('market', (s) => { state = s; if (!document.activeElement || document.activeElement.tagName !== 'INPUT') render(); })];
     const r = await act('market:state');
