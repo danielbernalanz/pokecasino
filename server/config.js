@@ -21,6 +21,8 @@ module.exports = {
   HOST: process.env.HOST || '0.0.0.0',
   DATA_DIR,
   ACCESS_KEY: process.env.ACCESS_KEY || stored.accessKey,
+  // OPEN_REGISTRATION=1: cualquiera puede crear cuenta sin código de invitación.
+  OPEN_REGISTRATION: process.env.OPEN_REGISTRATION === '1',
   // private: solo LAN / VPN (Tailscale, ZeroTier, loopback) · any: sin filtro de IP
   NETWORK_MODE: process.env.NETWORK_MODE || 'private',
   // Rangos extra permitidos, separados por comas (p. ej. "203.0.113.7/32")

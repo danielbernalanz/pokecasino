@@ -106,6 +106,7 @@ Todo se hace desde el navegador, también desde el móvil. En la nube no hay red
 | `ALLOW_CIDRS` | — | Rangos extra permitidos, separados por comas: `203.0.113.7/32,198.51.100.0/24`. |
 | `ACCESS_KEY` | aleatorio | Código maestro. Si no se define se genera y se guarda en `data/config.json`. |
 | `TRUST_PROXY` | — | `1` si estás detrás de un proxy inverso (usa `X-Forwarded-For`). |
+| `OPEN_REGISTRATION` | — | `1` para permitir registrarse sin código de invitación (máx. 3 cuentas nuevas por IP al día). |
 | `DATA_DIR` | `./data` | Carpeta de datos. |
 | `DATABASE_URL` | — | Si se define, los datos se guardan en Postgres (para alojamientos sin disco). |
 

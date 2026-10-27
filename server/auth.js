@@ -1,7 +1,7 @@
 'use strict';
 const crypto = require('crypto');
 const db = require('./db');
-const { ACCESS_KEY, START_COINS } = require('./config');
+const { ACCESS_KEY, START_COINS, OPEN_REGISTRATION } = require('./config');
 
 const SESSION_TTL = 30 * 24 * 3600 * 1000;
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
@@ -74,19 +74,30 @@ function destroySession(token) {
 
 const NAME_RE = /^[A-Za-z0-9_\-]{3,16}$/;
 
+// Con el registro abierto, como mucho 3 cuentas nuevas por IP cada 24 h.
+const signups = new Map();
+function signupAllowed(ip) {
+  const now = Date.now();
+  const list = (signups.get(ip) || []).filter((t) => now - t < 24 * 3600 * 1000);
+  signups.set(ip, list);
+  return list.length < 3;
+}
+
 function register({ username, password, invite }, ip) {
   if (tooMany(ip)) throw new Error('Demasiados intentos, espera unos minutos.');
   if (!NAME_RE.test(username || '')) throw new Error('Nombre: 3-16 caracteres (letras, números, _ o -).');
   if (typeof password !== 'string' || password.length < 6 || password.length > 128) throw new Error('La contraseña necesita al menos 6 caracteres.');
   const code = String(invite || '').trim().toUpperCase();
   const single = db.data.invites[code];
-  const master = code.length > 0 && code === String(ACCESS_KEY).toUpperCase();
+  const master = OPEN_REGISTRATION || (code.length > 0 && code === String(ACCESS_KEY).toUpperCase());
   if (!master && !(single && !single.usedBy)) { noteFail(ip); throw new Error('Código de invitación no válido.'); }
+  if (OPEN_REGISTRATION && !signupAllowed(ip)) throw new Error('Demasiadas cuentas nuevas desde tu conexión. Inténtalo mañana.');
   if (db.userByName(username)) throw new Error('Ese nombre ya está en uso.');
   const isFirst = Object.keys(db.data.users).length === 0;
   const user = newUser(username, password, isFirst);
   if (!master) single.usedBy = user.username;
   db.addUser(user);
+  if (OPEN_REGISTRATION) signups.get(ip).push(Date.now());
   return { user, token: createSession(user) };
 }
 

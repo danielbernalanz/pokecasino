@@ -35,8 +35,9 @@ function showAuth() {
 document.querySelectorAll('#auth .tab').forEach((t) => t.addEventListener('click', () => {
   mode = t.dataset.mode;
   document.querySelectorAll('#auth .tab').forEach((x) => x.classList.toggle('active', x === t));
-  $('.reg-only').classList.toggle('hidden', mode !== 'register');
-  $('#auth-form [name=invite]').required = mode === 'register';
+  const needsInvite = mode === 'register' && !(S.data && S.data.openRegistration);
+  $('.reg-only').classList.toggle('hidden', !needsInvite);
+  $('#auth-form [name=invite]').required = needsInvite;
   $('#auth-form button[type=submit]').textContent = mode === 'register' ? 'Crear entrenador' : 'Entrar';
   $('#auth-form [name=password]').autocomplete = mode === 'register' ? 'new-password' : 'current-password';
 }));
@@ -199,5 +200,6 @@ function connect() {
   if (!S.data) { document.body.replaceChildren(h('div', { class: 'blocked' }, h('h1', {}, '🔒'), h('p', {}, 'Este casino solo está disponible desde la red privada del anfitrión.'))); return; }
   for (const p of S.data.dex) S.dexById.set(p.id, p);
   try { S.token = localStorage.getItem('token'); } catch { /* nada */ }
+  if (S.data.openRegistration) $('#auth-sub').textContent = '¡Crea tu entrenador y empieza a jugar!';
   if (S.token) connect(); else showAuth();
 })();

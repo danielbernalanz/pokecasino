@@ -11,9 +11,12 @@ export default {
       if (!r) return;
       box.replaceChildren(
         h('div', { class: 'cards3' },
-          h('div', { class: 'card stack' }, h('h3', {}, '🔑 Código maestro'),
-            h('code', { class: 'code' }, r.accessKey),
-            h('p', { class: 'muted small' }, 'Sirve para registrarse siempre. Cámbialo con la variable ACCESS_KEY o borrando data/config.json.')),
+          S.data.openRegistration
+            ? h('div', { class: 'card stack' }, h('h3', {}, '🔓 Registro abierto'),
+              h('p', { class: 'muted small' }, 'Cualquiera con el enlace puede crearse cuenta (máx. 3 por conexión al día). Para volver a pedir código, quita la variable OPEN_REGISTRATION.'))
+            : h('div', { class: 'card stack' }, h('h3', {}, '🔑 Código maestro'),
+              h('code', { class: 'code' }, r.accessKey),
+              h('p', { class: 'muted small' }, 'Sirve para registrarse siempre. Cámbialo con la variable ACCESS_KEY o borrando data/config.json.')),
           h('div', { class: 'card stack' }, h('h3', {}, '🎟️ Invitaciones de un solo uso'),
             h('button', { class: 'btn primary', onclick: async (e) => { const x = await act('admin:invite', {}, e.target); if (x) { toast('Invitación: ' + x.code, 'success', 8000); load(); } } }, 'Generar invitación'),
             h('div', { class: 'invites' }, r.invites.slice(-12).reverse().map((i) => h('div', { class: 'row between small' }, h('code', {}, i.code), h('span', { class: i.usedBy ? 'muted' : 'good' }, i.usedBy ? 'usada por ' + i.usedBy : 'libre'))))),

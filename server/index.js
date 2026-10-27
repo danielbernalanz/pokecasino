@@ -79,6 +79,7 @@ const STATIC = {
   softPity: gacha.SOFT_PITY, hardPity: gacha.HARD_PITY, dustRate: gacha.DUST_RATE,
   slots: { symbols: slots.SYMBOLS, lines: slots.LINES, reels: slots.REELS },
   roulette: { wheel: roulette.WHEEL, groups: roulette.GROUPS, payout: roulette.PAYOUT },
+  openRegistration: config.OPEN_REGISTRATION,
   racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS,
   items: items.ITEMS, marketFee: market.FEE, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
   plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
@@ -401,7 +402,7 @@ function onListen() {
   const users = Object.keys(db.data.users).length;
   console.log(`\n  🎰 PokéCasino escuchando en http://${config.HOST}:${config.PORT}`);
   console.log(`  🔒 Modo de red: ${config.NETWORK_MODE}${config.ALLOW_CIDRS.length ? ' + ' + config.ALLOW_CIDRS.join(', ') : ''}`);
-  console.log(`  🔑 Código de invitación maestro: ${config.ACCESS_KEY}`);
+  console.log(config.OPEN_REGISTRATION ? '  🔓 Registro abierto (sin código de invitación)' : `  🔑 Código de invitación maestro: ${config.ACCESS_KEY}`);
   if (!users) console.log('  👑 El primer jugador que se registre será administrador.');
   console.log('');
 }
