@@ -1,21 +1,57 @@
 // Chat, actividad en vivo y jugadores conectados.
-import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg } from './core.js';
+import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg, notify, toast } from './core.js';
+
+// ---------- Emotes: «:pikachu:» se pinta con el sprite del Pokémon ----------
+const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+let emoteMap = null;
+function emotes() {
+  if (!emoteMap) { emoteMap = new Map(); for (const p of S.data.dex) emoteMap.set(norm(p.name), p.id); }
+  return emoteMap;
+}
+export const emoteCode = (id) => ':' + norm(S.dexById.get(id).name) + ':';
+// Devuelve nodos seguros (texto + <img>), nunca HTML.
+function richText(text) {
+  const out = [];
+  let last = 0, count = 0;
+  for (const m of text.matchAll(/:([a-z0-9\u00c0-\u017f.'\- ]{2,20}):/gi)) {
+    const id = count < 8 && emotes().get(norm(m[1]));
+    if (!id) continue;
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push(h('img', { class: 'pixel emote', src: sprite(id), alt: m[0], title: m[0], loading: 'lazy' }));
+    last = m.index + m[0].length; count++;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+function replyTo(name) {
+  const input = $('#chat-input');
+  input.value = `/w ${name} `;
+  document.body.classList.add('social-open');
+  document.querySelector('.stab[data-pane="chat"]')?.click();
+  input.focus();
+}
 
 const time = (t) => new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
 export function addChat(m, silent) {
   const log = $('#chat-log');
   const near = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
-  const mention = S.me && m.text.toLowerCase().includes('@' + S.me.username.toLowerCase());
-  log.append(h('div', { class: 'msg' + (mention ? ' mention' : '') },
+  const mine = m.user === S.me?.username;
+  const mention = S.me && !mine && m.text.toLowerCase().includes('@' + S.me.username.toLowerCase());
+  const other = m.private ? (mine ? m.to : m.user) : null;
+  log.append(h('div', { class: 'msg' + (mention ? ' mention' : '') + (m.private ? ' private' : '') },
     avatar(m.buddy, m, 'sm'),
     h('div', {},
-      h('div', { class: 'msg-head' }, h('a', { class: 'uname' + (m.admin ? ' admin' : ''), onclick: () => showPlayer(m.user) }, m.user), titleTag(m.title), h('span', { class: 'muted' }, time(m.at))),
-      h('div', { class: 'msg-text' }, m.text))));
+      h('div', { class: 'msg-head' }, h('a', { class: 'uname' + (m.admin ? ' admin' : ''), onclick: () => showPlayer(m.user) }, m.user), titleTag(m.title),
+        m.private ? h('a', { class: 'dm-tag', title: 'Responder en privado', onclick: () => replyTo(other) }, mine ? `✉️ a ${m.to}` : '✉️ privado') : null,
+        h('span', { class: 'muted' }, time(m.at))),
+      h('div', { class: 'msg-text' }, richText(m.text)))));
   while (log.children.length > 120) log.firstChild.remove();
   if (near || silent) log.scrollTop = log.scrollHeight;
-  if (!silent && m.user !== S.me?.username) {
+  if (!silent && !mine) {
     sfx('chat');
+    if (m.private) notify(`✉️ ${m.user}: ${m.text}`, { link: '' });
+    else if (mention) notify(`💬 ${m.user} te mencionó: ${m.text}`);
     if (!document.body.classList.contains('social-open') && window.innerWidth < 1200) $('#chat-dot').classList.remove('hidden');
   }
 }
@@ -62,13 +98,14 @@ export async function showPlayer(username) {
         h('div', { class: 'stat-row' },
           stat('Pokédex', `${p.dex}/${S.data.dex.length}`), stat('Variocolor', p.shinies), stat('Tiradas', fmt(p.stats.pulls)),
           stat('Duelos', `${p.stats.duelsWon}V / ${p.stats.duelsLost}D`), stat('Mayor premio', fmt(p.stats.biggestWin))))),
+    !isMe ? h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => { mm.close(); replyTo(p.username); } }, '✉️ Mensaje privado')) : null,
     !isMe ? giftCoins : null,
     !isMe ? h('p', { class: 'muted small' }, 'Para regalar o retar con un Pokémon usa la Pokédex o los Duelos.') : null,
     h('div', { class: 'mini-grid' }, owned.map((x) => h('div', { class: `mini-card r-${x.rarity}`, title: `${x.name} · ${rarityName(x.rarity)}` },
       h('img', { class: 'pixel', src: sprite(x.id, x.s > 0), alt: x.name, loading: 'lazy' }),
       h('span', { class: 'stars' }, '★'.repeat(Math.min(5, x.n))))))
   );
-  modal(body, { title: 'Ficha de entrenador', wide: true });
+  const mm = modal(body, { title: 'Ficha de entrenador', wide: true });
 }
 
 function stat(label, value) { return h('div', { class: 'stat' }, h('span', { class: 'muted small' }, label), h('b', {}, value)); }
@@ -83,6 +120,7 @@ export function initSocial() {
     input.value = '';
     await act('chat:send', { text });
   });
+  $('#emote-btn').addEventListener('click', openEmotes);
   document.querySelectorAll('.stab').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.stab').forEach((x) => x.classList.toggle('active', x === b));
     document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('hidden', p.id !== 'pane-' + b.dataset.pane));
@@ -91,4 +129,29 @@ export function initSocial() {
     document.body.classList.toggle('social-open');
     $('#chat-dot').classList.add('hidden');
   });
+}
+
+// Selector de emotes: tu compañero y tus Pokémon atrapados primero; con buscador para el resto.
+function openEmotes() {
+  const input = $('#chat-input');
+  const own = Object.keys(S.me.collection).map(Number);
+  const base = [...new Set([S.me.buddy?.id, ...own, 25, 133, 143, 39, 52, 54, 94, 150].filter(Boolean))];
+  const grid = h('div', { class: 'emote-grid' });
+  const fill = (q) => {
+    const list = q ? S.data.dex.filter((p) => norm(p.name).includes(norm(q))).map((p) => p.id).slice(0, 60) : base.slice(0, 60);
+    grid.replaceChildren(...list.map((id) => h('button', { type: 'button', class: 'emote-pick', title: emoteCode(id), onclick: () => {
+      input.value = (input.value && !input.value.endsWith(' ') ? input.value + ' ' : input.value) + emoteCode(id) + ' ';
+      close();
+      input.focus();
+    } }, h('img', { class: 'pixel', src: sprite(id), alt: S.dexById.get(id).name, loading: 'lazy' }))));
+    if (!list.length) grid.append(h('p', { class: 'muted small' }, 'Ningún Pokémon con ese nombre.'));
+  };
+  const search = h('input', { placeholder: 'Buscar Pokémon…', oninput: (e) => fill(e.target.value) });
+  const wrap = h('div', { class: 'popover emote-pop', onclick: (e) => e.stopPropagation() },
+    search, grid, h('p', { class: 'muted small' }, 'También puedes escribir :nombre: (por ejemplo :pikachu:).'));
+  const close = () => { wrap.remove(); document.removeEventListener('click', close); };
+  fill('');
+  document.body.append(wrap);
+  setTimeout(() => document.addEventListener('click', close), 0);
+  if (!matchMedia('(pointer: coarse)').matches) search.focus();
 }

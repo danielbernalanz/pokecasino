@@ -2,7 +2,7 @@
 // - Archivos de la app: primero la red (siempre la última versión) y, sin conexión, la copia guardada.
 // - Sprites de PokeAPI: primero la caché (no cambian) para cargar mucho más rápido.
 // - Nunca se guarda nada de /api ni del socket.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const APP = 'pokecasino-app-' + VERSION;
 const SPRITES = 'pokecasino-sprites';
 const SPRITE_LIMIT = 1500;
@@ -45,4 +45,15 @@ self.addEventListener('fetch', (e) => {
     if (res.ok) { const copy = res.clone(); caches.open(APP).then((c) => c.put(req, copy)); }
     return res;
   }).catch(async () => (await caches.match(req)) || (req.mode === 'navigate' ? caches.match('/offline.html') : Response.error())));
+});
+
+// Al tocar una notificación se abre (o enfoca) el casino en la pantalla indicada.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const link = (e.notification.data && e.notification.data.link) || '';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    const w = list.find((c) => c.url.startsWith(self.location.origin));
+    if (w) { if (link) w.postMessage({ type: 'goto', link }); return w.focus(); }
+    return self.clients.openWindow('/' + link);
+  }));
 });

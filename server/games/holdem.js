@@ -219,6 +219,8 @@ function armTimer(t) {
   clearTimeout(t.timer);
   const h = t.hand;
   h.deadline = Date.now() + TURN_MS;
+  const actor = t.seats[h.toAct];
+  if (actor) hub.emitUser(actor.userId, 'notify', { kind: 'turn', text: `🃏 Te toca en ${t.name}`, link: 'poker' });
   const no = h.no;
   const seat = h.toAct;
   t.timer = setTimeout(() => {

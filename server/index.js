@@ -226,6 +226,10 @@ function chat(user, { text }) {
   const last = lastMsg.get(user.id) || 0;
   if (Date.now() - last < 800) throw new Error('Más despacio, entrenador.');
   lastMsg.set(user.id, Date.now());
+  // Mensaje privado: «/w nombre texto» (también /md o /msg).
+  const dm = text.match(/^\/(?:w|md|msg)\s+(\S+)\s+(.+)$/i);
+  if (dm) return privateMessage(user, dm[1], dm[2]);
+  if (/^\/(?:w|md|msg)\b/i.test(text)) throw new Error('Para un mensaje privado escribe: /w nombre mensaje');
   const msg = { user: user.username, buddy: user.buddy, admin: user.isAdmin, ...hub.looks(user), text, at: Date.now() };
   db.data.chat.push(msg);
   if (db.data.chat.length > 100) db.data.chat.splice(0, db.data.chat.length - 100);
@@ -233,6 +237,21 @@ function chat(user, { text }) {
   io.emit('chat', msg);
   return {};
 }
+
+// Mensajes privados: solo los ven emisor y destinatario. Se guardan los últimos 400 en total.
+function privateMessage(user, toName, text) {
+  const t = db.userByName(toName);
+  if (!t) throw new Error(`No existe el entrenador «${toName}».`);
+  if (t.id === user.id) throw new Error('No puedes escribirte a ti mismo.');
+  const msg = { user: user.username, to: t.username, buddy: user.buddy, admin: user.isAdmin, ...hub.looks(user), text, at: Date.now(), private: true };
+  db.data.dms ||= [];
+  db.data.dms.push(msg);
+  if (db.data.dms.length > 400) db.data.dms.splice(0, db.data.dms.length - 400);
+  db.save();
+  io.to('u:' + user.id).to('u:' + t.id).emit('chat', msg);
+  return {};
+}
+const myDms = (user) => (db.data.dms || []).filter((m) => m.user === user.username || m.to === user.username).slice(-30);
 
 // ---- Administración ----
 function requireAdmin(user) { if (!user.isAdmin) throw new Error('Solo administradores.'); }
@@ -344,8 +363,8 @@ io.on('connection', (socket) => {
     });
   }
 
-  on('hello', () => ({
-    chat: db.data.chat.slice(-50), feed: db.data.feed.slice(-30), online: onlineList(),
+  on('hello', (u) => ({
+    chat: [...db.data.chat.slice(-50), ...myDms(u)].sort((a, b) => a.at - b.at), feed: db.data.feed.slice(-30), online: onlineList(),
     jackpot: db.data.state.jackpot, race: race.publicState(), raceBets: race.myBets(db.userById(uid)),
     duels: duel.listPublic(), duelHistory: duel.recent(),
     crash: crash.publicState(), poker: holdem.lobby(),

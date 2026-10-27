@@ -179,3 +179,31 @@ export const RAR_NAME = { C: 'Común', U: 'Poco común', R: 'Rara', E: 'Épica',
 // Abre el Mercado con una búsqueda ya escrita.
 export function goMarket(q) { S.marketQuery = q; location.hash = '#/market'; }
 export const itemName = (id) => S.data.items[id]?.name || id;
+
+// ---------- Avisos (vibración, contador en el título y notificación del sistema) ----------
+let notifyOn = false;
+try { notifyOn = localStorage.getItem('notify') === '1'; } catch { /* nada */ }
+export const notifyEnabled = () => notifyOn && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+export async function toggleNotify() {
+  if (notifyOn) notifyOn = false;
+  else {
+    if (typeof Notification === 'undefined') { toast('Tu navegador no admite notificaciones. Instala la app para recibirlas.', 'error'); return false; }
+    const perm = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
+    if (perm !== 'granted') { toast('No diste permiso para las notificaciones.', 'error'); return false; }
+    notifyOn = true;
+  }
+  try { localStorage.setItem('notify', notifyOn ? '1' : '0'); } catch { /* nada */ }
+  return notifyOn;
+}
+const baseTitle = document.title;
+let unread = 0;
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { unread = 0; document.title = baseTitle; } });
+export function notify(text, { link, vibrate = true } = {}) {
+  if (vibrate && navigator.vibrate) try { navigator.vibrate([60, 40, 60]); } catch { /* nada */ }
+  if (!document.hidden) return;
+  unread++;
+  document.title = `(${unread}) ${baseTitle}`;
+  if (!notifyEnabled()) return;
+  const opts = { body: text, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: 'pokecasino-' + (link || 'msg'), data: { link: link ? '#/' + link : '' } };
+  navigator.serviceWorker?.getRegistration().then((reg) => reg ? reg.showNotification('PokéCasino', opts) : new Notification('PokéCasino', opts)).catch(() => {});
+}

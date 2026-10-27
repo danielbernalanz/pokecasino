@@ -1,4 +1,4 @@
-import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal } from './core.js';
+import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify } from './core.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
 import lobby from './views/lobby.js';
 import slots from './views/slots.js';
@@ -98,11 +98,14 @@ $('#mute-btn').textContent = isMuted() ? '🔇' : '🔊';
 $('#menu-btn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
 $('#user-btn').addEventListener('click', () => {
   const muteBtn = h('button', { class: 'btn', onclick: () => { const m = toggleMute(); $('#mute-btn').textContent = m ? '🔇' : '🔊'; muteBtn.textContent = m ? '🔇 Sonido apagado' : '🔊 Sonido encendido'; } }, isMuted() ? '🔇 Sonido apagado' : '🔊 Sonido encendido');
+  const nLabel = () => notifyEnabled() ? '🔔 Avisos activados' : '🔕 Activar avisos';
+  const notifyBtn = h('button', { class: 'btn', title: 'Notificación cuando te toca en el póker, te escriben por privado o te mencionan, aunque no estés mirando', onclick: async () => { await toggleNotify(); notifyBtn.textContent = nLabel(); } }, nLabel());
   const menu = h('div', { class: 'stack' },
     h('button', { class: 'btn', onclick: () => { close(); showPlayer(S.me.username); } }, '👤 Ver mi ficha'),
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/trainer'; } }, '🏅 Mi Entrenador'),
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/pokedex'; } }, '📕 Mi Pokédex'),
     muteBtn,
+    notifyBtn,
     canInstall() ? h('button', { class: 'btn', onclick: () => { close(); installApp(); } }, '📲 Instalar app') : '',
     h('button', { class: 'btn danger', onclick: logout }, '🚪 Cerrar sesión'));
   const wrap = h('div', { class: 'popover', onclick: (e) => e.stopPropagation() }, menu);
@@ -231,7 +234,14 @@ function connect() {
       toast(`⚔️ ${r.players[1]} aceptó tu reto: ${won ? '¡ganaste!' : 'perdiste.'} Míralo en Duelos.`, won ? 'success' : 'info', 6000);
     }
   });
-  socket.on('toast', (t) => { toast(t.text, 'success', 5000); sfx('win'); });
+  socket.on('toast', (t) => { toast(t.text, 'success', 5000); sfx('win'); notify(t.text, { vibrate: t.kind !== 'level' }); });
+  socket.on('notify', (n) => {
+    // Turno en el póker: solo avisa si no estás ya mirando esa mesa.
+    if (n.kind === 'turn' && !document.hidden && location.hash.startsWith('#/' + n.link)) return;
+    if (!document.hidden) toast(n.text, 'info', 4000);
+    sfx('chat');
+    notify(n.text, { link: n.link });
+  });
   socket.on('crash:state', (c) => { S.crash = c; bus.emit('crash', c); });
   socket.on('crash:result', (r) => bus.emit('crash:result', r));
   socket.on('poker:lobby', (l) => { S.poker = l; bus.emit('poker:lobby', l); });
@@ -261,6 +271,7 @@ export async function installApp() {
 }
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'goto' && e.data.link) location.hash = e.data.link; });
 }
 
 // ---------- Arranque ----------
