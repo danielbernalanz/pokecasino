@@ -23,8 +23,8 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Colección y economía**
 
-- 🎁 **Poké Gacha**: 5 banners (Kanto, Aves, Mewtwo/Mew, Johto y Hoenn), pity suave (60) y duro (80), rara garantizada cada 10, 50/50 de destacado, variocolores 1/64, tirada gratis diaria.
-- 📕 **Pokédex** de 191 Pokémon (Kanto, invitados de Johto y Hoenn) con estrellas por copias y compañero que da bonus a tus ganancias.
+- 🎁 **Poké Gacha**: 11 banners (uno nacional con los 1.025 Pokémon, Aves, Mewtwo/Mew y uno por región de Johto a Paldea con sus legendarios destacados), pity suave (60) y duro (80), rara garantizada cada 10, 50/50 de destacado, variocolores 1/64, tirada gratis diaria.
+- 📕 **Pokédex** con los 1.025 Pokémon de las 9 generaciones (nombres en español y estadísticas reales, que se usan en los duelos), filtro por región y estrellas por copias y compañero que da bonus a tus ganancias.
 - 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
 - 🏪 **Mercado** entre jugadores: vende Pokémon (normales o variocolor), objetos y polvo estelar a precio fijo. Lo publicado queda en depósito hasta que se vende, se retira o caduca (7 días); el comprador confirma el precio, nadie puede comprar su propio anuncio y la casa cobra un 5 %. Muestra el precio medio de las últimas ventas.
 
@@ -123,7 +123,8 @@ server/
   netguard.js     Filtro de IP privada / VPN
   db.js           Almacén JSON con escritura atómica
   hub.js          Economía (apuestas, pagos, niveles, compañero) y difusión
-  pokedex.js      Datos de Pokémon, rarezas y tabla de tipos
+  pokedex.js      Rarezas, tabla de tipos y estadísticas (lee dexdata.json)
+  dexdata.json    Los 1.025 Pokémon (generado con scripts/build-dex.js desde PokeAPI)
   gacha.js        Banners, pity, variocolores y tienda de polvo
   items.js        Objetos, Tienda Poké y efectos
   market.js       Mercado entre jugadores con depósito

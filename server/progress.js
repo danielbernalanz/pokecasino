@@ -71,6 +71,16 @@ const SETS = [
   { id: 'ralts', name: 'Línea de Ralts', ids: [280, 281, 282, 475], title: 'Caballero de Gardevoir' },
   { id: 'hoenn-starters', name: 'Iniciales de Hoenn', ids: [252, 255, 258], title: 'Explorador de Hoenn' },
   { id: 'weather', name: 'Trío del Tiempo', ids: [382, 383, 384], title: 'Señor del Clima' },
+  { id: 'sinnoh-starters', name: 'Iniciales de Sinnoh', ids: [387, 390, 393], title: 'Explorador de Sinnoh' },
+  { id: 'lakes', name: 'Trío del Lago', ids: [480, 481, 482], title: 'Guardián de los Lagos' },
+  { id: 'unova-starters', name: 'Iniciales de Teselia', ids: [495, 498, 501], title: 'Explorador de Teselia' },
+  { id: 'swords', name: 'Espadachines Místicos', ids: [638, 639, 640, 647], title: 'Caballero Justiciero' },
+  { id: 'kalos-starters', name: 'Iniciales de Kalos', ids: [650, 653, 656], title: 'Explorador de Kalos' },
+  { id: 'alola-starters', name: 'Iniciales de Alola', ids: [722, 725, 728], title: 'Explorador de Alola' },
+  { id: 'tapus', name: 'Tapus de Alola', ids: [785, 786, 787, 788], title: 'Protegido de los Tapus' },
+  { id: 'galar-starters', name: 'Iniciales de Galar', ids: [810, 813, 816], title: 'Explorador de Galar' },
+  { id: 'paldea-starters', name: 'Iniciales de Paldea', ids: [906, 909, 912], title: 'Explorador de Paldea' },
+  { id: 'eevee-all', name: 'Todas las Eeveelutions', ids: [133, 134, 135, 136, 196, 197, 470, 471, 700], title: 'Maestro Eevee' },
 ];
 
 // Títulos ganados (no se pueden comerciar).

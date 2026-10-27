@@ -1,5 +1,10 @@
 'use strict';
-// Pokédex del casino: Kanto completo + invitados especiales de Johto y Hoenn.
+// Pokédex del casino: los 1.025 Pokémon (dexdata.json, generado con scripts/build-dex.js
+// a partir de los datos públicos de PokeAPI).
+const DATA = require('./dexdata.json');
+
+// Rarezas y nombres fijados a mano para los Pokémon que ya existían antes de añadir todas las
+// generaciones: así las colecciones de los jugadores no cambian.
 // Formato: id|nombre|tipos|rareza (C común, U poco común, R rara, E épica, L legendaria, M mítica)
 const RAW = `
 1|Bulbasaur|grass/poison|C
@@ -195,9 +200,14 @@ const RAW = `
 386|Deoxys|psychic|M
 `;
 
-const DEX = RAW.trim().split('\n').map((line) => {
-  const [id, name, types, rarity] = line.split('|');
-  return { id: Number(id), name, types: types.split('/'), rarity };
+const OVERRIDES = new Map(RAW.trim().split('\n').map((line) => {
+  const [id, name, , rarity] = line.split('|');
+  return [Number(id), { name, rarity }];
+}));
+
+const DEX = DATA.map(([id, name, types, rarity, gen, stats]) => {
+  const o = OVERRIDES.get(id);
+  return { id, name: o ? o.name : name, types, rarity: o ? o.rarity : rarity, gen, stats };
 });
 const BY_ID = new Map(DEX.map((p) => [p.id, p]));
 const BY_RARITY = {};
@@ -240,22 +250,10 @@ function effectiveness(atkType, defTypes) {
   return defTypes.reduce((m, t) => m * (CHART[atkType][t] ?? 1), 1);
 }
 
-// Estadísticas base deterministas a partir de la rareza y el id.
-const SPECIAL_BST = { 129: 200, 132: 288, 10: 195, 11: 205, 13: 195, 14: 205, 143: 540, 113: 450 };
+// Estadísticas base reales (PS, mejor ataque, media de defensas, velocidad).
 function baseStats(id) {
-  const p = BY_ID.get(id);
-  const bst = SPECIAL_BST[id] || RARITY[p.rarity].bst;
-  let h = (id * 2654435761) >>> 0;
-  const w = [];
-  for (let i = 0; i < 4; i++) {
-    h = (h ^ (h >>> 13)) * 1274126177 >>> 0;
-    w.push(0.75 + (h % 1000) / 1000 * 0.6);
-  }
-  if (id === 113) w[0] = 3; // Chansey: tanque de PS
-  if (id === 143) w[0] = 1.8;
-  const sum = w.reduce((a, b) => a + b, 0);
-  const [hp, atk, def, spe] = w.map((x) => Math.round((bst * x) / sum));
-  return { hp, atk, def, spe };
+  const [hp, atk, def, spa, spd, spe] = BY_ID.get(id).stats;
+  return { hp, atk: Math.max(atk, spa), def: Math.round((def + spd) / 2), spe };
 }
 
 module.exports = { DEX, BY_ID, BY_RARITY, RARITY, TYPES, CHART, effectiveness, baseStats };

@@ -145,10 +145,10 @@ label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-
 .online-row:hover { background: #fff1; }
 .online-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
 
-.toasts { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; width: min(440px, calc(100% - 32px)); pointer-events: none; }
+.toasts { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; width: min(440px, calc(100% - 32px)); pointer-events: none; }
 .toast { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue); padding: 10px 14px; border-radius: 10px; box-shadow: var(--shadow); animation: slideup .3s; transition: opacity .4s, transform .4s; font-weight: 600; }
 .toast-error { border-left-color: var(--bad); } .toast-success { border-left-color: var(--good); }
-.toast.out { opacity: 0; transform: translateY(10px); }
+.toast.out { opacity: 0; transform: translateY(-10px); }
 .conn { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--red); padding: 6px 14px; border-radius: 999px; z-index: 90; font-weight: 800; }
 
 .modal-wrap { position: fixed; inset: 0; background: #000a; display: grid; place-items: center; z-index: 70; padding: 16px; animation: fade .2s; }

@@ -14,8 +14,8 @@ const HARD_PITY = 80;
 
 const BANNERS = [
   {
-    id: 'kanto', name: 'Clásico de Kanto', art: 25, theme: '#e3350d',
-    desc: 'Todos los Pokémon disponibles, sin destacados. Ideal para completar la Pokédex.',
+    id: 'kanto', name: 'Gran Banner Nacional', art: 25, theme: '#e3350d',
+    desc: 'Los 1.025 Pokémon de todas las regiones, sin destacados. Ideal para completar la Pokédex.',
     featuredL: [], featuredE: [],
   },
   {
@@ -37,6 +37,36 @@ const BANNERS = [
     id: 'hoenn', name: 'Leyendas de Hoenn', art: 282, theme: '#10b981',
     desc: 'Kyogre, Groudon y Rayquaza destacados. Gardevoir, Gallade, Blaziken y Salamence con probabilidad aumentada.',
     featuredL: [382, 383, 384], featuredE: [282, 475, 257, 373],
+  },
+  {
+    id: 'sinnoh', name: 'Leyendas de Sinnoh', art: 487, theme: '#64748b',
+    desc: 'Dialga, Palkia y Giratina destacados. Garchomp y Lucario con probabilidad aumentada.',
+    featuredL: [483, 484, 487], featuredE: [445, 448],
+  },
+  {
+    id: 'unova', name: 'Leyendas de Teselia', art: 644, theme: '#0ea5e9',
+    desc: 'Reshiram, Zekrom y Kyurem destacados. Hydreigon y Volcarona con probabilidad aumentada.',
+    featuredL: [643, 644, 646], featuredE: [635, 637],
+  },
+  {
+    id: 'kalos', name: 'Leyendas de Kalos', art: 658, theme: '#2563eb',
+    desc: 'Xerneas, Yveltal y Zygarde destacados. Greninja y Goodra con probabilidad aumentada.',
+    featuredL: [716, 717, 718], featuredE: [658, 706],
+  },
+  {
+    id: 'alola', name: 'Leyendas de Alola', art: 791, theme: '#f97316',
+    desc: 'Solgaleo, Lunala y Necrozma destacados. Decidueye y Kommo-o con probabilidad aumentada.',
+    featuredL: [791, 792, 800], featuredE: [724, 784],
+  },
+  {
+    id: 'galar', name: 'Leyendas de Galar', art: 888, theme: '#be123c',
+    desc: 'Zacian, Zamazenta y Eternatus destacados. Dragapult y Rillaboom con probabilidad aumentada.',
+    featuredL: [888, 889, 890], featuredE: [887, 812],
+  },
+  {
+    id: 'paldea', name: 'Leyendas de Paldea', art: 1008, theme: '#7c3aed',
+    desc: 'Koraidon y Miraidon destacados. Baxcalibur y Meowscarada con probabilidad aumentada.',
+    featuredL: [1007, 1008], featuredE: [998, 908],
   },
 ];
 const BANNER_BY_ID = new Map(BANNERS.map((b) => [b.id, b]));

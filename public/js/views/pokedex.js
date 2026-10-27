@@ -1,6 +1,7 @@
 import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus } from '../core.js';
 
-let filter = { q: '', show: 'all', rarity: '', type: '' };
+let filter = { q: '', show: 'all', rarity: '', type: '', gen: '' };
+const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
 
 export function openDetail(id) {
   const p = S.dexById.get(id);
@@ -31,6 +32,7 @@ export function openDetail(id) {
     h('div', { class: 'detail-left r-' + p.rarity }, big, toggle),
     h('div', { class: 'stack' },
       h('h2', {}, `#${String(id).padStart(3, '0')} ${p.name}`),
+      h('div', { class: 'muted small' }, `${['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'][p.gen - 1]} · PS ${p.stats[0]} · Atq ${p.stats[1]} · Def ${p.stats[2]} · AtqEsp ${p.stats[3]} · DefEsp ${p.stats[4]} · Vel ${p.stats[5]}`),
       h('div', { class: 'types' }, p.types.map(typeBadge)),
       h('div', {}, h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity))),
       c ? h('div', {}, h('span', { class: 'stars big' }, '★'.repeat(Math.min(5, c.n)) + '☆'.repeat(5 - Math.min(5, c.n))), h('span', { class: 'muted' }, ` · ${c.n} copia(s)${c.s ? ` · ${c.s} variocolor` : ''}`)) : null,
@@ -62,6 +64,7 @@ export default {
         if (filter.show === 'shiny' && !(c && c.s)) return false;
         if (filter.rarity && p.rarity !== filter.rarity) return false;
         if (filter.type && !p.types.includes(filter.type)) return false;
+        if (filter.gen && p.gen !== Number(filter.gen)) return false;
         if (q && !(c ? p.name.toLowerCase().includes(q) : String(p.id).includes(q))) return false;
         return true;
       });
@@ -81,7 +84,8 @@ export default {
       h('div', { class: 'filters' }, search,
         sel('show', [['all', 'Todos'], ['owned', 'Atrapados'], ['missing', 'Faltan'], ['shiny', 'Variocolor']]),
         sel('rarity', [['', 'Cualquier rareza'], ...['M', 'L', 'E', 'R', 'U', 'C'].map((r) => [r, rarityName(r)])]),
-        sel('type', [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])])),
+        sel('type', [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])]),
+        sel('gen', [['', 'Todas las regiones'], ...REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`])])),
       grid);
     render();
     this.off = bus.on('me', render);
