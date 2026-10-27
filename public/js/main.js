@@ -1,4 +1,4 @@
-import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit } from './core.js';
+import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal } from './core.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
 import lobby from './views/lobby.js';
 import slots from './views/slots.js';
@@ -97,9 +97,12 @@ $('#mute-btn').addEventListener('click', () => { $('#mute-btn').textContent = to
 $('#mute-btn').textContent = isMuted() ? '🔇' : '🔊';
 $('#menu-btn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
 $('#user-btn').addEventListener('click', () => {
+  const muteBtn = h('button', { class: 'btn', onclick: () => { const m = toggleMute(); $('#mute-btn').textContent = m ? '🔇' : '🔊'; muteBtn.textContent = m ? '🔇 Sonido apagado' : '🔊 Sonido encendido'; } }, isMuted() ? '🔇 Sonido apagado' : '🔊 Sonido encendido');
   const menu = h('div', { class: 'stack' },
     h('button', { class: 'btn', onclick: () => { close(); showPlayer(S.me.username); } }, '👤 Ver mi ficha'),
+    h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/trainer'; } }, '🏅 Mi Entrenador'),
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/pokedex'; } }, '📕 Mi Pokédex'),
+    muteBtn,
     h('button', { class: 'btn danger', onclick: logout }, '🚪 Cerrar sesión'));
   const wrap = h('div', { class: 'popover', onclick: (e) => e.stopPropagation() }, menu);
   const close = () => { wrap.remove(); document.removeEventListener('click', close); };
@@ -118,6 +121,42 @@ function buildNav() {
   }
 }
 
+// ---------- Barra inferior (móvil) ----------
+const GAME_IDS = ['poker', 'crash', 'race', 'duels', 'blackjack', 'videopoker', 'baccarat', 'roulette', 'slots', 'plinko', 'mines', 'voltorb'];
+const TABS = [
+  { id: 'lobby', icon: '🏠', label: 'Inicio' },
+  { id: 'games', icon: '🎰', label: 'Juegos', match: GAME_IDS },
+  { id: 'gacha', icon: '🎁', label: 'Gacha' },
+  { id: 'market', icon: '🏪', label: 'Mercado' },
+  { id: 'more', icon: '☰', label: 'Más', match: ['trainer', 'pokedex', 'shop', 'ranking', 'admin'] },
+];
+function gamesSheet() {
+  const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => GAME_IDS.includes(v.id)).map((v) =>
+    h('a', { class: 'gs-item' + (current && current.id === v.id ? ' active' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title)))), { title: 'Juegos' });
+}
+function moreSheet() {
+  const ids = ['trainer', 'pokedex', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
+  const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => ids.includes(v.id)).map((v) =>
+    h('a', { class: 'gs-item', href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title))),
+  h('button', { class: 'gs-item', onclick: () => { m.close(); document.body.classList.add('social-open'); $('#chat-dot').classList.add('hidden'); } }, h('span', { class: 'gs-ico' }, '💬'), h('span', {}, 'Chat y conectados'))), { title: 'Más' });
+}
+function buildTabbar() {
+  const bar = $('#tabbar');
+  bar.classList.remove('hidden');
+  bar.replaceChildren(...TABS.map((t) => h('button', { class: 'tab-btn', 'data-tab': t.id, onclick: () => {
+    document.body.classList.remove('social-open', 'nav-open');
+    if (t.id === 'games') gamesSheet();
+    else if (t.id === 'more') moreSheet();
+    else location.hash = '#/' + t.id;
+  } }, h('span', { class: 'tab-ico' }, t.icon), h('span', { class: 'tab-lbl' }, t.label))));
+}
+function markTab(id) {
+  document.querySelectorAll('.tab-btn').forEach((b) => {
+    const t = TABS.find((x) => x.id === b.dataset.tab);
+    b.classList.toggle('active', t.id === id || (t.match || []).includes(id));
+  });
+}
+
 let current = null;
 function route() {
   const id = (location.hash.match(/^#\/(\w+)/) || [])[1] || 'lobby';
@@ -126,6 +165,8 @@ function route() {
   current = view;
   S.view = view.id;
   document.querySelectorAll('.nav-link').forEach((a) => a.classList.toggle('active', a.dataset.view === view.id));
+  markTab(view.id);
+  document.body.classList.remove('social-open');
   document.body.classList.remove('nav-open');
   const root = $('#view');
   root.replaceChildren();
@@ -170,7 +211,7 @@ function connect() {
     S.duels = res.duels; S.duelHistory = res.duelHistory;
     S.crash = res.crash; S.poker = res.poker;
     bus.emit('race', res.race);
-    if (!booted) { booted = true; buildNav(); setMe(S.me); route(); }
+    if (!booted) { booted = true; buildNav(); buildTabbar(); setMe(S.me); route(); }
   });
   socket.on('me', setMe);
   socket.on('chat', (m) => addChat(m));

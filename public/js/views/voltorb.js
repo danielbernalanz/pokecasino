@@ -92,7 +92,7 @@ export default {
         h('div', { class: 'stack' },
           info, msg,
           h('div', { class: 'card stack' }, bet.el, h('div', { class: 'row gap wrap' }, startBtn, cashBtn, memoBtn)),
-          h('div', { class: 'card' }, h('h3', {}, 'Cómo se paga'),
+          h('details', { class: 'card rules' }, h('summary', {}, h('b', {}, 'Cómo se paga')),
             h('p', { class: 'small' }, 'Tus puntos se multiplican con cada carta (×2, ×3). Al retirarte o limpiar todos los ×2 y ×3 cobras: apuesta × puntos ÷ divisor del nivel.'),
             h('p', { class: 'muted small' }, mults),
             h('p', { class: 'muted small' }, 'Limpiar el tablero sube un nivel. Si explota un Voltorb bajas al nº de cartas que giraste.')))));

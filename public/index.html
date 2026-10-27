@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>PokéCasino</title>
   <meta name="theme-color" content="#14111f">
   <link rel="icon" href="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png">
@@ -62,6 +62,8 @@
       <div class="pane hidden" id="pane-online"><div class="online" id="online"></div></div>
     </aside>
   </div>
+  <!-- Barra de navegación inferior (solo en móvil) -->
+  <nav class="tabbar hidden" id="tabbar" aria-label="Navegación principal"></nav>
   <div id="toasts" class="toasts"></div>
   <div id="conn" class="conn hidden">Reconectando…</div>
   <script src="/socket.io/socket.io.js"></script>

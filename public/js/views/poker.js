@@ -46,6 +46,8 @@ export default {
       const hd = t.hand;
       if (hd && hd.no !== lastNo) { lastNo = hd.no; if (!hole || hole.no !== hd.no) hole = null; sfx('flip'); }
       const me = mySeat();
+      // Sentado, la lista de mesas sobra (en el móvil se oculta para que la mesa quepa).
+      document.querySelector('#view').classList.toggle('seated', me !== -1);
       const myTurn = !!(hd && me !== -1 && hd.toAct === me);
       if (myTurn && !wasMyTurn) sfx('chat');
       wasMyTurn = myTurn;
@@ -82,16 +84,16 @@ export default {
         h('div', { class: 'row between wrap gap' }, h('h2', {}, t.name), h('span', { class: 'muted' }, `Ciegas ${fmt(t.sb)}/${fmt(t.bb)}`)),
         needs > 0 ? h('a', { class: 'card lock-note', href: '#/trainer' }, `🔒 Puedes mirar, pero para jugar aquí necesitas ${t.badges} medallas de gimnasio (te faltan ${needs}). Míralas en «Mi Entrenador».`) : '',
         h('div', { class: 'p-table' }, h('div', { class: 'p-felt' }, center), seats),
-        controls(me),
+        ...controls(me),
         h('div', { class: 'p-log' }, t.log.slice().reverse().map((l) => h('div', {}, l.text))));
       timerLoop();
     }
 
     function controls(me) {
-      if (me === -1) return h('p', { class: 'muted center' }, 'Elige un asiento libre para jugar o mira la partida.');
+      if (me === -1) return [h('p', { class: 'muted center' }, 'Elige un asiento libre para jugar o mira la partida.')];
       const s = t.seats[me];
       const hd = t.hand;
-      const box = h('div', { class: 'p-controls' });
+      const out = [];
       const mgmt = h('div', { class: 'row gap wrap' },
         h('button', { class: 'btn small', onclick: () => act('poker:sitout', { table: t.id, out: !s.sittingOut }) }, s.sittingOut ? 'Volver a la mesa' : 'Ausentarme'),
         h('button', { class: 'btn small', onclick: async () => {
@@ -109,16 +111,18 @@ export default {
         raise.addEventListener('input', () => { raiseLbl.textContent = fmt(raise.value); });
         const send = (type, amount) => act('poker:action', { table: t.id, type, amount }).then((r) => r && sfx('click'));
         const pot = hd.pot;
-        box.append(h('div', { class: 'row gap wrap center' },
-          h('button', { class: 'btn big danger', onclick: () => send('fold') }, 'Retirarse'),
-          toCall > 0 ? h('button', { class: 'btn big', onclick: () => send('call') }, `Igualar ${fmt(Math.min(toCall, s.stack))}`) : h('button', { class: 'btn big', onclick: () => send('check') }, 'Pasar'),
-          maxTo > hd.currentBet && hd.canRaise ? h('div', { class: 'raise-box' },
-            h('div', { class: 'row gap' }, ...[0.5, 1].map((f) => h('button', { class: 'chip', onclick: () => { raise.value = Math.max(minTo, Math.min(maxTo, Math.round(hd.currentBet + pot * f))); raiseLbl.textContent = fmt(raise.value); } }, f === 1 ? 'Bote' : '½ bote')), raise, raiseLbl),
-            h('button', { class: 'btn big primary', onclick: () => send(Number(raise.value) >= maxTo ? 'allin' : 'raise', Number(raise.value)) }, hd.currentBet ? 'Subir' : 'Apostar')) : null,
-          hd.canRaise || toCall >= s.stack ? h('button', { class: 'btn big gold', onclick: () => send('allin') }, 'All-in') : null));
+        const canRaise = maxTo > hd.currentBet && hd.canRaise;
+        out.push(h('div', { class: 'p-controls my-turn' },
+          canRaise ? h('div', { class: 'raise-box' },
+            ...[0.5, 1].map((f) => h('button', { class: 'chip', onclick: () => { raise.value = Math.max(minTo, Math.min(maxTo, Math.round(hd.currentBet + pot * f))); raiseLbl.textContent = fmt(raise.value); } }, f === 1 ? 'Bote' : '½ bote')), raise, raiseLbl) : '',
+          h('div', { class: 'p-actions' },
+            h('button', { class: 'btn big danger', onclick: () => send('fold') }, 'Retirarse'),
+            toCall > 0 ? h('button', { class: 'btn big', onclick: () => send('call') }, `Igualar ${fmt(Math.min(toCall, s.stack))}`) : h('button', { class: 'btn big', onclick: () => send('check') }, 'Pasar'),
+            canRaise ? h('button', { class: 'btn big primary', onclick: () => send(Number(raise.value) >= maxTo ? 'allin' : 'raise', Number(raise.value)) }, hd.currentBet ? 'Subir' : 'Apostar') : '',
+            hd.canRaise || toCall >= s.stack ? h('button', { class: 'btn big gold', onclick: () => send('allin') }, 'All-in') : '')));
       }
-      box.append(mgmt);
-      return box;
+      out.push(h('div', { class: 'p-controls' }, mgmt));
+      return out;
     }
 
     function timerLoop() {

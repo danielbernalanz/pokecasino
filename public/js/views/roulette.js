@@ -90,7 +90,7 @@ export default {
               h('div', {}, 'Total: ', total)),
             board,
             h('p', { class: 'muted small' }, 'Clic para añadir ficha · clic derecho para quitarla.'),
-            h('div', { class: 'row gap' }, h('button', { class: 'btn', onclick: () => { bets = new Map(); refresh(); } }, 'Limpiar'), spinBtn)))),
+            h('div', { class: 'row gap sticky-actions' }, h('button', { class: 'btn', onclick: () => { bets = new Map(); refresh(); } }, 'Limpiar'), spinBtn)))),
     );
   },
 };
