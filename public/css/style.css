@@ -830,7 +830,8 @@ img.mk-img { transform: scale(1.3); }
   .bac-spots { gap: 6px; }
   .bac-spot { padding: 10px 6px; font-size: 14px; }
   .vp-cards { gap: 5px; flex-wrap: nowrap; }
-  .vp-slot { flex: 1 1 0; min-width: 0; }
+  .vp-slot { flex: 1 1 0; min-width: 0; overflow: hidden; }
+  .hold-tag { font-size: 6px; white-space: nowrap; }
   .vp-slot .pcard-play { width: 100%; height: auto; aspect-ratio: 5 / 7; }
   .vp-slot .pcard-play .pc-big { font-size: 26px; }
   /* Plinko, minas, voltorb */
