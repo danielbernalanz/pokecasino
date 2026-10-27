@@ -1,12 +1,19 @@
 import { S, h, fmt, act, toast } from '../core.js';
+import { economyPanel } from './econ.js';
 
 export default {
   id: 'admin', title: 'Anfitrión', icon: '👑',
   async mount(root) {
     if (!S.me.isAdmin) { root.append(h('p', {}, 'Solo para el anfitrión.')); return; }
     const box = h('div', { class: 'stack' });
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '👑 Panel del anfitrión')), box);
+    let tab = 'players';
+    const tabs = h('div', { class: 'seg' });
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '👑 Panel del anfitrión')), tabs, box);
+    const paintTabs = () => tabs.replaceChildren(...[['players', '👥 Jugadores'], ['economy', '🏦 Economía']].map(([id, l]) =>
+      h('button', { class: 'btn' + (tab === id ? ' primary' : ''), onclick: () => { tab = id; paintTabs(); load(); } }, l)));
+    paintTabs();
     async function load() {
+      if (tab === 'economy') { box.replaceChildren(h('p', { class: 'muted' }, 'Cargando…')); const p = await economyPanel(); if (tab === 'economy') box.replaceChildren(p); return; }
       const r = await act('admin:users');
       if (!r) return;
       box.replaceChildren(

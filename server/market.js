@@ -97,6 +97,8 @@ function settle(a, qty, price, seller, buyer) {
   const gross = qty * price;
   const tax = Math.floor(gross * SALES_TAX);
   seller.coins += gross - tax;
+  hub.ledger(seller, gross, 'market_sale', `${qty} × ${a.ref}`);
+  if (tax) hub.ledger(seller, -tax, 'market_tax', `${qty} × ${a.ref}`);
   seller.stats.sold = (seller.stats.sold || 0) + qty;
   buyer.stats.bought = (buyer.stats.bought || 0) + qty;
   const dust = giveGoods(buyer, a, qty);
@@ -147,6 +149,7 @@ function sell(user, payload) {
   let order = null;
   if (left && !instant) {
     user.coins -= fee(left * price);
+    hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
     takeGoods(user, a, left);
     order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now() };
     M().orders.push(order);
@@ -179,6 +182,7 @@ function buy(user, payload) {
     if (!seller) continue;
     const q = Math.min(left, o.qty);
     user.coins -= q * o.price;
+    hub.ledger(user, -q * o.price, 'market_buy', `${q} × ${a.ref}`);
     o.qty -= q; // los artículos ya estaban en depósito en la orden de venta
     settle(a, q, o.price, seller, user);
     spent += q * o.price;
@@ -187,6 +191,8 @@ function buy(user, payload) {
   let order = null;
   if (left && !instant) {
     user.coins -= left * price + fee(left * price);
+    hub.ledger(user, -left * price, 'market_buy', `Pedido: ${left} × ${a.ref}`);
+    hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
     order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now() };
     M().orders.push(order);
     hub.track(user, 'market_list');
@@ -203,7 +209,7 @@ function refundOrder(o) {
   const u = db.userById(o.userId);
   if (!u || o.qty <= 0) return;
   if (o.side === 'sell') giveGoods(u, o, o.qty);
-  else u.coins += o.qty * o.price;
+  else { u.coins += o.qty * o.price; hub.ledger(u, o.qty * o.price, 'market_refund', `${o.qty} × ${o.ref}`); }
   hub.pushMe(u);
 }
 

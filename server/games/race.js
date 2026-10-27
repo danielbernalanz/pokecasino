@@ -115,7 +115,8 @@ function refundAll() {
   if (!race || race.phase === 'results') return;
   for (const [uid, bets] of Object.entries(race.bets)) {
     const u = db.userById(uid);
-    if (u) u.coins += bets.reduce((s, b) => s + b.amount, 0);
+    const back = bets.reduce((s, b) => s + b.amount, 0);
+    if (u) { u.coins += back; hub.gameStat(u, 'race', -back, 0, -bets.length); }
     db.escrowDel('race:' + uid);
   }
   race.bets = {};

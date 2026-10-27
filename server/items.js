@@ -91,6 +91,7 @@ function buy(user, { itemId, qty }) {
   const cost = it.price * qty;
   if (user.coins < cost) throw new Error(`Necesitas ${cost} monedas.`);
   user.coins -= cost;
+  hub.ledger(user, -cost, 'shop', `${qty} × ${it.name}`);
   give(user, itemId, qty);
   return { itemId, qty, cost };
 }

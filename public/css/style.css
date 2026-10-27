@@ -929,3 +929,41 @@ details.rules[open] summary { margin-bottom: 6px; }
 .emote-pick img { width: 44px; height: 44px; display: block; margin: auto; }
 .emote-pick:hover { border-color: var(--gold); }
 @media (max-width: 760px) { .emote-pop { bottom: calc(var(--tabbar-h, 60px) + 70px + env(safe-area-inset-bottom)); left: 10px; right: 10px; width: auto; } }
+
+/* ---------- Historial de monedas y economía ---------- */
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.cards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.hc-wrap { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 6px; align-items: stretch; }
+.hc-scale { display: flex; flex-direction: column; justify-content: space-between; padding: 8px 0 26px; text-align: right; font-variant-numeric: tabular-nums; }
+.hc-svg { width: 100%; height: auto; display: block; touch-action: pan-y; cursor: crosshair; }
+.hc-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.hc-line { fill: none; stroke: var(--gold); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.hc-area { fill: #ffcb0514; }
+.hc-axis { fill: var(--muted); font-size: 11px; }
+.hc-cross { stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.hc-dot { fill: var(--gold); stroke: var(--panel); stroke-width: 2; }
+.hc-tip { position: absolute; top: -6px; background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; pointer-events: none; white-space: nowrap; box-shadow: var(--shadow); z-index: 2; }
+.hc-tip.hidden { display: none; }
+.hg-list, .eb-list, .hl-list { display: flex; flex-direction: column; gap: 6px; }
+.hg-row { display: grid; grid-template-columns: minmax(80px, 110px) 1fr auto 46px; gap: 8px; align-items: center; font-size: 13px; }
+.hg-track { position: relative; height: 12px; }
+.hg-zero { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.hg-bar { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.hg-bar.pos { left: calc(50% + 1px); background: var(--good); border-radius: 0 4px 4px 0; }
+.hg-bar.neg { right: calc(50% + 1px); background: var(--bad); border-radius: 4px 0 0 4px; }
+.hg-val, .hl-row b, .eb-row b { font-variant-numeric: tabular-nums; text-align: right; }
+.hl-list { max-height: 360px; overflow-y: auto; }
+.hl-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.eb-row { display: grid; grid-template-columns: minmax(110px, 1fr) 1.2fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.eb-track { height: 10px; }
+.eb-track i { display: block; height: 100%; border-radius: 0 4px 4px 0; min-width: 2px; }
+.eb-track i.src { background: var(--good); }
+.eb-track i.sink { background: var(--bad); }
+@media (max-width: 520px) {
+  .hg-row { grid-template-columns: 74px 1fr auto; }
+  .hg-n { display: none; }
+  .hl-row { grid-template-columns: 1fr auto; }
+  .hl-row > span.muted { grid-column: 1; grid-row: 2; }
+  .hl-row > b { grid-row: 1 / span 2; align-self: center; }
+  .eb-row { grid-template-columns: 1fr 70px auto; }
+}

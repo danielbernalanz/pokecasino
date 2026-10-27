@@ -164,7 +164,7 @@ function refundEscrow() {
   let total = 0;
   for (const { userId, amount } of Object.values(data.escrow)) {
     const u = data.users[userId];
-    if (u) { u.coins += amount; n++; total += amount; }
+    if (u) { u.coins += amount; n++; total += amount; require('./hub').ledger(u, amount, 'refund', 'Partida interrumpida por una actualización'); }
   }
   data.escrow = {};
   save();

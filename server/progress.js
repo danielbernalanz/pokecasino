@@ -92,7 +92,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 function grant(user, reward, reason) {
   const parts = [];
-  if (reward.coins) { user.coins += reward.coins; parts.push(`${reward.coins.toLocaleString('es')} monedas`); }
+  if (reward.coins) { user.coins += reward.coins; hub.ledger(user, reward.coins, 'reward', reason); parts.push(`${reward.coins.toLocaleString('es')} monedas`); }
   for (const [id, n] of Object.entries(reward.items || {})) {
     user.items[id] = (user.items[id] || 0) + n;
     parts.push(`${n}× ${require('./items').ITEMS[id].name}`);

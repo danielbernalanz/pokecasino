@@ -142,6 +142,7 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
     const cost = COST[count];
     if (user.coins < cost) throw new Error(`Necesitas ${cost} monedas.`);
     user.coins -= cost;
+    hub.ledger(user, -cost, 'gacha', `×${count}`);
   }
   const p = pity(user, banner);
   const results = [];
@@ -202,6 +203,7 @@ function exchangeDust(user, { amount }) {
   if (!Number.isInteger(amount) || amount <= 0 || amount > user.dust) throw new Error('Cantidad no válida.');
   user.dust -= amount;
   user.coins += amount * DUST_RATE;
+  hub.ledger(user, amount * DUST_RATE, 'dust', `${amount} ✦`);
   db.save();
   return { coins: amount * DUST_RATE };
 }

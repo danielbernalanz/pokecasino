@@ -33,6 +33,76 @@ function feed(kind, text, extra = {}) {
   broadcast('feed', item);
 }
 
+// ---- Historial de monedas (jugador) y estadísticas de economía (anfitrión) ----
+// Cada movimiento que no es una partida queda en `user.hist.log` (últimos 100); las partidas se resumen
+// por juego. `db.data.econ` suma por día lo que entra y sale de la economía para el panel del anfitrión.
+const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
+const HIST_DAYS = 60;
+const ECON_DAYS = 45;
+// Movimientos entre jugadores (no crean ni destruyen monedas).
+const TRANSFERS = new Set(['gift_in', 'gift_out', 'market_sale', 'market_buy', 'market_refund', 'poker_in', 'poker_out', 'refund']);
+function prune(obj, keep) {
+  const keys = Object.keys(obj).sort();
+  for (const k of keys.slice(0, Math.max(0, keys.length - keep))) delete obj[k];
+}
+function histOf(u) {
+  if (!u.hist) u.hist = { days: {}, games: {}, log: [] };
+  return u.hist;
+}
+function daySnap(u) {
+  const hst = histOf(u);
+  const k = dayKey();
+  let d = hst.days[k];
+  if (!d) { d = hst.days[k] = { c: u.coins, hi: u.coins, lo: u.coins }; prune(hst.days, HIST_DAYS); }
+  d.c = u.coins;
+  if (u.coins > d.hi) d.hi = u.coins;
+  if (u.coins < d.lo) d.lo = u.coins;
+}
+function econDay() {
+  const e = (db.data.econ ||= { days: {} });
+  const k = dayKey();
+  if (!e.days[k]) { e.days[k] = { src: {}, sink: {}, bet: {}, paid: {}, rounds: {}, active: [] }; prune(e.days, ECON_DAYS); }
+  return e.days[k];
+}
+function econActive(u) {
+  const d = econDay();
+  if (!d.active.includes(u.id)) d.active.push(u.id);
+}
+function ledger(user, delta, reason, label) {
+  delta = Math.round(Number(delta) || 0);
+  if (!user || !delta) return;
+  const hst = histOf(user);
+  hst.log.push(label ? { t: Date.now(), d: delta, r: reason, l: String(label).slice(0, 60) } : { t: Date.now(), d: delta, r: reason });
+  if (hst.log.length > 100) hst.log.splice(0, hst.log.length - 100);
+  daySnap(user);
+  if (!TRANSFERS.has(reason)) {
+    const d = econDay();
+    const side = delta > 0 ? d.src : d.sink;
+    side[reason] = (side[reason] || 0) + Math.abs(delta);
+  }
+}
+// `round`: +1 una partida nueva, 0 apuesta extra (doblar, dividir), −1 apuesta devuelta.
+function gameStat(user, game, bet, won, round = bet > 0 ? 1 : 0) {
+  if (!game) return;
+  const g = (histOf(user).games[game] ||= { bet: 0, won: 0, n: 0 });
+  g.bet += bet; g.won += won; g.n = Math.max(0, g.n + round);
+  daySnap(user);
+  const d = econDay();
+  if (bet) { d.bet[game] = (d.bet[game] || 0) + bet; d.rounds[game] = Math.max(0, (d.rounds[game] || 0) + round); }
+  if (won) d.paid[game] = (d.paid[game] || 0) + won;
+  econActive(user);
+}
+function history(user) {
+  const hst = histOf(user);
+  daySnap(user);
+  const days = Object.entries(hst.days).sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, d]) => ({ date, ...d }));
+  return { days, games: hst.games, log: hst.log, names: GAME_LABELS };
+}
+const GAME_LABELS = {
+  slots: 'Pika-Slots', roulette: 'Ruleta', voltorb: 'Voltorb Flip', race: 'Carrera', duel: 'Duelos', blackjack: 'Blackjack',
+  videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas', crash: 'Crash', poker: "Hold'em",
+};
+
 // ---- Nivel de entrenador ----
 const xpForLevel = (lvl) => 100 * (lvl - 1) * (lvl - 1);
 
@@ -47,6 +117,7 @@ function addXp(user, amount) {
     // si no, jugar mucho daría dinero seguro.
     const reward = 5 * user.level;
     user.coins += reward;
+    ledger(user, reward, 'level', `Nivel ${user.level}`);
     leveled = true;
     // Premios en objetos: Caramelo Raro cada nivel y Master Ball cada 5.
     const bonusItem = user.level % 5 === 0 ? 'master-ball' : 'rare-candy';
@@ -75,7 +146,9 @@ function validAmount(n, user) {
   return Number.isInteger(n) && n >= MIN_BET && n <= (user ? maxBetFor(user) : MAX_BET_BY_BADGES[8]);
 }
 
-function takeBet(user, amount, game) {
+// `extra`: apuesta añadida a una partida ya empezada (doblar o dividir en Blackjack); `quiet`: no cuenta como
+// «partida jugada» para las misiones (los duelos tienen sus propios eventos).
+function takeBet(user, amount, game, { extra = false, quiet = false } = {}) {
   amount = Number(amount);
   if (!validAmount(amount, user)) {
     throw new Error(`La apuesta debe ser un entero entre ${MIN_BET} y ${maxBetFor(user).toLocaleString('es')}. Consigue medallas para subir el límite.`);
@@ -83,8 +156,9 @@ function takeBet(user, amount, game) {
   if (user.coins < amount) throw new Error('No tienes suficientes monedas.');
   user.coins -= amount;
   user.stats.wagered += amount;
+  gameStat(user, game, amount, 0, extra ? 0 : 1);
   addXp(user, amount / 10);
-  if (game) track(user, 'play', { game });
+  if (game && !extra && !quiet) track(user, 'play', { game });
   db.save();
   return amount;
 }
@@ -108,6 +182,7 @@ function pay(user, amount, stake, game, { noBonus = false } = {}) {
   const total = amount + bonus;
   user.coins += total;
   user.stats.won += total;
+  gameStat(user, game, 0, total);
   if (total - stake > user.stats.biggestWin) user.stats.biggestWin = total - stake;
   if (profit >= 5000 || (stake > 0 && amount >= stake * 20 && profit >= 1000)) {
     feed('win', `${user.username} ganó ${total.toLocaleString('es')} monedas en ${GAME_NAMES[game] || game}`);
@@ -144,6 +219,6 @@ function privateUser(u) {
   };
 }
 
-const pushMe = (u) => emitUser(u.id, 'me', privateUser(u));
+const pushMe = (u) => { daySnap(u); emitUser(u.id, 'me', privateUser(u)); };
 
-module.exports = { MAX_BET_BY_BADGES, looks, GAME_NAMES, maxBetFor, track, setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };
+module.exports = { ledger, gameStat, history, econDay, econActive, daySnap, GAME_LABELS, dayKey, MAX_BET_BY_BADGES, looks, GAME_NAMES, maxBetFor, track, setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };

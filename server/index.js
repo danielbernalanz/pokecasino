@@ -126,6 +126,7 @@ function claimDaily(user) {
   user.daily.last = today();
   const reward = 1000 + 250 * (Math.min(user.daily.streak, 7) - 1);
   user.coins += reward;
+  hub.ledger(user, reward, 'daily', `Racha ${user.daily.streak}`);
   user.items.ticket = (user.items.ticket || 0) + 1;
   const charm = user.daily.streak % 7 === 0;
   if (charm) user.items['shiny-charm'] = (user.items['shiny-charm'] || 0) + 1;
@@ -142,6 +143,7 @@ function heal(user) {
   if (wait > 0) throw new Error(`Vuelve en ${Math.ceil(wait / 60000)} min.`);
   user.lastHeal = Date.now();
   user.coins += 1000;
+  hub.ledger(user, 1000, 'heal');
   db.save();
   return { coins: 1000 };
 }
@@ -198,6 +200,8 @@ function giftCoins(user, { to, amount }) {
   if (!Number.isInteger(amount) || amount < 1 || amount > user.coins) throw new Error('Cantidad no válida.');
   user.coins -= amount;
   t.coins += amount;
+  hub.ledger(user, -amount, 'gift_out', t.username);
+  hub.ledger(t, amount, 'gift_in', user.username);
   db.save();
   hub.emitUser(t.id, 'toast', { kind: 'gift', text: `🎁 ${user.username} te regaló ${amount.toLocaleString('es')} monedas` });
   hub.pushMe(t);
@@ -255,7 +259,35 @@ const myDms = (user) => (db.data.dms || []).filter((m) => m.user === user.userna
 
 // ---- Administración ----
 function requireAdmin(user) { if (!user.isAdmin) throw new Error('Solo administradores.'); }
+// Registro de lo que hacen los anfitriones (últimas 200 acciones).
+function adminLog(user, action, target, detail) {
+  db.data.adminLog ||= [];
+  db.data.adminLog.push({ at: Date.now(), by: user.username, action, target: target || null, detail: detail || null });
+  if (db.data.adminLog.length > 200) db.data.adminLog.splice(0, db.data.adminLog.length - 200);
+}
+// Foto de la economía: monedas en circulación, de dónde salen y a dónde van, y actividad por día.
+function economy() {
+  const users = Object.values(db.data.users);
+  const wallets = users.reduce((s, u) => s + u.coins, 0);
+  const escrow = Object.values(db.data.escrow).reduce((s, e) => s + e.amount, 0);
+  const listed = users.reduce((s, u) => s + market.lockedIn(u), 0);
+  const days = Object.entries((db.data.econ || { days: {} }).days).sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([date, d]) => ({ date, src: d.src, sink: d.sink, bet: d.bet, paid: d.paid, rounds: d.rounds, active: d.active.length }));
+  const week = Date.now() - 7 * 864e5;
+  const rich = [...users].sort((a, b) => b.coins - a.coins);
+  return {
+    total: wallets + escrow + listed, wallets, escrow, market: listed,
+    players: users.length, active7: users.filter((u) => (u.lastSeen || u.createdAt) > week).length,
+    top10share: wallets ? rich.slice(0, Math.max(1, Math.ceil(users.length / 10))).reduce((s, u) => s + u.coins, 0) / wallets : 0,
+    median: rich.length ? rich[Math.floor(rich.length / 2)].coins : 0,
+    days, names: hub.GAME_LABELS, log: (db.data.adminLog || []).slice(-60).reverse(),
+  };
+}
 const admin = {
+  economy(user) {
+    requireAdmin(user);
+    return { economy: economy() };
+  },
   users(user) {
     requireAdmin(user);
     return {
@@ -272,6 +304,7 @@ const admin = {
     requireAdmin(user);
     const code = crypto.randomBytes(4).toString('hex').toUpperCase();
     db.data.invites[code] = { createdBy: user.username, createdAt: Date.now(), usedBy: null };
+    adminLog(user, 'invite', null, code);
     db.save();
     return { code };
   },
@@ -280,7 +313,10 @@ const admin = {
     const t = db.userByName(username);
     delta = Number(delta);
     if (!t || !Number.isInteger(delta) || Math.abs(delta) > 1e9) throw new Error('Datos no válidos (máximo ±1.000.000.000).');
+    const before = t.coins;
     t.coins = Math.min(1e12, Math.max(0, t.coins + delta));
+    hub.ledger(t, t.coins - before, 'admin', user.username);
+    adminLog(user, 'coins', t.username, `${delta > 0 ? '+' : ''}${delta.toLocaleString('es')} monedas`);
     db.save();
     hub.pushMe(t);
     return {};
@@ -290,6 +326,7 @@ const admin = {
     const t = db.userByName(username);
     if (!t || t.id === user.id) throw new Error('Jugador no válido.');
     t.banned = !!banned;
+    adminLog(user, banned ? 'ban' : 'unban', t.username);
     if (t.banned) {
       for (const [k, s] of Object.entries(db.data.sessions)) if (s.userId === t.id) delete db.data.sessions[k];
       io.in('u:' + t.id).disconnectSockets(true);
@@ -302,6 +339,7 @@ const admin = {
     const t = db.userByName(username);
     if (!t || typeof password !== 'string' || password.length < 6) throw new Error('Datos no válidos.');
     Object.assign(t, auth.hashPassword(password));
+    adminLog(user, 'reset', t.username);
     for (const [k, s] of Object.entries(db.data.sessions)) if (s.userId === t.id) delete db.data.sessions[k];
     io.in('u:' + t.id).disconnectSockets(true);
     db.save();
@@ -312,6 +350,7 @@ const admin = {
     const t = db.userByName(username);
     if (!t || t.id === user.id) throw new Error('Jugador no válido.');
     t.isAdmin = !!isAdmin;
+    adminLog(user, isAdmin ? 'admin' : 'unadmin', t.username);
     db.save();
     hub.pushMe(t);
     return {};
@@ -340,6 +379,8 @@ io.on('connection', (socket) => {
   const uid = socket.data.userId;
   socket.join('u:' + uid);
   online.set(uid, (online.get(uid) || 0) + 1);
+  const meNow = db.userById(uid);
+  if (meNow) { meNow.lastSeen = Date.now(); hub.econActive(meNow); }
   pushOnline();
 
   // Limitador de eventos por socket.
@@ -386,6 +427,7 @@ io.on('connection', (socket) => {
   on('shop:craft', gacha.craft);
   on('shop:exchange', gacha.exchangeDust);
   on('shop:release', gacha.release);
+  on('me:history', (u) => ({ history: hub.history(u) }), { push: false });
   on('buddy:set', setBuddy);
   on('item:buy', items.buy);
   on('item:use', items.use);

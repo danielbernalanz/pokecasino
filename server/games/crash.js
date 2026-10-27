@@ -112,7 +112,7 @@ function refundAll() {
   if (!round || round.phase === 'crashed') return;
   for (const b of Object.values(round.bets)) {
     const u = db.userById(b.userId);
-    if (u && !b.cashedAt) u.coins += b.amount;
+    if (u && !b.cashedAt) { u.coins += b.amount; hub.gameStat(u, 'crash', -b.amount, 0, -1); }
     db.escrowDel('crash:' + b.userId);
   }
   round.bets = {};

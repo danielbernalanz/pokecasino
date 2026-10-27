@@ -86,7 +86,8 @@ function sit(user, { table, seat, buyIn }) {
   if (user.coins < buyIn) throw new Error('No tienes suficientes monedas.');
   if ((user.progress ? user.progress.badges.length : 0) < t.badges) throw new Error(`Necesitas ${t.badges} medallas para sentarte en esta mesa.`);
   user.coins -= buyIn;
-  t.seats[seat] = { userId: user.id, username: user.username, buddy: user.buddy, ...hub.looks(user), stack: buyIn, sittingOut: false, missed: 0, leaving: false };
+  hub.ledger(user, -buyIn, 'poker_in', t.name);
+  t.seats[seat] = { userId: user.id, username: user.username, buddy: user.buddy, ...hub.looks(user), stack: buyIn, bought: buyIn, sittingOut: false, missed: 0, leaving: false };
   note(t, `${user.username} se sienta con ${buyIn} fichas.`);
   db.save();
   push(t);
@@ -99,7 +100,12 @@ function cashOut(t, i) {
   if (!s) return;
   db.escrowDel(`poker:${t.id}:${s.userId}`);
   const u = db.userById(s.userId);
-  if (u) { u.coins += s.stack; hub.pushMe(u); }
+  if (u) {
+    u.coins += s.stack;
+    hub.ledger(u, s.stack, 'poker_out', t.name);
+    if (s.bought) { hub.gameStat(u, 'poker', s.bought, 0); hub.gameStat(u, 'poker', 0, s.stack); }
+    hub.pushMe(u);
+  }
   note(t, `${s.username} se levanta con ${s.stack} fichas.`);
   t.seats[i] = null;
   db.save();
@@ -149,6 +155,8 @@ function rebuy(user, { table, amount }) {
   if (user.coins < amount) throw new Error('No tienes suficientes monedas.');
   user.coins -= amount;
   s.stack += amount;
+  s.bought = (s.bought || 0) + amount;
+  hub.ledger(user, -amount, 'poker_in', t.name);
   db.save();
   push(t);
   maybeStart(t);
@@ -417,7 +425,8 @@ function refundAll() {
     t.seats.forEach((s, i) => {
       if (!s) return;
       const u = db.userById(s.userId);
-      if (u) u.coins += s.stack + (t.hand && !t.hand.finished ? t.hand.contrib[i] : 0);
+      const back = s.stack + (t.hand && !t.hand.finished ? t.hand.contrib[i] : 0);
+      if (u) { u.coins += back; hub.ledger(u, back, 'poker_out', t.name); }
       db.escrowDel(`poker:${t.id}:${s.userId}`);
     });
   }

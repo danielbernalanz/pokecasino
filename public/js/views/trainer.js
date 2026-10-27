@@ -1,3 +1,4 @@
+import { historyCard } from './history.js';
 import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, RAR_NAME, playingCard } from '../core.js';
 
 // Cuántos anuncios hay en el Mercado de un Pokémon (para animar a comprar la pieza que falta).
@@ -17,7 +18,10 @@ export default {
   id: 'trainer', title: 'Mi Entrenador', icon: '🏅',
   async mount(root) {
     const body = h('div', { class: 'stack' });
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏅 Mi Entrenador'), h('p', { class: 'muted' }, 'Medallas, colecciones y tu aspecto ante los demás.')), body);
+    const hist = h('div', {});
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏅 Mi Entrenador'), h('p', { class: 'muted' }, 'Medallas, colecciones, tu aspecto y tus cuentas.')), body,
+      h('h2', { class: 'section-title' }, 'Historial'), hist);
+    historyCard().then((c) => hist.replaceChildren(c));
     let counts = {};
 
     function render() {

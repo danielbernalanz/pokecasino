@@ -38,7 +38,7 @@ function create(user, { pokeId, shiny, wager, target }) {
     target = t.username;
   }
   // Se cobra al final de las comprobaciones: si algo falla no se pierde la apuesta.
-  if (wager !== 0) hub.takeBet(user, wager);
+  if (wager !== 0) hub.takeBet(user, wager, 'duel', { quiet: true });
   const d = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, wager, poke, target: target || null, createdAt: Date.now() };
   open.set(d.id, d);
   db.escrowSet('duel:' + d.id, user.id, wager);
@@ -53,7 +53,7 @@ function create(user, { pokeId, shiny, wager, target }) {
 function refund(d) {
   db.escrowDel('duel:' + d.id);
   const u = db.userById(d.creatorId);
-  if (u && d.wager) { u.coins += d.wager; u.stats.wagered -= d.wager; hub.pushMe(u); }
+  if (u && d.wager) { u.coins += d.wager; u.stats.wagered -= d.wager; hub.gameStat(u, 'duel', -d.wager, 0, -1); hub.pushMe(u); }
   db.save();
 }
 
@@ -72,7 +72,7 @@ function accept(user, { id, pokeId, shiny }) {
   if (d.creatorId === user.id) throw new Error('No puedes aceptar tu propio reto.');
   if (d.target && d.target !== user.username) throw new Error('Este reto es para otro entrenador.');
   const poke = ownedPick(user, { pokeId, shiny });
-  if (d.wager) hub.takeBet(user, d.wager);
+  if (d.wager) hub.takeBet(user, d.wager, 'duel', { quiet: true });
   open.delete(id);
   db.escrowDel('duel:' + d.id);
   const creator = db.userById(d.creatorId);

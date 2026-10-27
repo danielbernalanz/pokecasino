@@ -71,13 +71,13 @@ function act(user, { action }) {
     h.done = true;
   } else if (action === 'double') {
     if (!canDouble(user, g)) throw new Error('No puedes doblar ahora.');
-    hub.takeBet(user, h.bet);
+    hub.takeBet(user, h.bet, 'blackjack', { extra: true });
     h.bet *= 2;
     h.cards.push(g.shoe.pop());
     h.done = true;
   } else if (action === 'split') {
     if (!canSplit(user, g)) throw new Error('No puedes dividir ahora.');
-    hub.takeBet(user, h.bet);
+    hub.takeBet(user, h.bet, 'blackjack', { extra: true });
     const aces = rankOf(h.cards[0]) === 14;
     const second = { cards: [h.cards.pop(), g.shoe.pop()], bet: h.bet, done: aces, split: true, aceSplit: aces };
     h.cards.push(g.shoe.pop());
