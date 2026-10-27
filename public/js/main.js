@@ -144,11 +144,18 @@ function connect() {
   socket.on('connect_error', (err) => {
     if (err.message === 'auth') { try { localStorage.removeItem('token'); } catch { /* nada */ } socket.disconnect(); showAuth(); }
     else if (err.message === 'red') { socket.disconnect(); showAuth(); $('#auth-error').textContent = 'Tu red no tiene acceso a este casino.'; }
+    else if (err.message === 'starting') {
+      // Los errores del middleware no reconectan solos: se reintenta a mano.
+      $('#conn').textContent = 'Actualizando el casino…';
+      $('#conn').classList.remove('hidden');
+      setTimeout(() => { if (S.socket === socket) socket.connect(); }, 2000);
+    }
     else $('#conn').classList.remove('hidden');
   });
   socket.on('disconnect', () => $('#conn').classList.remove('hidden'));
   socket.on('connect', async () => {
     $('#conn').classList.add('hidden');
+    $('#conn').textContent = 'Reconectando…';
     const res = await emit('hello').catch((e) => { toast(e.message, 'error'); return null; });
     if (!res) return;
     $('#auth').classList.add('hidden');

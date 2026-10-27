@@ -43,10 +43,19 @@ function load(raw) {
 try { load(JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch { load(null); /* base nueva */ }
 
 // ---- Postgres opcional (DATABASE_URL): para alojamientos sin disco persistente ----
+// En un redespliegue, Render arranca la instancia nueva antes de apagar la vieja. Para que no se
+// pierda nada, solo una instancia puede escribir a la vez (owner): la nueva espera a que la vieja
+// guarde su último estado y libere la base, y solo entonces carga los datos.
+const crypto = require('crypto');
+const INSTANCE = crypto.randomUUID();
+const LEASE_SECONDS = 45;
 let pool = null;
 let pgPending = null;
 let pgDirty = false;
 let pgTimer = null;
+let heartbeat = null;
+let lostLease = false;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function init() {
   if (!process.env.DATABASE_URL) return;
@@ -55,24 +64,67 @@ async function init() {
   const ssl = /sslmode=require/.test(url) || process.env.PGSSL === '1' ? { rejectUnauthorized: false } : false;
   pool = new Pool({ connectionString: url, ssl, max: 2 });
   await pool.query('CREATE TABLE IF NOT EXISTS pokecasino_state (id INT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())');
-  const r = await pool.query('SELECT data FROM pokecasino_state WHERE id = 1');
-  if (r.rows[0]) load(r.rows[0].data);
+  await pool.query('ALTER TABLE pokecasino_state ADD COLUMN IF NOT EXISTS owner TEXT');
+  await pool.query('ALTER TABLE pokecasino_state ADD COLUMN IF NOT EXISTS heartbeat TIMESTAMPTZ');
+  let waited = false;
+  for (;;) {
+    // Base nueva: se crea ya reservada para esta instancia.
+    const ins = await pool.query(
+      "INSERT INTO pokecasino_state (id, data, owner, heartbeat) VALUES (1, '{}'::jsonb, $1, now()) ON CONFLICT (id) DO NOTHING RETURNING data",
+      [INSTANCE],
+    );
+    if (ins.rowCount) break;
+    // Base existente: se reserva si está libre o si la instancia anterior dejó de dar señales.
+    const r = await pool.query(
+      `UPDATE pokecasino_state SET owner = $1, heartbeat = now()
+       WHERE id = 1 AND (owner IS NULL OR heartbeat IS NULL OR heartbeat < now() - interval '${LEASE_SECONDS} seconds')
+       RETURNING data`,
+      [INSTANCE],
+    );
+    if (r.rowCount) { load(Object.keys(r.rows[0].data).length ? r.rows[0].data : null); break; }
+    if (!waited) { console.log('  ⏳ Esperando a que la versión anterior guarde y libere los datos…'); waited = true; }
+    await sleep(1000);
+  }
+  heartbeat = setInterval(() => {
+    pool.query('UPDATE pokecasino_state SET heartbeat = now() WHERE id = 1 AND owner = $1', [INSTANCE])
+      .then((r) => { if (!r.rowCount) onLostLease(); })
+      .catch((e) => console.error('Postgres (latido):', e.message));
+  }, 10000);
+  heartbeat.unref();
   console.log(`  🐘 Datos en Postgres (${Object.keys(data.users).length} jugadores cargados)`);
 }
 
+// Otra instancia tomó el control: esta deja de escribir para no pisar sus datos.
+function onLostLease() {
+  if (lostLease) return;
+  lostLease = true;
+  console.error('Otra instancia controla ahora los datos: esta deja de guardar y se cierra.');
+  setTimeout(() => process.exit(0), 1000);
+}
+
 async function pgWrite() {
-  if (!pool) return;
+  if (!pool || lostLease) return;
   if (pgPending) { pgDirty = true; return pgPending; }
   pgDirty = false;
   pgPending = pool.query(
-    'INSERT INTO pokecasino_state (id, data, updated_at) VALUES (1, $1, now()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()',
-    [JSON.stringify(data)],
-  ).catch((e) => console.error('Error guardando en Postgres:', e.message)).finally(() => {
-    pgPending = null;
-    if (pgDirty) pgWrite();
-  });
+    'UPDATE pokecasino_state SET data = $1, updated_at = now(), heartbeat = now() WHERE id = 1 AND owner = $2',
+    [JSON.stringify(data), INSTANCE],
+  ).then((r) => { if (!r.rowCount) onLostLease(); })
+    .catch((e) => console.error('Error guardando en Postgres:', e.message)).finally(() => {
+      pgPending = null;
+      if (pgDirty) pgWrite();
+    });
   return pgPending;
 }
+
+// Libera la base para que la siguiente instancia pueda cargarla (tras el guardado final).
+async function release() {
+  if (!pool || lostLease) return;
+  clearInterval(heartbeat);
+  await pool.query('UPDATE pokecasino_state SET owner = NULL WHERE id = 1 AND owner = $1', [INSTANCE]).catch((e) => console.error(e.message));
+}
+
+const isReadOnly = () => lostLease;
 
 let timer = null;
 function flush() {
@@ -103,4 +155,4 @@ function addUser(u) {
 const userByName = (name) => byName.get(String(name || '').toLowerCase());
 const userById = (id) => data.users[id];
 
-module.exports = { data, save, flush, flushAll, init, addUser, userByName, userById };
+module.exports = { data, save, flush, flushAll, init, release, isReadOnly, addUser, userByName, userById };

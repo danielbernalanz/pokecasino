@@ -35,6 +35,11 @@ app.disable('x-powered-by');
 // Comprobación de salud para plataformas de alojamiento (no expone datos).
 app.get('/healthz', (req, res) => res.send('ok'));
 
+// Mientras se cargan los datos (o durante un redespliegue) no se aceptan acciones.
+let ready = false;
+const BUSY = 'El casino se está actualizando, vuelve a intentarlo en unos segundos.';
+app.use('/api', (req, res, next) => (ready || req.path === '/static' ? next() : res.status(503).json({ ok: false, error: BUSY })));
+
 // ---- Filtro de red y cabeceras ----
 app.use((req, res, next) => {
   if (!net.isAllowed(req.ip)) return res.status(403).send('Acceso restringido a la red privada.');
@@ -279,6 +284,7 @@ function clientIp(socket) {
 }
 
 io.use((socket, next) => {
+  if (!ready) return next(new Error('starting'));
   if (!net.isAllowed(clientIp(socket))) return next(new Error('red'));
   const user = auth.userFromToken(socket.handshake.auth && socket.handshake.auth.token);
   if (!user) return next(new Error('auth'));
@@ -300,6 +306,7 @@ io.on('connection', (socket) => {
     socket.on(name, (payload, ack) => {
       if (typeof ack !== 'function') ack = () => {};
       if (--tokens < 0) return ack({ ok: false, error: 'Demasiadas acciones, respira un momento.' });
+      if (!ready) return ack({ ok: false, error: BUSY });
       const user = db.userById(uid);
       if (!user || user.banned) return ack({ ok: false, error: 'Sesión no válida.' });
       try {
@@ -381,28 +388,35 @@ let stopping = false;
 async function shutdown() {
   if (stopping) return;
   stopping = true;
+  // Si aún no había cargado los datos no tiene nada que guardar (ni debe pisar los de otra instancia).
+  if (!ready) process.exit(0);
+  ready = false;
   race.refundAll();
   duel.refundAll();
   crash.refundAll();
   holdem.refundAll();
   await db.flushAll().catch((e) => console.error(e));
+  await db.release();
+  console.log('  💾 Datos guardados y liberados.');
   process.exit(0);
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-(async () => {
-  await db.init();
+// Se escucha enseguida (Render comprueba /healthz) pero el juego se abre al cargar los datos.
+server.listen(config.PORT, config.HOST, onListen);
+db.init().then(() => {
+  if (stopping) return;
+  ready = true;
   race.start();
   crash.start();
-  server.listen(config.PORT, config.HOST, onListen);
-})().catch((e) => { console.error('No se pudo arrancar:', e); process.exit(1); });
+  console.log('  ✅ Casino abierto');
+  if (!Object.keys(db.data.users).length) console.log('  👑 El primer jugador que se registre será administrador.');
+}).catch((e) => { console.error('No se pudo arrancar:', e); process.exit(1); });
 
 function onListen() {
-  const users = Object.keys(db.data.users).length;
   console.log(`\n  🎰 PokéCasino escuchando en http://${config.HOST}:${config.PORT}`);
   console.log(`  🔒 Modo de red: ${config.NETWORK_MODE}${config.ALLOW_CIDRS.length ? ' + ' + config.ALLOW_CIDRS.join(', ') : ''}`);
   console.log(config.OPEN_REGISTRATION ? '  🔓 Registro abierto (sin código de invitación)' : `  🔑 Código de invitación maestro: ${config.ACCESS_KEY}`);
-  if (!users) console.log('  👑 El primer jugador que se registre será administrador.');
   console.log('');
 }
