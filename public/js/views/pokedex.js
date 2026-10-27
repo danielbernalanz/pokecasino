@@ -1,7 +1,7 @@
 import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus } from '../core.js';
 import { openItem } from './market.js';
 
-let filter = { q: '', show: 'all', rarity: '', type: '', gen: '' };
+let filter = { q: '', show: null, rarity: '', type: '', gen: '' };
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
 
 export function openDetail(id) {
@@ -45,6 +45,8 @@ export function openDetail(id) {
 export default {
   id: 'pokedex', title: 'Pokédex', icon: '📕',
   mount(root) {
+    // La primera vez se abre en «Atrapados» si ya tienes alguno (con 1.025 es lo más útil).
+    if (filter.show === null) filter.show = Object.keys(S.me.collection).length ? 'owned' : 'all';
     const grid = h('div', { class: 'dex-grid' });
     const BATCH = 150;
     let observer = null;
