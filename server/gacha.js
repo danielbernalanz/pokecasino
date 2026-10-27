@@ -1,0 +1,163 @@
+'use strict';
+// Gacha "Poké Ball Gacha": banners con destacados, sistema de pity y variocolores.
+const db = require('./db');
+const hub = require('./hub');
+const { BY_ID, BY_RARITY, RARITY } = require('./pokedex');
+const { rand, pick, weighted } = require('./rng');
+
+const COST = { 1: 150, 10: 1350 };
+const SHINY_RATE = 1 / 64;
+// Probabilidades base por tirada.
+const RATES = { C: 0.5, U: 0.28, R: 0.15, E: 0.055, L: 0.013, M: 0.002 };
+const SOFT_PITY = 60;
+const HARD_PITY = 80;
+
+const BANNERS = [
+  {
+    id: 'kanto', name: 'Clásico de Kanto', art: 25, theme: '#e3350d',
+    desc: 'Todos los Pokémon disponibles, sin destacados. Ideal para completar la Pokédex.',
+    featuredL: [], featuredE: [],
+  },
+  {
+    id: 'aves', name: 'Alas Legendarias', art: 145, theme: '#3b82f6',
+    desc: 'Articuno, Zapdos y Moltres con probabilidad aumentada. Charizard, Dragonite y Aerodactyl destacados.',
+    featuredL: [144, 145, 146], featuredE: [6, 149, 142],
+  },
+  {
+    id: 'psi', name: 'Laboratorio Psíquico', art: 150, theme: '#a855f7',
+    desc: 'Mewtwo destacado y probabilidad doble de Mew. Alakazam y Gengar destacados.',
+    featuredL: [150], featuredE: [65, 94], mythicBoost: 2,
+  },
+  {
+    id: 'johto', name: 'Leyendas de Johto', art: 249, theme: '#f59e0b',
+    desc: 'Lugia, Ho-Oh y las bestias legendarias. Tyranitar y Scizor destacados.',
+    featuredL: [243, 244, 245, 249, 250], featuredE: [248, 212],
+  },
+];
+const BANNER_BY_ID = new Map(BANNERS.map((b) => [b.id, b]));
+
+function pity(user, banner) {
+  return (user.pity[banner.id] ||= { sinceL: 0, sinceR: 0, guaranteed: false });
+}
+
+function rollRarity(p, banner) {
+  p.sinceL++;
+  p.sinceR++;
+  const mRate = RATES.M * (banner.mythicBoost || 1);
+  let top = RATES.L + mRate;
+  if (p.sinceL >= SOFT_PITY) top += (p.sinceL - SOFT_PITY + 1) * 0.06;
+  if (p.sinceL >= HARD_PITY) top = 1;
+  if (rand() < top) {
+    p.sinceL = 0;
+    p.sinceR = 0;
+    return rand() < mRate / (RATES.L + mRate) ? 'M' : 'L';
+  }
+  let pool = ['C', 'U', 'R', 'E'];
+  if (p.sinceR >= 10) pool = ['R', 'E'];
+  const r = weighted(pool, (k) => RATES[k]);
+  if (r === 'R' || r === 'E') p.sinceR = 0;
+  return r;
+}
+
+function rollPokemon(rarity, p, banner) {
+  const all = BY_RARITY[rarity];
+  if (rarity === 'L' && banner.featuredL.length) {
+    const featured = p.guaranteed || rand() < 0.5;
+    const pool = all.filter((x) => banner.featuredL.includes(x.id) === featured);
+    p.guaranteed = !featured;
+    return pick(pool.length ? pool : all);
+  }
+  if (rarity === 'E' && banner.featuredE.length && rand() < 0.5) {
+    return BY_ID.get(pick(banner.featuredE));
+  }
+  return pick(all);
+}
+
+// Añade un Pokémon a la colección. Más allá de 5 copias se convierte en polvo estelar.
+function grant(user, id, shiny) {
+  const p = BY_ID.get(id);
+  const c = (user.collection[id] ||= { n: 0, s: 0 });
+  const isNew = c.n === 0;
+  const newShiny = shiny && c.s === 0;
+  let dust = 0;
+  if (c.n < 5) c.n++;
+  else dust += RARITY[p.rarity].dust;
+  if (shiny) {
+    if (c.s < c.n) c.s++;
+    else dust += RARITY[p.rarity].dust * 3;
+  }
+  user.dust += dust;
+  return { isNew, newShiny, dust, stars: Math.min(5, c.n) };
+}
+
+function pull(user, { banner: bannerId, count, free }) {
+  const banner = BANNER_BY_ID.get(bannerId);
+  if (!banner) throw new Error('Banner desconocido.');
+  count = Number(count) === 10 ? 10 : 1;
+  const today = new Date().toISOString().slice(0, 10);
+  if (free) {
+    if (count !== 1) throw new Error('La tirada gratis es individual.');
+    if (user.daily.freePull === today) throw new Error('Ya usaste tu tirada gratis de hoy.');
+    user.daily.freePull = today;
+  } else {
+    const cost = COST[count];
+    if (user.coins < cost) throw new Error(`Necesitas ${cost} monedas.`);
+    user.coins -= cost;
+  }
+  const p = pity(user, banner);
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    const rarity = rollRarity(p, banner);
+    const poke = rollPokemon(rarity, p, banner);
+    const shiny = rand() < SHINY_RATE;
+    const g = grant(user, poke.id, shiny);
+    results.push({ id: poke.id, name: poke.name, rarity, shiny, ...g });
+    if (rarity === 'L' || rarity === 'M' || (shiny && rarity !== 'C')) {
+      hub.feed('gacha', `✨ ${user.username} obtuvo ${shiny ? 'un ' + poke.name + ' VARIOCOLOR' : poke.name} (${RARITY[rarity].name}) en "${banner.name}"`, { pokeId: poke.id, shiny });
+    }
+  }
+  user.stats.pulls += count;
+  hub.addXp(user, count * 15);
+  db.save();
+  return { results, pity: p };
+}
+
+// Tienda de polvo estelar.
+function craft(user, { id }) {
+  const p = BY_ID.get(Number(id));
+  if (!p) throw new Error('Pokémon desconocido.');
+  const cost = RARITY[p.rarity].craft;
+  if (user.dust < cost) throw new Error(`Necesitas ${cost} de polvo estelar.`);
+  const c = user.collection[p.id];
+  if (c && c.n >= 5) throw new Error('Ya tienes 5 estrellas de ese Pokémon.');
+  user.dust -= cost;
+  const g = grant(user, p.id, false);
+  db.save();
+  return { id: p.id, name: p.name, ...g };
+}
+
+const DUST_RATE = 8;
+function exchangeDust(user, { amount }) {
+  amount = Number(amount);
+  if (!Number.isInteger(amount) || amount <= 0 || amount > user.dust) throw new Error('Cantidad no válida.');
+  user.dust -= amount;
+  user.coins += amount * DUST_RATE;
+  db.save();
+  return { coins: amount * DUST_RATE };
+}
+
+// Liberar copias sobrantes a cambio de polvo (se conserva al menos una).
+function release(user, { id, count }) {
+  const p = BY_ID.get(Number(id));
+  const c = p && user.collection[p.id];
+  count = Number(count) || 1;
+  if (!c || !Number.isInteger(count) || count < 1 || c.n - count < 1) throw new Error('Debes conservar al menos una copia.');
+  c.n -= count;
+  if (c.s > c.n) c.s = c.n;
+  const dust = RARITY[p.rarity].dust * count;
+  user.dust += dust;
+  db.save();
+  return { dust };
+}
+
+module.exports = { pull, craft, exchangeDust, release, grant, BANNERS, COST, RATES, SHINY_RATE, SOFT_PITY, HARD_PITY, DUST_RATE, rollRarity };

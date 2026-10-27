@@ -1,0 +1,19 @@
+{
+  "name": "pokecasino",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Casino Pokémon online con gacha, para uso personal y red restringida",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^4.22.3",
+    "socket.io": "^4.8.4"
+  }
+}
