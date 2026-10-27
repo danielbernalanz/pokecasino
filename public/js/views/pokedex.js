@@ -46,6 +46,10 @@ export default {
   id: 'pokedex', title: 'Pokédex', icon: '📕',
   mount(root) {
     const grid = h('div', { class: 'dex-grid' });
+    const BATCH = 150;
+    let observer = null;
+    let currentSentinel = null;
+    let renderedCount = 0; // al re-renderizar (p. ej. tras una acción) se mantienen las tandas ya cargadas
     const counter = h('div', { class: 'dex-count' });
     const search = h('input', { placeholder: 'Buscar por nombre…', value: filter.q, oninput: (e) => { filter.q = e.target.value; render(); } });
     const sel = (key, opts) => {
@@ -53,6 +57,7 @@ export default {
       return s;
     };
     function render() {
+      if (currentSentinel) { currentSentinel.remove(); currentSentinel = null; }
       const col = S.me.collection;
       const owned = Object.keys(col).length;
       const shinies = Object.values(col).filter((c) => c.s > 0).length;
@@ -70,7 +75,8 @@ export default {
         if (q && !(c ? p.name.toLowerCase().includes(q) : String(p.id).includes(q))) return false;
         return true;
       });
-      grid.replaceChildren(...list.map((p) => {
+      // Se pintan por tandas al hacer scroll: 1.025 tarjetas de golpe van lentas en el móvil.
+      const card = (p) => {
         const c = col[p.id];
         const isBuddy = S.me.buddy && S.me.buddy.id === p.id;
         return h('button', { class: `dex-card r-${p.rarity}${c ? '' : ' missing'}${c && c.s ? ' shiny' : ''}${isBuddy ? ' buddy' : ''}`, onclick: () => openDetail(p.id) },
@@ -79,7 +85,24 @@ export default {
           h('b', {}, c ? p.name : '???'),
           c ? h('span', { class: 'stars' }, '★'.repeat(Math.min(5, c.n))) : h('span', { class: 'stars dim' }, '—'),
           isBuddy ? h('span', { class: 'buddy-tag' }, '🤝') : null);
-      }));
+      };
+      if (observer) observer.disconnect();
+      let shown = Math.max(BATCH, renderedCount);
+      grid.replaceChildren(...list.slice(0, shown).map(card));
+      if (shown < list.length) {
+        const sentinel = h('div', { class: 'dex-more muted small' }, 'Cargando más…');
+        grid.after(sentinel);
+        observer = new IntersectionObserver((entries) => {
+          if (!entries.some((e) => e.isIntersecting)) return;
+          const next = list.slice(shown, shown + BATCH);
+          grid.append(...next.map(card));
+          shown += next.length;
+          renderedCount = shown;
+          if (shown >= list.length) { observer.disconnect(); sentinel.remove(); }
+        }, { rootMargin: '600px' });
+        observer.observe(sentinel);
+        currentSentinel = sentinel;
+      }
     }
     root.append(
       h('div', { class: 'game-head' }, h('h1', {}, '📕 Pokédex'), counter),
@@ -91,6 +114,7 @@ export default {
       grid);
     render();
     this.off = bus.on('me', render);
+    this.stopObs = () => observer && observer.disconnect();
   },
-  unmount() { this.off(); },
+  unmount() { this.off(); this.stopObs(); },
 };

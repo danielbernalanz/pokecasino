@@ -3,6 +3,7 @@ const http = require('http');
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
+const compression = require('compression');
 const { Server } = require('socket.io');
 
 const config = require('./config');
@@ -59,10 +60,18 @@ app.use((req, res, next) => {
   });
   next();
 });
+app.use(compression());
 app.use(express.json({ limit: '10kb' }));
 // El service worker nunca se guarda en caché: así cada despliegue llega a los móviles.
 app.get('/sw.js', (req, res, next) => { res.set('Cache-Control', 'no-cache'); next(); });
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders(res, file) {
+    // Los iconos no cambian: caché larga. El resto se revalida siempre (respuestas 304 rápidas)
+    // para que cada actualización llegue al momento.
+    if (/[\\/]icons[\\/]/.test(file)) res.set('Cache-Control', 'public, max-age=604800');
+    else res.set('Cache-Control', 'no-cache');
+  },
+}));
 
 app.post('/api/register', (req, res) => {
   try {
@@ -97,7 +106,8 @@ const STATIC = {
 app.get('/api/static', (req, res) => res.json(STATIC));
 
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 20000 });
+// Compresión de mensajes grandes (estado del mercado, mesas de póker…).
+const io = new Server(server, { maxHttpBufferSize: 20000, perMessageDeflate: { threshold: 2048 } });
 hub.setIO(io);
 
 // ---- Presencia ----
