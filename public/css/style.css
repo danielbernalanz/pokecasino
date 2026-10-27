@@ -911,3 +911,7 @@ img.mk-img { transform: scale(1.3); }
 
 details.rules summary { cursor: pointer; }
 details.rules[open] summary { margin-bottom: 6px; }
+
+.install-card { display: flex; align-items: center; gap: 12px; margin-top: 14px; border-color: var(--gold); }
+.install-card img { width: 48px; height: 48px; border-radius: 12px; }
+.install-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }

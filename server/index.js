@@ -49,7 +49,9 @@ app.use((req, res, next) => {
       "img-src 'self' data: https://raw.githubusercontent.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src https://fonts.gstatic.com",
-      "connect-src 'self' ws: wss:",
+      "connect-src 'self' ws: wss: https://raw.githubusercontent.com",
+      "manifest-src 'self'",
+      "worker-src 'self'",
       "frame-ancestors 'none'",
     ].join('; '),
     'X-Content-Type-Options': 'nosniff',
@@ -58,6 +60,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '10kb' }));
+// El service worker nunca se guarda en caché: así cada despliegue llega a los móviles.
+app.get('/sw.js', (req, res, next) => { res.set('Cache-Control', 'no-cache'); next(); });
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.post('/api/register', (req, res) => {

@@ -103,6 +103,7 @@ $('#user-btn').addEventListener('click', () => {
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/trainer'; } }, '🏅 Mi Entrenador'),
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/pokedex'; } }, '📕 Mi Pokédex'),
     muteBtn,
+    canInstall() ? h('button', { class: 'btn', onclick: () => { close(); installApp(); } }, '📲 Instalar app') : '',
     h('button', { class: 'btn danger', onclick: logout }, '🚪 Cerrar sesión'));
   const wrap = h('div', { class: 'popover', onclick: (e) => e.stopPropagation() }, menu);
   const close = () => { wrap.remove(); document.removeEventListener('click', close); };
@@ -138,7 +139,8 @@ function moreSheet() {
   const ids = ['trainer', 'pokedex', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
   const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => ids.includes(v.id)).map((v) =>
     h('a', { class: 'gs-item', href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title))),
-  h('button', { class: 'gs-item', onclick: () => { m.close(); document.body.classList.add('social-open'); $('#chat-dot').classList.add('hidden'); } }, h('span', { class: 'gs-ico' }, '💬'), h('span', {}, 'Chat y conectados'))), { title: 'Más' });
+  h('button', { class: 'gs-item', onclick: () => { m.close(); document.body.classList.add('social-open'); $('#chat-dot').classList.add('hidden'); } }, h('span', { class: 'gs-ico' }, '💬'), h('span', {}, 'Chat y conectados')),
+  canInstall() ? h('button', { class: 'gs-item', onclick: () => { m.close(); installApp(); } }, h('span', { class: 'gs-ico' }, '📲'), h('span', {}, 'Instalar app')) : ''), { title: 'Más' });
 }
 function buildTabbar() {
   const bar = $('#tabbar');
@@ -236,6 +238,29 @@ function connect() {
   socket.on('poker:table', (t) => bus.emit('poker:table', t));
   socket.on('poker:hole', (x) => bus.emit('poker:hole', x));
   socket.on('market', (m) => bus.emit('market', m));
+}
+
+// ---------- App instalable ----------
+let installEvent = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e; bus.emit('installable', true); });
+window.addEventListener('appinstalled', () => { installEvent = null; toast('¡PokéCasino instalado en tu pantalla de inicio!', 'success'); });
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+export function canInstall() { return !isStandalone() && (!!installEvent || isIOS()); }
+export async function installApp() {
+  if (installEvent) {
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => null);
+    installEvent = null;
+  } else if (isIOS()) {
+    modal(h('div', { class: 'stack' },
+      h('p', {}, 'En iPhone/iPad, desde Safari:'),
+      h('ol', { class: 'install-steps' }, h('li', {}, 'Pulsa el botón Compartir (el cuadrado con la flecha ↑).'), h('li', {}, 'Elige «Añadir a pantalla de inicio».'), h('li', {}, 'Pulsa «Añadir». ¡Listo!')),
+    ), { title: '📲 Instalar PokéCasino' });
+  }
+}
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
 
 // ---------- Arranque ----------
