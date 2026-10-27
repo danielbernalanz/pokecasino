@@ -68,6 +68,9 @@ const SETS = [
   { id: 'beasts', name: 'Bestias Legendarias', ids: [243, 244, 245], title: 'Rastreador' },
   { id: 'mew', name: 'Mewtwo y Mew', ids: [150, 151], title: 'Genetista' },
   { id: 'johto', name: 'Guardianes de Johto', ids: [248, 249, 250, 251], title: 'Guardián de Johto' },
+  { id: 'ralts', name: 'Línea de Ralts', ids: [280, 281, 282, 475], title: 'Caballero de Gardevoir' },
+  { id: 'hoenn-starters', name: 'Iniciales de Hoenn', ids: [252, 255, 258], title: 'Explorador de Hoenn' },
+  { id: 'weather', name: 'Trío del Tiempo', ids: [382, 383, 384], title: 'Señor del Clima' },
 ];
 
 // Títulos ganados (no se pueden comerciar).

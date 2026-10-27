@@ -1,5 +1,5 @@
 'use strict';
-// Pokédex del casino: Kanto completo + invitados especiales de Johto.
+// Pokédex del casino: Kanto completo + invitados especiales de Johto y Hoenn.
 // Formato: id|nombre|tipos|rareza (C común, U poco común, R rara, E épica, L legendaria, M mítica)
 const RAW = `
 1|Bulbasaur|grass/poison|C
@@ -163,6 +163,36 @@ const RAW = `
 249|Lugia|psychic/flying|L
 250|Ho-Oh|fire/flying|L
 251|Celebi|psychic/grass|M
+252|Treecko|grass|C
+253|Grovyle|grass|U
+254|Sceptile|grass|E
+255|Torchic|fire|C
+256|Combusken|fire/fighting|U
+257|Blaziken|fire/fighting|E
+258|Mudkip|water|C
+259|Marshtomp|water/ground|U
+260|Swampert|water/ground|E
+280|Ralts|psychic/fairy|C
+281|Kirlia|psychic/fairy|U
+282|Gardevoir|psychic/fairy|E
+475|Gallade|psychic/fighting|E
+302|Sableye|dark/ghost|R
+334|Altaria|dragon/flying|R
+350|Milotic|water|E
+359|Absol|dark|R
+371|Bagon|dragon|U
+372|Shelgon|dragon|R
+373|Salamence|dragon/flying|E
+374|Beldum|steel/psychic|U
+375|Metang|steel/psychic|R
+376|Metagross|steel/psychic|E
+380|Latias|dragon/psychic|L
+381|Latios|dragon/psychic|L
+382|Kyogre|water|L
+383|Groudon|ground|L
+384|Rayquaza|dragon/flying|L
+385|Jirachi|steel/psychic|M
+386|Deoxys|psychic|M
 `;
 
 const DEX = RAW.trim().split('\n').map((line) => {

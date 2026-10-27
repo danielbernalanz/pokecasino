@@ -33,6 +33,11 @@ const BANNERS = [
     desc: 'Lugia, Ho-Oh y las bestias legendarias. Tyranitar y Scizor destacados.',
     featuredL: [243, 244, 245, 249, 250], featuredE: [248, 212],
   },
+  {
+    id: 'hoenn', name: 'Leyendas de Hoenn', art: 282, theme: '#10b981',
+    desc: 'Kyogre, Groudon y Rayquaza destacados. Gardevoir, Gallade, Blaziken y Salamence con probabilidad aumentada.',
+    featuredL: [382, 383, 384], featuredE: [282, 475, 257, 373],
+  },
 ];
 const BANNER_BY_ID = new Map(BANNERS.map((b) => [b.id, b]));
 
