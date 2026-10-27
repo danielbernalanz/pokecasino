@@ -90,7 +90,7 @@ export default {
         h('div', { class: 'card' },
           h('h3', {}, '🤝 Compañero'),
           me.buddy
-            ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta.`)
+            ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta (hasta ${fmt(me.bonusCap)} al día; te quedan ${fmt(me.bonusLeft)}).`)
             : h('p', { class: 'muted' }, 'Elige un compañero en tu Pokédex: aumenta tus ganancias según su rareza y estrellas.'),
           h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'))),
       h('h2', { class: 'section-title' }, `Juegos (${GAMES.length - 2} + Gacha y Mercado)`),

@@ -195,7 +195,8 @@ function craft(user, { id }) {
   return { id: p.id, name: p.name, ...g };
 }
 
-const DUST_RATE = 8;
+// Liberar repetidos y cambiar el polvo no puede devolver más de lo que cuesta tirar (135 monedas en ×10).
+const DUST_RATE = 4;
 function exchangeDust(user, { amount }) {
   amount = Number(amount);
   if (!Number.isInteger(amount) || amount <= 0 || amount > user.dust) throw new Error('Cantidad no válida.');

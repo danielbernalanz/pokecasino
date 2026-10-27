@@ -122,7 +122,8 @@ function claimDaily(user) {
 
 const HEAL_COOLDOWN = 60 * 60 * 1000;
 function heal(user) {
-  if (user.coins >= 200) throw new Error('La enfermera Joy dice que aún te quedan monedas.');
+  const locked = market.lockedIn(user) + Object.values(db.data.escrow).filter((e) => e.userId === user.id).reduce((s, e) => s + e.amount, 0);
+  if (user.coins + locked >= 200) throw new Error(locked ? 'La enfermera Joy ve que tienes monedas en el Mercado o en juego.' : 'La enfermera Joy dice que aún te quedan monedas.');
   const wait = user.lastHeal + HEAL_COOLDOWN - Date.now();
   if (wait > 0) throw new Error(`Vuelve en ${Math.ceil(wait / 60000)} min.`);
   user.lastHeal = Date.now();
@@ -169,7 +170,14 @@ function setBuddy(user, { id, shiny }) {
   return {};
 }
 
+// Con el registro abierto, las cuentas recién creadas no pueden regalar (evita granjear cuentas).
+function canGift(user) {
+  if (user.isAdmin) return;
+  if (user.level < 3 || Date.now() - user.createdAt < 24 * 3600 * 1000) throw new Error('Para regalar necesitas nivel 3 y una cuenta de al menos 1 día.');
+}
+
 function giftCoins(user, { to, amount }) {
+  canGift(user);
   const t = db.userByName(to);
   amount = Number(amount);
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
@@ -183,6 +191,7 @@ function giftCoins(user, { to, amount }) {
 }
 
 function giftPoke(user, { to, id, shiny }) {
+  canGift(user);
   const t = db.userByName(to);
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
   const p = gacha.takePoke(user, id, !!shiny);
@@ -237,8 +246,8 @@ const admin = {
     requireAdmin(user);
     const t = db.userByName(username);
     delta = Number(delta);
-    if (!t || !Number.isInteger(delta)) throw new Error('Datos no válidos.');
-    t.coins = Math.max(0, t.coins + delta);
+    if (!t || !Number.isInteger(delta) || Math.abs(delta) > 1e9) throw new Error('Datos no válidos (máximo ±1.000.000.000).');
+    t.coins = Math.min(1e12, Math.max(0, t.coins + delta));
     db.save();
     hub.pushMe(t);
     return {};
@@ -260,6 +269,8 @@ const admin = {
     const t = db.userByName(username);
     if (!t || typeof password !== 'string' || password.length < 6) throw new Error('Datos no válidos.');
     Object.assign(t, auth.hashPassword(password));
+    for (const [k, s] of Object.entries(db.data.sessions)) if (s.userId === t.id) delete db.data.sessions[k];
+    io.in('u:' + t.id).disconnectSockets(true);
     db.save();
     return {};
   },

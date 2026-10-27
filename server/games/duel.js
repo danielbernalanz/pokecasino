@@ -32,12 +32,13 @@ function create(user, { pokeId, shiny, wager, target }) {
   if ([...open.values()].filter((d) => d.creatorId === user.id).length >= 3) throw new Error('Máximo 3 retos abiertos.');
   const poke = ownedPick(user, { pokeId, shiny });
   wager = Number(wager) || 0;
-  if (wager !== 0) hub.takeBet(user, wager);
   if (target) {
     const t = db.userByName(target);
     if (!t || t.id === user.id) throw new Error('Rival no encontrado.');
     target = t.username;
   }
+  // Se cobra al final de las comprobaciones: si algo falla no se pierde la apuesta.
+  if (wager !== 0) hub.takeBet(user, wager);
   const d = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, wager, poke, target: target || null, createdAt: Date.now() };
   open.set(d.id, d);
   db.escrowSet('duel:' + d.id, user.id, wager);
@@ -82,7 +83,7 @@ function accept(user, { id, pokeId, shiny }) {
   let prize = 0;
   if (d.wager) {
     prize = Math.floor(d.wager * 2 * (1 - RAKE));
-    hub.pay(winner, prize, d.wager, 'duel');
+    hub.pay(winner, prize, d.wager, 'duel', { noBonus: true });
   }
   winner.stats.duelsWon++;
   loser.stats.duelsLost++;

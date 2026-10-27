@@ -85,7 +85,7 @@ function equip(user, { slot, id }) {
 
 function buy(user, { itemId, qty }) {
   const it = ITEMS[itemId];
-  qty = Number(qty) || 1;
+  qty = qty === undefined ? 1 : Number(qty);
   if (!it || !it.price) throw new Error('Ese objeto no está a la venta.');
   if (!Number.isInteger(qty) || qty < 1 || qty > 99) throw new Error('Cantidad no válida.');
   const cost = it.price * qty;

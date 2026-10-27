@@ -80,3 +80,20 @@ test('las misiones diarias son 3 y se renuevan cada día', () => {
   progress.view(u);
   assert.notStrictEqual(u.progress.daily.date, '2000-01-01');
 });
+
+test('el bonus de ganancias tiene tope diario y no se aplica en duelos', () => {
+  const u = user('bonificado', { buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 3600e3 } });
+  const cap = 300 + 50 * u.level;
+  let bonus = 0;
+  for (let i = 0; i < 50; i++) bonus += hub.pay(u, 20000, 10000, 'crash').bonus;
+  assert.strictEqual(bonus, cap, 'el bonus total del día no supera el tope');
+  const v = user('duelista', { buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } } });
+  assert.strictEqual(hub.pay(v, 1900, 1000, 'duel', { noBonus: true }).bonus, 0);
+});
+
+test('un reto a un rival inexistente no cobra la apuesta', () => {
+  const duel = require('../server/games/duel');
+  const u = user('despistado', { coins: 1000, collection: { 6: { n: 1, s: 0 } } });
+  assert.throws(() => duel.create(u, { pokeId: 6, wager: 500, target: 'nadie-asi' }), /Rival/);
+  assert.strictEqual(u.coins, 1000);
+});

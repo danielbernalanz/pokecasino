@@ -155,7 +155,7 @@ function track(user, event, data = {}) {
       grant(user, def.reward, `Misión diaria · ${def.title}`);
     }
   }
-  if (!daily.bonus && daily.missions.every((m) => m.done)) {
+  if (!daily.bonus && daily.missions.length && daily.missions.every((m) => m.done)) {
     daily.bonus = true;
     grant(user, DAILY_BONUS, '¡Las 3 misiones del día completadas!');
   }
@@ -202,7 +202,12 @@ function view(user) {
   const step = TUTORIAL[p.tutorial];
   return {
     tutorial: step ? { index: p.tutorial, total: TUTORIAL.length, title: step.title, desc: step.desc, link: step.link, prog: p.tutProg, n: step.n || 1, reward: step.reward } : { index: TUTORIAL.length, total: TUTORIAL.length, done: true },
-    daily: { bonus: p.daily.bonus, missions: p.daily.missions.map((m) => { const d = DAILY.find((x) => x.id === m.id); return { ...m, title: d.title, n: d.n || 1, reward: d.reward }; }) },
+    daily: {
+      bonus: p.daily.bonus,
+      // Se ignoran misiones guardadas que ya no existan en la lista actual.
+      missions: p.daily.missions.map((m) => [m, DAILY.find((x) => x.id === m.id)]).filter(([, d]) => d)
+        .map(([m, d]) => ({ ...m, title: d.title, n: d.n || 1, reward: d.reward })),
+    },
     badges: BADGES.map((b, k) => ({ id: b.id, n: k + 1, name: b.name, leader: b.leader, req: b.req, got: p.badges.includes(b.id), prog: b.prog(user) })),
     sets: SETS.map((s) => ({ id: s.id, name: s.name, ids: s.ids, title: s.title, done: p.sets.includes(s.id), have: s.ids.filter((id) => user.collection[id]).length })),
     titles: p.titles.map((id) => ({ id, text: TITLES[id] })),

@@ -40,7 +40,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Social**: chat con menciones `@nombre`, actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha, niveles y panel de anfitrión (invitaciones, monedas, suspensiones, contraseñas).
 
-Todos los resultados se calculan en el servidor con `crypto`. RTP aproximados: Video Póker 99,5 % (juego óptimo), Blackjack ~99,5 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ~96 %, Voltorb Flip ~95 %, Ruleta 94,7 %, Carrera ≤ 90 %. Subir de nivel devuelve ~2,5 % de lo apostado.
+Todos los resultados se calculan en el servidor con `crypto`. RTP aproximados: Video Póker 99,5 % (juego óptimo), Blackjack ~99,5 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ~96 %, Voltorb Flip ~95 %, Ruleta 94,7 %, Carrera ≤ 90 %. Subir de nivel devuelve ~0,25 % de lo apostado y el bonus de compañero, colecciones y Moneda Amuleto tiene un tope diario (300 + 50 × nivel), para que ningún juego dé dinero seguro a la larga. En los duelos entre jugadores no hay bonus.
 
 ## Puesta en marcha
 

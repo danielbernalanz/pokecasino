@@ -109,6 +109,13 @@ function settle(a, qty, price, seller, buyer) {
   hub.pushMe(buyer);
 }
 
+// Se comprueba antes de operar para no dejar una operación a medias si luego falla.
+function checkOrderLimit(user, instant) {
+  if (!instant && M().orders.filter((o) => o.userId === user.id && o.qty > 0).length >= MAX_ORDERS) throw new Error(`Máximo ${MAX_ORDERS} órdenes activas.`);
+}
+// Monedas que un jugador tiene bloqueadas en pedidos de compra.
+const lockedIn = (user) => M().orders.filter((o) => o.userId === user.id && o.side === 'buy').reduce((s, o) => s + o.qty * o.price, 0);
+
 const book = (ref, side) => M().orders.filter((o) => o.ref === ref && o.side === side && o.qty > 0);
 const removeEmpty = () => { M().orders = M().orders.filter((o) => o.qty > 0); };
 
@@ -121,6 +128,7 @@ function sell(user, payload) {
   validQtyPrice(a, qty, price);
   if (owned(user, a) < qty) throw new Error(`No tienes ${describe(a, qty)}.`);
   if (!instant && user.coins < fee(qty * price)) throw new Error('No tienes monedas para la comisión de publicación.');
+  checkOrderLimit(user, instant);
   let left = qty;
   let earned = 0;
   const bids = book(a.ref, 'buy').filter((o) => o.price >= price && o.userId !== user.id)
@@ -138,7 +146,6 @@ function sell(user, payload) {
   }
   let order = null;
   if (left && !instant) {
-    if (M().orders.filter((o) => o.userId === user.id).length >= MAX_ORDERS) throw new Error(`Máximo ${MAX_ORDERS} órdenes activas.`);
     user.coins -= fee(left * price);
     takeGoods(user, a, left);
     order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now() };
@@ -161,6 +168,7 @@ function buy(user, payload) {
   validQtyPrice(a, qty, price);
   const worst = qty * price + (instant ? 0 : fee(qty * price));
   if (user.coins < worst) throw new Error(`Necesitas hasta ${worst.toLocaleString('es')} monedas.`);
+  checkOrderLimit(user, instant);
   let left = qty;
   let spent = 0;
   const asks = book(a.ref, 'sell').filter((o) => o.price <= price && o.userId !== user.id)
@@ -178,7 +186,6 @@ function buy(user, payload) {
   }
   let order = null;
   if (left && !instant) {
-    if (M().orders.filter((o) => o.userId === user.id).length >= MAX_ORDERS) throw new Error(`Máximo ${MAX_ORDERS} órdenes activas.`);
     user.coins -= left * price + fee(left * price);
     order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now() };
     M().orders.push(order);
@@ -263,4 +270,4 @@ function init() {
   setInterval(sweep, 10 * 60 * 1000).unref();
 }
 
-module.exports = { init, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef };
+module.exports = { init, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn };

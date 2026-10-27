@@ -35,7 +35,7 @@ export default {
           h('div', { class: 'row gap' }, playingCard(null, { back: me.equip.cardback, cls: 'small' }), playingCard(null, { back: me.equip.cardback, cls: 'small' }),
             h('span', { class: 'muted small' }, 'Así ven tus cartas en el póker')),
           h('div', { class: 'small' }, `Límite de apuesta: `, h('b', {}, fmt(me.maxBet)), got < 8 ? h('span', { class: 'muted' }, ` → ${fmt(S.data.maxBetByBadges[got + 1])} con la próxima medalla`) : null),
-          h('div', { class: 'small' }, `Bonus de colecciones: `, h('b', { class: 'good' }, `+${(pr.setBonus * 100).toFixed(0)} %`), h('span', { class: 'muted' }, ' en cada ganancia neta'))));
+          h('div', { class: 'small' }, `Bonus de colecciones: `, h('b', { class: 'good' }, `+${(pr.setBonus * 100).toFixed(0)} %`), h('span', { class: 'muted' }, ` en cada ganancia neta · bonus de hoy ${fmt(me.bonusCap - me.bonusLeft)}/${fmt(me.bonusCap)}`))));
 
       // --- Medallas ---
       const badges = h('div', { class: 'badge-grid' }, pr.badges.map((b) => {

@@ -42,8 +42,10 @@ function addXp(user, amount) {
   let leveled = false;
   while (user.xp >= xpForLevel(user.level + 1)) {
     user.level++;
-    // ~2,5 % de lo apostado: el XP sale de apostar (10 %) y cada nivel cuesta 100·(2n−1) de XP.
-    const reward = 50 * user.level;
+    // ~0,25 % de lo apostado (el XP sale de apostar, al 10 %, y cada nivel cuesta 100·(2n−1) de XP).
+    // Tiene que ser menor que el margen de la casa de los mejores juegos (Video Póker ≈ 0,5 %):
+    // si no, jugar mucho daría dinero seguro.
+    const reward = 5 * user.level;
     user.coins += reward;
     leveled = true;
     // Premios en objetos: Caramelo Raro cada nivel y Master Ball cada 5.
@@ -88,10 +90,21 @@ function takeBet(user, amount, game) {
 }
 
 // Paga `amount` (incluye la apuesta devuelta). El compañero añade un % sobre la ganancia neta.
-function pay(user, amount, stake, game) {
+// El bonus (compañero, colecciones, Moneda Amuleto) tiene un tope diario: aplicado sin límite haría que
+// apuestas como retirarse alto en Crash devolvieran más del 100 % a la larga.
+const bonusCap = (user) => 300 + 50 * user.level;
+function bonusLeft(user) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!user.bonusDay || user.bonusDay.date !== today) user.bonusDay = { date: today, paid: 0 };
+  return Math.max(0, bonusCap(user) - user.bonusDay.paid);
+}
+
+function pay(user, amount, stake, game, { noBonus = false } = {}) {
   amount = Math.floor(amount);
   const profit = amount - stake;
-  const bonus = profit > 0 ? Math.floor(profit * buddyBonus(user)) : 0;
+  // En los duelos entre jugadores no hay bonus: crearía monedas de la nada entre dos amigos.
+  const bonus = profit > 0 && !noBonus ? Math.min(Math.floor(profit * buddyBonus(user)), bonusLeft(user)) : 0;
+  if (bonus) user.bonusDay.paid += bonus;
   const total = amount + bonus;
   user.coins += total;
   user.stats.won += total;
@@ -126,6 +139,7 @@ function privateUser(u) {
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy,
     buddyBonus: buddyBonus(u), pity: u.pity, stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
+    bonusLeft: bonusLeft(u), bonusCap: bonusCap(u),
     progress: require('./progress').view(u),
   };
 }
