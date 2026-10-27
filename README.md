@@ -26,7 +26,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 - 🎁 **Poké Gacha**: 11 banners (uno nacional con los 1.025 Pokémon, Aves, Mewtwo/Mew y uno por región de Johto a Paldea con sus legendarios destacados), pity suave (60) y duro (80), rara garantizada cada 10, 50/50 de destacado, variocolores 1/64, tirada gratis diaria.
 - 📕 **Pokédex** con los 1.025 Pokémon de las 9 generaciones (nombres en español y estadísticas reales, que se usan en los duelos), filtro por región y estrellas por copias y compañero que da bonus a tus ganancias.
 - 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
-- 🏪 **Mercado** entre jugadores: vende Pokémon (normales o variocolor), objetos y polvo estelar a precio fijo. Lo publicado queda en depósito hasta que se vende, se retira o caduca (7 días); el comprador confirma el precio, nadie puede comprar su propio anuncio y la casa cobra un 5 %. Muestra el precio medio de las últimas ventas.
+- 🏪 **Mercado** al estilo Albion Online: libro de órdenes por artículo (Pokémon normales o variocolor, objetos, cosméticos y polvo estelar) con **órdenes de venta y pedidos de compra**, cantidades y llenados parciales. «Comprar ya» toma las ofertas más baratas y «Vender ya» llena los pedidos más altos; lo que no se llena queda publicado en depósito. Comisión de publicación 1,5 % e impuesto de venta 3 %. Gráfica de precios de 30 días, historial de ventas y caducidad a 14 días con devolución.
 
 **Progresión (de novato a campeón)**
 

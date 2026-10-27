@@ -5,11 +5,11 @@ let marketCache = null;
 async function marketCounts() {
   if (!marketCache) {
     const r = await act('market:state');
-    marketCache = r ? r.listings : [];
+    marketCache = r ? r.orders.filter((o) => o.side === 'sell') : [];
     setTimeout(() => { marketCache = null; }, 30000);
   }
   const by = {};
-  for (const l of marketCache) if (l.kind === 'poke') by[l.pokeId] = (by[l.pokeId] || 0) + 1;
+  for (const l of marketCache) if (l.kind === 'poke') by[l.pokeId] = (by[l.pokeId] || 0) + l.qty;
   return by;
 }
 

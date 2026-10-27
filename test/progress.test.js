@@ -67,7 +67,7 @@ test('huevo misterioso → cosmético equipable que se desequipa al venderlo', (
   const slot = items.COSMETICS[r.got].slot;
   items.equip(u, { slot, id: r.got });
   assert.strictEqual(u.equip[slot], r.got);
-  market.create(u, { kind: 'item', itemId: r.got, qty: 1, price: 100 });
+  market.sell(u, { kind: 'item', itemId: r.got, qty: 1, price: 100 });
   assert.strictEqual(u.equip[slot], null, 'al poner a la venta el último, se desequipa');
   assert.throws(() => items.equip(u, { slot, id: r.got }));
 });

@@ -481,6 +481,46 @@ label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-
 .p-info .avatar { width: 40px; height: 40px; }
 .rank-row .avatar { width: 40px; height: 40px; }
 
+
+/* ---------- Mercado (libro de órdenes) ---------- */
+.mk-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 110px 110px; align-items: center; gap: 12px; background: var(--panel); border: 2px solid color-mix(in srgb, var(--rc, var(--line)) 45%, transparent); border-radius: 14px; padding: 8px 14px; color: var(--text); text-align: left; font: 14px Nunito, sans-serif; cursor: pointer; width: 100%; }
+.mk-row:hover { border-color: var(--gold); }
+.mk-row.static { grid-template-columns: 64px minmax(0, 1fr) auto auto auto; cursor: default; }
+.mk-row.mine { box-shadow: inset 3px 0 0 var(--blue); }
+.mk-row.shiny { background: linear-gradient(120deg, #ffcb0518, var(--panel)); }
+.mk-quote { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
+.mk-quote b { font: 12px var(--pixel); }
+.mk-quote.ask b { color: var(--good); }
+.mk-quote.bid b { color: #93c5fd; }
+.mk-detail { display: flex; flex-direction: column; gap: 14px; }
+.mk-head { display: flex; gap: 16px; align-items: center; }
+.mk-big { width: 96px; height: 96px; flex: none; }
+img.mk-big { transform: scale(1.3); }
+.mk-chart { width: 100%; max-height: 170px; background: #0004; border-radius: 12px; padding: 6px; }
+.mk-chart.empty { display: grid; place-items: center; min-height: 70px; }
+.mk-chart .vol { fill: #3b82f655; }
+.mk-chart .range { stroke: #ffcb0577; stroke-width: 2; }
+.mk-chart .line { fill: none; stroke: var(--gold); stroke-width: 2.5; }
+.mk-chart .pt { fill: var(--gold); }
+.mk-chart .lbl { fill: var(--muted); font: 10px Nunito; }
+.orderbook { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ob-col { background: #0003; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.ob-col.asks { border-top: 3px solid var(--good); }
+.ob-col.bids { border-top: 3px solid #60a5fa; }
+.ob-head { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.ob-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; border-bottom: 1px solid #fff1; }
+.tag-sell, .tag-buy { font: 800 10px Nunito; padding: 1px 6px; border-radius: 4px; }
+.tag-sell { background: #3ddc8433; color: var(--good); }
+.tag-buy { background: #60a5fa33; color: #93c5fd; }
+.disabled-card { opacity: .55; }
+@media (max-width: 640px) {
+  .mk-row { grid-template-columns: 48px minmax(0, 1fr) 80px; }
+  .mk-row .mk-quote.bid { display: none; }
+  .mk-row.static { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .mk-row.static .btn.small:not(.danger) { display: none; }
+  .orderbook { grid-template-columns: 1fr; }
+}
+
 /* ---------- Animaciones ---------- */
 .float { animation: bob 3s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translateY(-10px); } }

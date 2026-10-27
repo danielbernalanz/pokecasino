@@ -22,31 +22,101 @@ function user(name, extra = {}) {
   return u;
 }
 
-test('mercado: depósito, compra con comisión y entrega', () => {
-  const s = user('vendedor', { items: { 'master-ball': 2 }, collection: { 150: { n: 1, s: 0 } } });
+test('mercado: una orden de venta queda en depósito y se compra al momento', () => {
+  const s = user('vendedor', { items: { 'master-ball': 3 } });
   const b = user('comprador');
-  const l = market.create(s, { kind: 'item', itemId: 'master-ball', qty: 1, price: 5000 }).listing;
-  assert.strictEqual(s.items['master-ball'], 1, 'el objeto queda en depósito');
-  assert.throws(() => market.buy(s, { id: l.id }), /propio/);
-  assert.throws(() => market.buy(b, { id: l.id, price: 4000 }), /precio/);
-  market.buy(b, { id: l.id, price: 5000 });
-  assert.strictEqual(b.coins, 5000);
+  const r = market.sell(s, { kind: 'item', itemId: 'master-ball', qty: 2, price: 5000 });
+  assert.strictEqual(r.order.qty, 2);
+  assert.strictEqual(s.items['master-ball'], 1, 'los objetos quedan en depósito');
+  assert.strictEqual(s.coins, 10000 - Math.ceil(10000 * market.SETUP_FEE), 'comisión de publicación');
+  const coinsAfterFee = s.coins;
+  market.buy(b, { kind: 'item', itemId: 'master-ball', qty: 1, price: 5000, instant: true });
   assert.strictEqual(b.items['master-ball'], 1);
-  assert.strictEqual(s.coins, 10000 + 5000 - 250);
-  assert.throws(() => market.buy(b, { id: l.id }), /disponible/, 'no se puede comprar dos veces');
-
-  const p = market.create(s, { kind: 'poke', pokeId: 150, price: 100 }).listing;
-  assert.ok(!s.collection[150], 'el Pokémon sale de la colección');
-  market.cancel(s, { id: p.id });
-  assert.strictEqual(s.collection[150].n, 1, 'cancelar lo devuelve');
+  assert.strictEqual(b.coins, 5000);
+  assert.strictEqual(s.coins, coinsAfterFee + 5000 - Math.floor(5000 * market.SALES_TAX), 'impuesto de venta');
+  assert.strictEqual(market.state().orders.find((o) => o.id === r.order.id).qty, 1, 'llenado parcial');
 });
 
-test('mercado: no se puede vender lo que no se tiene', () => {
-  const u = user('pobre');
-  assert.throws(() => market.create(u, { kind: 'item', itemId: 'master-ball', qty: 1, price: 10 }));
-  assert.throws(() => market.create(u, { kind: 'poke', pokeId: 25, price: 10 }));
-  assert.throws(() => market.create(u, { kind: 'dust', qty: 50, price: 10 }));
-  assert.strictEqual(market.state().listings.filter((l) => l.seller === 'pobre').length, 0);
+test('mercado: el pedido de compra se llena con la oferta más barata y devuelve la diferencia', () => {
+  const s1 = user('caro', { items: { 'lucky-egg': 5 } });
+  const s2 = user('barato', { items: { 'lucky-egg': 5 } });
+  const b = user('cazachollos', { coins: 100000 });
+  market.sell(s1, { kind: 'item', itemId: 'lucky-egg', qty: 5, price: 900 });
+  market.sell(s2, { kind: 'item', itemId: 'lucky-egg', qty: 2, price: 700 });
+  const r = market.buy(b, { kind: 'item', itemId: 'lucky-egg', qty: 4, price: 1000 });
+  assert.strictEqual(r.filled, 4);
+  assert.strictEqual(r.spent, 2 * 700 + 2 * 900, 'paga el precio de cada oferta, no su máximo');
+  assert.strictEqual(b.coins, 100000 - 3200);
+  assert.strictEqual(b.items['lucky-egg'], 4);
+  assert.strictEqual(r.order, null, 'no queda pedido porque se llenó entero');
+});
+
+test('mercado: vender a un pedido de compra existente y cancelar devuelve el depósito', () => {
+  const b = user('demandante', { coins: 50000 });
+  const s = user('ofertante', { collection: { 25: { n: 3, s: 0 } } });
+  const before = b.coins;
+  const r = market.buy(b, { kind: 'poke', pokeId: 25, qty: 2, price: 4000 });
+  const feeB = Math.ceil(8000 * market.SETUP_FEE);
+  assert.strictEqual(b.coins, before - 8000 - feeB, 'las monedas del pedido quedan en depósito');
+  market.sell(s, { kind: 'poke', pokeId: 25, qty: 1, price: 3000, instant: true });
+  assert.strictEqual(s.collection[25].n, 2);
+  assert.strictEqual(b.collection[25].n, 1);
+  assert.strictEqual(s.coins, 10000 + 4000 - Math.floor(4000 * market.SALES_TAX), 'cobra el precio del pedido');
+  market.cancel(b, { id: r.order.id });
+  assert.strictEqual(b.coins, before - 4000 - feeB, 'cancelar devuelve lo no usado (no la comisión)');
+  assert.throws(() => market.cancel(s, { id: r.order.id }));
+});
+
+test('mercado: no se puede vender lo que no se tiene ni comprarse a uno mismo', () => {
+  const u = user('pobre', { items: { ticket: 1 } });
+  assert.throws(() => market.sell(u, { kind: 'item', itemId: 'master-ball', qty: 1, price: 10 }));
+  assert.throws(() => market.sell(u, { kind: 'poke', pokeId: 25, qty: 1, price: 10 }));
+  assert.throws(() => market.sell(u, { kind: 'dust', qty: 50, price: 10 }));
+  market.sell(u, { kind: 'item', itemId: 'ticket', qty: 1, price: 100 });
+  assert.throws(() => market.buy(u, { kind: 'item', itemId: 'ticket', qty: 1, price: 100, instant: true }), /No hay ofertas/);
+});
+
+test('mercado: 2.000 órdenes aleatorias conservan monedas y artículos', () => {
+  const traders = Array.from({ length: 5 }, (_, i) => user('trader' + i, { coins: 1_000_000, dust: 5000, items: { 'rare-candy': 200 } }));
+  for (const t of traders) delete t.progress; // sin recompensas de misiones: solo cuenta el dinero del mercado
+  const total = () => {
+    const m = market.state();
+    let coins = 0;
+    let candies = 0;
+    let dust = 0;
+    for (const t of traders) { coins += t.coins; candies += t.items['rare-candy'] || 0; dust += t.dust; }
+    for (const o of m.orders.filter((x) => x.username.startsWith('trader'))) {
+      if (o.side === 'buy') coins += o.qty * o.price;
+      else if (o.kind === 'item') candies += o.qty;
+      else dust += o.qty;
+    }
+    return { coins, candies, dust };
+  };
+  const start = total();
+  let fees = 0;
+  let taxes = 0;
+  for (let i = 0; i < 2000; i++) {
+    const t = traders[Math.floor(Math.random() * traders.length)];
+    const goods = Math.random() < 0.5 ? { kind: 'item', itemId: 'rare-candy' } : { kind: 'dust' };
+    const qty = 1 + Math.floor(Math.random() * 5);
+    const price = 50 + Math.floor(Math.random() * 100);
+    const instant = Math.random() < 0.3;
+    try {
+      const r = Math.random() < 0.5 ? market.sell(t, { ...goods, qty, price, instant }) : market.buy(t, { ...goods, qty, price, instant });
+      if (r.order) fees += Math.max(1, Math.ceil(r.order.qty0 * r.order.price * market.SETUP_FEE));
+    } catch { /* sin contrapartida o sin saldo */ }
+    if (Math.random() < 0.05) {
+      const mine = market.state().orders.filter((o) => o.username === t.username);
+      if (mine.length) market.cancel(t, { id: mine[0].id });
+    }
+  }
+  const end = total();
+  assert.strictEqual(end.candies, start.candies, 'ningún caramelo aparece ni desaparece');
+  assert.strictEqual(end.dust, start.dust, 'ni el polvo');
+  // Las monedas solo salen por comisiones e impuestos.
+  assert.ok(end.coins <= start.coins - fees, 'las comisiones salen del sistema');
+  taxes = start.coins - fees - end.coins;
+  assert.ok(taxes >= 0);
 });
 
 test('RTP de Plinko entre 94 % y 98 %', () => {
@@ -103,4 +173,16 @@ test('depósito: lo que está en juego se devuelve si el servidor se apaga de go
   assert.ok(back.total >= 300);
   assert.strictEqual(u.coins, 1000);
   assert.deepStrictEqual(db.data.escrow, {});
+});
+
+test('mercado: los anuncios del formato antiguo pasan a ser órdenes de venta', () => {
+  const s = user('antiguo');
+  db.data.market.listings = [{ id: 9001, sellerId: s.id, seller: s.username, kind: 'item', itemId: 'lucky-egg', qty: 2, price: 2000, createdAt: Date.now() }];
+  market.init();
+  const o = market.state().orders.find((x) => x.id === 9001);
+  assert.ok(o);
+  assert.strictEqual(o.side, 'sell');
+  assert.strictEqual(o.price, 1000, 'el precio total pasa a precio por unidad');
+  assert.strictEqual(o.qty, 2);
+  assert.strictEqual(db.data.market.listings, undefined);
 });

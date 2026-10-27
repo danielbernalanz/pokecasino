@@ -86,7 +86,7 @@ const STATIC = {
   roulette: { wheel: roulette.WHEEL, groups: roulette.GROUPS, payout: roulette.PAYOUT },
   openRegistration: config.OPEN_REGISTRATION,
   racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS,
-  items: items.ITEMS, marketFee: market.FEE, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
+  items: items.ITEMS, marketFee: market.SETUP_FEE, salesTax: market.SALES_TAX, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
   plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
   cosmetics: items.COSMETICS,
 };
@@ -347,9 +347,10 @@ io.on('connection', (socket) => {
   on('item:use', items.use);
   on('equip', items.equip);
   on('market:state', () => market.state(), { push: false });
-  on('market:create', market.create);
-  on('market:cancel', market.cancel);
+  on('market:sell', market.sell);
   on('market:buy', market.buy);
+  on('market:cancel', market.cancel);
+  on('market:history', market.history, { push: false });
   on('bj:state', (u) => blackjack.view(u), { push: false });
   on('bj:deal', blackjack.deal);
   on('bj:act', blackjack.act);
@@ -408,6 +409,7 @@ server.listen(config.PORT, config.HOST, onListen);
 db.init().then(() => {
   if (stopping) return;
   // Lo que quedó en juego si la versión anterior se apagó de golpe vuelve a sus dueños.
+  market.init();
   const back = db.refundEscrow();
   if (back.n) console.log(`  ↩️  Devueltas ${back.total} monedas en juego a ${back.n} apuesta(s)/mesa(s) pendientes`);
   ready = true;

@@ -1,6 +1,7 @@
 import { S, h, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, itemImg } from '../core.js';
 import { openDetail } from './pokedex.js';
 import { pickPokemon } from '../picker.js';
+import { openItem } from './market.js';
 
 let tab = 'items';
 
@@ -30,7 +31,7 @@ export default {
           it.price
             ? h('div', { class: 'stack' }, h('div', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(it.price)), h('div', { class: 'row gap' }, qty,
               h('button', { class: 'btn primary', onclick: async (e) => { const r = await act('item:buy', { itemId: id, qty: Number(qty.value) }, e.target); if (r) { sfx('win'); toast(`Compraste ${r.qty}× ${it.name}`, 'success'); } } }, 'Comprar')))
-            : h('a', { class: 'btn', href: '#/market' }, 'Buscar en el Mercado'));
+            : h('button', { class: 'btn', onclick: () => openItem({ kind: 'item', itemId: id }) }, 'Buscar en el Mercado'));
       }));
     }
 
@@ -64,7 +65,7 @@ export default {
               else if (r) { sfx('shiny'); toast(`Usaste ${it.name}`, 'success'); }
             } }, id === 'mystery-egg' ? 'Abrir' : 'Usar');
           return h('div', { class: 'shop-item item-card' }, itemImg(id, 'big'), h('div', { class: 'grow' }, h('b', {}, `${it.name} ×${n}`), h('div', { class: 'small muted' }, it.desc)),
-            h('div', { class: 'stack' }, useBtn, h('a', { class: 'btn small', href: '#/market' }, 'Vender')));
+            h('div', { class: 'stack' }, useBtn, h('button', { class: 'btn small', onclick: () => openItem({ kind: 'item', itemId: id }, 'sell') }, 'Vender')));
         })) : h('p', { class: 'muted' }, 'Tu mochila está vacía. Consigue objetos en la Tienda Poké, subiendo de nivel, con la recompensa diaria o en el Mercado.'));
     }
 

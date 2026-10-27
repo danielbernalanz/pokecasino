@@ -1,4 +1,5 @@
 import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus } from '../core.js';
+import { openItem } from './market.js';
 
 let filter = { q: '', show: 'all', rarity: '', type: '', gen: '' };
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
@@ -17,7 +18,7 @@ export function openDetail(id) {
       c.s > 0 ? h('button', { class: 'btn gold', onclick: async (e) => { if (await act('buddy:set', { id, shiny: true }, e.target)) { toast(`${p.name} ✨ es tu compañero`, 'success'); sfx('shiny'); } } }, '✨ Compañero variocolor') : null,
       c.n > 1 ? h('button', { class: 'btn', onclick: async (e) => { if (await act('shop:release', { id, count: 1 }, e.target)) { toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); m.close(); openDetail(id); } } }, `Liberar 1 copia (+${r.dust} ✦)`) : null,
       S.me.items['rare-candy'] && c.n < 5 ? h('button', { class: 'btn', onclick: async (e) => { if (await act('item:use', { itemId: 'rare-candy', pokeId: id }, e.target)) { sfx('shiny'); toast(`¡${p.name} gana una estrella!`, 'success'); m.close(); openDetail(id); } } }, `🍬 Caramelo Raro (${S.me.items['rare-candy']})`) : null,
-      h('a', { class: 'btn', href: '#/market', onclick: () => m.close() }, '🏪 Vender en el Mercado')),
+      h('button', { class: 'btn', onclick: () => { m.close(); openItem({ kind: 'poke', pokeId: id, shiny: false }, 'sell'); } }, '🏪 Vender en el Mercado')),
     h('div', { class: 'row gap wrap' }, giftTo,
       h('datalist', { id: 'gift-users' }, S.online.filter((u) => u.username !== S.me.username).map((u) => h('option', { value: u.username }))),
       h('button', { class: 'btn', onclick: async (e) => {
@@ -27,6 +28,7 @@ export function openDetail(id) {
         if (await act('gift:poke', { to, id, shiny: false }, e.target)) { toast('¡Regalo enviado!', 'success'); m.close(); }
       } }, '🎁 Regalar copia'))) : h('div', { class: 'stack' },
     h('p', { class: 'muted' }, '¿Quién es ese Pokémon? Aún no lo has atrapado.'),
+    h('button', { class: 'btn primary', onclick: () => { m.close(); openItem({ kind: 'poke', pokeId: id, shiny: false }); } }, '🏪 Comprarlo en el Mercado'),
     h('a', { class: 'btn', href: '#/shop', onclick: () => m.close() }, `Fabricar por ${fmt(r.craft)} ✦`));
   const m = modal(h('div', { class: 'detail' },
     h('div', { class: 'detail-left r-' + p.rarity }, big, toggle),

@@ -13,7 +13,7 @@ const empty = () => ({
   chat: [],
   feed: [],
   state: { jackpot: 10000 },
-  market: { listings: [], sales: [], nextId: 1 },
+  market: { orders: [], trades: [], history: {}, nextId: 1 },
   escrow: {},
 });
 
@@ -36,7 +36,7 @@ const byName = new Map();
 function load(raw) {
   for (const k of Object.keys(data)) delete data[k];
   Object.assign(data, empty(), raw || {});
-  data.market = Object.assign({ listings: [], sales: [], nextId: 1 }, data.market);
+  data.market = Object.assign({ orders: [], trades: [], history: {}, nextId: 1 }, data.market);
   data.escrow ||= {};
   byName.clear();
   for (const u of Object.values(data.users)) { migrateUser(u); byName.set(u.username.toLowerCase(), u); }
