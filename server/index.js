@@ -369,25 +369,32 @@ io.on('connection', (socket) => {
   });
 });
 
-race.start();
-crash.start();
-
-function shutdown() {
+let stopping = false;
+async function shutdown() {
+  if (stopping) return;
+  stopping = true;
   race.refundAll();
   duel.refundAll();
   crash.refundAll();
   holdem.refundAll();
-  db.flush();
+  await db.flushAll().catch((e) => console.error(e));
   process.exit(0);
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-server.listen(config.PORT, config.HOST, () => {
+(async () => {
+  await db.init();
+  race.start();
+  crash.start();
+  server.listen(config.PORT, config.HOST, onListen);
+})().catch((e) => { console.error('No se pudo arrancar:', e); process.exit(1); });
+
+function onListen() {
   const users = Object.keys(db.data.users).length;
   console.log(`\n  🎰 PokéCasino escuchando en http://${config.HOST}:${config.PORT}`);
   console.log(`  🔒 Modo de red: ${config.NETWORK_MODE}${config.ALLOW_CIDRS.length ? ' + ' + config.ALLOW_CIDRS.join(', ') : ''}`);
   console.log(`  🔑 Código de invitación maestro: ${config.ACCESS_KEY}`);
   if (!users) console.log('  👑 El primer jugador que se registre será administrador.');
   console.log('');
-});
+}

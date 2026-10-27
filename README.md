@@ -83,7 +83,8 @@ Todo se hace desde el navegador, también desde el móvil. En la nube no hay red
 
 1. Entra en [render.com](https://render.com) con GitHub → **New → Blueprint** → elige el repositorio; usa `render.yaml`.
 2. El código maestro está en **Environment → ACCESS_KEY** (generado automáticamente).
-3. Limitaciones del plan gratuito: se duerme tras 15 min sin visitas (tarda ~1 min en despertar) y **no tiene disco persistente**, así que las cuentas y monedas se borran cada vez que se reinicia. Para conservarlas hace falta un plan de pago con disco montado en `/data` y `DATA_DIR=/data`.
+3. El blueprint crea también una base **Postgres gratuita** y la conecta con `DATABASE_URL`: ahí se guardan las cuentas, porque el servicio gratuito no tiene disco persistente.
+4. Limitaciones del plan gratuito: el servicio se duerme tras 15 min sin visitas (tarda ~1 min en despertar) y la base Postgres gratuita de Render caduca a los 30 días (hay que pasarla a un plan de pago o crear otra).
 
 ### Variables de entorno
 
@@ -96,6 +97,7 @@ Todo se hace desde el navegador, también desde el móvil. En la nube no hay red
 | `ACCESS_KEY` | aleatorio | Código maestro. Si no se define se genera y se guarda en `data/config.json`. |
 | `TRUST_PROXY` | — | `1` si estás detrás de un proxy inverso (usa `X-Forwarded-For`). |
 | `DATA_DIR` | `./data` | Carpeta de datos. |
+| `DATABASE_URL` | — | Si se define, los datos se guardan en Postgres (para alojamientos sin disco). |
 
 ## Desarrollo
 

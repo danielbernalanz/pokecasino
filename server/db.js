@@ -26,14 +26,51 @@ function migrateUser(u) {
   return u;
 }
 
-let data = empty();
-try {
-  data = Object.assign(empty(), JSON.parse(fs.readFileSync(FILE, 'utf8')));
-} catch { /* base nueva */ }
-
-data.market = Object.assign({ listings: [], sales: [], nextId: 1 }, data.market);
+// `data` es siempre el mismo objeto: los módulos guardan la referencia.
+const data = empty();
 const byName = new Map();
-for (const u of Object.values(data.users)) { migrateUser(u); byName.set(u.username.toLowerCase(), u); }
+
+function load(raw) {
+  for (const k of Object.keys(data)) delete data[k];
+  Object.assign(data, empty(), raw || {});
+  data.market = Object.assign({ listings: [], sales: [], nextId: 1 }, data.market);
+  byName.clear();
+  for (const u of Object.values(data.users)) { migrateUser(u); byName.set(u.username.toLowerCase(), u); }
+}
+
+try { load(JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch { load(null); /* base nueva */ }
+
+// ---- Postgres opcional (DATABASE_URL): para alojamientos sin disco persistente ----
+let pool = null;
+let pgPending = null;
+let pgDirty = false;
+let pgTimer = null;
+
+async function init() {
+  if (!process.env.DATABASE_URL) return;
+  const { Pool } = require('pg');
+  const url = process.env.DATABASE_URL;
+  const ssl = /sslmode=require/.test(url) || process.env.PGSSL === '1' ? { rejectUnauthorized: false } : false;
+  pool = new Pool({ connectionString: url, ssl, max: 2 });
+  await pool.query('CREATE TABLE IF NOT EXISTS pokecasino_state (id INT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())');
+  const r = await pool.query('SELECT data FROM pokecasino_state WHERE id = 1');
+  if (r.rows[0]) load(r.rows[0].data);
+  console.log(`  🐘 Datos en Postgres (${Object.keys(data.users).length} jugadores cargados)`);
+}
+
+async function pgWrite() {
+  if (!pool) return;
+  if (pgPending) { pgDirty = true; return pgPending; }
+  pgDirty = false;
+  pgPending = pool.query(
+    'INSERT INTO pokecasino_state (id, data, updated_at) VALUES (1, $1, now()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()',
+    [JSON.stringify(data)],
+  ).catch((e) => console.error('Error guardando en Postgres:', e.message)).finally(() => {
+    pgPending = null;
+    if (pgDirty) pgWrite();
+  });
+  return pgPending;
+}
 
 let timer = null;
 function flush() {
@@ -45,6 +82,14 @@ function flush() {
 }
 function save() {
   if (!timer) timer = setTimeout(flush, 500);
+  if (pool && !pgTimer) pgTimer = setTimeout(() => { pgTimer = null; pgWrite(); }, 2000);
+}
+// Guardado final antes de apagar (Render envía SIGTERM al dormir o redesplegar).
+async function flushAll() {
+  flush();
+  clearTimeout(pgTimer);
+  pgTimer = null;
+  if (pool) { await pgWrite(); while (pgPending) await pgPending; }
 }
 
 function addUser(u) {
@@ -56,4 +101,4 @@ function addUser(u) {
 const userByName = (name) => byName.get(String(name || '').toLowerCase());
 const userById = (id) => data.users[id];
 
-module.exports = { data, save, flush, addUser, userByName, userById };
+module.exports = { data, save, flush, flushAll, init, addUser, userByName, userById };
