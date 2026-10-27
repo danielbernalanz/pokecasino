@@ -80,7 +80,7 @@ export default {
       const needs = (t.badges || 0) - S.me.progress.badges.filter((b) => b.got).length;
       tableBox.replaceChildren(
         h('div', { class: 'row between wrap gap' }, h('h2', {}, t.name), h('span', { class: 'muted' }, `Ciegas ${fmt(t.sb)}/${fmt(t.bb)}`)),
-        needs > 0 ? h('a', { class: 'card lock-note', href: '#/trainer' }, `🔒 Puedes mirar, pero para jugar aquí necesitas ${t.badges} medallas de gimnasio (te faltan ${needs}). Míralas en «Mi Entrenador».`) : null,
+        needs > 0 ? h('a', { class: 'card lock-note', href: '#/trainer' }, `🔒 Puedes mirar, pero para jugar aquí necesitas ${t.badges} medallas de gimnasio (te faltan ${needs}). Míralas en «Mi Entrenador».`) : '',
         h('div', { class: 'p-table' }, h('div', { class: 'p-felt' }, center), seats),
         controls(me),
         h('div', { class: 'p-log' }, t.log.slice().reverse().map((l) => h('div', {}, l.text))));
