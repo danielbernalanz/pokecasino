@@ -23,6 +23,9 @@ const app = express();
 app.set('trust proxy', config.TRUST_PROXY);
 app.disable('x-powered-by');
 
+// Comprobación de salud para plataformas de alojamiento (no expone datos).
+app.get('/healthz', (req, res) => res.send('ok'));
+
 // ---- Filtro de red y cabeceras ----
 app.use((req, res, next) => {
   if (!net.isAllowed(req.ip)) return res.status(403).send('Acceso restringido a la red privada.');

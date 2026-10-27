@@ -1,0 +1,18 @@
+# Blueprint de Render: despliega con un clic desde el panel (New → Blueprint).
+services:
+  - type: web
+    name: pokecasino
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NETWORK_MODE
+        value: any
+      - key: TRUST_PROXY
+        value: "1"
+      - key: ACCESS_KEY
+        generateValue: true

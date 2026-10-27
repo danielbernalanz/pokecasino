@@ -56,6 +56,24 @@ La opción recomendada es una VPN privada como [Tailscale](https://tailscale.com
 
 Si prefieres exponerlo detrás de un proxy inverso con HTTPS, usa `TRUST_PROXY=1` y añade las IPs permitidas con `ALLOW_CIDRS`, o `NETWORK_MODE=any` para depender solo de las invitaciones.
 
+## Alojarlo en la nube (sin PC propio)
+
+Todo se hace desde el navegador, también desde el móvil. En la nube no hay red privada, así que el acceso queda protegido **solo por las invitaciones**: `NETWORK_MODE=any` ya viene configurado en el `Dockerfile` y en `render.yaml`.
+
+### Railway (recomendado: datos persistentes, ~5 USD/mes)
+
+1. Entra en [railway.com](https://railway.com) con tu cuenta de GitHub.
+2. **New Project → Deploy from GitHub repo** → elige `pokecasino` (rama `main` una vez fusionado el PR). Railway usa el `Dockerfile` automáticamente.
+3. En el servicio: **Variables** → añade `ACCESS_KEY` con un código secreto que elijas (será el código de invitación maestro).
+4. **Click derecho sobre el servicio → Attach Volume** con ruta de montaje `/data`. Ahí se guardan las cuentas y colecciones; sin volumen se pierden en cada reinicio.
+5. **Settings → Networking → Generate Domain**. Esa URL `https://….up.railway.app` es la que compartes con tus amigos.
+
+### Render (gratis, para probar)
+
+1. Entra en [render.com](https://render.com) con GitHub → **New → Blueprint** → elige el repositorio; usa `render.yaml`.
+2. El código maestro está en **Environment → ACCESS_KEY** (generado automáticamente).
+3. Limitaciones del plan gratuito: se duerme tras 15 min sin visitas (tarda ~1 min en despertar) y **no tiene disco persistente**, así que las cuentas y monedas se borran cada vez que se reinicia. Para conservarlas hace falta un plan de pago con disco montado en `/data` y `DATA_DIR=/data`.
+
 ### Variables de entorno
 
 | Variable | Por defecto | Descripción |
