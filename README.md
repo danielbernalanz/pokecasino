@@ -38,7 +38,15 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **¿Por qué usar el Mercado?** Los cosméticos solo salen de **Huevos Misteriosos** aleatorios, así que los repetidos se venden y el que quieres se compra. Las colecciones piden Pokémon concretos: el Mercado muestra cuántos hay a la venta de los que te faltan, con un filtro «Para mis colecciones». Además, la Medalla Alma exige vender 3 cosas, y el Mercado aparece en el tutorial y en las misiones diarias.
 
-**Social**: chat con menciones `@nombre`, actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha, niveles y panel de anfitrión (invitaciones, monedas, suspensiones, contraseñas).
+**Social**: chat con menciones `@nombre`, **mensajes privados** (`/w nombre mensaje` o «✉️» en la ficha), **emotes de Pokémon** (`:pikachu:` o el selector 😀), actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha y niveles. **Avisos** (🔔 en el menú del usuario): vibración, contador en la pestaña y notificación del sistema cuando te toca en el póker, te escriben, te mencionan o recibes algo.
+
+**Eventos** (hora de España): lunes ⚔️ Duelos sin comisión, miércoles 🎯 Misiones ×2, viernes 🏪 Mercado sin impuesto y comisión a la mitad, sábado y domingo ✨ Variocolor ×2 y 🤝 tope de bonus de compañero ×2. Se anuncian en el Vestíbulo y el anfitrión puede lanzar cualquiera de 1 a 72 horas.
+
+**Mi Entrenador → 📊 Mis monedas**: gráfica del saldo diario, resultado neto por juego y últimos movimientos (gacha, Mercado, regalos, recompensas…).
+
+**Panel del anfitrión**: jugadores (monedas, suspensiones, contraseñas, invitaciones), eventos y **🏦 Economía**: monedas en circulación, de dónde salen y a dónde van, retorno real de cada juego, jugadores activos y registro de acciones de los anfitriones.
+
+**Móvil**: barra de pestañas inferior, ventanas como hojas inferiores, controles fijos al pie en los juegos y **app instalable** (PWA: «Instalar app» o, en iPhone, Compartir → «Añadir a pantalla de inicio»).
 
 Todos los resultados se calculan en el servidor con `crypto`. RTP aproximados: Video Póker 99,5 % (juego óptimo), Blackjack ~99,5 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ~96 %, Voltorb Flip ~95 %, Ruleta 94,7 %, Carrera ≤ 90 %. Subir de nivel devuelve ~0,25 % de lo apostado y el bonus de compañero, colecciones y Moneda Amuleto tiene un tope diario (300 + 50 × nivel), para que ningún juego dé dinero seguro a la larga. En los duelos entre jugadores no hay bonus.
 
