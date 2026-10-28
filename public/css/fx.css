@@ -114,3 +114,29 @@
 
 /* Sobre ×10: botón para abrirlo todo de golpe (tocar la pantalla solo acelera la Poké Ball actual). */
 .gx-skipall { position: relative; z-index: 3; margin-top: 6px; opacity: .85; }
+
+/* ---------- Avisos de acciones arriesgadas (confirmRisk) ---------- */
+.risk-wrap .modal-head { display: none; }
+.risk-wrap .modal { max-width: 440px; border-color: #b8860b; box-shadow: 0 0 0 1px #ffcb0533, 0 18px 50px #000a; }
+.risk-wrap .modal-body { padding: 18px 20px 20px; }
+.risk-box { display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.risk-ico { font-size: 44px; line-height: 1; filter: drop-shadow(0 0 14px #ffcb0599); animation: riskPulse 1.6s ease-in-out infinite; }
+@keyframes riskPulse { 50% { transform: scale(1.08); } }
+.risk-title { font-size: 19px; color: var(--gold); margin: 0; }
+.risk-text { margin: 0; line-height: 1.5; font-size: 15px; }
+.risk-details { margin: 0; padding: 10px 12px 10px 28px; text-align: left; font-size: 13px; color: var(--muted); background: #0004; border: 1px solid var(--line); border-radius: 10px; }
+.risk-details li { margin: 2px 0; }
+.risk-check { flex-direction: row; align-items: center; gap: 8px; justify-content: center; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 2px; }
+.risk-check input { width: 18px; height: 18px; accent-color: var(--gold); flex: none; padding: 0; }
+.risk-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.risk-actions .btn { width: 100%; }
+.risk-actions .btn.primary { font-size: 16px; padding: 13px 16px; }
+.risk-go { background: #3a1a28; border-color: #8a2a40; color: #ffd0d8; font-weight: 700; }
+@media (min-width: 560px) { .risk-actions { flex-direction: row; } .risk-actions .btn { flex: 1; } }
+@media (max-width: 559px) {
+  .risk-wrap { align-items: end; padding: 0; }
+  .risk-wrap .modal { width: 100%; max-width: none; border-radius: 18px 18px 0 0; animation: riskSheet .22s ease-out; max-height: 90vh; overflow-y: auto; }
+  .risk-wrap .modal-body { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+}
+@keyframes riskSheet { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .risk-ico, .risk-wrap .modal { animation: none; } }

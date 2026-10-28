@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, bus, sprite, animImg, modal, typeBadge, sleep } from '../core.js';
+import { S, h, fmt, act, sfx, bus, sprite, animImg, modal, typeBadge, sleep, confirmBet } from '../core.js';
 import { pickPokemon } from '../picker.js';
 import { burstEl, shake, flash, confetti, coinRain, vibrate } from '../fx.js';
 
@@ -113,6 +113,7 @@ export default {
             : h('button', { class: 'btn primary', disabled: forOther, onclick: async (e) => {
               const pick = await pickPokemon({ title: `Elige tu Pokémon a ciegas contra ${d.creator}` });
               if (!pick) return;
+              if (d.wager && !(await confirmBet('duels', d.wager, { what: 'jugarte en este duelo' }))) return;
               const r = await act('duel:accept', { id: d.id, pokeId: pick.id, shiny: pick.shiny }, e.target);
               if (r) playBattle(r.record);
             } }, '¡Aceptar!'));
@@ -142,6 +143,8 @@ export default {
           h('label', {}, 'Rival', target, datalist),
           h('button', { class: 'btn primary big', onclick: async (e) => {
             if (!chosen) return pickPokemon().then((p) => { if (p) { chosen = p; showChosen(); } });
+            const wg = Number(wager.value) || 0;
+            if (wg && !(await confirmBet('duels', wg, { what: 'poner en juego' }))) return;
             const r = await act('duel:create', { pokeId: chosen.id, shiny: chosen.shiny, wager: Number(wager.value) || 0, target: target.value.trim() || null }, e.target);
             if (r) { myPicks[r.duel.id] = { id: chosen.id, shiny: chosen.shiny }; sfx('click'); renderOpen(); }
           } }, 'Publicar reto'),

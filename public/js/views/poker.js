@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, bus, playingCard, modal, avatar, titleTag } from '../core.js';
+import { S, h, fmt, act, sfx, bus, playingCard, modal, avatar, titleTag, confirmRisk } from '../core.js';
 import { winFx, burstEl } from '../fx.js';
 
 let currentTable = null;
@@ -118,7 +118,19 @@ export default {
         const raise = h('input', { type: 'range', min: minTo, max: maxTo, step: t.sb, value: minTo });
         const raiseLbl = h('b', {}, fmt(minTo));
         raise.addEventListener('input', () => { raiseLbl.textContent = fmt(raise.value); });
-        const send = (type, amount) => act('poker:action', { table: t.id, type, amount }).then((r) => r && sfx('click'));
+        const send = async (type, amount) => {
+          const goesAllIn = type === 'allin' || (type === 'raise' && amount >= maxTo) || (type === 'call' && toCall >= s.stack);
+          if (goesAllIn) {
+            const wealth = S.me.coins + s.stack;
+            const pct = wealth > 0 ? s.stack / wealth : 1;
+            if (pct >= 0.5 && !(await confirmRisk('poker-allin', {
+              title: 'Vas all-in', danger: type === 'call' ? 'Igualar all-in' : 'Ir all-in', safe: 'Pensarlo mejor',
+              text: `Te juegas todas tus fichas de la mesa: ${fmt(s.stack)}, el ${Math.round(pct * 100)} % de tu dinero (${fmt(wealth)} entre monedas y fichas). Si pierdes la mano, te quedas sin ellas.`,
+              details: toCall > 0 ? [`Ahora mismo el bote es ${fmt(hd.pot)} y igualar cuesta ${fmt(Math.min(toCall, s.stack))}.`] : null }))) return;
+          }
+          const r = await act('poker:action', { table: t.id, type, amount });
+          if (r) sfx('click');
+        };
         const pot = hd.pot;
         const canRaise = maxTo > hd.currentBet && hd.canRaise;
         out.push(h('div', { class: 'p-controls my-turn' },

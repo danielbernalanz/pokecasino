@@ -86,8 +86,8 @@ export function toast(text, kind = 'info', ms = 3800) {
   setTimeout(() => t.remove(), ms + 400);
 }
 
-export function modal(content, { title, wide } = {}) {
-  const close = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
+export function modal(content, { title, wide, onClose } = {}) {
+  const close = () => { if (!wrap.isConnected) return; wrap.remove(); document.removeEventListener('keydown', onKey); if (onClose) onClose(); };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   const wrap = h('div', { class: 'modal-wrap', onclick: (e) => { if (e.target === wrap) close(); } },
     h('div', { class: 'modal' + (wide ? ' wide' : '') },
@@ -96,6 +96,78 @@ export function modal(content, { title, wide } = {}) {
   document.body.append(wrap);
   document.addEventListener('keydown', onKey);
   return { close, el: wrap };
+}
+
+// ---- Avisos de acciones arriesgadas ----
+// Cada aviso se puede silenciar por apartado (clave 'warn:<key>' = 'off' en localStorage).
+const SECTION_NAMES = {
+  slots: 'Pika-Slots', roulette: 'la Ruleta', plinko: 'Plinko', mines: 'Minas', voltorb: 'Voltorb Flip', crash: 'Crash', race: 'las Carreras',
+  blackjack: 'el Blackjack', videopoker: 'el Video Póker', baccarat: 'el Baccarat', duels: 'los Duelos', poker: 'el Póker', gacha: 'el Gacha',
+  bj: 'el Blackjack', vp: 'el Video Póker', masterball: 'el Gacha', release: 'la Pokédex y la Tienda', item: 'la Mochila', market: 'el Mercado', pokedex: 'la Pokédex', shop: 'la Tienda', gift: 'los regalos', items: 'los objetos',
+};
+const warnKey = (key) => 'warn:' + key;
+const warnIsOff = (key) => { try { return localStorage.getItem(warnKey(key)) === 'off'; } catch { return false; } };
+export function resetWarnings() {
+  let n = 0;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('warn:')) keys.push(k); }
+    keys.forEach((k) => localStorage.removeItem(k));
+    n = keys.length;
+  } catch { /* sin almacenamiento */ }
+  return n;
+}
+// Devuelve una promesa: true = continuar, false = cancelar (Escape, fondo o botón seguro).
+export function confirmRisk(key, { title, text, danger = 'Continuar', safe = 'Cancelar', details, section } = {}) {
+  if (warnIsOff(key)) return Promise.resolve(true);
+  const sec = section || SECTION_NAMES[key.split(':')[1]] || SECTION_NAMES[key.split(':')[0].split('-')[0]] || 'este apartado';
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      if (ok && chk.checked) { try { localStorage.setItem(warnKey(key), 'off'); } catch { /* no se recuerda */ } }
+      document.removeEventListener('keydown', onKey, true);
+      m.close();
+      resolve(ok);
+    };
+    const chk = h('input', { type: 'checkbox' });
+    const safeBtn = h('button', { class: 'btn primary big', type: 'button', onclick: () => finish(false) }, safe);
+    const riskBtn = h('button', { class: 'btn risk-go', type: 'button', onclick: () => finish(true) }, danger);
+    const body = h('div', { class: 'risk-box', role: 'alertdialog', 'aria-label': title },
+      h('div', { class: 'risk-ico', 'aria-hidden': 'true' }, '⚠️'),
+      h('h3', { class: 'risk-title' }, title),
+      h('p', { class: 'risk-text' }, text),
+      details && details.length ? h('ul', { class: 'risk-details' }, details.map((d) => h('li', {}, d))) : null,
+      h('label', { class: 'risk-check' }, chk, h('span', {}, `No volver a avisarme de esto en ${sec}`)),
+      h('div', { class: 'risk-actions' }, safeBtn, riskBtn));
+    const m = modal(body, { title: '', onClose: () => finish(false) });
+    m.el.classList.add('risk-wrap');
+    // Enter = opción segura (salvo que el foco esté en el botón de continuar).
+    const onKey = (e) => {
+      if (e.key !== 'Enter' || !m.el.isConnected) return;
+      if (document.activeElement === riskBtn) return;
+      e.preventDefault(); e.stopPropagation(); finish(false);
+    };
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(() => safeBtn.focus(), 30);
+  });
+}
+// Apuesta alta: ≥ 50 % de tus monedas o que te deje por debajo del umbral de la enfermera Joy.
+export function confirmBet(game, stake, { details, what = 'apostar' } = {}) {
+  const coins = Math.floor(S.me?.coins || 0);
+  stake = Math.floor(Number(stake) || 0);
+  if (stake <= 0 || coins <= 0) return Promise.resolve(true);
+  const limit = S.data?.heal?.limit ?? 200;
+  const pct = stake / coins;
+  const left = coins - stake;
+  const high = pct >= 0.5;
+  const broke = left < limit && coins >= limit;
+  if (!high && !broke) return Promise.resolve(true);
+  let text = `Vas a ${what} ${fmt(stake)} de tus ${fmt(coins)} monedas (${Math.round(pct * 100)} %).`;
+  if (broke) text += ` Si lo pierdes te quedarías con ${fmt(Math.max(0, left))}. La enfermera Joy solo te presta monedas cuando tienes menos de ${fmt(limit)} y una vez por hora.`;
+  else text += ` Si sale mal, perderías más de la mitad de tu saldo de golpe.`;
+  return confirmRisk('bet-high:' + game, { title: 'Apuesta muy alta', text, details, danger: 'Apostar igualmente', safe: 'Cancelar' });
 }
 
 // ---- Selector de apuesta reutilizable ----

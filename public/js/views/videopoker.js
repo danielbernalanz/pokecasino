@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, betInput, playingCard } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, betInput, playingCard, confirmBet, confirmRisk } from '../core.js';
 import { winFx, burstEl, floatText, flash, vibrate } from '../fx.js';
 
 export default {
@@ -9,6 +9,7 @@ export default {
     let holds = [false, false, false, false, false];
     let phase = 'idle';
     let stake = 0;
+    let dealHint = null;
     const cardsBox = h('div', { class: 'vp-cards' });
     const msg = h('div', { class: 'table-msg' }, 'Reparte, guarda las cartas que quieras y cambia el resto.');
     const rows = S.data.vpPaytable.map(([name, mult]) => h('tr', { 'data-name': name }, h('td', {}, name), h('td', {}, '×' + mult)));
@@ -22,15 +23,23 @@ export default {
       rows.forEach((r) => r.classList.toggle('hit', r.dataset.name === win));
     }
     async function deal() {
+      if (!(await confirmBet('videopoker', bet.value))) return;
       try {
         const r = await emit('vp:deal', { bet: bet.value });
-        hand = r.hand; holds = [false, false, false, false, false]; phase = 'hold'; stake = bet.value;
+        hand = r.hand; holds = [false, false, false, false, false]; phase = 'hold'; stake = bet.value; dealHint = r.hint || null;
         mainBtn.textContent = 'CAMBIAR';
         msg.textContent = r.hint ? `Ya tienes: ${r.hint}` : 'Elige qué cartas guardar.';
         sfx('flip'); render(r.hint);
       } catch (e) { toast(e.message, 'error'); sfx('error'); }
     }
     async function draw() {
+      if (dealHint && !holds.some(Boolean)) {
+        const pay = (S.data.vpPaytable.find(([n]) => n === dealHint) || [])[1];
+        if (!(await confirmRisk('vp-discard-win', {
+          title: 'Vas a cambiar las 5 cartas',
+          text: `Ya tienes «${dealHint}»${pay ? ` (paga ×${pay}, es decir ${fmt(stake * pay)} monedas)` : ''}, pero no has guardado ninguna carta: al cambiar las cinco perderías ese premio.`,
+          details: ['Pulsa sobre las cartas para guardarlas antes de cambiar.'], danger: 'Cambiar todas igualmente', safe: 'Volver y guardar' }))) return;
+      }
       try {
         const r = await emit('vp:draw', { hold: holds });
         hand = r.hand; phase = 'idle'; mainBtn.textContent = 'REPARTIR';

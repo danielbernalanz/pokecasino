@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, act, sfx, toast, sprite, betInput } from '../core.js';
+import { S, h, fmt, emit, act, sfx, toast, sprite, betInput, confirmBet } from '../core.js';
 import { winFx, burstEl, flash, shake, vibrate, confetti } from '../fx.js';
 
 export default {
@@ -11,7 +11,7 @@ export default {
     const grid = h('div', { class: 'vf-grid' });
     const info = h('div', { class: 'vf-info' });
     const msg = h('div', { class: 'vf-msg' }, 'Gira cartas: ×1, ×2, ×3… ¡pero cuidado con Voltorb!');
-    const startBtn = h('button', { class: 'btn primary big', onclick: async (e) => { const r = await act('voltorb:start', { bet: bet.value }, e.target); if (r) { memo.clear(); sfx('click'); render(r); } } }, 'Nueva partida');
+    const startBtn = h('button', { class: 'btn primary big', onclick: async (e) => { if (!(await confirmBet('voltorb', bet.value))) return; const r = await act('voltorb:start', { bet: bet.value }, e.target); if (r) { memo.clear(); sfx('click'); render(r); } } }, 'Nueva partida');
     const cashBtn = h('button', { class: 'btn big gold', onclick: async (e) => { const r = await act('voltorb:cashout', {}, e.target); if (r) end(r); } }, 'Retirarse');
     const noteBtns = ['0', '1', '2', '3'].map((n) => h('button', { class: 'chip note-btn n' + n, title: 'Marcar notas', onclick: () => {
       memoMode = memoMode === n ? null : n;

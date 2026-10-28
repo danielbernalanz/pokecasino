@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, act, sfx, toast, art, item, pokeImg, rarityName, typeBadge, sleep, itemImg } from '../core.js';
+import { S, h, fmt, emit, act, sfx, toast, art, item, pokeImg, rarityName, typeBadge, sleep, itemImg, confirmRisk } from '../core.js';
 import { useFx } from '../rewards.js';
 import { centerOf } from '../fx.js';
 import { reveal } from './gacha-reveal.js';
@@ -98,6 +98,24 @@ export default {
     }
 
     async function pull(count, free, btn, ticket = false) {
+      if (!free && !ticket) {
+        const cost = S.data.gachaCost[count];
+        const coins = S.me.coins;
+        const left = coins - cost;
+        const limit = S.data.heal?.limit ?? 200;
+        if (cost >= coins * 0.5 || (left < limit && coins >= limit)) {
+          const ok = await confirmRisk('gacha-spend', {
+            title: 'Gasto grande en el Gacha', danger: 'Tirar igualmente', safe: 'Cancelar',
+            text: `Esta tirada ×${count} cuesta ${fmt(cost)} de tus ${fmt(coins)} monedas (${Math.round(cost / Math.max(1, coins) * 100)} %).${left < limit ? ` Te quedarías con ${fmt(Math.max(0, left))}: la enfermera Joy solo presta con menos de ${fmt(limit)} monedas y una vez por hora.` : ''}`,
+            details: ['El Gacha no garantiza ninguna rareza concreta: cada tirada es independiente.'] });
+          if (!ok) return;
+        }
+      }
+      const cur = byId.get(selected);
+      const promoB = rot && rot.promo ? byId.get(rot.promo) : null;
+      if ((S.me.buffs || {}).masterBall && cur && !cur.featuredL.length && promoB && promoB.featuredL.length && !(await confirmRisk('masterball-banner', {
+        title: 'Master Ball en el banner permanente', danger: 'Usarla aquí', safe: 'Cambiar de banner',
+        text: `Tienes la Master Ball preparada y estás tirando en «${cur.name}», que no tiene legendarias destacadas. Solo en banners promocionales asegura una destacada: ahora mismo «${promoB.name}» tiene ${promoB.featuredL.map((id) => S.dexById.get(id).name).join(', ')}.` }))) return;
       if (btn) btn.disabled = true;
       let res;
       try { res = await emit('gacha:pull', { banner: selected, count, free, ticket }); } catch (e) { toast(e.message, 'error'); sfx('error'); if (btn) btn.disabled = false; if (/disponible/.test(e.message)) loadRotation(); return; }

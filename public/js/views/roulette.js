@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, item, TYPE_ES, sleep } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, item, TYPE_ES, sleep, confirmBet, confirmRisk } from '../core.js';
 import { winFx, burstEl, glow, pop, vibrate, reduced } from '../fx.js';
 
 const COLORS = {
@@ -66,6 +66,12 @@ export default {
       if (!list.length) return toast('Coloca alguna ficha en el tapete.', 'error');
       const stake = list.reduce((a, b) => a + b.amount, 0);
       spinning = true; spinBtn.disabled = true;
+      const single = list.filter((b) => b.kind === 'type').sort((a, b) => b.amount - a.amount)[0];
+      if (single && single.amount >= S.me.coins * 0.5 && !(await confirmRisk('roulette-single', {
+        title: 'Todo a un solo tipo',
+        text: `Pones ${fmt(single.amount)} de tus ${fmt(S.me.coins)} monedas (${Math.round(single.amount / S.me.coins * 100)} %) a un único tipo (${TYPE_ES[single.value] || single.value}). Paga ×${payout.type}, pero solo sale en 1 de cada ${n} giros (~${(100 / n).toFixed(1)} %): lo más probable es perderlo todo.`,
+        danger: 'Girar igualmente' }))) { spinning = false; spinBtn.disabled = false; return; }
+      if (!(await confirmBet('roulette', stake))) { spinning = false; spinBtn.disabled = false; return; }
       let res;
       try { res = await emit('roulette:spin', { bets: list }); } catch (e) { toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; return; }
       // Gira para que el segmento ganador quede bajo el puntero (arriba).

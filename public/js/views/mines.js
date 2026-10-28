@@ -1,4 +1,4 @@
-import { h, fmt, emit, sfx, toast, betInput, item, sprite } from '../core.js';
+import { h, fmt, emit, sfx, toast, betInput, item, sprite, confirmBet, confirmRisk } from '../core.js';
 import { winFx, burstEl, flash, shake, vibrate } from '../fx.js';
 
 export default {
@@ -34,6 +34,12 @@ export default {
       }
     }
     async function start() {
+      const nm = Number(minesSel.value);
+      if (nm >= 15 && !(await confirmRisk('mines-many', {
+        title: `${nm} Geodude en un tablero de 25`,
+        text: `Con ${nm} Geodude escondidos, la probabilidad de acertar la 1.ª casilla es ${Math.round((25 - nm) / 25 * 100)} %: casi seguro que pierdes la apuesta nada más empezar. Los multiplicadores son enormes, pero llegar a ellos es muy raro.`,
+        danger: 'Empezar igualmente' }))) return;
+      if (!(await confirmBet('mines', bet.value))) return;
       try { const r = await emit('mines:start', { bet: bet.value, mines: Number(minesSel.value) }); game = r.game; sfx('click'); render(); } catch (e) { toast(e.message, 'error'); sfx('error'); }
     }
     async function pick(i) {

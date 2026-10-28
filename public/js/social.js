@@ -1,5 +1,5 @@
 // Chat, actividad en vivo y jugadores conectados.
-import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg, notify, toast } from './core.js';
+import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg, notify, toast, confirmRisk } from './core.js';
 
 // ---------- Emotes: «:pikachu:» se pinta con el sprite del Pokémon ----------
 const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -86,6 +86,8 @@ export async function showPlayer(username) {
   const giftCoins = h('form', { class: 'row gap', onsubmit: async (e) => {
     e.preventDefault();
     const amount = Number(e.target.amount.value);
+    if (S.me && amount >= S.me.coins * 0.5 && !(await confirmRisk('gift-big', { title: 'Regalo muy grande', danger: 'Regalar igualmente', safe: 'Cancelar',
+      text: `Vas a regalar ${fmt(amount)} de tus ${fmt(S.me.coins)} monedas (${Math.round(amount / Math.max(1, S.me.coins) * 100)} %) a ${p.username}. Los regalos no se pueden recuperar.` }))) return;
     if (await act('gift:coins', { to: p.username, amount })) { e.target.reset(); bus.emit('toast', `Enviaste ${fmt(amount)} monedas a ${p.username}`); }
   } }, h('input', { name: 'amount', type: 'number', min: 1, placeholder: 'Monedas', required: true }), h('button', { class: 'btn' }, '🎁 Regalar monedas'));
   const body = h('div', { class: 'player-card' },

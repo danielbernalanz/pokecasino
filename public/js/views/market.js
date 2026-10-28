@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER } from '../core.js';
+import { S, h, fmt, act, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk } from '../core.js';
 
 // Mercado estilo Albion Online: libro de órdenes por artículo (ventas y pedidos de compra).
 let tab = 'browse';
@@ -205,6 +205,36 @@ function itemDialog(a, o = {}) {
     const one = list.find((x) => x.id === orderId);
     return one ? [one] : [];
   };
+  // Avisos de operaciones arriesgadas. Devuelve false si el jugador cancela.
+  // price = precio unitario efectivo; qty = unidades; lock = monedas que quedarían apartadas (solo pedidos de compra).
+  async function warnTrade({ price, qty, lock = 0, topBid = null }) {
+    const av = avgOf(a.ref);
+    const nm = nameOf(a);
+    const dealing = `${fmt(qty)}× ${nm} a ${fmt(Math.round(price))} por unidad`;
+    if (!sell && av && price >= 2 * av.v && !(await confirmRisk('market-overpay', {
+      title: 'Estás pagando mucho más que el precio medio', danger: 'Comprar igualmente', safe: 'Cancelar',
+      text: `Vas a comprar ${dealing}, pero el precio medio (${av.label}) es ${fmt(av.v)}: pagas ${(price / av.v).toFixed(1).replace('.', ',')} veces más.`,
+      details: ['Prueba a crear un pedido de compra a un precio más bajo y espera a que alguien te venda.'] }))) return false;
+    if (!sell && lock >= S.me.coins * 0.5 && !(await confirmRisk('market-lock', {
+      title: 'Vas a apartar casi la mitad de tus monedas', danger: 'Crear el pedido', safe: 'Cancelar',
+      text: `Este pedido aparta ${fmt(lock)} de tus ${fmt(S.me.coins)} monedas (${Math.round(lock / Math.max(1, S.me.coins) * 100)} %) hasta que se cumpla, caduque o lo canceles. Mientras tanto no podrás usarlas para jugar.`,
+      details: ['La comisión de publicación no se devuelve.'] }))) return false;
+    if (sell && av && price <= 0.5 * av.v && !(await confirmRisk('market-underprice', {
+      title: 'Estás vendiendo muy por debajo del precio medio', danger: 'Vender igualmente', safe: 'Cancelar',
+      text: `Vas a vender ${dealing}, pero el precio medio (${av.label}) es ${fmt(av.v)}: cobras menos de la mitad de lo habitual.` }))) return false;
+    if (sell && topBid && price < topBid.price && !(await confirmRisk('market-underprice', {
+      title: 'Hay un comprador que paga más', danger: 'Publicar igualmente', safe: 'Cancelar',
+      text: `Tu precio (${fmt(price)}) está por debajo del mejor pedido de compra (${fmt(topBid.price)} por unidad). Podrías ganar más vendiendo al momento o subiendo el precio.` }))) return false;
+    if (sell && a.kind === 'poke') {
+      const c = S.me.collection[a.pokeId];
+      const buddy = S.me.buddy && S.me.buddy.id === a.pokeId;
+      const last = c && c.n - qty < 1;
+      if ((a.shiny || last || (buddy && last)) && !(await confirmRisk('release-precious:market', {
+        title: a.shiny ? 'Vas a vender un variocolor' : 'Vas a vender tu última copia', danger: 'Vender igualmente', safe: 'Conservarlo',
+        text: `${a.shiny ? `${nm} es una versión variocolor, mucho más difícil de conseguir. ` : ''}${last ? `Te quedarías sin ningún ${S.dexById.get(a.pokeId).name} en la Pokédex. ` : ''}${buddy && last ? 'Además es tu compañero actual: perderías su bonus. ' : ''}Si te arrepientes, tendrás que volver a comprarlo.`.trim() }))) return false;
+    }
+    return true;
+  }
   const head = h('div', { class: 'mk-dhead' });
   const toggle = h('div', { class: 'mk-toggle ' + (sell ? 'buyside' : 'sellside'), role: 'tablist' });
   const panelBox = h('div', { class: 'stack mk-mbody' });
@@ -278,6 +308,7 @@ function itemDialog(a, o = {}) {
       el, upd,
       async run(e) {
         const w = walk(nowList(), q.value);
+        if (w.filled && !(await warnTrade({ price: w.avg, qty: w.filled }))) return false;
         const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: w.filled, price: w.worst, instant: true, ...(orderId ? { orderId } : {}) }, e.target);
         if (!res) return false;
         sfx('win');
@@ -350,6 +381,9 @@ function itemDialog(a, o = {}) {
     return {
       el, upd,
       async run(e) {
+        const p = Math.floor(Number(price.value)) || 0;
+        const { topBid } = ctx();
+        if (p && !(await warnTrade({ price: p, qty: q.value, lock: sell ? 0 : q.value * p + feeOf(q.value * p), topBid }))) return false;
         const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: q.value, price: Math.floor(Number(price.value)), days: vals.days }, e.target);
         if (!res) return false;
         sfx('click');

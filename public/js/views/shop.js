@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, itemImg } from '../core.js';
+import { S, h, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, itemImg, confirmRisk } from '../core.js';
 import { openDetail } from './pokedex.js';
 import { pickPokemon } from '../picker.js';
 import { openItem } from './market.js';
@@ -57,6 +57,8 @@ export default {
             : cos ? h('button', { class: 'btn' + (equipped ? ' active' : ''), disabled: equipped, onclick: async (e) => { if (await act('item:use', { itemId: id }, e.target)) { sfx('click'); toast(`${it.name} equipado`, 'success'); } } }, equipped ? 'Equipado' : 'Equipar')
             : h('button', { class: 'btn primary', onclick: async (e) => {
               if (id === 'mystery-egg') return openEgg(e.target);
+              if (id === 'amulet-coin' && S.me.bonusLeft === 0 && !(await confirmRisk('item-wasted', { section: 'la Mochila', title: 'El objeto se desaprovecharía',
+                text: 'Hoy ya has alcanzado el tope diario de bonus de ganancias. La Moneda Amuleto dura 1 hora y se gastaría igual, así que ahora mismo no te daría nada. Mejor úsala cuando todavía te quede bonus por cobrar.', danger: 'Usarla igualmente', safe: 'Guardarla' }))) return;
               const at = centerOf(e.target);
               let payload = { itemId: id };
               if (id === 'rare-candy') {

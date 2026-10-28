@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, bus, item, sprite, betInput, sleep } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, bus, item, sprite, betInput, sleep, confirmBet, confirmRisk } from '../core.js';
 import { winFx, burstEl, glow, vibrate } from '../fx.js';
 
 const ICON = {
@@ -23,12 +23,28 @@ export default {
     setGrid(reels.map((r) => [r[0], r[1], r[2]]));
 
     const spinBtn = h('button', { class: 'btn primary huge', onclick: () => spin() }, 'GIRAR');
-    const autoBtn = h('button', { class: 'btn', onclick: () => { auto = !auto; autoBtn.classList.toggle('active', auto); if (auto && !spinning) spin(); } }, 'Auto');
+    const autoBtn = h('button', { class: 'btn', onclick: () => toggleAuto() }, 'Auto');
+
+    async function toggleAuto() {
+      if (auto) { auto = false; autoBtn.classList.remove('active'); return; }
+      if (spinning) return;
+      // Modo Auto: se asume una serie de 10 tiradas para estimar el riesgo.
+      const total = bet.value * 10;
+      if (total >= S.me.coins * 0.5) {
+        const ok = await confirmRisk('auto-series:slots', {
+          title: 'Modo Auto con mucho en juego', danger: 'Activar Auto', safe: 'No activar',
+          text: `El modo Auto tira sin parar. Con ${fmt(bet.value)} por tirada, 10 tiradas suman ${fmt(total)} monedas (${Math.round(total / Math.max(1, S.me.coins) * 100)} % de tus ${fmt(S.me.coins)}). Puedes pararlo pulsando Auto otra vez.` });
+        if (!ok) return;
+      }
+      auto = true; autoBtn.classList.add('active');
+      if (!spinning) spin();
+    }
 
     async function spin() {
       if (spinning) return;
       spinning = true;
       spinBtn.disabled = true;
+      if (!(await confirmBet('slots', bet.value))) { spinning = false; spinBtn.disabled = false; auto = false; autoBtn.classList.remove('active'); return; }
       lineSvg.replaceChildren();
       winBox.textContent = '…';
       winBox.className = 'slot-win';

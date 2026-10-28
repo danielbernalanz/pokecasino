@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, bus, animImg, betInput } from '../core.js';
+import { S, h, fmt, act, sfx, bus, animImg, betInput, confirmBet } from '../core.js';
 import { winFx, burstEl, confetti, flash } from '../fx.js';
 
 export default {
@@ -38,6 +38,7 @@ export default {
             myAmt ? h('div', { class: 'small good' }, `Tu apuesta: ${fmt(myAmt)}`) : null),
           h('div', { class: 'odds' }, '×' + x.odds),
           h('button', { class: 'btn primary', disabled: r.phase !== 'betting', onclick: async (e) => {
+            if (!(await confirmBet('race', bet.value))) return;
             const res = await act('race:bet', { lane: x.lane, amount: bet.value }, e.target);
             if (res) { S.raceBets = res.myBets; sfx('click'); renderRunners(S.race); }
           } }, 'Apostar'));

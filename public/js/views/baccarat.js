@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, playingCard, sleep, sprite } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, playingCard, sleep, sprite, confirmBet } from '../core.js';
 import { winFx, burstEl, vibrate } from '../fx.js';
 
 const LABEL = { player: 'Punto', banker: 'Banca', tie: 'Empate' };
@@ -21,8 +21,9 @@ export default {
     const playBtn = h('button', { class: 'btn primary huge', onclick: play }, 'JUGAR');
     async function play() {
       if (!bets.player && !bets.banker && !bets.tie) return toast('Coloca fichas primero.', 'error');
-      playBtn.disabled = true;
       const stake = bets.player + bets.banker + bets.tie;
+      playBtn.disabled = true;
+      if (!(await confirmBet('baccarat', stake))) { playBtn.disabled = false; return; }
       try {
         const r = await emit('baccarat:play', { bets });
         pBox.replaceChildren(); bBox.replaceChildren(); pScore.textContent = '–'; bScore.textContent = '–';

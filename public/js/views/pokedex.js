@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus } from '../core.js';
+import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
 import { useFx } from '../rewards.js';
 import { burstAt, centerOf } from '../fx.js';
 import { openItem } from './market.js';
@@ -18,7 +18,10 @@ export function openDetail(id) {
     h('div', { class: 'row gap wrap' },
       h('button', { class: 'btn primary', onclick: async (e) => { if (await act('buddy:set', { id, shiny: false }, e.target)) { toast(`${p.name} es tu compañero`, 'success'); sfx('win'); } } }, '🤝 Compañero'),
       c.s > 0 ? h('button', { class: 'btn gold', onclick: async (e) => { if (await act('buddy:set', { id, shiny: true }, e.target)) { toast(`${p.name} ✨ es tu compañero`, 'success'); sfx('shiny'); } } }, '✨ Compañero variocolor') : null,
-      c.n > 1 ? h('button', { class: 'btn', onclick: async (e) => { const at = centerOf(e.target); if (await act('shop:release', { id, count: 1 }, e.target)) { burstAt(...at, '#a5b4fc', 18, { spread: 120, stars: 0.8 }); sfx('shiny'); toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); m.close(); openDetail(id); } } }, `Liberar 1 copia (+${r.dust} ✦)`) : null,
+      c.n > 1 ? h('button', { class: 'btn', onclick: async (e) => {
+        if (c.s > 0 && c.n - 1 < c.s && !(await confirmRisk('release-precious', { title: 'Vas a liberar una copia variocolor', danger: 'Liberar igualmente', safe: 'Conservarla',
+          text: `Tienes ${c.n} copia(s) de ${p.name} y ${c.s} es variocolor ✨. Si liberas una, perderías una versión variocolor (solo recibes ${r.dust} ✦ de polvo), y es mucho más difícil de conseguir.` }))) return;
+        const at = centerOf(e.target); if (await act('shop:release', { id, count: 1 }, e.target)) { burstAt(...at, '#a5b4fc', 18, { spread: 120, stars: 0.8 }); sfx('shiny'); toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); m.close(); openDetail(id); } } }, `Liberar 1 copia (+${r.dust} ✦)`) : null,
       S.me.items['rare-candy'] && c.n < 5 ? h('button', { class: 'btn', onclick: async (e) => { const at = centerOf(e.target); if (await act('item:use', { itemId: 'rare-candy', pokeId: id }, e.target)) { useFx('rare-candy', at); toast(`¡${p.name} gana una estrella!`, 'success'); m.close(); openDetail(id); } } }, `🍬 Caramelo Raro (${S.me.items['rare-candy']})`) : null,
       h('button', { class: 'btn', onclick: () => { m.close(); openItem({ kind: 'poke', pokeId: id, shiny: false }, 'sell'); } }, '🏪 Vender en el Mercado')),
     h('div', { class: 'row gap wrap' }, giftTo,
@@ -27,6 +30,9 @@ export function openDetail(id) {
         const to = giftTo.value.trim();
         if (!to) return toast('Escribe el nombre del entrenador.', 'error');
         if (!confirm(`¿Regalar ${p.name} a ${to}? Perderás una copia.`)) return;
+        const isBuddy = S.me.buddy && S.me.buddy.id === id;
+        if ((c.n === 1 || isBuddy) && !(await confirmRisk('release-precious', { title: c.n === 1 ? 'Es tu única copia' : 'Es tu compañero', danger: 'Regalar igualmente', safe: 'Quedármelo',
+          text: `${c.n === 1 ? `Es tu única copia de ${p.name}: tu Pokédex dejaría de tenerlo registrado.` : ''}${isBuddy ? ` ${p.name} es tu compañero actual: dejarías de recibir su bonus en las ganancias hasta que elijas otro.` : ''} El regalo no se puede deshacer.`.trim() }))) return;
         if (await act('gift:poke', { to, id, shiny: false }, e.target)) { toast('¡Regalo enviado!', 'success'); m.close(); }
       } }, '🎁 Regalar copia'))) : h('div', { class: 'stack' },
     h('p', { class: 'muted' }, '¿Quién es ese Pokémon? Aún no lo has atrapado.'),

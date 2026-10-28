@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, bus, betInput, sprite } from '../core.js';
+import { S, h, fmt, act, sfx, bus, betInput, sprite, confirmBet, confirmRisk } from '../core.js';
 import { winFx, burstEl, flash, shake, pop, vibrate } from '../fx.js';
 
 export default {
@@ -26,7 +26,17 @@ export default {
     async function onMain() {
       if (!st) return;
       if (st.phase === 'betting') {
-        const r = await act('crash:bet', { amount: bet.value, auto: auto.value ? Number(auto.value) : null }, mainBtn);
+        if (!(await confirmBet('crash', bet.value))) return;
+        const au = auto.value ? Number(auto.value) : null;
+        if (!au || au >= 10) {
+          const pr = (x) => { const p = 97 / x; return p >= 10 ? Math.round(p) : p.toFixed(1).replace('.', ','); };
+          const text = au
+            ? `Tu retiro automático está en ×${au}. Con la ventaja de la casa (3 %), la probabilidad de llegar a ×${au} es de ~${pr(au)} %: solo ~${pr(au)} de cada 100 rondas llegan tan lejos, y en el resto pierdes la apuesta.`
+            : `No has puesto retiro automático: dependes de pulsar «Retirar» a tiempo y el cohete puede explotar en cualquier momento (la mitad de las rondas acaban antes de ×2). Para llegar a ×10 solo ~10 de cada 100 rondas lo consiguen.`;
+          if (!(await confirmRisk('crash-risky', { title: au ? 'Retiro automático muy alto' : 'Sin retiro automático', text, danger: 'Apostar igualmente', safe: 'Cancelar' }))) return;
+        }
+        if (st.phase !== 'betting') return;
+        const r = await act('crash:bet', { amount: bet.value, auto: au }, mainBtn);
         if (r) sfx('click');
       } else if (st.phase === 'flying') {
         const r = await act('crash:cashout', {}, mainBtn);

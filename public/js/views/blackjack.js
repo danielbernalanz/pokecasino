@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, betInput, playingCard, sprite } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, betInput, playingCard, sprite, confirmBet, confirmRisk } from '../core.js';
 import { winFx, burstEl, flash, floatText, vibrate } from '../fx.js';
 
 const RESULT = { blackjack: '¡Blackjack!', win: 'Ganas', push: 'Empate', lose: 'Pierdes', bust: 'Te pasaste' };
@@ -15,8 +15,18 @@ export default {
     const dealBtn = h('button', { class: 'btn primary big', onclick: () => deal() }, 'Repartir');
     const actions = { hit: btn('Pedir', 'hit', 'primary'), stand: btn('Plantarse', 'stand'), double: btn('Doblar', 'double', 'gold'), split: btn('Dividir', 'split') };
     let shown = 0;
+    let cur = null;
+    const CV = { A: 11, K: 10, Q: 10, J: 10, T: 10 };
+    // Total de una mano y si es blanda (con un As contando 11).
+    function handTotal(cards) {
+      let t = 0; let aces = 0;
+      for (const c of cards) { const v = CV[c[0]] || Number(c[0]); t += v; if (c[0] === 'A') aces++; }
+      while (t > 21 && aces) { t -= 10; aces--; }
+      return { t, soft: aces > 0 };
+    }
 
     function render(g, animate) {
+      cur = g;
       if (!g) { dealerBox.replaceChildren(); handsBox.replaceChildren(); dealerTotal.textContent = ''; setButtons(null); return; }
       dealerBox.replaceChildren(...g.dealer.map((c, i) => playingCard(c, { cls: animate ? 'deal' : '', delay: i * 120, back: S.me.equip.cardback })));
       dealerTotal.textContent = g.dealerTotal;
@@ -48,9 +58,22 @@ export default {
     }
     async function deal() {
       shown = 0;
+      if (!(await confirmBet('blackjack', bet.value))) return;
       try { const r = await emit('bj:deal', { bet: bet.value }); sfx('flip'); render(r.game, true); } catch (e) { toast(e.message, 'error'); sfx('error'); }
     }
     async function play(action) {
+      const hd = cur && !cur.done && cur.hands[cur.active];
+      if (hd) {
+        const { t, soft } = handTotal(hd.cards);
+        const bad = !soft && ((action === 'double' && t >= 12) || (action === 'hit' && t >= 17));
+        if (bad && !(await confirmRisk('bj-bad-move', {
+          title: action === 'double' ? 'Doblar con una mano alta' : 'Pedir carta con una mano alta',
+          text: action === 'double'
+            ? `Tienes un ${t} duro. Doblar solo compensa con 9, 10 u 11: con ${t} es muy probable pasarte y perder el doble de apuesta (${fmt(hd.bet * 2)}). La estrategia básica recomienda plantarse o pedir sin doblar.`
+            : `Tienes un ${t} duro y pedir carta te hace pasarte con mucha probabilidad (${Math.round((t - 8) / 13 * 100)} %). La estrategia básica recomienda plantarse.`,
+          danger: action === 'double' ? 'Doblar igualmente' : 'Pedir igualmente', safe: 'Plantarme / volver' }))) return;
+        if ((action === 'double' || action === 'split') && !(await confirmBet('blackjack', hd.bet, { what: action === 'double' ? 'doblar con' : 'añadir' }))) return;
+      }
       try { const r = await emit('bj:act', { action }); sfx('flip'); render(r.game, true); } catch (e) { toast(e.message, 'error'); }
     }
 
