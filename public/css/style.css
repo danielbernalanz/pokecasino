@@ -1100,3 +1100,22 @@ body.gx-open { overflow: hidden; }
 @keyframes gxStamp { 0% { transform: scale(2.4) rotate(-14deg); opacity: 0; } }
 @keyframes gxPulse { 50% { transform: translateX(-50%) scale(1.08); } }
 @keyframes gxFlip { 0% { transform: rotateY(90deg) scale(.7); } 100% { transform: none; } }
+
+/* Ventanas: el contenido nunca ensancha la ventana más allá de la pantalla. */
+.modal { min-width: 0; max-width: 100%; }
+.modal-body { min-width: 0; }
+/* Ficha de entrenador en el móvil: avatar arriba, datos centrados y en dos columnas. */
+@media (max-width: 560px) {
+  .player-hero { flex-direction: column; text-align: center; gap: 10px; }
+  .player-hero > div:last-child { min-width: 0; width: 100%; }
+  .player-hero h2 { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; font-size: 20px; overflow-wrap: anywhere; }
+  .player-hero .row { justify-content: center; flex-wrap: wrap; }
+  .avatar.xl { width: 104px; height: 104px; }
+  .player-buddy.empty { font-size: 36px; }
+  .player-hero .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .player-hero .stat-row .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .player-card form { flex-wrap: wrap; }
+  .player-card form input { flex: 1 1 120px; width: auto; }
+  .mini-grid { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
+  .mini-card img { width: 48px; height: 48px; }
+}
