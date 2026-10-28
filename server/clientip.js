@@ -17,8 +17,9 @@ function extractIp(xff, remote, hops) {
 let logged = false;
 function logOnce(xff, hops) {
   if (logged || !hops) return;
-  logged = true;
   const n = String(Array.isArray(xff) ? xff.join(',') : xff || '').split(',').filter((s) => s.trim()).length;
+  if (!n) return; // las comprobaciones de salud internas llegan sin cabecera: se espera a una petición real
+  logged = true;
   console.log(`🌐 IP: cabeceras X-Forwarded-For con ${n} entradas (saltos de confianza: ${hops})`);
 }
 
