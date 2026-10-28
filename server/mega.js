@@ -25,7 +25,7 @@ const CFG = {
   DURATION_DAYS: 7, // duración de cada edición
   GAP_DAYS: 7, // tras terminar, la siguiente empieza sola pasado este tiempo (el anfitrión puede cambiarlo)
   FRAG_PER_COINS: 200, // 1 💠 por cada 200 monedas apostadas (o gastadas en el Gacha o la Máquina)
-  BET_DAILY_CAP: 150, // tope diario de 💠 ganados jugando, ya con multiplicadores
+  BET_DAILY_CAP: 300, // tope diario de 💠 ganados jugando, ya con multiplicadores
   CRAFT_COST: 100, // fabricar la megapiedra que quieras
   FRAG_SPIN: 10, // coste de una tirada con fragmentos
   COIN_SPIN: 300, // coste de una tirada con monedas (sumidero)

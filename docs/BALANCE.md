@@ -312,3 +312,20 @@ dificultad, calculada con una estimación prudente de su precisión real:
 con el mejor punto de retirada para cada uno: el retorno esperado queda por debajo del 100 % en todos los casos.
 Coste: un jugador honrado muy bueno ve multiplicadores algo más bajos (≈ 85–90 % de retorno) y los primeros
 partidos de cualquiera empiezan con multiplicadores prudentes, que suben a medida que juega.
+
+## Ajuste «casual» (28-10-2026)
+
+El casino es una experiencia casual: los topes diarios molestaban más de lo que protegían. Lo que impide sacar
+monedas de la nada son las cotas de precio (los NPC nunca pagan más que liberar el duplicado; comprarles y
+revenderles siempre pierde) y las ventajas de la casa, no los topes diarios, así que se relajan:
+
+| Qué | Antes | Ahora |
+|---|---|---|
+| Vender a NPC al día | 3 por artículo · 1.500 + 100 × nivel | 10 por artículo · 5.000 + 500 × nivel |
+| Comprar a NPC al día | 5 por artículo | 20 por artículo |
+| Gasto diario de cada NPC | 15 % de su tesorería | 30 % |
+| Enfermera Joy | 500 cada 12 h | 1.000 cada 4 h (si tienes < 200) |
+| Recompensa diaria | 500 + 100/día (máx. 1.100) | 1.000 + 150/día (máx. 1.900) |
+| 💠 del evento Mega por jugar | 150 al día | 300 al día |
+
+Ingreso de un casual con todo hecho ≈ 3.300 monedas/día; una legendaria concreta sigue costando ≈ 2–3 semanas.

@@ -25,11 +25,11 @@ const INTERVAL = FAST ? [3000, 5000] : [2 * 60 * 1000, 4 * 60 * 1000];
 // ---- Límites (ver README) ----
 const MIN_LEVEL = 3; // para venderles
 const MIN_AGE = 24 * 3600 * 1000;
-const SELL_COINS_BASE = 1500; // monedas brutas que un jugador puede cobrar de NPC al día: 1500 + 100 × nivel
-const SELL_COINS_PER_LEVEL = 100;
-const SELL_UNITS = { poke: 3, item: 3, dust: 100 }; // unidades por artículo y día que un jugador puede venderles
-const BUY_UNITS = { poke: 5, item: 5, dust: 200 }; // y que puede comprarles (evita acaparar su stock)
-const SPEND_DAILY = 0.15; // fracción de la tesorería que un NPC puede gastar al día
+const SELL_COINS_BASE = 5000; // monedas brutas que un jugador puede cobrar de NPC al día: 5000 + 500 × nivel (casual: tope holgado)
+const SELL_COINS_PER_LEVEL = 500;
+const SELL_UNITS = { poke: 10, item: 10, dust: 500 }; // unidades por artículo y día que un jugador puede venderles
+const BUY_UNITS = { poke: 20, item: 20, dust: 1000 }; // y que puede comprarles (evita acaparar su stock)
+const SPEND_DAILY = 0.3; // fracción de la tesorería que un NPC puede gastar al día
 const LOW_FUNDS = 0.2; // por debajo del 20 % de la tesorería inicial dejan de pujar
 const MAX_OPEN = 25; // órdenes abiertas por NPC
 const STALE_MS = 12 * 3600 * 1000;

@@ -46,8 +46,8 @@ const BONUS_SHARE_AMULET = 0.45; // con Moneda Amuleto activa
 const BONUS_SHARE_EVENT = 1.25; // multiplicador en el fin de semana del Compañero
 
 // ---- Recompensa diaria: 500 el primer día, +100 por día de racha hasta el 7.º (1.100) ----
-const DAILY_BASE = 500;
-const DAILY_STEP = 100;
+const DAILY_BASE = 1000;
+const DAILY_STEP = 150;
 const DAILY_MAX_STREAK = 7;
 const dailyReward = (streak) => DAILY_BASE + DAILY_STEP * (Math.min(streak, DAILY_MAX_STREAK) - 1);
 

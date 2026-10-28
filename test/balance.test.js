@@ -294,16 +294,16 @@ test('ningún PNJ compra más caro de lo que vende (cap < suelo) en todos los ar
 });
 
 // ---------- Fuentes de monedas ----------
-test('Joy: como mucho 1.000 monedas al día', () => {
-  assert.ok((24 * 3600e3 / healer.COOLDOWN) * healer.AMOUNT <= 1000);
-  assert.ok(healer.AMOUNT <= 500);
+test('Joy: como mucho 6.000 monedas al día (y solo si te quedas sin nada cada vez)', () => {
+  assert.ok((24 * 3600e3 / healer.COOLDOWN) * healer.AMOUNT <= 6000);
+  assert.ok(healer.AMOUNT <= 1000);
 });
 
-test('ingresos diarios de un jugador casual: ≈2.500 monedas, y una legendaria concreta cuesta ≥ 2 semanas', () => {
+test('ingresos diarios de un jugador casual: ≈3.300 monedas, y una legendaria concreta cuesta ≥ 2 semanas', () => {
   const val = (rw) => (rw.coins || 0) + Object.entries(rw.items || {}).reduce((s, [id, n]) => s + n * ({ ticket: 150, 'mystery-egg': 150, 'rare-candy': 450 }[id] || 0), 0);
   const missions = progress.DAILY.reduce((s, m) => s + val(m.reward), 0) / progress.DAILY.length;
   const income = BAL.dailyReward(7) + 150 /* ticket */ + 150 /* tirada gratis */ + 3 * missions + val({ coins: 250, items: { 'mystery-egg': 1 } });
-  assert.ok(income > 1800 && income < 3200, `ingresos diarios ${income}`);
+  assert.ok(income > 2500 && income < 4200, `ingresos diarios ${income}`);
   // Legendaria concreta con 3 destacadas: 1 / (P(L) × 50 % / 3) tiradas.
   const pulls = 1 / (gacha.RATES.L * 0.5 / 3);
   const days = (pulls * gacha.COST[1]) / income;
