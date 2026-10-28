@@ -22,6 +22,7 @@ const roulette = require('./games/roulette');
 const voltorb = require('./games/voltorb');
 const race = require('./games/race');
 const duel = require('./games/duel');
+const showdown = require('./showdown'); // el simulador pesado se carga solo al empezar el primer combate
 const { MOVES } = require('./games/battle');
 const items = require('./items');
 const healer = require('./heal');
@@ -158,6 +159,8 @@ const STATIC = {
 // Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).
 app.get('/api/quiz/img/:token', quiz.imgHandler);
 app.get('/api/static', (req, res) => res.json(STATIC));
+// Nombres en español de movimientos, habilidades y objetos del simulador (los usa la pantalla de combates).
+app.get('/data/sd-es.json', (req, res) => res.sendFile(path.join(__dirname, 'sd-es.json'), { headers: { 'Cache-Control': 'public, max-age=3600' } }));
 
 const server = http.createServer(app);
 // Compresión de mensajes grandes (estado del mercado, mesas de póker…).
@@ -505,7 +508,7 @@ io.on('connection', (socket) => {
   on('hello', (u) => ({
     chat: [...db.data.chat.slice(-50), ...myDms(u)].sort((a, b) => a.at - b.at), feed: db.data.feed.slice(-30), online: onlineList(),
     jackpot: db.data.state.jackpot, race: race.publicState(), raceBets: race.myBets(db.userById(uid)),
-    duels: duel.listPublic(), duelHistory: duel.recent(),
+    duels: duel.listPublic(), duelHistory: duel.recent(), battle: showdown.activeFor(u),
     crash: crash.publicState(), poker: holdem.lobby(), events: events.publicState(), mega: mega.publicState(),
     newsSeen: u.newsSeen || null, createdAt: u.createdAt || 0,
   }), { push: false });
@@ -523,6 +526,21 @@ io.on('connection', (socket) => {
   on('duel:accept', duel.accept);
   on('duel:cancel', duel.cancel);
   on('duel:replay', (u, { id }) => ({ record: duel.getRecord(id) || null }), { push: false });
+  on('battle:state', showdown.state, { push: false });
+  on('battle:box', showdown.boxForBuilder, { push: false });
+  on('battle:learnset', showdown.learnsetOf, { push: false });
+  on('battle:setmoves', showdown.setMoves, { push: false });
+  on('battle:saveteam', showdown.saveTeam, { push: false });
+  on('battle:delteam', showdown.deleteTeam, { push: false });
+  on('battle:cpu', showdown.startCpu);
+  on('battle:challenge', showdown.challenge);
+  on('battle:accept', showdown.accept);
+  on('battle:cancel', showdown.cancel);
+  on('battle:choose', showdown.choose, { push: false });
+  on('battle:forfeit', showdown.forfeit, { push: false });
+  on('battle:resume', showdown.resume, { push: false });
+  on('battle:history', showdown.historyOf, { push: false });
+  on('battle:replay', showdown.replay, { push: false });
   on('gacha:pull', gacha.pull);
   on('gacha:banners', () => gacha.bannersInfo(), { push: false });
   on('shop:craft', gacha.craft);
@@ -617,6 +635,7 @@ async function shutdown() {
   ready = false;
   race.refundAll();
   duel.refundAll();
+  showdown.refundAll();
   crash.refundAll();
   holdem.refundAll();
   await db.flushAll().catch((e) => console.error(e));

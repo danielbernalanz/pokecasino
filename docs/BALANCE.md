@@ -432,3 +432,16 @@ La única fuente nueva de monedas de toda la fase es el hallazgo del compañero:
 | Bayas | No están en `ITEMS`: no se compran, no entran en el Mercado ni las comercian los NPC. Reciclar da 1 ✦ por baya con un tope de 20 ✦ al día (dentro de los 300 ✦ del reciclaje general), es decir, ≤ 80 monedas al día en el peor caso si se cambia el polvo |
 
 **Coste máximo diario en valor de monedas por jugador (techo teórico):** hallazgos 200 monedas + ticket 150 + polvo 40 ✦ (160 monedas) + bayas recicladas 20 ✦ (80 monedas) ≈ 590 monedas equivalentes, siempre que se abra la app cada 4 h; en la práctica (3 hallazgos si se conecta 2 veces al día, ≈ 150 monedas de media) es mucho menos. Para comparar: la recompensa diaria y las misiones ya dan más, y el tope de bonus del compañero es de 300 + 50 × nivel.
+
+## Fase B7 · Combates Showdown: Liga de entrenadores y PvP (server/showdown.js, test/showdown.test.js)
+
+Combates reales con el simulador oficial de Pokémon Showdown (individuales y dobles). Los «Duelos rápidos» de siempre (`server/games/duel.js`) no cambian.
+
+| Mecánica | Números |
+|---|---|
+| Liga (CPU) | Victoria: **20 / 30 / 40 / 50 / 65 / 80 monedas** según la fuerza del rival (novato, ruta, medio, veterano, líder de gimnasio, campeón), motivo `battle` en el registro. **Máximo 10 victorias premiadas al día → techo de 10 × 80 = 800 monedas/día** (la recompensa diaria base ya son 1.000 y el techo realista, con rivales de ruta, es de 200-400): se queda en «casual» y por debajo de lo que paga el casino por jugar. Perder no cuesta nada. |
+| Resto del premio CPU | Mismo tope de 10 victorias/día: +2 caramelos de cada familia que participó (≤ 6 familias → ≤ 120 caramelos/día en el peor caso, menos que 3 tiradas de gacha diarias valen en caramelos de especies nuevas), +2 de amistad por participante (tope +10/día por ejemplar, `bond.js`), 15 XP fija (dentro de los 400 XP/día). |
+| PvP | Apuesta opcional igual para los dos, dentro de `maxBet`. Se cobra al crear el reto (depósito `escrow`) y al aceptar; el ganador cobra el bote menos el **5 % de comisión** (0 % en el evento de duelos); empate, cancelación, caducidad (10 min), fallo del simulador o reinicio del servidor: **devolución íntegra**. Sin bonus de compañero (`noBonus`), como los duelos. Cuenta como duelo para estadísticas y misiones. |
+| Zero-sum | Un combate PvP no crea monedas: `suma antes = suma después + comisión`, con test. |
+| Simultáneos | Máximo 8 combates a la vez (`SD_MAX_BATTLES`): el simulador pesa ~130 MB de RSS cuando se usa y la instancia gratuita tiene 512 MB. El simulador se carga solo al empezar el primer combate. |
+| Turnos | 60 s por turno; al agotarse se elige «default»; 3 tiempos agotados seguidos = derrota por inactividad. |
