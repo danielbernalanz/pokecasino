@@ -28,7 +28,7 @@ export default {
             h('button', { class: 'btn primary', onclick: async (e) => { const x = await act('admin:invite', {}, e.target); if (x) { toast('Invitación: ' + x.code, 'success', 8000); load(); } } }, 'Generar invitación'),
             h('div', { class: 'invites' }, r.invites.slice(-12).reverse().map((i) => h('div', { class: 'row between small' }, h('code', {}, i.code), h('span', { class: i.usedBy ? 'muted' : 'good' }, i.usedBy ? 'usada por ' + i.usedBy : 'libre'))))),
           h('div', { class: 'card stack' }, h('h3', {}, '💥 Bote actual'), h('b', { class: 'big-num' }, fmt(r.jackpot))),
-          eventBox()),
+          eventBox(), megaBox()),
         h('div', { class: 'table-wrap' }, h('table', { class: 'admin-table' },
           h('thead', {}, h('tr', {}, ['Entrenador', 'Monedas', '✦', 'Nv', 'Dex', 'Estado', 'Acciones'].map((t) => h('th', {}, t)))),
           h('tbody', {}, r.users.map((u) => h('tr', { class: u.banned ? 'banned' : '' },
@@ -63,6 +63,20 @@ export default {
           h('button', { class: 'btn primary', onclick: async (e) => { if (await act('admin:event', { id: sel.value, hours: Number(hours.value) }, e.target)) { toast('Evento actualizado', 'success'); setTimeout(load, 300); } } }, 'Lanzar'),
           h('button', { class: 'btn', onclick: async (e) => { if (await act('admin:event', { id: sel.value, hours: 0 }, e.target)) { toast('Evento cancelado (si era del calendario, sigue hasta medianoche)', 'info'); setTimeout(load, 300); } } }, 'Cancelar el lanzado')),
         h('p', { class: 'muted small' }, 'Calendario fijo: lunes Duelos, miércoles Misiones, viernes Mercado, sábado y domingo Variocolor + Compañero.'));
+    }
+    // Evento Megaevolución: reiniciar, alargar, terminar, Hora Mega y dar 💠 (pruebas).
+    function megaBox() {
+      const m = S.mega || {};
+      const days = h('input', { type: 'number', min: 1, max: 30, value: 7, style: { width: '70px' } });
+      const who = h('input', { placeholder: 'jugador', style: { width: '110px' } });
+      const fr = h('input', { type: 'number', value: 100, style: { width: '80px' } });
+      const run = (op, extra = {}) => async (e) => { if (await act('admin:mega', { op, days: Number(days.value), ...extra }, e.target)) { toast('Megaevolución actualizada', 'success'); setTimeout(load, 300); } };
+      return h('div', { class: 'card stack' }, h('h3', {}, '💠 Megaevolución'),
+        h('p', { class: 'muted small' }, m.active ? `Activa hasta ${new Date(m.endsAt).toLocaleString('es-ES')}` : 'Terminada (la siguiente empieza sola 7 días después).'),
+        h('div', { class: 'row gap wrap' }, days, h('span', { class: 'muted small' }, 'días'),
+          h('button', { class: 'btn primary', onclick: run('start') }, 'Nueva edición'), h('button', { class: 'btn', onclick: run('extend') }, 'Alargar'),
+          h('button', { class: 'btn', onclick: run('stop') }, 'Terminar'), h('button', { class: 'btn', onclick: run('hour') }, '⚡ Hora Mega ya')),
+        h('div', { class: 'row gap wrap' }, who, fr, h('button', { class: 'btn', onclick: (e) => run('give', { username: who.value, frags: Number(fr.value), earned: true })(e) }, 'Dar 💠')));
     }
     load();
   },

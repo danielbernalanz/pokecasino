@@ -3,6 +3,7 @@
 const db = require('./db');
 const hub = require('./hub');
 const { BY_ID } = require('./pokedex');
+const MEGA_FORMS = require('./megadata.json');
 
 const ITEMS = {
   ticket: { name: 'Ticket Gacha', sprite: 'pass', price: 150, desc: 'Una tirada en cualquier banner.' },
@@ -32,10 +33,22 @@ const COSMETICS = {
   'title-rocket': { slot: 'title', rarity: 'R', name: 'Título «Agente Rocket»', title: 'Agente Rocket', sprite: 'odd-keystone' },
   'title-shinyhunter': { slot: 'title', rarity: 'E', name: 'Título «Cazavariocolores»', title: 'Cazavariocolores', sprite: 'comet-shard' },
   'title-legend': { slot: 'title', rarity: 'L', name: 'Título «Leyenda de Kanto»', title: 'Leyenda de Kanto', sprite: 'silver-wing' },
+  // Cosméticos del evento «Megaevolución»: no salen de los Huevos Misteriosos (`event`), solo del evento.
+  'frame-mega': { slot: 'frame', rarity: 'L', name: 'Marco Mega', sprite: 'mega-ring', event: true },
+  'back-megastone': { slot: 'cardback', rarity: 'E', name: 'Dorso Megapiedra', pokemon: 10034, event: true },
+  'title-megaevolver': { slot: 'title', rarity: 'L', name: 'Título «Megaevolucionador»', title: 'Megaevolucionador', sprite: 'mega-bracelet', event: true },
 };
 const SLOT_NAMES = { frame: 'marco', cardback: 'dorso de carta', title: 'título' };
 for (const [id, c] of Object.entries(COSMETICS)) {
   ITEMS[id] = { ...c, price: null, cosmetic: true, desc: `Cosmético (${SLOT_NAMES[c.slot]}). Equípalo en «Mi Entrenador»: los demás jugadores lo verán.` };
+}
+// Megapiedras (una por megaevolución, ver scripts/build-mega.js): se comercian en el Mercado y se usan desde la
+// Mochila o la vista «Megaevolución» con un Pokémon de la especie base.
+for (const f of MEGA_FORMS) {
+  ITEMS[f.stone] = {
+    name: f.stoneName, sprite: f.stone.replace(/^stone-/, ''), price: null, megaStone: f.formId, species: f.species,
+    desc: `Úsala teniendo ${BY_ID.get(f.species).name} para desbloquear ${f.name}. Solo se consigue en el evento «Megaevolución» o en el Mercado.`,
+  };
 }
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
@@ -61,7 +74,7 @@ function take(user, itemId, qty = 1) {
 function openEgg(user) {
   const { weighted, pick } = require('./rng');
   const rarity = weighted(Object.keys(EGG_WEIGHTS), (r) => EGG_WEIGHTS[r]);
-  const id = pick(Object.keys(COSMETICS).filter((k) => COSMETICS[k].rarity === rarity));
+  const id = pick(Object.keys(COSMETICS).filter((k) => COSMETICS[k].rarity === rarity && !COSMETICS[k].event));
   user.items[id] = (user.items[id] || 0) + 1;
   if (rarity === 'L' || rarity === 'E') hub.feed('egg', `🥚 ${user.username} abrió un Huevo Misterioso: ¡${COSMETICS[id].name}!`);
   return id;
@@ -124,6 +137,8 @@ function use(user, { itemId, pokeId }) {
     if (user.buffs.masterBall) throw new Error('Ya tienes una Master Ball preparada.');
     take(user, itemId);
     user.buffs.masterBall = true;
+  } else if (ITEMS[itemId] && ITEMS[itemId].megaStone) {
+    return require('./mega').useStone(user, itemId);
   } else if (COSMETICS[itemId]) {
     return equip(user, { slot: COSMETICS[itemId].slot, id: itemId });
   } else {

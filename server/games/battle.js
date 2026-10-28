@@ -10,13 +10,14 @@ const MOVES = {
   dark: 'Triturar', steel: 'Cabeza de Hierro', fairy: 'Fuerza Lunar',
 };
 
-function fighter({ id, shiny, stars, owner }) {
+function fighter({ id, shiny, stars, owner, mega }) {
   const p = BY_ID.get(id);
-  const b = baseStats(id);
+  const form = mega ? require('../mega').BY_FORM.get(mega) : null;
+  const b = form ? require('../mega').formBaseStats(mega) : baseStats(id);
   const mult = 1 + 0.04 * (stars - 1) + (shiny ? 0.05 : 0);
   const hp = Math.round((b.hp + 60) * mult);
   return {
-    id, shiny, stars, owner, name: p.name, types: p.types,
+    id, shiny, stars, owner, mega: form ? mega : undefined, name: form ? form.name : p.name, types: form ? form.types : p.types,
     hp, maxHp: hp, atk: (b.atk + 5) * mult, def: (b.def + 5) * mult, spe: (b.spe + 5) * mult,
   };
 }
@@ -54,7 +55,7 @@ function simulate(a, b) {
     }
   }
   const winner = A.hp > 0 && B.hp <= 0 ? 0 : B.hp > 0 && A.hp <= 0 ? 1 : (A.hp / A.maxHp >= B.hp / B.maxHp ? 0 : 1);
-  const strip = (f) => ({ id: f.id, shiny: f.shiny, stars: f.stars, owner: f.owner, name: f.name, types: f.types, maxHp: f.maxHp });
+  const strip = (f) => ({ id: f.id, mega: f.mega, shiny: f.shiny, stars: f.stars, owner: f.owner, name: f.name, types: f.types, maxHp: f.maxHp });
   return { fighters: [strip(A), strip(B)], log, winner };
 }
 

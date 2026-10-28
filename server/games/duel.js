@@ -11,12 +11,19 @@ const EXPIRE_MS = 10 * 60 * 1000;
 const open = new Map();
 const history = [];
 
-function ownedPick(user, { pokeId, shiny }) {
+function ownedPick(user, { pokeId, shiny, mega }) {
   const id = Number(pokeId);
   const c = user.collection[id];
   if (!BY_ID.has(id) || !c || c.n < 1) throw new Error('No tienes ese Pokémon.');
   if (shiny && !(c.s > 0)) throw new Error('No tienes la versión variocolor.');
-  return { id, shiny: !!shiny, stars: Math.min(5, c.n), owner: user.username };
+  const pick = { id, shiny: !!shiny, stars: Math.min(5, c.n), owner: user.username };
+  // Megaevolución desbloqueada (megapiedra usada): combate con las estadísticas y tipos de la forma Mega.
+  if (mega) {
+    const f = require('../mega').BY_FORM.get(Number(mega));
+    if (!f || f.species !== id || !require('../mega').megasOf(user)[f.formId]) throw new Error('No tienes desbloqueada esa megaevolución.');
+    pick.mega = f.formId;
+  }
+  return pick;
 }
 
 // Elección a ciegas: el Pokémon del retador no se revela hasta que empieza el combate,
@@ -28,9 +35,9 @@ function listPublic() {
 }
 const push = () => hub.broadcast('duel:list', listPublic());
 
-function create(user, { pokeId, shiny, wager, target }) {
+function create(user, { pokeId, shiny, wager, target, mega }) {
   if ([...open.values()].filter((d) => d.creatorId === user.id).length >= 3) throw new Error('Máximo 3 retos abiertos.');
-  const poke = ownedPick(user, { pokeId, shiny });
+  const poke = ownedPick(user, { pokeId, shiny, mega });
   wager = Number(wager) || 0;
   if (target) {
     const t = db.userByName(target);
@@ -66,12 +73,12 @@ function cancel(user, { id }) {
   return {};
 }
 
-function accept(user, { id, pokeId, shiny }) {
+function accept(user, { id, pokeId, shiny, mega }) {
   const d = open.get(id);
   if (!d) throw new Error('Ese reto ya no existe.');
   if (d.creatorId === user.id) throw new Error('No puedes aceptar tu propio reto.');
   if (d.target && d.target !== user.username) throw new Error('Este reto es para otro entrenador.');
-  const poke = ownedPick(user, { pokeId, shiny });
+  const poke = ownedPick(user, { pokeId, shiny, mega });
   if (d.wager) hub.takeBet(user, d.wager, 'duel', { quiet: true, noXp: true });
   open.delete(id);
   db.escrowDel('duel:' + d.id);

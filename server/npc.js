@@ -44,6 +44,9 @@ const NOSHOP = {
   'shiny-charm': { cap: 500, floor: 3000 }, // 10 tiradas con ×4 de variocolor ≈ 0,5 variocolor de más: no vale 1.500
   'mystery-egg': { cap: 150, floor: 900 }, // > valor medio de un cosmético a precio de compra (≈370)
 };
+// Megapiedras: los NPC NO las compran ni las venden (inFocus las excluye). Los límites existen para que el
+// invariante cap < floor valga para todos los objetos y por si algún día se activan.
+const MEGASTONE = { cap: 1500, floor: 9000 };
 const COSMETIC = { // por rareza
   C: { cap: 60, floor: 250 }, U: { cap: 150, floor: 600 }, R: { cap: 400, floor: 1500 }, E: { cap: 1200, floor: 4500 }, L: { cap: 4000, floor: 15000 },
 };
@@ -69,6 +72,7 @@ function bounds(a) {
   if (!it) return null;
   if (it.price) return { cap: Math.max(1, Math.floor(it.price / 2)), floor: it.price }; // nunca por debajo de la tienda
   if (NOSHOP[a.itemId]) return NOSHOP[a.itemId];
+  if (it.megaStone) return MEGASTONE; // inerte: los NPC no las comercian (ver inFocus)
   if (it.cosmetic && COSMETIC[it.rarity]) return COSMETIC[it.rarity];
   return null;
 }
@@ -229,6 +233,7 @@ function inFocus(p, a) {
   if (a.kind === 'poke') return a.shiny ? f.shiny : f.poke.includes(BY_ID.get(a.pokeId).rarity);
   if (a.kind === 'dust') return f.dust;
   const it = items.ITEMS[a.itemId];
+  if (it.megaStone || it.event) return false; // objetos del evento: solo entre jugadores
   if (it.cosmetic) return f.cosmetics;
   if (it.price) return f.items === 'shop';
   return f.items === 'noshop';

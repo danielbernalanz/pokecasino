@@ -43,7 +43,13 @@ export function img(src, { cls = '', alt = '', fallback } = {}) {
   }, { once: false });
   return el;
 }
-export const pokeImg = (id, shiny, cls = '') => img(art(id, shiny), { cls, alt: S.dexById.get(id)?.name || '', fallback: sprite(id, shiny) });
+// `mega`: id de la forma Mega (megadata) para pintar la megaevolución. Los variocolor de algunas formas no existen: se cae a la normal.
+export const pokeImg = (id, shiny, cls = '', mega = 0) => (mega
+  ? img(art(mega, shiny), { cls, alt: S.megaById?.get(mega)?.name || '', fallback: art(mega, false) })
+  : img(art(id, shiny), { cls, alt: S.dexById.get(id)?.name || '', fallback: sprite(id, shiny) }));
+// Sprite pequeño del compañero (con su megaevolución si la lleva puesta).
+export const buddySprite = (b) => (b.mega ? sprite(b.mega, b.shiny) : sprite(b.id, b.shiny));
+export const buddyImg = (b, cls = 'pixel') => { const el = h('img', { class: cls, src: buddySprite(b), alt: '' }); if (b.mega) el.addEventListener('error', () => { if (el.src !== sprite(b.mega)) el.src = sprite(b.mega); }, { once: true }); return el; };
 export const animImg = (id, shiny, cls = '', back = false) => img(anim(id, shiny, back), { cls: 'pixel ' + cls, alt: S.dexById.get(id)?.name || '', fallback: sprite(id, shiny) });
 
 export const fmt = (n) => Math.floor(Number(n) || 0).toLocaleString('es-ES');
@@ -256,6 +262,12 @@ export function sfx(name, n = 0) {
     else if (name === 'whoosh') sweep(220, 1200, 0.25, 'triangle', 0.025);
     else if (name === 'levelup') [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.16, 'triangle', 0.055, i * 0.07));
     else if (name === 'jackpot') { [523, 659, 784, 1046, 1318, 1568, 2093].forEach((f, i) => { tone(f, 0.22, 'square', 0.05, i * 0.08); tone(f / 2, 0.22, 'triangle', 0.05, i * 0.08); }); [2093, 1568, 2093, 2637].forEach((f, i) => tone(f, 0.12, 'sine', 0.045, 0.7 + i * 0.1)); }
+    // Megaevolución
+    else if (name === 'megacharge') { sweep(120, 1600 + n * 400, 1.6, 'sawtooth', 0.03); sweep(240, 3200, 1.6, 'triangle', 0.02, 0.1); }
+    else if (name === 'megaboom') { noise(0.9, 0.14); tone(55, 0.7, 'sine', 0.14); [523, 659, 784, 1046, 1318, 1568, 2093].forEach((f, i) => tone(f, 0.28, 'square', 0.05, 0.1 + i * 0.07)); }
+    else if (name === 'reel') tone(300 + n * 90, 0.04, 'square', 0.02);
+    else if (name === 'reelstop') { tone(200, 0.08, 'triangle', 0.07); tone(120, 0.1, 'sine', 0.05, 0.02); }
+    else if (name === 'heartbeat') { tone(70, 0.1, 'sine', 0.1); tone(60, 0.12, 'sine', 0.08, 0.14); }
     else if (name === 'sparkle') [2093, 2637, 3136].forEach((f, i) => tone(f, 0.08, 'sine', 0.035, i * 0.05));
   } catch { /* audio no disponible */ }
 }
@@ -285,7 +297,7 @@ export const itemImg = (id, cls = '') => {
 
 // ---- Aspecto del jugador: marco del avatar y título ----
 export function avatar(buddy, looks = {}, cls = '') {
-  const inner = buddy ? h('img', { class: 'pixel', src: sprite(buddy.id, buddy.shiny), alt: '' }) : h('span', { class: 'av-empty' }, '🧢');
+  const inner = buddy ? buddyImg(buddy) : h('span', { class: 'av-empty' }, '🧢');
   return h('span', { class: `avatar ${looks.frame ? 'fr ' + looks.frame : ''} ${cls}` }, inner);
 }
 export const titleTag = (t) => (t ? h('span', { class: 'title-tag' }, t) : null);

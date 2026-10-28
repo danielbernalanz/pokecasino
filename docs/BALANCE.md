@@ -251,3 +251,27 @@ Cada ejecución es aleatoria (los números varían unos pocos %).
 * **Un casual realista** (entra el 90 % de los días y completa las misiones que le salen) gana ≈ 1.500 monedas/día en la simulación, no las 2.500 del máximo teórico: una legendaria concreta le cuesta ≈ 5 semanas, un jugador perfecto la consigue en ≈ 3.
 * **Voltorb**: la calibración está hecha con la mejor estrategia que se ha podido programar (inferencia exacta); un jugador aún mejor (un solver con planificación completa) podría pasar del 92 %, aunque por debajo del 100 % con margen.
 * **Límites de la simulación**: los arquetipos solo juegan los juegos de un jugador; no hacen misiones de Mercado, duelos, póker ni Crash, ni usan el Mercado entre jugadores. Las 3 misiones del día se completan solo si el juego del día las cumple.
+
+
+## Evento «Megaevolución» (server/mega.js, test/mega.test.js)
+
+Reglas de diseño: **no se crea ninguna moneda** y cada fuente nueva está acotada.
+
+| Pieza | Valor | Por qué es segura |
+|---|---|---|
+| 💠 por jugar | 1 por 200 monedas apostadas (cualquier juego salvo duelos y póker; también Gacha y Máquina con monedas) | tope **150 💠/día** ya con multiplicadores (combo ×2 máx., Hora Mega ×2, Ráfaga ×2); duelos y póker se excluyen porque se podrían granjear sin riesgo contra una cuenta gemela |
+| Misiones | 3 × 15 + 25 de bonus = 70 💠/día | cantidades fijas |
+| Racha de entrada | 10, 10, 15, 15, 20, 25, 40 (135 en la semana) | fija |
+| Máximo teórico de la edición | ≈ 1.675 💠 ganados (7 × 220 + 135) | hitos del pase: 40, 120, 250, 400, 600, 850, 1.200 |
+| Pase | Tickets (6), Huevos (2), Marco, Dorso, título, 1 Master Ball, 1 megapiedra a elegir | **solo objetos, nunca monedas**; valorados a precio de liquidación (NPC) ≈ 2.000-3.000, frente a ≥ 7 días de jugar con pérdida esperada |
+| Fabricar | 100 💠 | un jugador al tope consigue ≈ 1,5 megapiedras al día |
+| Máquina | 10 💠 o 300 monedas | tabla única, 10.000 pesos: Nada 39,55 %, Pareja 30 % (+6 💠), Trío 16 % (+18 💠), Ráfaga 7 % (+8 💠 y ×2 en 15 jugadas), Ticket 3 %, Huevo 2,5 %, Súper Mega 1,2 % (+50 💠), Cosmético 0,5 %, Megapiedra 0,15 %, **Bote 0,1 %** |
+| Fragmentos devueltos por la Máquina | EV = 5,84 💠 por 10 (58 %) en fragmentos puros | los 💠 que da la Máquina **no cuentan** para hitos ni ranking: girar no los hace crecer |
+| Tirada con monedas | 300: 150 al Bote, 150 se queman | sumidero del 100 % del coste menos lo que vuelve por el Bote |
+| Bote Mega | solo lo financian tiradas con monedas; tope 60.000 (el exceso se quema); sin semilla | EV en monedas por tirada = 0,001 × bote ≤ **60 < 300**: nunca es +EV; conservación: carteras + Bote + quemado = constante (test aleatorio de 4.000 giros) |
+| 💠 → monedas | **única vía: el Bote** (que sale de monedas de otros jugadores) | no hay conversión directa ni NPC que compre fragmentos |
+| Megapiedras en el Mercado | cap 1.500 / suelo 9.000 en `npc.bounds` (cap < suelo), pero **inertes**: los NPC no las compran ni venden | un NPC que comprara una piedra de 100 💠 (≈ 600 monedas de pérdida esperada jugando, ≈ 150 con ×4 de multiplicadores) pagaría más de lo que cuesta producirla: por eso no las tocan |
+| Cosméticos del evento | `event: true`: no salen de Huevos Misteriosos ni los comercian los NPC | |
+| Compañero Mega | +1 % al bonus | cae bajo los mismos topes diarios (fijo y «de sala») |
+
+Podio final (≥ 100 💠 ganados): 1.º Marco Mega + título + megapiedra a elegir; 2.º Dorso Megapiedra + megapiedra al azar; 3.º Marco Mega + megapiedra al azar. Los hitos alcanzados y sin reclamar se entregan solos al terminar.

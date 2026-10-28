@@ -1,4 +1,4 @@
-import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings } from './core.js';
+import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg } from './core.js';
 import { celebrate, coinRain, burstAt, vibrate } from './fx.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
 import lobby from './views/lobby.js';
@@ -21,8 +21,9 @@ import crash from './views/crash.js';
 import poker from './views/poker.js';
 import market from './views/market.js';
 import trainer from './views/trainer.js';
+import megaView from './views/mega.js';
 
-const VIEWS = [lobby, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, gacha, pokedex, shop, market, ranking, admin];
+const VIEWS = [lobby, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, gacha, pokedex, shop, megaView, market, ranking, admin];
 const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', gacha: 'Colección', market: 'Comunidad' };
 
 // ---------- Autenticación ----------
@@ -87,7 +88,12 @@ function toastFx(t) {
     coinRain(coinsIn(text), { from: [window.innerWidth / 2, window.innerHeight * 0.35] });
     return true;
   }
-  if ((t.kind === 'gift' || t.kind === 'market') && coinsIn(text) && !/Compraste/.test(text)) { sfx('win'); coinRain(coinsIn(text), { from: [window.innerWidth / 2, window.innerHeight * 0.4] }); return true; }
+  if (t.kind === 'mega') {
+    sfx('sparkle'); vibrate(30);
+    import('./fx.js').then(({ burst, layer }) => burst(layer(), window.innerWidth / 2, 60, '#7df9ff', 22, { spread: 170, stars: 0.8 }));
+    return true;
+  }
+  if ((t.kind === t.kind === 'market') && coinsIn(text) && !/Compraste/.test(text)) { sfx('win'); coinRain(coinsIn(text), { from: [window.innerWidth / 2, window.innerHeight * 0.4] }); return true; }
   return false;
 }
 
@@ -115,11 +121,40 @@ bus.on('me', (me) => {
   $('#level').textContent = me.level;
   $('#xpfill').style.width = Math.min(100, ((me.xp - me.xpCur) / (me.xpNext - me.xpCur)) * 100) + '%';
   $('#uname').textContent = me.username;
-  $('#buddy-mini').replaceChildren(me.buddy ? h('img', { class: 'pixel', src: sprite(me.buddy.id, me.buddy.shiny), alt: '' }) : '');
+  $('#buddy-mini').replaceChildren(me.buddy ? buddyImg(me.buddy) : '');
+  if (!S.megaHold) updateMegaPill(me);
   $('#buddy-mini').className = me.looks && me.looks.frame ? 'mini-frame fr ' + me.looks.frame : '';
   document.querySelector('[data-view=admin]')?.classList.toggle('hidden', !me.isAdmin);
 });
 bus.on('toast', (t) => toast(t, 'success'));
+
+// Chip 💠 de la barra superior: fragmentos y combo mientras el evento está activo.
+let shownFrags = null;
+export function updateMegaPill(me = S.me) {
+  const pill = $('#mega-pill');
+  if (!pill || !me || !me.mega) return;
+  const on = !!(S.mega && S.mega.active);
+  pill.classList.toggle('hidden', !on);
+  if (!on) return;
+  const f = me.mega.frags;
+  if (shownFrags !== null && f > shownFrags) {
+    pill.classList.remove('gain'); void pill.offsetWidth; pill.classList.add('gain');
+    if (f - shownFrags <= 200) floatMega(`+${f - shownFrags} 💠`, pill);
+  }
+  shownFrags = f;
+  $('#mega-frags').textContent = fmt(f);
+  const c = me.mega.combo;
+  const m = me.mega.mult || 1;
+  const hot = S.mega.hour || m > 1;
+  pill.classList.toggle('hot', !!hot);
+  $('#mega-mult').textContent = m > 1 ? `×${m}` : '';
+  clearTimeout(updateMegaPill.t);
+  if (c && c.ttl > 0) updateMegaPill.t = setTimeout(() => updateMegaPill(), c.ttl + 50);
+}
+function floatMega(text, el) {
+  import('./fx.js').then(({ floatText }) => floatText(text, el, { color: '#7df9ff', size: 18 }));
+}
+bus.on('mega', () => updateMegaPill());
 
 $('#mute-btn').addEventListener('click', () => { $('#mute-btn').textContent = toggleMute() ? '🔇' : '🔊'; });
 $('#mute-btn').textContent = isMuted() ? '🔇' : '🔊';
@@ -161,14 +196,14 @@ const TABS = [
   { id: 'games', icon: '🎰', label: 'Juegos', match: GAME_IDS },
   { id: 'gacha', icon: '🎁', label: 'Gacha' },
   { id: 'market', icon: '🏪', label: 'Mercado' },
-  { id: 'more', icon: '☰', label: 'Más', match: ['trainer', 'pokedex', 'shop', 'ranking', 'admin'] },
+  { id: 'more', icon: '☰', label: 'Más', match: ['trainer', 'pokedex', 'shop', 'mega', 'ranking', 'admin'] },
 ];
 function gamesSheet() {
   const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => GAME_IDS.includes(v.id)).map((v) =>
     h('a', { class: 'gs-item' + (current && current.id === v.id ? ' active' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title)))), { title: 'Juegos' });
 }
 function moreSheet() {
-  const ids = ['trainer', 'pokedex', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
+  const ids = ['trainer', 'mega', 'pokedex', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
   const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => ids.includes(v.id)).map((v) =>
     h('a', { class: 'gs-item', href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title))),
   h('button', { class: 'gs-item', onclick: () => { m.close(); document.body.classList.add('social-open'); $('#chat-dot').classList.add('hidden'); } }, h('span', { class: 'gs-ico' }, '💬'), h('span', {}, 'Chat y conectados')),
@@ -243,13 +278,22 @@ function connect() {
     S.jackpot = res.jackpot; $('#jackpot').textContent = fmt(res.jackpot);
     S.race = res.race; S.raceBets = res.raceBets;
     S.duels = res.duels; S.duelHistory = res.duelHistory;
-    S.crash = res.crash; S.poker = res.poker; S.events = res.events;
+    S.crash = res.crash; S.poker = res.poker; S.events = res.events; S.mega = res.mega;
+    bus.emit('mega', res.mega);
     bus.emit('events', res.events);
     bus.emit('race', res.race);
     if (!booted) { booted = true; buildNav(); buildTabbar(); setMe(S.me); route(); }
   });
   socket.on('me', setMe);
   socket.on('events', (e) => { S.events = e; bus.emit('events', e); });
+  socket.on('mega:state', (m) => { S.mega = m; bus.emit('mega', m); });
+  socket.on('mega:bote', (b) => { if (S.mega) S.mega.bote = b.bote; bus.emit('mega:bote', b); });
+  socket.on('mega:hour', (w) => { bus.emit('mega:hour', w); import('./fx.js').then(({ flash, vibrate }) => { flash('#7df9ff', 700); vibrate([60, 40, 60, 40, 120]); }); sfx('levelup'); });
+  socket.on('mega:bote:hit', (b) => {
+    toast(`💥 ${b.user} ha ganado el BOTE MEGA: ${fmt(b.amount)} monedas`, 'success', 8000);
+    import('./fx.js').then(({ confetti, flash }) => { flash('#ffd54f', 600); confetti({ count: 50 }); });
+    sfx('jackpot');
+  });
   socket.on('chat', (m) => addChat(m));
   socket.on('feed', (f) => { addFeed(f); if (f.kind === 'duel') bus.emit('duel:feed', f); });
   socket.on('online', renderOnline);
@@ -314,6 +358,8 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   }).catch(() => null);
   if (!S.data) { document.body.replaceChildren(h('div', { class: 'blocked' }, h('h1', {}, '🔒'), h('p', {}, 'Este casino solo está disponible desde la red privada del anfitrión.'))); return; }
   for (const p of S.data.dex) S.dexById.set(p.id, p);
+  S.megaById = new Map(S.data.mega.forms.map((f) => [f.formId, f]));
+  S.megaByStone = new Map(S.data.mega.forms.map((f) => [f.stone, f]));
   try { S.token = localStorage.getItem('token'); } catch { /* nada */ }
   if (S.data.openRegistration) $('#auth-sub').textContent = '¡Crea tu entrenador y empieza a jugar!';
   if (S.token) connect(); else showAuth();

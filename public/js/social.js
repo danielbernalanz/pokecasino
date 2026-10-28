@@ -56,7 +56,7 @@ export function addChat(m, silent) {
   }
 }
 
-const FEED_ICON = { event: '🎉', win: '💰', jackpot: '💥', gacha: '✨', duel: '⚔️', join: '🎉', level: '⭐', trade: '🤝' };
+const FEED_ICON = { event: '🎉', win: '💰', jackpot: '💥', gacha: '✨', duel: '⚔️', join: '🎉', level: '⭐', trade: '🤝', mega: '💠' };
 export function addFeed(f, silent) {
   const box = $('#feed');
   box.prepend(h('div', { class: `feed-item fk-${f.kind}` },
@@ -92,7 +92,7 @@ export async function showPlayer(username) {
   } }, h('input', { name: 'amount', type: 'number', min: 1, placeholder: 'Monedas', required: true }), h('button', { class: 'btn' }, '🎁 Regalar monedas'));
   const body = h('div', { class: 'player-card' },
     h('div', { class: 'player-hero' },
-      h('div', { class: 'avatar xl ' + (p.frame ? 'fr ' + p.frame : '') }, p.buddy ? pokeImg(p.buddy.id, p.buddy.shiny, 'player-buddy') : h('div', { class: 'player-buddy empty' }, '?')),
+      h('div', { class: 'avatar xl ' + (p.frame ? 'fr ' + p.frame : '') }, p.buddy ? pokeImg(p.buddy.id, p.buddy.shiny, 'player-buddy', p.buddy.mega) : h('div', { class: 'player-buddy empty' }, '?')),
       h('div', {},
         h('h2', {}, p.username, p.isAdmin ? h('span', { class: 'tag' }, 'ANFITRIÓN') : null, ' ', titleTag(p.title)),
         h('div', { class: 'row gap' }, [1, 2, 3, 4, 5, 6, 7, 8].map((n) => badgeImg(n, p.badges >= n, 'tiny'))),

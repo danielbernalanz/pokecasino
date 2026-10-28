@@ -8,7 +8,7 @@ const BAL = require('./balance');
 const GAME_NAMES = {
   slots: 'Pika-Slots', roulette: 'la Ruleta de Tipos', voltorb: 'Voltorb Flip', race: 'la Gran Carrera', duel: 'un duelo',
   blackjack: 'Blackjack', videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas Geodude',
-  crash: 'Crash', poker: "Texas Hold'em",
+  crash: 'Crash', poker: "Texas Hold'em", mega: 'la Máquina Mega',
 };
 
 // Las medallas suben el límite de apuesta: los novatos no pueden arruinarse de golpe.
@@ -42,7 +42,7 @@ const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 const HIST_DAYS = 60;
 const ECON_DAYS = 45;
 // Movimientos entre jugadores (no crean ni destruyen monedas).
-const TRANSFERS = new Set(['gift_in', 'gift_out', 'market_sale', 'market_buy', 'market_refund', 'poker_in', 'poker_out', 'refund']);
+const TRANSFERS = new Set(['gift_in', 'gift_out', 'market_sale', 'market_buy', 'market_refund', 'poker_in', 'poker_out', 'refund', 'mega_spin', 'mega_bote_out']);
 function prune(obj, keep) {
   const keys = Object.keys(obj).sort();
   for (const k of keys.slice(0, Math.max(0, keys.length - keep))) delete obj[k];
@@ -102,7 +102,7 @@ function history(user) {
 }
 const GAME_LABELS = {
   slots: 'Pika-Slots', roulette: 'Ruleta', voltorb: 'Voltorb Flip', race: 'Carrera', duel: 'Duelos', blackjack: 'Blackjack',
-  videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas', crash: 'Crash', poker: "Hold'em",
+  videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas', crash: 'Crash', poker: "Hold'em", mega: 'Máquina Mega',
 };
 
 // ---- Nivel de entrenador ----
@@ -148,7 +148,9 @@ function buddyBonus(user) {
   const owned = user.collection[user.buddy.id];
   if (!p || !owned) return amulet + sets;
   const stars = Math.min(5, owned.n);
-  return amulet + sets + RARITY[p.rarity].bonus + (user.buddy.shiny ? 0.02 : 0) + (stars - 1) * 0.005;
+  // Compañero megaevolucionado: +1 % (dentro de los mismos topes diarios que el resto del bonus).
+  const mega = require('./mega').buddyMegaOk(user) ? 0.01 : 0;
+  return amulet + sets + RARITY[p.rarity].bonus + (user.buddy.shiny ? 0.02 : 0) + (stars - 1) * 0.005 + mega;
 }
 
 // ---- Apuestas ----
@@ -169,6 +171,7 @@ function takeBet(user, amount, game, { extra = false, quiet = false, noXp = fals
   gameStat(user, game, amount, 0, extra ? 0 : 1);
   if (!noXp) addXp(user, amount * BAL.xpRate(game));
   accrueBonus(user, amount, game);
+  if (!user.npc) require('./mega').onBet(user, amount, game, { play: !extra && !quiet });
   if (game && !extra && !quiet) track(user, 'play', { game });
   db.save();
   return amount;
@@ -238,7 +241,7 @@ function privateUser(u) {
     buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
     bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, locked: lockedCoins(u),
-    progress: require('./progress').view(u),
+    progress: require('./progress').view(u), mega: require('./mega').privateView(u),
   };
 }
 

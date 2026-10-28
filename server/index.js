@@ -33,6 +33,7 @@ const holdem = require('./games/holdem');
 const npc = require('./npc');
 const BAL = require('./balance');
 const daily = require('./daily');
+const mega = require('./mega');
 
 const app = express();
 app.set('trust proxy', config.TRUST_PROXY);
@@ -118,6 +119,7 @@ const STATIC = {
   cosmetics: items.COSMETICS,
   heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },
   daily: { base: BAL.DAILY_BASE, step: BAL.DAILY_STEP, max: BAL.DAILY_MAX_STREAK },
+  mega: mega.STATIC,
 };
 app.get('/api/static', (req, res) => res.json(STATIC));
 
@@ -181,7 +183,9 @@ function setBuddy(user, { id, shiny }) {
   const c = user.collection[Number(id)];
   if (!c) throw new Error('No tienes ese Pokémon.');
   if (shiny && !c.s) throw new Error('No tienes la versión variocolor.');
-  user.buddy = { id: Number(id), shiny: !!shiny };
+  // Al volver a elegir al mismo Pokémon se conserva su megaevolución (si sigue desbloqueada).
+  const keep = user.buddy && user.buddy.id === Number(id) && user.buddy.mega ? { mega: user.buddy.mega } : {};
+  user.buddy = { id: Number(id), shiny: !!shiny, ...keep };
   hub.track(user, 'buddy');
   db.save();
   pushOnline();
@@ -282,7 +286,7 @@ function economy() {
   const week = Date.now() - 7 * 864e5;
   const rich = [...users].sort((a, b) => b.coins - a.coins);
   return {
-    total: wallets + escrow + listed, wallets, escrow, market: listed,
+    total: wallets + escrow + listed + (db.data.mega ? db.data.mega.bote || 0 : 0), wallets, escrow, market: listed, bote: db.data.mega ? db.data.mega.bote || 0 : 0,
     players: users.length, active7: users.filter((u) => (u.lastSeen || u.createdAt) > week).length,
     top10share: wallets ? rich.slice(0, Math.max(1, Math.ceil(users.length / 10))).reduce((s, u) => s + u.coins, 0) / wallets : 0,
     median: rich.length ? rich[Math.floor(rich.length / 2)].coins : 0,
@@ -358,6 +362,12 @@ const admin = {
     adminLog(user, 'event', events.EVENTS[id].name, Number(hours) ? `${hours} h` : 'cancelado');
     checkEvents();
     return {};
+  },
+  mega(user, p) {
+    requireAdmin(user);
+    mega.admin(p.op, p);
+    adminLog(user, 'mega', p.op, p.username ? `${p.username} ${p.frags} 💠` : p.days ? `${p.days} días` : null);
+    return { mega: mega.publicState() };
   },
   admin(user, { username, isAdmin }) {
     requireAdmin(user);
@@ -437,7 +447,7 @@ io.on('connection', (socket) => {
     chat: [...db.data.chat.slice(-50), ...myDms(u)].sort((a, b) => a.at - b.at), feed: db.data.feed.slice(-30), online: onlineList(),
     jackpot: db.data.state.jackpot, race: race.publicState(), raceBets: race.myBets(db.userById(uid)),
     duels: duel.listPublic(), duelHistory: duel.recent(),
-    crash: crash.publicState(), poker: holdem.lobby(), events: events.publicState(),
+    crash: crash.publicState(), poker: holdem.lobby(), events: events.publicState(), mega: mega.publicState(),
   }), { push: false });
   on('daily:claim', claimDaily);
   on('center:heal', heal);
@@ -459,6 +469,14 @@ io.on('connection', (socket) => {
   on('shop:release', gacha.release);
   on('me:history', (u) => ({ history: hub.history(u) }), { push: false });
   on('buddy:set', setBuddy);
+  on('buddy:mega', mega.setBuddyMega);
+  on('mega:state', (u) => mega.full(u), { push: false });
+  on('mega:checkin', mega.checkin);
+  on('mega:claim', mega.claim);
+  on('mega:craft', mega.craft);
+  on('mega:spin', mega.spin);
+  on('mega:pick', mega.pickStone);
+  on('mega:use', (u, { stone }) => mega.useStone(u, stone));
   on('item:buy', items.buy);
   on('item:use', items.use);
   on('equip', items.equip);
@@ -533,6 +551,7 @@ db.init().then(() => {
   checkEvents();
   race.start();
   crash.start();
+  mega.start();
   console.log('  ✅ Casino abierto');
   if (!Object.keys(db.data.users).length) console.log('  👑 El primer jugador que se registre será administrador.');
 }).catch((e) => { console.error('No se pudo arrancar:', e); process.exit(1); });

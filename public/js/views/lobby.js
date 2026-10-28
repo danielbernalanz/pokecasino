@@ -30,6 +30,19 @@ const GAMES = [
 // Eventos activos y el siguiente, con la cuenta atrás en palabras.
 const left = (ms) => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} días`; };
 const WEEKDAY = (t) => new Date(t).toLocaleDateString('es-ES', { weekday: 'long', timeZone: 'Europe/Madrid' });
+// Banner del evento Megaevolución (cuenta atrás, Hora Mega y fragmentos).
+export function megaBanner() {
+  const m = S.mega;
+  if (!m || !m.active) return null;
+  const mm = S.me.mega;
+  return h('a', { class: 'card mega-banner' + (m.hour ? ' hour' : ''), href: '#/mega' },
+    h('span', { class: 'mb-ico' }, '💠'),
+    h('div', { class: 'grow' },
+      h('b', {}, m.hour ? '⚡ ¡HORA MEGA! Fragmentos ×2' : '¡Evento Megaevolución!'),
+      h('div', { class: 'small' }, `Megapiedras, Máquina Mega y Bote de ${fmt(m.bote)} monedas · quedan ${left(m.endsAt - Date.now())}`),
+      h('div', { class: 'small mb-frags' }, `Tienes ${fmt(mm.frags)} 💠${mm.frags >= S.data.mega.cfg.craftCost ? ' · ¡ya puedes fabricar una megapiedra!' : ` · te faltan ${S.data.mega.cfg.craftCost - mm.frags} para fabricar una`}`)),
+    h('span', { class: 'btn primary' }, 'Entrar'));
+}
 export function eventsCard() {
   const ev = S.events;
   if (!ev) return '';
@@ -124,13 +137,13 @@ export default {
           h('div', { class: 'row gap wrap' },
             h('a', { class: 'btn primary big', href: '#/gacha' }, freeDone ? '🎁 Ir al Gacha' : '🎁 ¡Tirada gratis disponible!'),
             h('a', { class: 'btn big', href: '#/race' }, '🏁 Carrera en directo'))),
-        h('div', { class: 'hero-mons' }, me.buddy ? pokeImg(me.buddy.id, me.buddy.shiny, 'hero-buddy float') : h('img', { class: 'hero-buddy float', src: art(52), alt: 'Meowth' }))),
+        h('div', { class: 'hero-mons' }, me.buddy ? pokeImg(me.buddy.id, me.buddy.shiny, 'hero-buddy float', me.buddy.mega) : h('img', { class: 'hero-buddy float', src: art(52), alt: 'Meowth' }))),
       canInstall() && (() => { try { return !localStorage.getItem('installHidden'); } catch { return true; } })() ? h('div', { class: 'card install-card' },
         h('img', { src: '/icons/icon-192.png', alt: '' }),
         h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio a pantalla completa, como una app.')),
         h('button', { class: 'btn primary', onclick: () => installApp() }, 'Instalar'),
         h('button', { class: 'icon-btn', 'aria-label': 'Ocultar', onclick: (e) => { try { localStorage.setItem('installHidden', '1'); } catch { /* nada */ } e.target.closest('.install-card').remove(); } }, '✕')) : '',
-      (() => { if (this.offEv) this.offEv(); this.offEv = bus.on('events', () => this.remount(root)); return eventsCard(); })(),
+      (() => { if (this.offEv) this.offEv(); const o1 = bus.on('events', () => this.remount(root)); const o2 = bus.on('mega', () => this.remount(root)); this.offEv = () => { o1(); o2(); }; return h('div', { class: 'stack' }, megaBanner(), eventsCard()); })(),
       h('div', { class: 'cards3 progress-row' }, route, daily, badgeStrip),
       h('div', { class: 'cards3' },
         h('div', { class: 'card' },

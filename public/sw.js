@@ -2,11 +2,11 @@
 // - Archivos de la app: primero la red (siempre la última versión) y, sin conexión, la copia guardada.
 // - Sprites de PokeAPI: primero la caché (no cambian) para cargar mucho más rápido.
 // - Nunca se guarda nada de /api ni del socket.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const APP = 'pokecasino-app-' + VERSION;
 const SPRITES = 'pokecasino-sprites';
 const SPRITE_LIMIT = 1500;
-const SHELL = ['/', '/index.html', '/css/style.css', '/css/fx.css', '/js/main.js', '/js/core.js', '/offline.html', '/icons/icon-192.png'];
+const SHELL = ['/', '/index.html', '/css/style.css', '/css/fx.css', '/css/mega.css', '/js/main.js', '/js/core.js', '/offline.html', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

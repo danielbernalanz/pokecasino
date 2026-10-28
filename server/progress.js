@@ -138,6 +138,7 @@ function track(user, event, data = {}) {
   const p = user.progress;
   p.counters[event] = (p.counters[event] || 0) + 1;
   if (event === 'win' && data.game === 'poker') p.counters.poker_win = (p.counters.poker_win || 0) + 1;
+  require('./mega').onEvent(user, event, data);
 
   // Tutorial
   const step = TUTORIAL[p.tutorial];

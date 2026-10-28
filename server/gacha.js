@@ -177,6 +177,7 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
     if (user.coins < cost) throw new Error(`Necesitas ${cost} monedas.`);
     user.coins -= cost;
     hub.ledger(user, -cost, 'gacha', `×${count}`);
+    require('./mega').onBet(user, cost, 'gacha', { play: false });
   }
   const results = [];
   for (let i = 0; i < count; i++) {
