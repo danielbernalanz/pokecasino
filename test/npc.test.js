@@ -402,7 +402,7 @@ test('NPC: conservación de monedas con jugadores y NPC operando (solo bajan com
   assert.ok(db.data.market.trades.some((t) => t.npc), 'hubo operaciones con NPC');
   for (const u of players) {
     const r = npc.state().daily[u.id];
-    if (r) { assert.ok(r.got <= npc.sellLimit(u)); for (const n of Object.values(r.sold)) assert.ok(n <= 100); }
+    if (r) { assert.ok(r.got <= npc.sellLimit(u)); for (const [ref, n] of Object.entries(r.sold)) assert.ok(n <= npc.SELL_UNITS[ref === 'dust' ? 'dust' : ref.startsWith('item:') ? 'item' : 'poke']); }
   }
   clearNpcOrders();
 });
@@ -451,6 +451,7 @@ test('NPC: el premio de cada encargo nunca supera el hueco suelo − (1,5 × top
 
 function resetSpecial() {
   clearNpcOrders();
+  db.data.market.orders = db.data.market.orders.filter((o) => o.npc); // sin órdenes de jugadores de otros tests (no cruzan con las de los NPC)
   const n = npc.state();
   n.enc = []; n.flash = []; n.feed = { day: null, n: 0 };
   for (const u of npcs()) { u.coins = 60000; u.collection = {}; u.items = {}; }
@@ -462,7 +463,13 @@ const snap = (u) => ({ coins: u.coins, ticket: u.items.ticket || 0, egg: u.items
 test('NPC: encargos: premio extra que no son monedas, una vez por encargo y jugador y 2 al día', () => {
   resetSpecial();
   const made = [];
-  for (let i = 0; i < 12 && made.length < 3; i++) { const e = npc.newEncargo(); if (e) made.push(e); }
+  for (let i = 0; i < 80 && made.length < 3; i++) {
+    const e = npc.newEncargo();
+    if (!e) continue;
+    const o = db.data.market.orders.find((x) => x.id === e.orderId);
+    if (o.qty >= 2) made.push(e); // (los cosméticos L muy caros salen con 1 unidad: se descartan para este test)
+    else { npc.state().enc = npc.state().enc.filter((x) => x !== e); market.cancel(db.userById(e.npc), { id: o.id }); }
+  }
   assert.strictEqual(made.length, 3);
   for (const e of made) {
     assert.ok(e.expiresAt - e.createdAt >= 2 * 3600e3 && e.expiresAt - e.createdAt <= 6 * 3600e3, 'dura 2-6 h');
@@ -474,7 +481,7 @@ test('NPC: encargos: premio extra que no son monedas, una vez por encargo y juga
   assert.strictEqual(pub.length, 3);
   assert.ok(pub.every((e) => e.orderId && e.qty >= 1 && e.expiresAt > Date.now()));
   const owns = (ids) => Object.fromEntries(ids.map((id) => [id, { n: 5, s: 0 }]));
-  const mk = (name, extra = {}) => user(name, { level: 12, collection: owns(made.filter((e) => e.ref.startsWith('poke:')).map((e) => Number(e.ref.split(':')[1]))), items: Object.fromEntries(made.filter((e) => e.ref.startsWith('item:')).map((e) => [e.ref.slice(5), 5])), ...extra });
+  const mk = (name, extra = {}) => user(name, { level: 60, collection: owns(made.filter((e) => e.ref.startsWith('poke:')).map((e) => Number(e.ref.split(':')[1]))), items: Object.fromEntries(made.filter((e) => e.ref.startsWith('item:')).map((e) => [e.ref.slice(5), 5])), ...extra });
   const sellTo = (p, e) => { const a = fromRef(e.ref); const before = snap(p); market.sell(p, { ...a, qty: 1, price: e.price, instant: true }); return { a, before, after: snap(p) }; };
   const taxOf = (price) => Math.floor(price * market.state().salesTax);
   const p1 = mk('enc-uno');
@@ -545,11 +552,13 @@ test('NPC: una oferta flash rebaja un 15-25 %, nunca por debajo del 80 % del sue
     assert.ok(market.state().orders.find((x) => x.id === f.orderId).flash === f.until);
     assert.ok(npc.publicState().flash.some((x) => x.ref === f.ref));
     // Comprar a precio flash y vender de vuelta pierde.
+    db.data.market.orders = db.data.market.orders.filter((x) => x.npc || x.ref !== f.ref); // sin órdenes de jugadores de otros tests
     const p = user('flash' + i, { level: 50 });
     const before = p.coins;
     market.buy(p, { ...a, qty: 1, price: f.price, instant: true });
     const bidder = db.userById(f.npc === 'npc-ginger' ? 'npc-bill' : 'npc-ginger');
     bidder.coins = 60000;
+    delete npc.state().spent[bidder.id];
     market.buy(bidder, { ...a, qty: 1, price: b.cap });
     market.sell(p, { ...a, qty: 1, price: b.cap, instant: true });
     assert.ok(p.coins < before);
