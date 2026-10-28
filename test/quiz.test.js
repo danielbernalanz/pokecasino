@@ -387,8 +387,10 @@ test('la escalera se adapta a la precisión real: ni un experto (o quien busque)
       // Mejor punto de retirada fijo para ese jugador, rondas sucesivas con la precisión que va aprendiendo el juego.
       let best = 0;
       for (let k = 1; k <= D.max; k++) {
-        const user = { quizAcc: {} };
+        // Media de 8 jugadores: uno solo con una racha de mala suerte puede quedar un rato por encima.
         let bet = 0, paid = 0;
+        for (let pl = 0; pl < 8; pl++) {
+        const user = { quizAcc: {} };
         for (let round = 0; round < 400; round++) {
           const acc = quiz.playerAcc(user, 'choice', diff);
           const rec = (user.quizAcc[`choice:${diff}`] ||= { ok: 0, n: 0 });
@@ -402,6 +404,7 @@ test('la escalera se adapta a la precisión real: ni un experto (o quien busque)
           }
           // Pago esperado de la ronda (sin el azar del cobro, que solo añade ruido a la medida).
           paid += Math.pow(p, k) * Math.min(quiz.MAX_MULT, quiz.ladder(diff, k, acc));
+        }
         }
         best = Math.max(best, paid / bet);
       }
