@@ -55,10 +55,19 @@ app.use((req, res, next) => {
       "manifest-src 'self'",
       "worker-src 'self'",
       "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'none'",
+      "form-action 'self'",
     ].join('; '),
     'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'no-referrer',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
   });
+  // Detrás de HTTPS (Render, proxy inverso) se pide al navegador que use siempre HTTPS.
+  if (req.secure) res.set('Strict-Transport-Security', 'max-age=15552000');
   next();
 });
 app.use(compression());

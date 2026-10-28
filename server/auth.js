@@ -22,6 +22,16 @@ function tooMany(ip) {
   if (Date.now() - f.first > 15 * 60 * 1000) { fails.delete(ip); return false; }
   return f.count >= 10;
 }
+// Limpieza periódica: los mapas por IP no crecen sin límite y las sesiones caducadas se borran.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, f] of fails) if (now - f.first > 15 * 60 * 1000) fails.delete(ip);
+  for (const [ip, list] of signups) if (!list.some((t) => now - t < 24 * 3600 * 1000)) signups.delete(ip);
+  let n = 0;
+  for (const [k, s] of Object.entries(db.data.sessions)) if (s.expires < now) { delete db.data.sessions[k]; n++; }
+  if (n) db.save();
+}, 3600 * 1000).unref();
+
 function noteFail(ip) {
   const f = fails.get(ip) || { count: 0, first: Date.now() };
   f.count++;
