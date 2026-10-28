@@ -64,6 +64,7 @@ export default {
       if (S.me.coins >= hl.limit) return `Tienes ${fmt(S.me.coins)} monedas: Joy ayuda con menos de ${hl.limit}.`;
       const wait = (S.me.lastHeal || 0) + hl.cooldown - Date.now();
       if (wait > 0) return `Joy ya te ayudó hace poco. Vuelve en ${Math.ceil(wait / 60000)} min.`;
+      if (S.me.coins + (S.me.locked || 0) >= hl.limit) return `Tienes ${fmt(S.me.locked)} monedas apartadas en pedidos del Mercado o en una mesa/apuesta en curso. Cancela el pedido o levántate de la mesa para recuperarlas.`;
       return '';
     };
     const healNote = h('p', { class: 'small muted' });

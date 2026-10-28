@@ -214,11 +214,16 @@ function privateUser(u) {
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy,
     buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
-    bonusLeft: bonusLeft(u), bonusCap: bonusCap(u),
+    bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), locked: lockedCoins(u),
     progress: require('./progress').view(u),
   };
 }
 
+// Monedas apartadas: pedidos de compra en el Mercado y lo que hay en juego (mesas, apuestas en curso).
+function lockedCoins(u) {
+  return require('./market').lockedIn(u) + Object.values(db.data.escrow).filter((e) => e.userId === u.id).reduce((s, e) => s + e.amount, 0);
+}
+
 const pushMe = (u) => { daySnap(u); emitUser(u.id, 'me', privateUser(u)); };
 
-module.exports = { ledger, gameStat, history, econDay, econActive, daySnap, GAME_LABELS, dayKey, MAX_BET_BY_BADGES, looks, GAME_NAMES, maxBetFor, track, setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };
+module.exports = { lockedCoins, ledger, gameStat, history, econDay, econActive, daySnap, GAME_LABELS, dayKey, MAX_BET_BY_BADGES, looks, GAME_NAMES, maxBetFor, track, setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };

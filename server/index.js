@@ -148,7 +148,7 @@ function claimDaily(user) {
 }
 
 function heal(user) {
-  const locked = market.lockedIn(user) + Object.values(db.data.escrow).filter((e) => e.userId === user.id).reduce((s, e) => s + e.amount, 0);
+  const locked = hub.lockedCoins(user);
   const why = healer.reason(user, locked);
   if (why) throw new Error(why);
   user.lastHeal = Date.now();
