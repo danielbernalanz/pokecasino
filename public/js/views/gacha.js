@@ -82,8 +82,8 @@ export default {
           h('button', { class: 'btn big', onclick: (e) => pull(1, false, e.target, true) }, itemImg('ticket'), ` Ticket ×1 (tienes ${S.me.items.ticket})`),
           S.me.items.ticket >= 10 ? h('button', { class: 'btn big', onclick: (e) => pull(10, false, e.target, true) }, itemImg('ticket'), ' Tickets ×10') : null) : '',
         h('details', { class: 'rates' }, h('summary', {}, 'Probabilidades y reglas'),
-          h('table', {}, h('tbody', {}, Object.entries(S.data.gachaRates).map(([r, p]) => h('tr', {}, h('td', {}, h('span', { class: 'rar r-' + r }, rarityName(r))), h('td', {}, (p * 100).toFixed(1) + ' %'), h('td', { class: 'muted' }, `${S.data.rarity[r].dust} ✦ por duplicado extra`))))),
-          h('p', { class: 'small muted' }, `Variocolor: 1/${Math.round(1 / S.data.shinyRate)} en cualquier tirada. Cada copia (hasta 5) da una estrella al Pokémon: más fuerza en duelos y más bonus como compañero. A partir de la 5ª copia se convierte en polvo estelar.`)));
+          h('table', {}, h('tbody', {}, Object.entries(S.data.gachaRates).map(([r, p]) => h('tr', {}, h('td', {}, h('span', { class: 'rar r-' + r }, rarityName(r))), h('td', {}, `${String(parseFloat((p * 100).toFixed(2))).replace('.', ',')} %`), h('td', { class: 'muted' }, `${S.data.rarity[r].dust} ✦ por duplicado extra`))))),
+          h('p', { class: 'small muted' }, `Variocolor: 1/${Math.round(1 / S.data.shinyRate)} en cualquier tirada. Cada copia (hasta 5) da una estrella al Pokémon: más fuerza en duelos y más bonus como compañero. A partir de la 5ª copia se convierte en polvo estelar. Dentro de cada rareza, las formas evolucionadas salen mucho menos: una primera evolución con un cuarto de probabilidad y una evolución final con un 6 % de la de una forma básica (legendarios y míticos no cambian).`)));
     }
 
     // Objetos que afectan a las tiradas.

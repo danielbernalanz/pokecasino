@@ -205,11 +205,22 @@ const OVERRIDES = new Map(RAW.trim().split('\n').map((line) => {
   return [Number(id), { name, rarity }];
 }));
 
-const DEX = DATA.map(([id, name, types, rarity, gen, stats]) => {
+// `stage`: 0 bebé · 1 forma base · 2 primera evolución · 3 segunda evolución. `evolvesFrom`: id de la
+// preevolución (o null) y `chain`: id de la cadena evolutiva (PokeAPI).
+const DEX = DATA.map(([id, name, types, rarity, gen, stats, stage = 1, evolvesFrom = null, chain = id]) => {
   const o = OVERRIDES.get(id);
-  return { id, name: o ? o.name : name, types, rarity: o ? o.rarity : rarity, gen, stats };
+  return { id, name: o ? o.name : name, types, rarity: o ? o.rarity : rarity, gen, stats, stage, evolvesFrom, chain };
 });
 const BY_ID = new Map(DEX.map((p) => [p.id, p]));
+
+// Rareza monótona a lo largo de cada cadena: una evolución nunca es más común que su preevolución
+// (p. ej. un Pokémon final no puede ser «Común» si su base es «Rara»). Se sube la evolución, nunca se
+// baja la base, así que ninguna colección existente pierde valor. Va por orden de fase.
+const RANK = { C: 0, U: 1, R: 2, E: 3, L: 4, M: 5 };
+for (const p of [...DEX].sort((a, b) => a.stage - b.stage)) {
+  const from = p.evolvesFrom && BY_ID.get(p.evolvesFrom);
+  if (from && RANK[p.rarity] < RANK[from.rarity]) p.rarity = from.rarity;
+}
 const BY_RARITY = {};
 for (const p of DEX) (BY_RARITY[p.rarity] ||= []).push(p);
 

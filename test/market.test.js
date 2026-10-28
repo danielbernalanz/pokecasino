@@ -223,15 +223,16 @@ test('mercado: la caducidad usa expiresAt y devuelve el depósito (y cae a 14 d�
   assert.strictEqual(s.items['lucky-egg'], 2);
 });
 
+// (Usa Huevos Suerte: el test aleatorio de arriba deja pedidos de Caramelos Raro abiertos que a veces llenaban la orden barata.)
 test('mercado: orderId llena solo esa orden aunque haya otras más baratas', () => {
-  const a = user('barata1', { items: { 'rare-candy': 2 } });
-  const c = user('cara1', { items: { 'rare-candy': 2 } });
+  const a = user('barata1', { items: { 'lucky-egg': 2 } });
+  const c = user('cara1', { items: { 'lucky-egg': 2 } });
   const b = user('elegidor', { coins: 100000 });
-  const o1 = market.sell(a, { kind: 'item', itemId: 'rare-candy', qty: 2, price: 100 }).order;
-  const o2 = market.sell(c, { kind: 'item', itemId: 'rare-candy', qty: 2, price: 500 }).order;
-  const r = market.buy(b, { kind: 'item', itemId: 'rare-candy', qty: 1, price: 500, orderId: o2.id });
+  const o1 = market.sell(a, { kind: 'item', itemId: 'lucky-egg', qty: 2, price: 100 }).order;
+  const o2 = market.sell(c, { kind: 'item', itemId: 'lucky-egg', qty: 2, price: 500 }).order;
+  const r = market.buy(b, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 500, orderId: o2.id });
   assert.strictEqual(r.spent, 500);
   assert.strictEqual(market.state().orders.find((o) => o.id === o1.id).qty, 2, 'la barata no se toca');
   assert.strictEqual(market.state().orders.find((o) => o.id === o2.id).qty, 1);
-  assert.throws(() => market.buy(b, { kind: 'item', itemId: 'rare-candy', qty: 1, price: 500, orderId: 999999 }), /No hay ofertas/);
+  assert.throws(() => market.buy(b, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 500, orderId: 999999 }), /No hay ofertas/);
 });

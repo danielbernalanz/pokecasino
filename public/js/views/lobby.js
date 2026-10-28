@@ -52,7 +52,8 @@ export default {
     const dailyDone = me.daily.last === today;
     const freeDone = me.daily.freePull === today;
     const streak = dailyDone ? me.daily.streak : (me.daily.last === new Date(Date.now() - 864e5).toISOString().slice(0, 10) ? me.daily.streak + 1 : 1);
-    const nextReward = 1000 + 250 * (Math.min(streak, 7) - 1);
+    const dl = S.data.daily;
+    const nextReward = dl.base + dl.step * (Math.min(streak, dl.max) - 1);
 
     const dailyBtn = h('button', { class: 'btn primary', disabled: dailyDone, onclick: async (e) => {
       const r = await act('daily:claim', {}, e.target);
@@ -75,7 +76,7 @@ export default {
     const healNote = h('p', { class: 'small muted' });
     const healBtn = h('button', { class: 'btn', onclick: async (e) => {
       const r = await act('center:heal', {}, e.target);
-      if (r) { sfx('win'); toast('La enfermera Joy te prestó 1.000 monedas. ¡Suerte!', 'success'); }
+      if (r) { sfx('win'); toast(`La enfermera Joy te prestó ${fmt(S.data.heal.amount)} monedas. ¡Suerte!`, 'success'); }
       else healNote.textContent = 'Joy no pudo ayudarte: revisa que no tengas monedas en el Mercado o en una partida.';
       refreshHeal();
     } }, 'Pedir ayuda');
@@ -138,12 +139,12 @@ export default {
           days, dailyBtn),
         h('div', { class: 'card' },
           h('h3', {}, '🏥 Centro Pokémon'),
-          h('p', { class: 'muted' }, '¿Sin fondos? Si tienes menos de 200 monedas, la enfermera Joy te presta 1.000 (una vez por hora).'),
+          h('p', { class: 'muted' }, `¿Sin fondos? Si tienes menos de ${fmt(hl.limit)} monedas, la enfermera Joy te presta ${fmt(hl.amount)} (una vez cada ${Math.round(hl.cooldown / 3600e3)} h).`),
           healBtn, healNote),
         h('div', { class: 'card' },
           h('h3', {}, '🤝 Compañero'),
           me.buddy
-            ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta (hasta ${fmt(me.bonusCap)} al día; te quedan ${fmt(me.bonusLeft)}).`)
+            ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta (hoy te quedan ${fmt(me.bonusLeft)} de bonus: crece con lo que apuestas y llega como mucho a ${fmt(me.bonusCap)} al día).`)
             : h('p', { class: 'muted' }, 'Elige un compañero en tu Pokédex: aumenta tus ganancias según su rareza y estrellas.'),
           h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'))),
       h('h2', { class: 'section-title' }, `Juegos (${GAMES.length - 2} + Gacha y Mercado)`),

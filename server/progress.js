@@ -24,22 +24,24 @@ const TUTORIAL = [
 
 // ---- Misiones diarias (3 al día) ----
 const DAILY = [
-  { id: 'play15', title: 'Juega 15 partidas', n: 15, match: (e) => e === 'play', reward: { coins: 600 } },
-  { id: 'win5', title: 'Gana 5 veces', n: 5, match: (e) => e === 'win', reward: { coins: 500 } },
-  { id: 'crash3', title: 'Retírate en Crash a ×3 o más', match: (e, d) => e === 'win' && d.game === 'crash' && d.mult >= 3, reward: { items: { ticket: 2 } } },
+  { id: 'play15', title: 'Juega 15 partidas', n: 15, match: (e) => e === 'play', reward: { coins: 400 } },
+  { id: 'win5', title: 'Gana 5 veces', n: 5, match: (e) => e === 'win', reward: { coins: 300 } },
+  { id: 'crash3', title: 'Retírate en Crash a ×3 o más', match: (e, d) => e === 'win' && d.game === 'crash' && d.mult >= 3, reward: { items: { ticket: 1 } } },
   { id: 'poker', title: "Gana una mano de Hold'em", match: (e, d) => e === 'win' && d.game === 'poker', reward: { items: { 'mystery-egg': 1 } } },
-  { id: 'pull5', title: 'Haz 5 tiradas de gacha', n: 5, count: (d) => d.count || 1, match: (e) => e === 'pull', reward: { coins: 400 } },
+  { id: 'pull5', title: 'Haz 5 tiradas de gacha', n: 5, count: (d) => d.count || 1, match: (e) => e === 'pull', reward: { coins: 250 } },
   { id: 'market', title: 'Compra o vende en el Mercado', match: (e) => e === 'market_buy' || e === 'market_sell', reward: { items: { 'mystery-egg': 1 } } },
-  { id: 'duel', title: 'Juega un duelo', match: (e) => e === 'duel_play', reward: { items: { ticket: 2 } } },
-  { id: 'race3', title: 'Apuesta en 3 carreras', n: 3, match: (e, d) => e === 'play' && d.game === 'race', reward: { coins: 400 } },
+  { id: 'duel', title: 'Juega un duelo', match: (e) => e === 'duel_play', reward: { items: { ticket: 1 } } },
+  { id: 'race3', title: 'Apuesta en 3 carreras', n: 3, match: (e, d) => e === 'play' && d.game === 'race', reward: { coins: 250 } },
   { id: 'x10', title: 'Consigue un premio ×10 o mayor', match: (e, d) => e === 'win' && d.mult >= 10, reward: { items: { 'mystery-egg': 1 } } },
   { id: 'tables3', title: 'Gana 3 manos de Blackjack o Baccarat', n: 3, match: (e, d) => e === 'win' && (d.game === 'blackjack' || d.game === 'baccarat'), reward: { items: { 'rare-candy': 1 } } },
-  { id: 'mines5', title: 'Descubre 5 casillas seguidas en Minas', match: (e, d) => e === 'mines_safe' && d.streak >= 5, reward: { coins: 500 } },
-  { id: 'item', title: 'Usa un objeto', match: (e) => e === 'item_use', reward: { coins: 300 } },
+  { id: 'mines5', title: 'Descubre 5 casillas seguidas en Minas', match: (e, d) => e === 'mines_safe' && d.streak >= 5, reward: { coins: 300 } },
+  { id: 'item', title: 'Usa un objeto', match: (e) => e === 'item_use', reward: { coins: 200 } },
 ];
-const DAILY_BONUS = { items: { 'mystery-egg': 1 }, coins: 500 };
+const DAILY_BONUS = { items: { 'mystery-egg': 1 }, coins: 250 };
 
 // ---- Medallas de Kanto ----
+const BADGE_COINS = 500; // la medalla n paga 500 × n (total 18.000)
+const CHAMPION_COINS = 10000;
 const dexCount = (u) => Object.keys(u.collection).length;
 const hasShiny = (u) => Object.values(u.collection).some((c) => c.s > 0);
 const C = (u, k) => u.progress.counters[k] || 0;
@@ -180,10 +182,10 @@ function evaluate(user) {
     if (!p.badges.includes(b.id) && b.check(user)) {
       p.badges.push(b.id);
       newBadge = true;
-      grant(user, { coins: 1000 * (k + 1), items: k % 2 ? { 'mystery-egg': 1 } : { ticket: 2 }, title: 'badge-' + b.id }, `¡${b.name}!`);
+      grant(user, { coins: BADGE_COINS * (k + 1), items: k % 2 ? { 'mystery-egg': 1 } : { ticket: 2 }, title: 'badge-' + b.id }, `¡${b.name}!`);
       hub.feed('badge', `🏅 ${user.username} consiguió la ${b.name} (${p.badges.length}/8)`, { badge: k + 1 });
       if (p.badges.length === BADGES.length) {
-        grant(user, { coins: 25000, items: { 'master-ball': 1, 'frame-rainbow': 1 }, title: 'campeon' }, '👑 ¡Campeón de la Liga Pokémon!');
+        grant(user, { coins: CHAMPION_COINS, items: { 'master-ball': 1, 'frame-rainbow': 1 }, title: 'campeon' }, '👑 ¡Campeón de la Liga Pokémon!');
         hub.feed('badge', `👑 ¡${user.username} es Campeón de la Liga Pokémon!`);
       }
     }
@@ -218,4 +220,4 @@ function view(user) {
 
 const titleText = (id) => TITLES[id] || (require('./items').COSMETICS[id] || {}).title || null;
 
-module.exports = { track, evaluate, view, setBonus, titleText, BADGES, SETS, TUTORIAL, DAILY, TITLES };
+module.exports = { BADGE_COINS, CHAMPION_COINS, track, evaluate, view, setBonus, titleText, BADGES, SETS, TUTORIAL, DAILY, TITLES };

@@ -31,6 +31,8 @@ const mines = require('./games/mines');
 const crash = require('./games/crash');
 const holdem = require('./games/holdem');
 const npc = require('./npc');
+const BAL = require('./balance');
+const daily = require('./daily');
 
 const app = express();
 app.set('trust proxy', config.TRUST_PROXY);
@@ -110,11 +112,12 @@ const STATIC = {
   slots: { symbols: slots.SYMBOLS, lines: slots.LINES, reels: slots.REELS },
   roulette: { wheel: roulette.WHEEL, groups: roulette.GROUPS, payout: roulette.PAYOUT },
   openRegistration: config.OPEN_REGISTRATION,
-  racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS,
+  racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS, voltorbCap: voltorb.SCORE_CAP,
   items: items.ITEMS, marketFee: market.SETUP_FEE, salesTax: market.SALES_TAX, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
   plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
   cosmetics: items.COSMETICS,
   heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },
+  daily: { base: BAL.DAILY_BASE, step: BAL.DAILY_STEP, max: BAL.DAILY_MAX_STREAK },
 };
 app.get('/api/static', (req, res) => res.json(STATIC));
 
@@ -130,23 +133,9 @@ function onlineList() {
 }
 const pushOnline = () => io.emit('online', onlineList());
 
-function today() { return new Date().toISOString().slice(0, 10); }
-function yesterday() { return new Date(Date.now() - 864e5).toISOString().slice(0, 10); }
-
 function claimDaily(user) {
   if (user.npc) throw new Error('Los comerciantes NPC no reclaman recompensas.');
-  if (user.daily.last === today()) throw new Error('Ya reclamaste tu recompensa de hoy. ¡Vuelve mañana!');
-  user.daily.streak = user.daily.last === yesterday() ? user.daily.streak + 1 : 1;
-  user.daily.last = today();
-  const reward = 1000 + 250 * (Math.min(user.daily.streak, 7) - 1);
-  user.coins += reward;
-  hub.ledger(user, reward, 'daily', `Racha ${user.daily.streak}`);
-  user.items.ticket = (user.items.ticket || 0) + 1;
-  const charm = user.daily.streak % 7 === 0;
-  if (charm) user.items['shiny-charm'] = (user.items['shiny-charm'] || 0) + 1;
-  hub.track(user, 'daily');
-  db.save();
-  return { reward, streak: user.daily.streak, charm };
+  return daily.claim(user);
 }
 
 function heal(user) {

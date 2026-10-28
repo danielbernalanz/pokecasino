@@ -9,7 +9,7 @@ const EVENTS = {
   missions: { icon: '🎯', name: 'Miércoles de Misiones', desc: 'Las misiones diarias dan el doble de monedas.' },
   market: { icon: '🏪', name: 'Viernes de Mercado', desc: 'Sin impuesto de venta y comisión de anuncio a la mitad.' },
   shiny: { icon: '✨', name: 'Fin de semana Variocolor', desc: 'El doble de probabilidad de variocolor en el Gacha.' },
-  buddy: { icon: '🤝', name: 'Fin de semana del Compañero', desc: 'El tope diario del bonus de compañero se duplica.' },
+  buddy: { icon: '🤝', name: 'Fin de semana del Compañero', desc: 'El tope diario del bonus de compañero se duplica y el bonus crece un 25 %.' },
 };
 // 0 = domingo … 6 = sábado
 const WEEK = { 0: ['shiny', 'buddy'], 1: ['duels'], 3: ['missions'], 5: ['market'], 6: ['shiny', 'buddy'] };

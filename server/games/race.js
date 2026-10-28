@@ -122,4 +122,4 @@ function refundAll() {
   race.bets = {};
 }
 
-module.exports = { start: newRound, placeBet, publicState, myBets, refundAll, POOL };
+module.exports = { start: newRound, placeBet, publicState, myBets, refundAll, POOL, EDGE, MAX_ODDS };

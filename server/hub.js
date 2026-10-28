@@ -3,6 +3,7 @@
 const db = require('./db');
 const { BY_ID, RARITY } = require('./pokedex');
 const { MIN_BET } = require('./config');
+const BAL = require('./balance');
 
 const GAME_NAMES = {
   slots: 'Pika-Slots', roulette: 'la Ruleta de Tipos', voltorb: 'Voltorb Flip', race: 'la Gran Carrera', duel: 'un duelo',
@@ -107,23 +108,31 @@ const GAME_LABELS = {
 // ---- Nivel de entrenador ----
 const xpForLevel = (lvl) => 100 * (lvl - 1) * (lvl - 1);
 
-function addXp(user, amount) {
+// `flat`: experiencia fija (duelos…) con tope diario. Los decimales sobrantes se acumulan en `xpFrac`.
+function addXp(user, amount, { flat = false } = {}) {
   if (user.buffs && user.buffs.luckyUntil > Date.now()) amount *= 2;
-  user.xp += Math.max(0, Math.floor(amount));
+  if (flat) {
+    const b = bonusDayOf(user);
+    amount = Math.max(0, Math.min(amount, BAL.FLAT_XP_DAILY - (b.flatXp || 0)));
+    b.flatXp = (b.flatXp || 0) + amount;
+  }
+  const total = Math.max(0, amount) + (user.xpFrac || 0);
+  const whole = Math.floor(total);
+  user.xpFrac = total - whole;
+  user.xp += whole;
   let leveled = false;
   while (user.xp >= xpForLevel(user.level + 1)) {
     user.level++;
-    // ~0,25 % de lo apostado (el XP sale de apostar, al 10 %, y cada nivel cuesta 100·(2n−1) de XP).
-    // Tiene que ser menor que el margen de la casa de los mejores juegos (Video Póker ≈ 0,5 %):
-    // si no, jugar mucho daría dinero seguro.
-    const reward = 5 * user.level;
+    // Las recompensas por nivel salen de lo apostado (la XP es proporcional a la ventaja de la casa, ver
+    // balance.js): su valor total queda en ≈15-20 % de esa ventaja, nunca más.
+    const reward = BAL.levelCoins(user.level);
     user.coins += reward;
     ledger(user, reward, 'level', `Nivel ${user.level}`);
     leveled = true;
-    // Premios en objetos: Caramelo Raro cada nivel y Master Ball cada 5.
-    const bonusItem = user.level % 5 === 0 ? 'master-ball' : 'rare-candy';
-    user.items[bonusItem] = (user.items[bonusItem] || 0) + 1;
-    emitUser(user.id, 'toast', { kind: 'level', text: `¡Subiste a nivel ${user.level}! +${reward} monedas y ${bonusItem === 'master-ball' ? 'una Master Ball' : 'un Caramelo Raro'}` });
+    const bonusItem = BAL.levelItem(user.level);
+    if (bonusItem) user.items[bonusItem] = (user.items[bonusItem] || 0) + 1;
+    const gift = bonusItem === 'master-ball' ? ' y una Master Ball' : bonusItem === 'rare-candy' ? ' y un Caramelo Raro' : '';
+    emitUser(user.id, 'toast', { kind: 'level', text: `¡Subiste a nivel ${user.level}! +${reward} monedas${gift}` });
     if (user.level % 5 === 0) feed('level', `${user.username} alcanzó el nivel de entrenador ${user.level}`);
   }
   if (leveled) track(user, 'level');
@@ -149,7 +158,7 @@ function validAmount(n, user) {
 
 // `extra`: apuesta añadida a una partida ya empezada (doblar o dividir en Blackjack); `quiet`: no cuenta como
 // «partida jugada» para las misiones (los duelos tienen sus propios eventos).
-function takeBet(user, amount, game, { extra = false, quiet = false } = {}) {
+function takeBet(user, amount, game, { extra = false, quiet = false, noXp = false } = {}) {
   amount = Number(amount);
   if (!validAmount(amount, user)) {
     throw new Error(`La apuesta debe ser un entero entre ${MIN_BET} y ${maxBetFor(user).toLocaleString('es')}. Consigue medallas para subir el límite.`);
@@ -158,20 +167,33 @@ function takeBet(user, amount, game, { extra = false, quiet = false } = {}) {
   user.coins -= amount;
   user.stats.wagered += amount;
   gameStat(user, game, amount, 0, extra ? 0 : 1);
-  addXp(user, amount / 10);
+  if (!noXp) addXp(user, amount * BAL.xpRate(game));
+  accrueBonus(user, amount, game);
   if (game && !extra && !quiet) track(user, 'play', { game });
   db.save();
   return amount;
 }
 
 // Paga `amount` (incluye la apuesta devuelta). El compañero añade un % sobre la ganancia neta.
-// El bonus (compañero, colecciones, Moneda Amuleto) tiene un tope diario: aplicado sin límite haría que
-// apuestas como retirarse alto en Crash devolvieran más del 100 % a la larga.
+// El bonus (compañero, colecciones, Moneda Amuleto) tiene dos topes diarios: el fijo (300 + 50 × nivel) y uno
+// «de sala» que crece con lo apostado ese día y vale una fracción de la ventaja de la casa de cada juego
+// (BONUS_SHARE). Sin el segundo, jugar a un juego de poca ventaja (Video Póker, Blackjack) con un compañero
+// épico daría dinero seguro a la larga; sin el primero, también lo daría en los de mucha varianza.
 const bonusCap = (user) => (300 + 50 * user.level) * (require('./events').has('buddy') ? 2 : 1);
-function bonusLeft(user) {
+function bonusDayOf(user) {
   const today = new Date().toISOString().slice(0, 10);
-  if (!user.bonusDay || user.bonusDay.date !== today) user.bonusDay = { date: today, paid: 0 };
-  return Math.max(0, bonusCap(user) - user.bonusDay.paid);
+  if (!user.bonusDay || user.bonusDay.date !== today) user.bonusDay = { date: today, paid: 0, room: 0, flatXp: 0 };
+  return user.bonusDay;
+}
+function accrueBonus(user, amount, game) {
+  if (!game || game === 'duel') return;
+  let share = user.buffs && user.buffs.amuletUntil > Date.now() ? BAL.BONUS_SHARE_AMULET : BAL.BONUS_SHARE;
+  if (require('./events').has('buddy')) share *= BAL.BONUS_SHARE_EVENT;
+  bonusDayOf(user).room += amount * share * BAL.edge(game);
+}
+function bonusLeft(user) {
+  const b = bonusDayOf(user);
+  return Math.max(0, Math.floor(Math.min(bonusCap(user), b.room || 0)) - b.paid);
 }
 
 function pay(user, amount, stake, game, { noBonus = false } = {}) {
@@ -215,7 +237,7 @@ function privateUser(u) {
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy,
     buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
-    bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), locked: lockedCoins(u),
+    bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, locked: lockedCoins(u),
     progress: require('./progress').view(u),
   };
 }
@@ -227,4 +249,4 @@ function lockedCoins(u) {
 
 const pushMe = (u) => { if (u.npc) return; daySnap(u); emitUser(u.id, 'me', privateUser(u)); };
 
-module.exports = { lockedCoins, ledger, gameStat, history, econDay, econActive, daySnap, GAME_LABELS, dayKey, MAX_BET_BY_BADGES, looks, GAME_NAMES, maxBetFor, track, setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };
+module.exports = { bonusDayOf, lockedCoins, ledger, gameStat, history, econDay, econActive, daySnap, GAME_LABELS, dayKey, MAX_BET_BY_BADGES, looks, GAME_NAMES, maxBetFor, track, setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };

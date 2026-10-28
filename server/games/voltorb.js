@@ -15,8 +15,13 @@ const CONFIGS = [
   [[7, 2, 10], [4, 4, 10], [1, 6, 13], [9, 1, 13], [6, 3, 10]],
   [[0, 7, 10], [8, 2, 10], [5, 4, 10], [2, 6, 10], [7, 3, 10]],
 ];
-// Divisores calibrados por simulación para que una estrategia razonable recupere ~95 % de lo apostado.
-const DIVISORS = [16, 21, 21, 20, 16, 21, 19, 38];
+// Los puntos se multiplican con cada carta ×2/×3 y sin tope llegan a miles (nivel 8: 2⁷·3³ = 3.456). Un jugador
+// que deduzca bien las pistas limpia casi todos los tableros, así que con el pago original (apuesta × puntos ÷ ≈20)
+// devolvía entre un 155 % (nivel 1) y un 1.300 % (nivel 8). Ahora los puntos que cuentan tienen un tope y los
+// divisores están calibrados (scripts/calibrate-voltorb.js) para que la MEJOR estrategia conocida (inferencia exacta
+// sobre todos los tableros posibles) recupere ≈92 %; un jugador normal recupera bastante menos.
+const SCORE_CAP = 12;
+const DIVISORS = [11, 10.7, 10.5, 9.8, 9.7, 10, 10.2, 10.5];
 const divisor = (level) => DIVISORS[level - 1];
 
 function makeBoard(level) {
@@ -59,7 +64,7 @@ function view(user, reveal = false) {
   };
 }
 
-const payout = (g) => (g.score === 0 ? 0 : Math.floor((g.bet * g.score) / divisor(g.level)));
+const payout = (g) => (g.score === 0 ? 0 : Math.floor((g.bet * Math.min(g.score, SCORE_CAP)) / divisor(g.level)));
 
 function start(user, { bet }) {
   if (user.voltorb.game) throw new Error('Ya tienes una partida en curso.');
@@ -127,4 +132,4 @@ function cashout(user) {
   return { ...res, outcome: 'cashout', newLevel: user.voltorb.level };
 }
 
-module.exports = { start, flip, cashout, view, hints, makeBoard, divisor, DIVISORS };
+module.exports = { SCORE_CAP, CONFIGS, start, flip, cashout, view, hints, makeBoard, divisor, DIVISORS };

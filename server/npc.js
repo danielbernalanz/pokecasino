@@ -41,7 +41,7 @@ const BID_FRAC = 0.9; // compran a como mucho el 90 % de lo que da liberar un du
 // Objetos sin precio en la tienda y cosméticos: { cap, floor } fijos (floor ≥ 3 × cap).
 const NOSHOP = {
   'master-ball': { cap: 2000, floor: 12000 },
-  'shiny-charm': { cap: 1500, floor: 8000 },
+  'shiny-charm': { cap: 500, floor: 3000 }, // 10 tiradas con ×4 de variocolor ≈ 0,5 variocolor de más: no vale 1.500
   'mystery-egg': { cap: 150, floor: 900 }, // > valor medio de un cosmético a precio de compra (≈370)
 };
 const COSMETIC = { // por rareza

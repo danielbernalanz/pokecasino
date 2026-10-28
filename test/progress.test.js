@@ -81,12 +81,21 @@ test('las misiones diarias son 3 y se renuevan cada día', () => {
   assert.notStrictEqual(u.progress.daily.date, '2000-01-01');
 });
 
-test('el bonus de ganancias tiene tope diario y no se aplica en duelos', () => {
-  const u = user('bonificado', { buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 3600e3 } });
-  const cap = 300 + 50 * u.level;
+test('el bonus de ganancias tiene tope diario (fijo y ligado a lo apostado) y no se aplica en duelos', () => {
+  const u = user('bonificado', { coins: 1e9, buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 3600e3 } });
+  // Sin apostar no hay «sala» de bonus: un pago suelto no lo cobra.
+  assert.strictEqual(hub.pay(u, 20000, 10000, 'crash').bonus, 0);
+  // Apostando en un juego de poca ventaja (Video Póker), el bonus del día no supera el 45 % (con amuleto) de lo que la casa espera ganar.
   let bonus = 0;
-  for (let i = 0; i < 50; i++) bonus += hub.pay(u, 20000, 10000, 'crash').bonus;
-  assert.strictEqual(bonus, cap, 'el bonus total del día no supera el tope');
+  for (let i = 0; i < 100; i++) { hub.takeBet(u, 1000, 'videopoker'); bonus += hub.pay(u, 2000, 1000, 'videopoker').bonus; }
+  const room = 100 * 1000 * 0.45 * (1 - 0.9954);
+  assert.ok(bonus <= room + 1 && bonus > room * 0.9, `bonus ${bonus} ≤ sala ${room}`);
+  assert.ok(bonus <= 300 + 50 * u.level, 'y nunca supera el tope fijo');
+  // En un juego de mucha ventaja manda el tope fijo.
+  const w = user('bonificado2', { coins: 1e9, buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 3600e3 } });
+  let b2 = 0;
+  for (let i = 0; i < 200; i++) { hub.takeBet(w, 10000, 'race'); b2 += hub.pay(w, 20000, 10000, 'race').bonus; }
+  assert.strictEqual(b2, 300 + 50 * w.level, 'el bonus total del día no supera el tope fijo (se alcanza en juegos de mucha ventaja)');
   const v = user('duelista', { buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } } });
   assert.strictEqual(hub.pay(v, 1900, 1000, 'duel', { noBonus: true }).bonus, 0);
 });

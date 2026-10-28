@@ -38,7 +38,7 @@ function create(user, { pokeId, shiny, wager, target }) {
     target = t.username;
   }
   // Se cobra al final de las comprobaciones: si algo falla no se pierde la apuesta.
-  if (wager !== 0) hub.takeBet(user, wager, 'duel', { quiet: true });
+  if (wager !== 0) hub.takeBet(user, wager, 'duel', { quiet: true, noXp: true });
   const d = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, wager, poke, target: target || null, createdAt: Date.now() };
   open.set(d.id, d);
   db.escrowSet('duel:' + d.id, user.id, wager);
@@ -72,7 +72,7 @@ function accept(user, { id, pokeId, shiny }) {
   if (d.creatorId === user.id) throw new Error('No puedes aceptar tu propio reto.');
   if (d.target && d.target !== user.username) throw new Error('Este reto es para otro entrenador.');
   const poke = ownedPick(user, { pokeId, shiny });
-  if (d.wager) hub.takeBet(user, d.wager, 'duel', { quiet: true });
+  if (d.wager) hub.takeBet(user, d.wager, 'duel', { quiet: true, noXp: true });
   open.delete(id);
   db.escrowDel('duel:' + d.id);
   const creator = db.userById(d.creatorId);
@@ -89,8 +89,11 @@ function accept(user, { id, pokeId, shiny }) {
   loser.stats.duelsLost++;
   for (const p of players) { hub.track(p, 'duel_play'); hub.track(p, 'play', { game: 'duel' }); }
   hub.track(winner, 'duel_win');
-  hub.addXp(winner, 50);
-  hub.addXp(loser, 20);
+  // La XP de lo apostado solo se cobra si el duelo se juega (crear y cancelar retos no da nada), y la fija
+  // tiene tope diario: si no, dos cuentas gemelas podían cultivar niveles sin coste.
+  if (d.wager) for (const p of players) hub.addXp(p, d.wager * require('../balance').xpRate('duel'));
+  hub.addXp(winner, 50, { flat: true });
+  hub.addXp(loser, 20, { flat: true });
   db.save();
   const record = { id: d.id, at: Date.now(), wager: d.wager, prize, players: [creator.username, user.username], ...result };
   history.unshift(record);

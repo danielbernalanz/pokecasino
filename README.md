@@ -23,9 +23,9 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Colección y economía**
 
-- 🎁 **Poké Gacha**: 2 banners activos: el **permanente** (Gran Banner Nacional, con los 1.025 Pokémon) y un **promocional rotativo** que cambia solo cada 3 días (Aves, Mewtwo/Mew y uno por región de Johto a Paldea, con sus legendarios destacados), sin pity (cada tirada es independiente: 1,8 % legendaria y 0,3 % mítica), al menos una Rara en cada sobre ×10, 50 % de destacado, variocolores 1/64 y tirada gratis diaria. La **Master Ball** es la única legendaria segura y da la destacada del banner. Animación con la Poké Ball que sube de categoría al sacudirse (Poké → Super → Ultra → Master), «¿Quién es ese Pokémon?», explosiones de partículas, sonido, vibración y botón «Otra vez».
+- 🎁 **Poké Gacha**: 2 banners activos: el **permanente** (Gran Banner Nacional, con los 1.025 Pokémon) y un **promocional rotativo** que cambia solo cada 3 días (Aves, Mewtwo/Mew y uno por región de Johto a Paldea, con sus legendarios destacados), sin pity (cada tirada es independiente: 1,75 % legendaria y 0,25 % mítica), al menos una Rara en cada sobre ×10, 50 % de destacado, variocolores 1/64 y tirada gratis diaria. Dentro de cada rareza, las **formas evolucionadas** salen mucho menos (primera evolución ×0,25 y evolución final ×0,06 respecto a una forma básica; legendarios y míticos no cambian): la evolución con caramelos llegará en una fase posterior. La **Master Ball** es la única legendaria segura y da la destacada del banner (se gana cada 25 niveles, al ser Campeón y, rara vez, en un ×10). Animación con la Poké Ball que sube de categoría al sacudirse (Poké → Super → Ultra → Master), «¿Quién es ese Pokémon?», explosiones de partículas, sonido, vibración y botón «Otra vez».
 - 📕 **Pokédex** con los 1.025 Pokémon de las 9 generaciones (nombres en español y estadísticas reales, que se usan en los duelos), filtro por región y estrellas por copias y compañero que da bonus a tus ganancias.
-- 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
+- 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias y más margen de bonus), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
 - 🏪 **Mercado** al estilo Albion Online, con pestañas **Comprar / Vender / Mis órdenes / Historial** y una caja «¿Cómo funciona el Mercado?». En *Comprar* cada artículo (Pokémon normales o variocolor, objetos, cosméticos y polvo estelar) muestra su precio más bajo y cuántos hay en venta, y se despliega para ver las **órdenes individuales** (vendedor, cantidad, precio, tiempo restante) con su propio botón «Comprar». «Comprar» toma al momento las ofertas más baratas y «Pedido de compra» publica tu precio; en *Vender*, «Vender» llena los pedidos más altos y «Orden de venta» publica el tuyo. Las órdenes duran **1, 3, 7 o 14 días** (por defecto 14) y, si caducan o las cancelas, se devuelve lo que quede en depósito. Comisión de publicación 1,5 % (no se devuelve) e impuesto de venta 3 %; comprar o vender al momento no paga comisión. Llenados parciales, gráfica de precios de 30 días e historial de operaciones.
 
 **Progresión (de novato a campeón)**
@@ -44,7 +44,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 - **Tesorería finita:** cada uno empieza con 60.000 monedas (el panel de economía las ve como «Fondo NPC»), solo pujan con monedas depositadas, gastan como mucho el 15 % al día y por debajo del 20 % de su tesorería inicial solo venden. Venden únicamente lo que han comprado más un pequeño reabastecimiento diario de comunes, poco comunes y Huevos Misteriosos (nunca legendarias, míticas ni Master Ball).
 - No tienen contraseña, no salen en rankings ni en la lista de conectados, y no pueden recibir regalos ni jugar. Sus operaciones no cuentan en la media de precios de los jugadores.
 
-**Social**: chat con menciones `@nombre`, **mensajes privados** (`/w nombre mensaje` o «✉️» en la ficha), **emotes de Pokémon** (`:pikachu:` o el selector 😀), actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha y niveles. **Avisos** (🔔 en el menú del usuario): vibración, contador en la pestaña y notificación del sistema cuando te toca en el póker, te escriben, te mencionan o recibes algo.
+**Social**: chat con menciones `@nombre`, **mensajes privados** (`/w nombre mensaje` o «✉️» en la ficha), **emotes de Pokémon** (`:pikachu:` o el selector 😀), actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha (500 el primer día, +100 por día hasta 1.100) y niveles. **Avisos** (🔔 en el menú del usuario): vibración, contador en la pestaña y notificación del sistema cuando te toca en el póker, te escriben, te mencionan o recibes algo.
 
 **Eventos** (hora de España): lunes ⚔️ Duelos sin comisión, miércoles 🎯 Misiones ×2, viernes 🏪 Mercado sin impuesto y comisión a la mitad, sábado y domingo ✨ Variocolor ×2 y 🤝 tope de bonus de compañero ×2. Se anuncian en el Vestíbulo y el anfitrión puede lanzar cualquiera de 1 a 72 horas.
 
@@ -54,7 +54,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Móvil**: barra de pestañas inferior, ventanas como hojas inferiores, controles fijos al pie en los juegos y **app instalable** (PWA: «Instalar app» o, en iPhone, Compartir → «Añadir a pantalla de inicio»).
 
-Todos los resultados se calculan en el servidor con `crypto`. RTP aproximados: Video Póker 99,5 % (juego óptimo), Blackjack ~99,5 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ~96 %, Voltorb Flip ~95 %, Ruleta 94,7 %, Carrera ≤ 90 %. Subir de nivel devuelve ~0,25 % de lo apostado y el bonus de compañero, colecciones y Moneda Amuleto tiene un tope diario (300 + 50 × nivel), para que ningún juego dé dinero seguro a la larga. En los duelos entre jugadores no hay bonus.
+Todos los resultados se calculan en el servidor con `crypto`. RTP máximos con la mejor estrategia: Video Póker 99,5 % (9/6, juego óptimo), Blackjack 99,45 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ≈96–97,5 %, Voltorb Flip 95 % (inferencia exacta; un jugador normal, mucho menos), Ruleta 94,7 %, Carrera ≤ 90 %. La experiencia es proporcional a la ventaja de la casa de cada juego (más XP donde la casa gana más) y el bonus de compañero, colecciones y Moneda Amuleto tiene dos topes diarios (300 + 50 × nivel y un 30 % de la ventaja de lo apostado ese día), de modo que ni los niveles ni el bonus pueden dar dinero seguro a la larga. En los duelos entre jugadores no hay bonus. Todo el análisis (antes → después) está en [docs/BALANCE.md](docs/BALANCE.md) y `node scripts/simulate-economy.js` lo reproduce.
 
 ## Puesta en marcha
 
@@ -137,6 +137,8 @@ server/
   netguard.js     Filtro de IP privada / VPN
   db.js           Almacén JSON con escritura atómica
   hub.js          Economía (apuestas, pagos, niveles, compañero) y difusión
+  balance.js      Constantes de equilibrio (RTP máximos, XP por ventaja de la casa, bonus, recompensas por nivel)
+  daily.js        Recompensa diaria con racha
   pokedex.js      Rarezas, tabla de tipos y estadísticas (lee dexdata.json)
   dexdata.json    Los 1.025 Pokémon (generado con scripts/build-dex.js desde PokeAPI)
   gacha.js        Banners, probabilidades, Master Ball, variocolores y tienda de polvo
@@ -147,6 +149,12 @@ server/
   cards.js        Baraja y evaluador de manos de póker
   games/          holdem, crash, race, duel, battle, blackjack, videopoker,
                   baccarat, roulette, slots, plinko, mines, voltorb
+scripts/
+  build-dex.js          Genera dexdata.json desde PokeAPI (rareza, fase evolutiva y cadena)
+  simulate-economy.js   Simula 3 arquetipos de jugador, el RTP de cada juego y el coste de la Pokédex
+  calibrate-voltorb.js  Calibra los divisores de Voltorb Flip con inferencia exacta
+  strategies.js         Estrategias (Video Póker, Blackjack, Voltorb) usadas por las simulaciones
+docs/BALANCE.md         Auditoría de equilibrio: antes → después y razonamiento
 public/
   index.html, css/style.css
   js/core.js      Utilidades, sprites públicos, sonidos

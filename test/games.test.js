@@ -113,11 +113,11 @@ test('banners rotativos: el promocional cambia cada 3 días y recorre los 10', (
 
 test('Centro Pokémon: motivos de rechazo y orden de comprobaciones', () => {
   const heal = require('../server/heal');
-  const now = 10 * 3600e3;
+  const now = 40 * 3600e3;
   assert.equal(heal.reason({ coins: 0, lastHeal: 0 }, 0, now), null);
   assert.equal(heal.reason({ coins: 0 }, 0, now), null);
   assert.match(heal.reason({ coins: 500, lastHeal: 0 }, 0, now), /aún te quedan/);
-  assert.match(heal.reason({ coins: 0, lastHeal: now - 600e3 }, 0, now), /Vuelve en 50 min/);
+  assert.match(heal.reason({ coins: 0, lastHeal: now - heal.COOLDOWN + 50 * 60e3 }, 0, now), /Vuelve en 50 min/);
   assert.match(heal.reason({ coins: 0, lastHeal: 0 }, 300, now), /Mercado o en juego/);
   assert.equal(heal.reason({ coins: 0, lastHeal: now - heal.COOLDOWN }, 199, now), null);
 });

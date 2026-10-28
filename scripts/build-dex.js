@@ -1,5 +1,7 @@
 'use strict';
 // Genera server/dexdata.json con los 1.025 Pokémon a partir de los CSV públicos de PokeAPI.
+// Cada fila: [id, nombre, tipos, rareza, generación, stats, fase, evoluciona de, cadena evolutiva]. Los campos de
+// evolución van al final: pokedex.js sigue leyendo bien un dexdata.json antiguo (sin ellos).
 // Uso: node scripts/build-dex.js <carpeta-con-csv>
 //   (pokemon_species, pokemon_types, types, pokemon_stats y pokemon_species_names de
 //    https://github.com/PokeAPI/pokeapi/tree/master/data/v2/csv)
@@ -52,11 +54,23 @@ function rarity(s, bst) {
   return 'E';
 }
 
+// Fase evolutiva: 0 = bebé, 1 = forma base (sin preevolución, o que viene de un bebé), 2 = primera
+// evolución, 3 = segunda evolución.
+const byId = new Map(species.map((s) => [Number(s.id), s]));
+const stageOf = (s) => {
+  if (s.is_baby === '1') return 0;
+  const parent = s.evolves_from_species_id && byId.get(Number(s.evolves_from_species_id));
+  if (!parent || parent.is_baby === '1') return 1;
+  return stageOf(parent) + 1;
+};
+
 const out = species.map((s) => {
   const id = Number(s.id);
   const st = stats[id];
   const bst = st.reduce((a, b) => a + b, 0);
-  return [id, names[id] || s.identifier, typeOf[id].filter(Boolean), rarity(s, bst), Number(s.generation_id), st];
+  const from = s.evolves_from_species_id ? Number(s.evolves_from_species_id) : null;
+  // Formato: [id, nombre, tipos, rareza, generación, stats, fase, evoluciona de, cadena evolutiva]
+  return [id, names[id] || s.identifier, typeOf[id].filter(Boolean), rarity(s, bst), Number(s.generation_id), st, stageOf(s), from, Number(s.evolution_chain_id)];
 }).sort((a, b) => a[0] - b[0]);
 
 const file = path.join(__dirname, '..', 'server', 'dexdata.json');

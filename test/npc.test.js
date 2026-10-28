@@ -197,15 +197,15 @@ test('NPC: límites diarios por jugador (monedas y unidades) al venderles', () =
   const limit = npc.sellLimit(p); // 1500 + 100 × 5
   assert.strictEqual(limit, 2000);
   const candy = npc.bounds(market.parseRef(item('rare-candy'))).cap; // 450
-  const egg = npc.bounds(market.parseRef(item('lucky-egg'))).cap; // 600
+  const egg = npc.bounds(market.parseRef(item('lucky-egg'))).cap; // 150 (la mitad de su precio en la tienda)
   market.buy(g, { ...item('rare-candy'), qty: 10, price: candy });
   market.buy(g, { ...item('lucky-egg'), qty: 10, price: egg });
   const r1 = market.sell(p, { ...item('rare-candy'), qty: 10, price: candy, instant: true });
   assert.strictEqual(r1.filled, 3, 'como mucho 3 unidades por artículo');
   const r2 = market.sell(p, { ...item('lucky-egg'), qty: 10, price: egg, instant: true });
-  assert.strictEqual(r2.filled, 1, 'solo caben 1 × 600 en los 650 que quedan');
+  assert.strictEqual(r2.filled, Math.min(3, Math.floor((limit - 3 * candy) / egg)), 'caben los que entran en el límite diario de monedas (y 3 unidades)');
   const rec = npc.state().daily[p.id];
-  assert.strictEqual(rec.got, 3 * candy + egg);
+  assert.strictEqual(rec.got, 3 * candy + r2.filled * egg);
   assert.ok(rec.got <= limit);
   assert.throws(() => market.sell(p, { ...item('rare-candy'), qty: 1, price: candy, instant: true }), /Hoy ya no puedes vender/);
   // Sin instantáneo, el resto queda publicado y los pedidos de NPC no se tocan.

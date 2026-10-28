@@ -6,9 +6,9 @@ const { BY_ID } = require('./pokedex');
 
 const ITEMS = {
   ticket: { name: 'Ticket Gacha', sprite: 'pass', price: 150, desc: 'Una tirada en cualquier banner.' },
-  'rare-candy': { name: 'Caramelo Raro', sprite: 'rare-candy', price: 900, desc: 'Da una estrella (+1 copia) a un Pokémon que ya tengas.' },
-  'lucky-egg': { name: 'Huevo Suerte', sprite: 'lucky-egg', price: 1200, desc: 'Experiencia doble durante 1 hora.' },
-  'amulet-coin': { name: 'Moneda Amuleto', sprite: 'amulet-coin', price: 2500, desc: '+10 % sobre tus ganancias netas durante 1 hora.' },
+  'rare-candy': { name: 'Caramelo Raro', sprite: 'rare-candy', price: 900, desc: 'Da una estrella a un Pokémon que ya tengas. Es una estrella "ligada": no se puede vender, regalar ni liberar.' },
+  'lucky-egg': { name: 'Huevo Suerte', sprite: 'lucky-egg', price: 300, desc: 'Experiencia doble durante 1 hora.' },
+  'amulet-coin': { name: 'Moneda Amuleto', sprite: 'amulet-coin', price: 400, desc: '+10 % sobre tus ganancias netas durante 1 hora y más margen de bonus (el tope sube del 30 % al 45 % de la ventaja de la casa de lo que apuestas).' },
   'shiny-charm': { name: 'Amuleto Iris', sprite: 'shiny-charm', price: null, desc: 'Las próximas 10 tiradas tienen 4 veces más probabilidad de variocolor. Solo como premio.' },
   'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada es legendaria seguro y, si el banner tiene destacadas, una de ellas. Solo como premio o en el Mercado.' },
   'mystery-egg': { name: 'Huevo Misterioso', sprite: 'mystery-egg', price: null, desc: 'Ábrelo para obtener un cosmético al azar (marco, dorso de carta o título).' },
@@ -104,6 +104,7 @@ function use(user, { itemId, pokeId }) {
     if (c.n >= 5) throw new Error('Ese Pokémon ya tiene 5 estrellas.');
     take(user, itemId);
     c.n++;
+    c.cn = (c.cn || 0) + 1; // estrella ligada: no cuenta como copia para vender, regalar o liberar
   } else if (itemId === 'lucky-egg') {
     take(user, itemId);
     user.buffs.luckyUntil = Math.max(now, user.buffs.luckyUntil) + HOUR;

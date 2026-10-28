@@ -107,4 +107,4 @@ function spin(user, { bet }) {
   return { grid: g, wins: res.wins, paid, bonus, jackpotWon, jackpot: db.data.state.jackpot };
 }
 
-module.exports = { spin, computeRTP, evaluate, grid, REELS, SYMBOLS, LINES };
+module.exports = { spin, computeRTP, evaluate, grid, REELS, SYMBOLS, LINES, JACKPOT_CUT, JACKPOT_SEED };
