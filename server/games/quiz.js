@@ -13,6 +13,7 @@ const hub = require('../hub');
 const dex = require('../pokedex');
 const { rand, randInt, pick, shuffle, weighted } = require('../rng');
 const { BANK } = require('./quizdata');
+const FAN_PROMPTS = new Set(BANK.map((b) => b[1]));
 
 // ---------- Dificultades y escalera de multiplicadores ----------
 // `acc` es la precisión que se supone a un fan EXPERTO en cada dificultad (el multiplicador se calcula para que
@@ -55,12 +56,41 @@ function playerAcc(user, mode, diff) {
   const n = r.n + prior;
   const mean = (r.ok + prior * base) / n;
   // Estimación prudente (media + una desviación + 1 punto): con pocos datos se supone que el jugador es mejor.
-  return Math.min(0.995, Math.max(base, mean + Math.sqrt((mean * (1 - mean)) / n) + 0.01));
+  const life = mean + Math.sqrt((mean * (1 - mean)) / n) + 0.01;
+  const rn = (r.rn || 0) + RECENT_PRIOR;
+  const rm = ((r.rk || 0) + RECENT_PRIOR * base) / rn;
+  const recent = r.rn ? rm + Math.sqrt((rm * (1 - rm)) / rn) : 0;
+  return Math.min(0.995, Math.max(base, life, recent));
 }
+// Además de toda la historia se mide la precisión RECIENTE (las últimas ≈25 respuestas pesan más) y se usa la
+// mayor de las dos: quien mejora de golpe (por ejemplo, porque se ha aprendido preguntas) ve bajar sus
+// multiplicadores en pocas rondas.
+const ACC_DECAY = 0.95;
+const RECENT_PRIOR = 3;
 function noteAnswer(user, g, ok) {
   const r = ((user.quizAcc ||= {})[accKey(g.mode, g.diff)] ||= { ok: 0, n: 0 });
   r.n++;
   if (ok) r.ok++;
+  r.rn = (r.rn || 0) * ACC_DECAY + 1;
+  r.rk = (r.rk || 0) * ACC_DECAY + (ok ? 1 : 0);
+}
+
+// ---------- Memoria de preguntas vistas (por jugador, entre partidas) ----------
+// Las preguntas de fan escritas a mano no se repiten hasta pasados FAN_COOLDOWN días; cuando ya se han visto
+// todas, el juego tira de las preguntas generadas con la Pokédex (miles de combinaciones). Las generadas y los
+// Pokémon de «¿Quién es ese Pokémon?» tampoco se repiten entre las últimas SEEN_MAX.
+const FAN_COOLDOWN = 45 * 864e5;
+const SEEN_MAX = 400;
+function seenOf(user) {
+  const s = (user.quizSeen ||= { fan: {}, recent: [] });
+  s.fan ||= {};
+  s.recent ||= [];
+  return s;
+}
+function remember(user, key) {
+  const s = seenOf(user);
+  s.recent.push(key);
+  if (s.recent.length > SEEN_MAX) s.recent.splice(0, s.recent.length - SEEN_MAX);
 }
 const payoutOf = (user, bet, mult) => Math.min(Math.floor(bet * mult), PAYOUT_CAP * hub.maxBetFor(user));
 
@@ -352,8 +382,11 @@ const GEN = {
   },
   fan(c) {
     const maxTier = { facil: 1, normal: 2, dificil: 3, maestro: 4 }[c.d];
-    const it = pick(BANK.filter((b) => b[0] <= maxTier && (c.d !== 'maestro' || b[0] >= 2)));
-    return { prompt: it[1], answer: it[2], wrong: shuffle(it[3]), ok: (o) => o === it[2] };
+    const now = Date.now();
+    const fresh = BANK.filter((b) => b[0] <= maxTier && (c.d !== 'maestro' || b[0] >= 2) && !(c.fanSeen && now - (c.fanSeen[b[1]] || 0) < FAN_COOLDOWN));
+    if (!fresh.length) return null; // ya las ha visto todas: otra clase de pregunta
+    const it = pick(fresh);
+    return { prompt: it[1], answer: it[2], wrong: shuffle(it[3]), ok: (o) => o === it[2], fan: true };
   },
 };
 const WEIGHTS = {
@@ -375,9 +408,9 @@ function assemble(g, n) {
   if (good.length !== 1 || good[0] !== g.answer) return null;
   return { prompt: g.prompt, options, idx: options.indexOf(g.answer), answer: g.answer };
 }
-function genChoice(diff, { only, avoid = [] } = {}) {
+function genChoice(diff, { only, avoid = [], fanSeen = null } = {}) {
   const D = DIFFS[diff];
-  const c = { pool: POOLS[diff], set: POOLSET[diff], n: D.options, d: diff };
+  const c = { pool: POOLS[diff], set: POOLSET[diff], n: D.options, d: diff, fanSeen };
   for (let i = 0; i < 80; i++) {
     const kind = only || weighted(Object.entries(WEIGHTS[diff]), ([, w]) => w)[0];
     let q = null;
@@ -424,13 +457,18 @@ function genType(diff, { avoid = [] } = {}) {
 function issue(user, g) {
   const D = DIFFS[g.diff];
   let q;
+  const seen = seenOf(user);
+  const avoid = [...g.recent, ...seen.recent];
   if (g.mode === 'type') {
-    q = genType(g.diff, { avoid: g.recent.filter((x) => typeof x === 'number') });
+    try { q = genType(g.diff, { avoid: avoid.filter((x) => typeof x === 'number') }); } catch { q = genType(g.diff, { avoid: g.recent.filter((x) => typeof x === 'number') }); }
     g.recent.push(q.id);
+    remember(user, q.id);
     if (q.imgMode) q.img = imgToken(q.id, q.imgMode);
   } else {
-    q = genChoice(g.diff, { avoid: g.recent.filter((x) => typeof x === 'string') });
+    try { q = genChoice(g.diff, { avoid: avoid.filter((x) => typeof x === 'string'), fanSeen: seen.fan }); } catch { q = genChoice(g.diff, { avoid: g.recent.filter((x) => typeof x === 'string') }); }
     g.recent.push(q.prompt);
+    if (FAN_PROMPTS.has(q.prompt)) seen.fan[q.prompt] = Date.now();
+    else remember(user, q.prompt);
   }
   if (g.recent.length > 40) g.recent.splice(0, g.recent.length - 40);
   const now = Date.now();
@@ -480,6 +518,7 @@ function reveal(g) {
 }
 function lose(user, g, timeout) {
   noteAnswer(user, g, false);
+  today(user).net -= g.bet;
   const rv = reveal(g);
   g.done = true; g.phase = 'over';
   bump(user, g);
@@ -494,8 +533,17 @@ function pace(g) {
   g.lastAct = now;
 }
 
+// Tope absoluto de ganancia neta diaria en el Desafío: pase lo que pase con las preguntas, nadie puede sacar
+// más de esto al día (las pérdidas del día amplían el margen).
+const dailyCap = (user) => 25 * hub.maxBetFor(user);
+function today(user) {
+  const d = hub.dayKey();
+  if (!user.quizDay || user.quizDay.d !== d) user.quizDay = { d, net: 0 };
+  return user.quizDay;
+}
 function start(user, { bet, mode, diff, target }) {
   if (active(user)) throw new Error('Termina la partida actual.');
+  if (Number(bet) > 0 && today(user).net >= dailyCap(user)) throw new Error('¡Hoy ya has ganado mucho en el Desafío! Vuelve mañana para seguir apostando.');
   if (!['type', 'choice'].includes(mode)) throw new Error('Modo no válido.');
   if (!DIFFS[diff]) throw new Error('Dificultad no válida.');
   target = Number(target) || 0;
@@ -510,7 +558,9 @@ function start(user, { bet, mode, diff, target }) {
 
 function win(user, g, bonus) {
   const mult = finalMult(g.diff, g.streak, bonus, g.acc);
-  const amount = payoutOf(user, g.bet, mult);
+  const day = today(user);
+  const amount = Math.min(payoutOf(user, g.bet, mult), g.bet + Math.max(0, dailyCap(user) - day.net));
+  day.net += amount - g.bet;
   const paid = hub.pay(user, amount, g.bet, 'quiz').paid;
   g.done = true; g.phase = 'over'; g.q = null;
   bump(user, g);
@@ -614,5 +664,5 @@ const STATIC = {
   targets: TARGETS, targetBonus: TARGET_BONUS, maxStreak: MAX_STREAK, maxMult: MAX_MULT, payoutCap: PAYOUT_CAP,
 };
 
-module.exports = { playerAcc, PRIOR, DIFFS, ladder, finalMult, payoutOf, LADDER_BASE, TARGET_BONUS, MAX_MULT, MAX_STREAK, TARGETS, PAYOUT_CAP, GRACE_MS, STATIC,
+module.exports = { dailyCap, noteAnswer, seenOf, FAN_COOLDOWN, ACC_DECAY, playerAcc, PRIOR, DIFFS, ladder, finalMult, payoutOf, LADDER_BASE, TARGET_BONUS, MAX_MULT, MAX_STREAK, TARGETS, PAYOUT_CAP, GRACE_MS, STATIC,
   normalize, lev, matches, genChoice, genType, GEN, BANK, POOLS, start, answer, next, cashout, state, board, peek, imgHandler, processImage, decodePng, encodePng };

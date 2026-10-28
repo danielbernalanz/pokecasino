@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.10.29-b",
+    "date": "2026-10-29",
+    "title": "Pokémon animados y Desafío sin preguntas repetidas",
+    "items": [
+      "🎞️ Pokémon animados en los duelos, la Caja PC, la Pokédex, tu compañero, la evolución y el Gacha. Puedes desactivarlo en tu menú («Animaciones de Pokémon») para ahorrar datos.",
+      "💥 Duelos con más vida: embestidas, golpes con destello, partículas del color del tipo, daño flotante y «¡Es muy eficaz!».",
+      "🧠 Desafío Pokémon: las preguntas de fan ya no se repiten en 45 días y las generadas tampoco entre tus últimas 400. Los multiplicadores se ajustan a tu precisión reciente y hay un tope de ganancia diaria."
+    ]
+  },
+  {
     "version": "2026.10.28-g",
     "date": "2026-10-28",
     "title": "Amistad, compañero y Huerto de bayas",

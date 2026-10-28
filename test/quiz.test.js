@@ -412,3 +412,48 @@ test('la escalera se adapta a la precisión real: ni un experto (o quien busque)
     }
   }
 });
+
+test('quien se aprende las preguntas no gana: la precisión reciente pesa más', () => {
+  const quiz = require('../server/games/quiz');
+  for (const diff of Object.keys(quiz.DIFFS)) {
+    const D = quiz.DIFFS[diff];
+    let bet = 0, paid = 0;
+    for (let pl = 0; pl < 8; pl++) {
+      const user = { quizAcc: {} };
+      const g = { mode: 'choice', diff };
+      // 300 respuestas con la precisión supuesta y después va aprendiendo hasta acertar casi todo.
+      for (let i = 0; i < 300; i++) quiz.noteAnswer(user, g, Math.random() < D.acc);
+      for (let round = 0; round < 300; round++) {
+        const p = Math.min(0.99, D.acc + (0.99 - D.acc) * round / 60);
+        const acc = quiz.playerAcc(user, 'choice', diff);
+        const k = D.max;
+        bet += 1;
+        let streak = 0;
+        while (streak < k) { const ok = Math.random() < p; quiz.noteAnswer(user, g, ok); if (!ok) break; streak++; }
+        paid += Math.pow(p, k) * Math.min(quiz.MAX_MULT, quiz.ladder(diff, k, acc));
+      }
+    }
+    assert.ok(paid / bet < 1, `${diff}: devuelve ${(paid / bet * 100).toFixed(1)} %`);
+  }
+});
+
+test('las preguntas de fan no se repiten entre partidas', () => {
+  const quiz = require('../server/games/quiz');
+  const { BANK } = require('../server/games/quizdata');
+  const fanSeen = {};
+  const seen = new Set();
+  const total = BANK.filter((b) => b[0] <= 4 && b[0] >= 2).length;
+  for (let i = 0; i < total + 20; i++) {
+    let q;
+    try { q = quiz.genChoice('maestro', { only: 'fan', fanSeen }); } catch { break; }
+    assert.ok(!seen.has(q.prompt), 'repetida: ' + q.prompt);
+    seen.add(q.prompt);
+    fanSeen[q.prompt] = Date.now();
+  }
+  assert.equal(seen.size, total);
+});
+
+test('el Desafío tiene un tope de ganancia neta diaria', () => {
+  const quiz = require('../server/games/quiz');
+  assert.ok(quiz.dailyCap({ level: 1 }) > 0);
+});
