@@ -15,6 +15,7 @@ const dex = require('./pokedex');
 const gacha = require('./gacha');
 const specimen = require('./specimen');
 const locked = require('./locked');
+const candy = require('./candy');
 const slots = require('./games/slots');
 const roulette = require('./games/roulette');
 const voltorb = require('./games/voltorb');
@@ -140,7 +141,7 @@ app.post('/api/logout', (req, res) => {
 const STATIC = {
   dex: dex.DEX, rarity: dex.RARITY, types: dex.TYPES, chart: dex.CHART, moves: MOVES,
   banners: gacha.BANNERS, gachaCost: gacha.COST, gachaRates: gacha.RATES, shinyRate: gacha.SHINY_RATE,
-  dustRate: gacha.DUST_RATE,
+  dustRate: gacha.DUST_RATE, recycle: candy.recycleList(), recycleDaily: candy.RECYCLE_DAILY_DUST,
   slots: { symbols: slots.SYMBOLS, lines: slots.LINES, reels: slots.REELS },
   roulette: { wheel: roulette.WHEEL, groups: roulette.GROUPS, payout: roulette.PAYOUT },
   openRegistration: config.OPEN_REGISTRATION,
@@ -530,10 +531,17 @@ io.on('connection', (socket) => {
   on('locked:state', (u) => locked.view(u) || { box: {}, prog: null }, { push: false });
   on('me:history', (u) => ({ history: hub.history(u) }), { push: false });
   on('buddy:set', setBuddy);
-  on('pc:box', (u) => specimen.boxView(u), { push: false });
+  on('pc:box', (u) => ({ ...specimen.boxView(u), ...candy.boxExtra(u) }), { push: false });
   on('pc:nick', specimen.nick);
   on('pc:fav', specimen.fav);
   on('pc:release', specimen.release);
+  on('pc:transfer', candy.transfer);
+  on('pc:transferBulk', candy.transferBulk);
+  on('pc:levelup', candy.levelUp);
+  on('pc:evolve', candy.evolve);
+  on('pc:train', candy.train);
+  on('pc:wonder', candy.wonder);
+  on('shop:recycle', candy.recycle);
   on('pc:buddy', (u, p) => { const m = specimen.find(u, p); const r = setBuddy(u, { id: Number(p.id), shiny: m.shiny }); u.buddy.uid = m.uid; db.save(); return r; });
   on('buddy:mega', mega.setBuddyMega);
   on('mega:state', (u) => mega.full(u), { push: false });

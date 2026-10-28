@@ -1,22 +1,55 @@
 import { S, h, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
+import { evolveAnim, wonderReveal } from './pc-fx.js';
 
 const BATCH = 60;
 const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
 
 let mons = [];
+let box = { candy: {}, train: {}, wonderLeft: 0, rules: null };
+const TRAIN_STATS = [...STAT_NAMES];
 let filter = { q: '', type: '', rarity: '', shiny: false, fav: false, species: 0, sort: 'recent' };
 let loading = null;
+let render = null;
 
 const ivTotal = (m) => m.ivs.reduce((s, v) => s + v, 0);
 const judge = (t) => (t >= 170 ? 'Increíble' : t >= 140 ? 'Muy bueno' : t >= 100 ? 'Bueno' : 'Normal');
 const genderTag = (m) => (m.gender === 'M' ? '♂' : m.gender === 'F' ? '♀' : '');
 const label = (m) => m.nick || S.dexById.get(m.id).name;
 
+const candyOf = (id) => box.candy[S.dexById.get(id).chain] || 0;
+const famNames = new Map();
+const famName = (id) => {
+  if (!famNames.size) for (const x of S.data.dex) if (!x.evolvesFrom && !famNames.has(x.chain)) famNames.set(x.chain, x.name);
+  return famNames.get(S.dexById.get(id).chain) || S.dexById.get(id).name;
+};
+const levelCost = (lv) => Math.ceil(lv / 10);
+const trainLeft = (m) => (m.uid in box.train ? box.train[m.uid] : box.rules.trainDaily);
+const spareCount = (id) => { const c = S.me.collection[id]; return c ? Math.max(0, c.n - (c.cn || 0) - 1) : 0; };
+// Mismo criterio que el servidor: ni favoritos, ni compañero, ni variocolor; si no hay protegidos se conserva el mejor.
+function bulkList(id) {
+  const all = mons.filter((m) => m.id === id);
+  const cand = all.filter((m) => !m.fav && !m.shiny && !m.buddy);
+  cand.sort((a, b) => b.level - a.level || ivTotal(b) - ivTotal(a) || a.at - b.at);
+  return all.length - cand.length ? cand : cand.slice(1);
+}
+async function bulkTransfer(id, btn, after) {
+  const list = bulkList(id);
+  const p = S.dexById.get(id);
+  if (!list.length) return toast('No hay repetidos que transferir: se conservan favoritos, compañero, variocolores y el mejor ejemplar.', 'error');
+  const dust = S.data.rarity[p.rarity].dust * list.length;
+  const cdy = box.rules.transfer[p.rarity] * list.length;
+  if (!(await confirmRisk('transfer-bulk', { section: 'la Caja PC', title: `¿Transferir ${list.length} ${p.name}?`, danger: 'Transferir', safe: 'Cancelar',
+    text: 'Se transferirán al Profesor Oak y no se pueden recuperar. Se conserva el mejor ejemplar y nunca se tocan favoritos, compañero ni variocolores.',
+    details: [`${list.length} ejemplar${list.length > 1 ? 'es' : ''} de ${p.name}`, `+${fmt(dust)} ✦ de polvo estelar`, `+${cdy} 🍬 caramelos de ${famName(id)}`] }))) return;
+  const r = await act('pc:transferBulk', { id }, btn);
+  if (r) { sfx('shiny'); toast(`Transferiste ${r.count} ${p.name}: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await load(); if (after) after(); }
+}
+
 export function openInPc(id) { filter = { ...filter, q: '', species: Number(id) }; location.hash = '#/pc'; }
 
 function load() {
   if (loading) return loading;
-  loading = emit('pc:box').then((r) => { mons = r.mons; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
+  loading = emit('pc:box').then((r) => { mons = r.mons; box = { candy: r.candy || {}, train: r.train || {}, wonderLeft: r.wonderLeft, rules: r.rules }; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
   return loading;
 }
 
@@ -34,6 +67,65 @@ function openMon(uid) {
       h('td', { class: 'pc-ivcell' }, h('span', { class: 'pc-ivbar' }, h('i', { style: { width: (m.ivs[i] / 31 * 100) + '%' } })), h('span', { class: 'small' }, m.ivs[i])),
       h('td', { class: 'pc-final' }, m.stats[i]));
   });
+  const ru = box.rules;
+  const evoRow = (t) => {
+    const e = ru.evo[t.id];
+    const reasons = [];
+    if (m.level < e.level) reasons.push(`Nv. ${e.level}`);
+    if (candyOf(m.id) < e.cost) reasons.push(`${e.cost} 🍬`);
+    if (spareCount(m.id) < 1) reasons.push('otra copia');
+    const tc = S.me.collection[t.id];
+    if (tc && tc.n >= 5) reasons.push('ya tienes 5 estrellas');
+    return h('div', { class: 'pc-evo' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
+      h('div', { class: 'grow small' }, h('b', {}, t.name), h('div', { class: 'muted' }, `${e.cost} 🍬 · Nv. ${e.level} mín.` + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ''))),
+      h('button', { class: 'btn primary', disabled: reasons.length > 0, onclick: async (ev) => {
+        const r = await act('pc:evolve', { id: m.id, uid, to: t.id }, ev.target);
+        if (!r) return;
+        modalRef.close();
+        await evolveAnim(m.id, t.id, m.shiny);
+        toast(`¡Tu ${label(m)} evolucionó a ${t.name}!`, 'success');
+        await load(); render && render();
+      } }, 'Evolucionar'));
+  };
+  function candyPanel() {
+    const have = candyOf(m.id);
+    const lv1 = levelCost(m.level);
+    let lv5 = 0; for (let i = 0; i < 5; i++) lv5 += levelCost(m.level + i);
+    const maxed = m.level >= ru.maxLevel;
+    const evos = S.data.dex.filter((x) => x.evolvesFrom === m.id);
+    const statSel = h('select', { 'aria-label': 'Estadística a entrenar' }, TRAIN_STATS.map((n, i) => h('option', { value: i }, `${n} (IV ${m.ivs[i]})`)));
+    const left = trainLeft(m);
+    const spare = spareCount(m.id);
+    const tDust = S.data.rarity[p.rarity].dust;
+    const tCandy = ru.transfer[p.rarity];
+    return h('div', { class: 'stack' },
+      h('div', { class: 'pc-box' }, h('h4', {}, `🍬 Caramelos de ${famName(m.id)}: `, h('span', { class: 'pc-candy' }, fmt(have))),
+        h('div', { class: 'row gap wrap' },
+          h('span', { class: 'small' }, `Nivel ${m.level}/${ru.maxLevel}`),
+          h('button', { class: 'btn', disabled: maxed || have < lv1, onclick: async (e) => { if (await act('pc:levelup', { id: m.id, uid, times: 1 }, e.target)) { sfx('click'); reopen(true); } } }, `Subir nivel (${lv1} 🍬)`),
+          h('button', { class: 'btn', disabled: maxed || have < lv5 || m.level + 5 > ru.maxLevel, onclick: async (e) => { if (await act('pc:levelup', { id: m.id, uid, times: 5 }, e.target)) { sfx('win'); reopen(true); } } }, `+5 (${lv5} 🍬)`))),
+      p.rarity === 'M' || !evos.length ? null : h('div', { class: 'pc-box' }, h('h4', {}, '🌟 Evolución'), evos.map(evoRow)),
+      h('div', { class: 'pc-box' }, h('h4', {}, `💪 Entrenar IV (${ru.trainCost} 🍬 = +1 IV) · quedan ${left}/${ru.trainDaily} hoy`),
+        h('div', { class: 'row gap' }, statSel, h('button', { class: 'btn', disabled: left < 1 || have < ru.trainCost, onclick: async (e) => {
+          const r = await act('pc:train', { id: m.id, uid, stat: Number(statSel.value) }, e.target);
+          if (r) { sfx('click'); toast(`${TRAIN_STATS[Number(statSel.value)]}: IV ${r.iv}/31`, 'success'); reopen(true); } } }, 'Entrenar'))),
+      h('div', { class: 'pc-box' }, h('h4', {}, '🎓 Profesor Oak y Intercambio Milagroso'),
+        h('div', { class: 'row gap wrap' },
+          h('button', { class: 'btn', disabled: spare < 1, onclick: async (e) => {
+            if ((m.shiny || m.fav || m.buddy) && !(await confirmRisk('release-precious', { title: 'Vas a transferir un ejemplar especial', danger: 'Transferir igualmente', safe: 'Conservarlo',
+              text: `${label(m)} es ${[m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ')}. Solo recibes ${tDust} ✦ y ${tCandy} 🍬 y no se puede deshacer.` }))) return;
+            const r = await act('pc:transfer', { id: m.id, uid }, e.target);
+            if (r) { sfx('shiny'); toast(`Transferido: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await load(); modalRef.close(); render && render(); } } }, `Transferir (+${tDust} ✦ +${tCandy} 🍬)`),
+          h('button', { class: 'btn', disabled: spare < 1 || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
+            const r = await act('pc:wonder', { id: m.id, uid }, e.target);
+            if (!r) return;
+            modalRef.close();
+            await wonderReveal(r);
+            await load(); render && render();
+          } }, `🎁 Intercambio Milagroso (${box.wonderLeft}/${ru.wonderDaily})`),
+          spare > 0 ? h('button', { class: 'btn', onclick: (e) => bulkTransfer(m.id, e.target, () => { modalRef.close(); render && render(); }) }, 'Transferir repetidos') : null),
+        h('div', { class: 'small muted' }, 'Intercambio Milagroso: entregas una copia sobrante (no favorita, compañero ni variocolor) y recibes otra de la misma rareza. Sin monedas.')));
+  }
   const hearts = Math.round(m.friendship / 255 * 5);
   const nickInput = h('input', { class: 'pc-nick', maxlength: 12, value: m.nick, placeholder: 'Mote (máx. 12)' });
   const nickRow = h('div', { class: 'row gap', style: { display: 'none' } }, nickInput,
@@ -53,6 +145,7 @@ function openMon(uid) {
       h('div', { class: 'small' }, h('b', {}, 'Amistad: '), '♥'.repeat(hearts) + '♡'.repeat(5 - hearts), ` (${m.friendship})`),
       h('div', { class: 'small muted' }, 'Obtenido: ' + new Date(m.at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })),
       nickRow,
+      box.rules ? candyPanel() : null,
       h('div', { class: 'row gap wrap' },
         h('button', { class: 'btn', onclick: () => { nickRow.style.display = nickRow.style.display === 'none' ? '' : 'none'; nickInput.focus(); } }, '✏️ Editar mote'),
         h('button', { class: 'btn', onclick: async (e) => { reopen(await act('pc:fav', { id: m.id, uid, fav: !m.fav }, e.target)); } }, m.fav ? '★ Quitar favorito' : '☆ Favorito'),
@@ -81,7 +174,7 @@ export default {
     };
     const check = (key, text) => h('label', { class: 'pc-check' }, h('input', { type: 'checkbox', checked: filter[key], onchange: (e) => { filter[key] = e.target.checked; render(); } }), text);
 
-    function render() {
+    render = function render() {
       if (observer) observer.disconnect();
       document.querySelectorAll('.pc-more').forEach((n) => n.remove());
       const q = filter.q.trim().toLowerCase();
@@ -102,7 +195,10 @@ export default {
       list.sort(sorts[filter.sort] || sorts.recent);
       counter.textContent = `${fmt(list.length)} de ${fmt(mons.length)} ejemplares`;
       chip.classList.toggle('hidden', !filter.species);
-      chip.replaceChildren(...(filter.species ? [`Solo ${S.dexById.get(filter.species).name} `, h('button', { class: 'btn', onclick: () => { filter.species = 0; render(); } }, 'Ver todos')] : []));
+      chip.classList.add('pc-species-bar');
+      chip.replaceChildren(...(filter.species && box.rules ? [`Solo ${S.dexById.get(filter.species).name} `, h('span', { class: 'pc-candy' }, `🍬 ${fmt(candyOf(filter.species))} de ${famName(filter.species)}`),
+        h('button', { class: 'btn', disabled: !bulkList(filter.species).length, onclick: (e) => bulkTransfer(filter.species, e.target, () => render()) }, 'Transferir repetidos'),
+        h('button', { class: 'btn', onclick: () => { filter.species = 0; render(); } }, 'Ver todos')] : []));
       const card = (m) => {
         const p = S.dexById.get(m.id);
         return h('button', { class: `dex-card pc-card r-${p.rarity}${m.shiny ? ' shiny' : ''}${m.buddy ? ' buddy' : ''}`, onclick: () => openMon(m.uid) },

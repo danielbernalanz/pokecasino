@@ -393,3 +393,27 @@ ni megapiedras. Crea objetos, no monedas, y se venden por encima del suelo (sumi
 
 Los NPC **nunca escriben en el chat**. En el feed «En vivo» solo aparecen anuncios de encargos (máx. 3) y ofertas
 flash, **4 líneas al día en total**; las operaciones con NPC ya no generan línea de feed.
+
+## Fase B2 · Repetidos y reciclaje: caramelos, evolución, Milagroso, reciclaje (server/candy.js, test/candy.test.js)
+
+Ninguna acción de esta fase crea monedas. Los caramelos no se pueden vender ni tienen valor en monedas; el polvo que dan las acciones es el de liberar (o menos).
+
+| Mecánica | Números |
+|---|---|
+| Caramelos por familia evolutiva | Tirada de gacha: +1 (+3 si la especie es nueva). Transferir un ejemplar (da además el mismo polvo que liberar): C 3 · U 4 · R 6 · E 10 · L 20 · M 25 |
+| Subir nivel (5 → 100) | Nivel N → N+1 cuesta ⌈N/10⌉ caramelos de la familia. 5 → 50 = 141; 5 → 100 = 536. Efecto en duelos: ×(1 + 0,001 × (Nv − 5)): Nv. 100 ≈ +9,5 %; los ejemplares de nivel 5 no cambian |
+| Evolución | Fase 2: 25 caramelos y Nv. 16; fase 3: 100 caramelos y Nv. 36. Si evolucionar sube la rareza (p. ej. Magikarp C → Gyarados E), el coste sube a ⌈polvo extra / 1,5⌉ (hasta 50). Destinos L/M: ×4. Hace falta otra copia de la especie origen (se conserva su entrada en la Pokédex) y que el destino tenga < 5 estrellas. El ejemplar conserva IVs, naturaleza, mote, nivel, amistad, favorito, variocolor y compañero. No hay piedras de evolución en `items.js`, así que no hay evolución por piedra |
+| Entrenar IV | +1 IV (máx. 31) = 2 caramelos; 10 entrenamientos al día por ejemplar |
+| Intercambio Milagroso | 3 al día; una copia sobrante (ni favorita, ni compañero, ni variocolor, ni mítica) por una copia aleatoria de la misma rareza (pesos de fase del gacha; las L excluyen las destacadas de los banners activos; solo especies con < 5 estrellas) |
+| Reciclaje | Solo objetos con precio de tienda: 40 % del precio / 4 monedas por ✦ (Ticket 15 ✦, Huevo Suerte 30 ✦, Moneda Amuleto 40 ✦, Caramelo Raro 90 ✦). En monedas son 60 de 150, 120 de 300, 160 de 400 y 360 de 900: siempre < precio. Tope 300 ✦ al día, por si un objeto se compra barato en el Mercado |
+
+**Por qué no hay arbitraje de polvo.** Transferir da ≥ 5/3 ≈ 1,67 ✦ por caramelo (el peor caso, las Comunes) y evolucionar da como máximo 1,5 ✦ extra por caramelo gastado al liberar el resultado. Es decir, los caramelos de una evolución costaron siempre más polvo (transfiriendo las copias que los dan) del que la evolución añade. `test/candy.test.js` lo comprueba para las 484 evoluciones. Sin la subida de coste por rareza, Magikarp → Gyarados (+75 ✦ por 25 caramelos = 3 ✦/caramelo) sí habría sido rentable.
+
+**Tiempo para completar la Pokédex (estimación).** Simulación aproximada (`banner permanente, 20 tiradas al día, fabricando con polvo`; el Milagroso se modela como 3 especies nuevas al día el 70 % de los días y la evolución como gratis si hay caramelos suficientes; es optimista porque ignora el requisito de copia sobrante):
+
+| | 50 % | 90 % | 99 % | 100 % |
+|---|---|---|---|---|
+| Solo tiradas y fabricar (antes) | ≈ 50 días | ≈ 290 | ≈ 590 | ≈ 780 (≈ 15.700 tiradas, coherente con las 14.400 de arriba) |
+| Con caramelos, evolución y Milagroso | ≈ 36 días | ≈ 160 | ≈ 310 | ≈ 470 |
+
+El 100 % pasa de ≈ 2 años a ≈ 15 meses para quien tira 20 veces al día: los Pokémon de fase 2 y 3 (que casi no salen) se consiguen evolucionando y el Milagroso reparte las últimas especies. Sigue siendo un objetivo de más de un año; no se ha tocado ningún número por esto.

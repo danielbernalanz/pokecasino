@@ -21,7 +21,7 @@ export default {
     const tabs = h('div', { class: 'tabs' });
 
     function renderTabs() {
-      tabs.replaceChildren(...[['items', '🏬 Tienda Poké'], ['bag', '🎒 Mochila'], ['craft', '✦ Fabricar'], ['exchange', '💱 Cambio']].map(([k, l]) =>
+      tabs.replaceChildren(...[['items', '🏬 Tienda Poké'], ['bag', '🎒 Mochila'], ['craft', '✦ Fabricar'], ['exchange', '💱 Cambio'], ['recycle', '♻️ Reciclaje']].map(([k, l]) =>
         h('button', { class: 'tab' + (tab === k ? ' active' : ''), onclick: () => { tab = k; renderTabs(); render(); } }, l)));
     }
 
@@ -158,8 +158,29 @@ export default {
           h('p', { class: 'small' }, 'Los duplicados más allá de la 5ª copia y los variocolor repetidos se convierten en polvo estelar. También puedes liberar copias desde la Pokédex o comprarlo en el Mercado.')));
     }
 
+    // Reciclaje: objetos de la mochila → polvo estelar (40 % del precio de tienda a la tasa del Cambio: siempre sale a pérdida).
+    function recycleTab() {
+      const rows = S.data.recycle.map(([id, dust]) => [id, dust, S.me.items[id] || 0]);
+      return h('div', { class: 'stack' },
+        h('div', { class: 'card' }, h('h3', {}, '♻️ Máquina de reciclaje'),
+          h('p', { class: 'small muted' }, `Convierte objetos que no uses en polvo estelar. Recibes el 40 % de su precio de tienda (a ${S.data.dustRate} monedas por ✦ de Cambio, así que nunca sale a cuenta). Tope: ${fmt(S.data.recycleDaily)} ✦ al día. Los cosméticos y las megapiedras no se reciclan.`)),
+        h('div', { class: 'shop-grid wide' }, rows.map(([id, dust, have]) => {
+          const it = S.data.items[id];
+          const qty = h('input', { type: 'number', min: 1, max: Math.max(1, have), value: 1, class: 'qty' });
+          return h('div', { class: 'shop-item item-card' }, itemImg(id, 'big'),
+            h('div', { class: 'grow' }, h('b', {}, it.name), h('div', { class: 'small muted' }, `En tu mochila: ${have}`), h('div', { class: 'small' }, `${dust} ✦ cada uno`)),
+            h('div', { class: 'row gap' }, qty, h('button', { class: 'btn primary', disabled: have < 1, onclick: async (e) => {
+              const n = Math.min(have, Math.max(1, Math.floor(Number(qty.value) || 1)));
+              if (!(await confirmRisk('item-recycle', { section: 'la Tienda', title: `¿Reciclar ${n} × ${it.name}?`, danger: 'Reciclar', safe: 'Cancelar',
+                text: `Recibirás ${fmt(dust * n)} ✦ de polvo estelar. Los objetos se pierden y no se puede deshacer.` }))) return;
+              const r = await act('shop:recycle', { item: id, qty: n }, e.target);
+              if (r) { sfx('win'); toast(`Reciclaste ${n}× ${it.name}: +${fmt(r.dust)} ✦`, 'success'); }
+            } }, 'Reciclar')));
+        })));
+    }
+
     function render() {
-      body.replaceChildren(tab === 'items' ? itemsTab() : tab === 'bag' ? bagTab() : tab === 'craft' ? craftTab() : exchangeTab());
+      body.replaceChildren(tab === 'items' ? itemsTab() : tab === 'bag' ? bagTab() : tab === 'craft' ? craftTab() : tab === 'recycle' ? recycleTab() : exchangeTab());
     }
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎒 Tienda y Mochila'), h('div', { class: 'pill dust' }, '✦ ', h('b', {}, fmt(S.me.dust)))), tabs, body);
     renderTabs();

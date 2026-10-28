@@ -25,7 +25,7 @@ function ownedPick(user, { pokeId, shiny, mega }) {
   }
   // Ejemplar concreto: el del compañero si lo es; si no, el mejor por IVs con ese variocolor.
   const sp = require('../specimen').bestFor(user, id, !!shiny);
-  if (sp) Object.assign(pick, { ivs: sp.ivs, nature: sp.nature, nick: sp.nick, uid: sp.uid });
+  if (sp) Object.assign(pick, { ivs: sp.ivs, nature: sp.nature, nick: sp.nick, uid: sp.uid, level: sp.level });
   return pick;
 }
 

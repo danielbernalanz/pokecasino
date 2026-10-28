@@ -182,4 +182,4 @@ function release(u, p) {
   return res;
 }
 
-module.exports = { NATURES, STAT_KEYS, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, ivTotal, boxView, find, nick, fav, release };
+module.exports = { NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, ivTotal, boxView, find, nick, fav, release };
