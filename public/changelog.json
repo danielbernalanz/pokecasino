@@ -1,5 +1,18 @@
 [
   {
+    "version": "2026.10.29-a",
+    "date": "2026-10-29",
+    "title": "Caja PC, Pokémon únicos y NPC con encargos",
+    "items": [
+      "📦 Nueva Caja PC (menú Más): cada Pokémon que tienes es único, con naturaleza, IVs, habilidad, 4 movimientos, sexo y amistad. Ponles mote, márcalos como favoritos, elige cuál es tu compañero o libera uno concreto.",
+      "🛡️ Al vender, regalar o liberar por especie siempre se va tu copia menos valiosa; tus favoritos y tu compañero quedan protegidos.",
+      "⚔️ Duelos: tu ejemplar cuenta (IVs ±5 % y naturaleza ±10 %), se ve su mote, y puedes elegir la forma Mega al retar o aceptar.",
+      "📜 Encargos de los NPC: piden Pokémon y cosméticos raros y pagan +50 % y un regalo (tickets, huevos o 💠).",
+      "🔥 Ofertas flash de los NPC (−15 a −25 % durante 1–2 h), precios más justos (compran al 100 % del valor de liberar, venden más barato) y más variedad en su tienda. Pulsa el nombre de un NPC para ver su ficha.",
+      "🤫 Los NPC ya no llenan «En vivo» con sus compras."
+    ]
+  },
+  {
     "version": "2026.10.28-d",
     "date": "2026-10-28",
     "title": "Fabricar más rápido y con buscador",

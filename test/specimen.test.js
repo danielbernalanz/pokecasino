@@ -164,3 +164,18 @@ test('los factores del ejemplar son pequeños (±5 % IV, ±10 % naturaleza)', ()
   assert.ok(max.hp / base.hp <= 1.051 && min.hp / base.hp >= 0.949);
   assert.ok(max.atk / base.atk <= 1.05 * 1.1 + 0.01 && min.atk / base.atk >= 0.95 * 0.9 - 0.01);
 });
+
+test('liberar un favorito o el compañero suelta ese ejemplar y no otro', () => {
+  const specimen = require('../server/specimen');
+  const u = { id: 'fav-rel', username: 'favrel', coins: 0, dust: 0, items: {}, collection: { 25: { n: 3, s: 0 } }, mons: {} };
+  const arr = specimen.sync(u, 25);
+  arr[0].fav = true;
+  u.buddy = { id: 25, shiny: false, uid: arr[1].uid };
+  const favUid = arr[0].uid;
+  for (const m of arr) m.drop = false;
+  arr[0].drop = true;
+  u.collection[25].n = 2;
+  const left = specimen.sync(u, 25);
+  assert.ok(!left.some((m) => m.uid === favUid));
+  assert.ok(left.some((m) => m.uid === u.buddy.uid));
+});

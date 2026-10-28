@@ -82,7 +82,7 @@ function sync(u, id) {
     while (arr.length < want) { arr.push(make(id, need > 0)); need--; }
   }
   while (arr.length > want) {
-    const rank = (m) => (m.drop ? 0 : 1) + (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
+    const rank = (m) => (m.drop ? -10 : 0) + (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
     let worst = 0;
     for (let i = 1; i < arr.length; i++) {
       const d = rank(arr[i]) - rank(arr[worst]);
