@@ -1,0 +1,52 @@
+[
+  {
+    "version": "2026.10.28-c",
+    "date": "2026-10-28",
+    "title": "Desafío Pokémon, Mercado más claro y límites más relajados",
+    "items": [
+      "🧠 Nuevo juego «Desafío Pokémon»: «¿Quién es ese Pokémon?» (escribe el nombre) y Trivia Pokémon con preguntas de fan. Cuatro dificultades, multiplicador que sube con cada acierto y retirada cuando quieras. Tus multiplicadores se ajustan a tu precisión.",
+      "🏪 Mercado: ahora se ve quién vende y quién compra cada cosa («vende Ana», «compra Kecleon») y las operaciones dicen «Vendió X · compró Y».",
+      "😌 Experiencia más casual: puedes vender a los NPC hasta 10 unidades por artículo y 5.000 + 500 × tu nivel al día, comprarles 20, la Enfermera Joy te presta 1.000 cada 4 h y la recompensa diaria sube a 1.000 + 150 por día de racha (hasta 1.900).",
+      "💠 Evento Mega: hasta 300 megafragmentos al día jugando.",
+      "🔒 Pokémon con candado: algunos Pokémon pueden estar bloqueados; se recuperan cuando el Gacha te los da o con créditos que ganas apostando y tirando.",
+      "💾 Copias de seguridad automáticas cada día."
+    ]
+  },
+  {
+    "version": "2026.10.28-b",
+    "date": "2026-10-28",
+    "title": "Evento Megaevolución y avisos de riesgo",
+    "items": [
+      "💠 Evento «Megaevolución»: 93 Megaevoluciones con sus megapiedras. Gana Megafragmentos jugando (con combo y Horas Mega ×2), gira la Máquina Mega, persigue el Bote Mega, completa el pase de recompensas y fabrica la megapiedra que quieras con 100 💠.",
+      "✨ Megaevoluciona a tu compañero con una animación a pantalla completa: se verá en su forma Mega en todo el casino.",
+      "⚠️ Avisos antes de acciones muy arriesgadas (apostar casi todo, Crash sin retirada, Minas con muchos Geodude…). Puedes marcar «No volver a avisarme» en cada apartado y restablecerlos desde tu menú.",
+      "🎁 Gacha ×10: cada toque abre la siguiente Poké Ball más rápido; para abrirlo todo hay «⏭ Saltar todo»."
+    ]
+  },
+  {
+    "version": "2026.10.28-a",
+    "date": "2026-10-28",
+    "title": "Gacha renovado, Mercado estilo Albion y comerciantes NPC",
+    "items": [
+      "🎁 Gacha sin pity: cada tirada es independiente y la Master Ball asegura una legendaria (la destacada del banner). Animación nueva: la Poké Ball sube de categoría al sacudirse, «¿Quién es ese Pokémon?», explosiones y vibración.",
+      "🔄 Banners: uno permanente y uno promocional que cambia cada 3 días.",
+      "🏪 Mercado estilo Albion: pestañas Comprar / Vender / Órdenes / Completadas, ofertas («Se vende», en verde) y pedidos («Se compra», en azul) bien separados, duración de las órdenes y desglose de comisión e impuesto.",
+      "🤖 Comerciantes NPC (Kecleon, ColeccionistaBill, MercaderGinger y TratanteDorado) que compran y venden en el Mercado.",
+      "🔎 Buscador y filtros en todo el Mercado.",
+      "🎉 Animaciones y efectos en todo lo aleatorio: Huevo Misterioso, recompensa diaria, subidas de nivel, medallas y premios grandes en los juegos.",
+      "⚖️ Equilibrio de todo el juego: ningún juego da dinero seguro, las evoluciones salen menos en el Gacha y los objetos tienen precios coherentes."
+    ]
+  },
+  {
+    "version": "2026.10.27",
+    "date": "2026-10-27",
+    "title": "Móvil, app instalable y mucho más",
+    "items": [
+      "📱 Mucho más cómodo en el móvil: barra de pestañas abajo, ventanas desde abajo y controles fijos en los juegos.",
+      "📲 Se puede instalar como app (botón «Instalar app» o, en iPhone, Compartir → «Añadir a pantalla de inicio»).",
+      "✉️ Mensajes privados (/w nombre mensaje), emotes de Pokémon (:pikachu:) y avisos cuando te toca en el póker.",
+      "📊 Mi Entrenador → «Mis monedas»: gráfica de tu saldo, resultado por juego y movimientos.",
+      "🎉 Eventos semanales: lunes Duelos sin comisión, miércoles Misiones ×2, viernes Mercado sin impuesto y fin de semana Variocolor ×2."
+    ]
+  }
+]

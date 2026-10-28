@@ -36,6 +36,7 @@ const npc = require('./npc');
 const BAL = require('./balance');
 const daily = require('./daily');
 const mega = require('./mega');
+const news = require('./news');
 
 const app = express();
 app.set('trust proxy', config.TRUST_PROXY);
@@ -110,6 +111,7 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
     // Los iconos no cambian: caché larga. El resto se revalida siempre (respuestas 304 rápidas)
     // para que cada actualización llegue al momento.
     if (/[\\/]icons[\\/]/.test(file)) res.set('Cache-Control', 'public, max-age=604800');
+    else if (/changelog\.json$/.test(file)) res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     else res.set('Cache-Control', 'no-cache');
   },
 }));
@@ -504,7 +506,9 @@ io.on('connection', (socket) => {
     jackpot: db.data.state.jackpot, race: race.publicState(), raceBets: race.myBets(db.userById(uid)),
     duels: duel.listPublic(), duelHistory: duel.recent(),
     crash: crash.publicState(), poker: holdem.lobby(), events: events.publicState(), mega: mega.publicState(),
+    newsSeen: u.newsSeen || null, createdAt: u.createdAt || 0,
   }), { push: false });
+  on('news:seen', (u, p) => { const r = news.markSeen(u, p); db.save(); return r; }, { push: false });
   on('daily:claim', claimDaily);
   on('center:heal', heal);
   on('slots:spin', slots.spin);

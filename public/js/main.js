@@ -23,8 +23,10 @@ import poker from './views/poker.js';
 import market from './views/market.js';
 import trainer from './views/trainer.js';
 import megaView from './views/mega.js';
+import news from './views/news.js';
+import { initNews, openPublicNews } from './news.js';
 
-const VIEWS = [lobby, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, shop, megaView, market, ranking, admin];
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, shop, megaView, market, ranking, admin];
 const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', quiz: 'Desafíos', gacha: 'Colección', market: 'Comunidad' };
 
 // ---------- Autenticación ----------
@@ -44,6 +46,7 @@ document.querySelectorAll('#auth .tab').forEach((t) => t.addEventListener('click
   $('#auth-form button[type=submit]').textContent = mode === 'register' ? 'Crear entrenador' : 'Entrar';
   $('#auth-form [name=password]').autocomplete = mode === 'register' ? 'new-password' : 'current-password';
 }));
+$('#auth-news').addEventListener('click', openPublicNews);
 $('#auth-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
@@ -180,6 +183,12 @@ $('#user-btn').addEventListener('click', () => {
 });
 
 // ---------- Navegación ----------
+// Punto rojo en «Novedades» (menú lateral y pestaña Más) mientras haya algo sin ver.
+let newsFresh = false;
+function updateNewsDots() {
+  document.querySelectorAll('[data-view=news], [data-tab=more]').forEach((el) => el.classList.toggle('has-news', newsFresh));
+}
+bus.on('news', (fresh) => { newsFresh = fresh.length > 0; updateNewsDots(); });
 function buildNav() {
   const nav = $('#sidebar');
   nav.replaceChildren();
@@ -197,16 +206,16 @@ const TABS = [
   { id: 'games', icon: '🎰', label: 'Juegos', match: GAME_IDS },
   { id: 'gacha', icon: '🎁', label: 'Gacha' },
   { id: 'market', icon: '🏪', label: 'Mercado' },
-  { id: 'more', icon: '☰', label: 'Más', match: ['trainer', 'pokedex', 'shop', 'mega', 'ranking', 'admin'] },
+  { id: 'more', icon: '☰', label: 'Más', match: ['news', 'trainer', 'pokedex', 'shop', 'mega', 'ranking', 'admin'] },
 ];
 function gamesSheet() {
   const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => GAME_IDS.includes(v.id)).map((v) =>
     h('a', { class: 'gs-item' + (current && current.id === v.id ? ' active' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title)))), { title: 'Juegos' });
 }
 function moreSheet() {
-  const ids = ['trainer', 'mega', 'pokedex', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
+  const ids = ['news', 'trainer', 'mega', 'pokedex', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
   const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => ids.includes(v.id)).map((v) =>
-    h('a', { class: 'gs-item', href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title))),
+    h('a', { class: 'gs-item' + (v.id === 'news' && newsFresh ? ' has-news' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title))),
   h('button', { class: 'gs-item', onclick: () => { m.close(); document.body.classList.add('social-open'); $('#chat-dot').classList.add('hidden'); } }, h('span', { class: 'gs-ico' }, '💬'), h('span', {}, 'Chat y conectados')),
   canInstall() ? h('button', { class: 'gs-item', onclick: () => { m.close(); installApp(); } }, h('span', { class: 'gs-ico' }, '📲'), h('span', {}, 'Instalar app')) : ''), { title: 'Más' });
 }
@@ -284,6 +293,7 @@ function connect() {
     bus.emit('events', res.events);
     bus.emit('race', res.race);
     if (!booted) { booted = true; buildNav(); buildTabbar(); setMe(S.me); route(); }
+    initNews(res).then(updateNewsDots).catch(() => {});
   });
   socket.on('me', setMe);
   socket.on('events', (e) => { S.events = e; bus.emit('events', e); });
