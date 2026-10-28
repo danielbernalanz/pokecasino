@@ -65,10 +65,12 @@ function summary() {
   }
   return by;
 }
+// Etiqueta de los comerciantes NPC (sus órdenes y operaciones llevan `npc: true`).
+const npcTag = (on) => (on ? h('span', { class: 'npc-tag', title: 'Comerciante NPC: compra y vende con límites diarios' }, 'NPC') : '');
 const levels = (orders) => {
   const m = new Map();
-  for (const o of orders) m.set(o.price, (m.get(o.price) || 0) + o.qty);
-  return [...m.entries()];
+  for (const o of orders) { const l = m.get(o.price) || [0, false]; l[0] += o.qty; l[1] ||= !!o.npc; m.set(o.price, l); }
+  return [...m.entries()].map(([price, [qty, npc]]) => [price, qty, npc]);
 };
 // Recorre el libro para saber cuánto cuesta/rinde operar ya `qty` unidades.
 function walk(orders, qty) {
@@ -192,7 +194,7 @@ export async function openItem(a, side = 'buy') {
     const vis = (list) => (hideMine ? list.filter((o) => o.username !== S.me.username) : list);
     const bookCol = (title, all, cls) => { const list = vis(all); return h('div', { class: 'ob-col ' + cls },
       h('div', { class: 'ob-head' }, h('b', {}, title), h('span', { class: 'muted small' }, 'precio · uds')),
-      list.length ? levels(list).slice(0, 8).map(([price, qty]) => h('div', { class: 'ob-row' }, h('span', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(price)), h('span', {}, fmt(qty))))
+      list.length ? levels(list).slice(0, 8).map(([price, qty, npc]) => h('div', { class: 'ob-row' }, h('span', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(price), npcTag(npc)), h('span', {}, fmt(qty))))
         : h('div', { class: 'muted small' }, 'Vacío')); };
     const days = histRes ? (range ? histRes.days.slice(-range) : histRes.days) : [];
     const chips = h('div', { class: 'seg mk-filt' },
@@ -243,8 +245,8 @@ export default {
         thumb(a),
         h('div', { class: 'grow' }, h('b', {}, nameOf(a)), extra || '',
           ...setsNeeding(a).slice(0, 1).map((s) => h('div', { class: 'small gold-text' }, `📚 Para «${s.name}»`))),
-        h('div', { class: 'mk-quote ask' }, h('span', { class: 'muted small' }, 'Venta desde'), bestAsk ? h('b', {}, fmt(bestAsk.price)) : h('span', { class: 'muted' }, '—'), askQty ? h('span', { class: 'small muted' }, `${fmt(askQty)} uds`) : ''),
-        h('div', { class: 'mk-quote bid' }, h('span', { class: 'muted small' }, 'Compra hasta'), bestBid ? h('b', {}, fmt(bestBid.price)) : h('span', { class: 'muted' }, '—'), bidQty ? h('span', { class: 'small muted' }, `${fmt(bidQty)} uds`) : ''));
+        h('div', { class: 'mk-quote ask' }, h('span', { class: 'muted small' }, 'Venta desde'), bestAsk ? h('b', {}, fmt(bestAsk.price), npcTag(bestAsk.npc)) : h('span', { class: 'muted' }, '—'), askQty ? h('span', { class: 'small muted' }, `${fmt(askQty)} uds`) : ''),
+        h('div', { class: 'mk-quote bid' }, h('span', { class: 'muted small' }, 'Compra hasta'), bestBid ? h('b', {}, fmt(bestBid.price), npcTag(bestBid.npc)) : h('span', { class: 'muted' }, '—'), bidQty ? h('span', { class: 'small muted' }, `${fmt(bidQty)} uds`) : ''));
     };
 
     // ---- Barra de filtros compacta (búsqueda + filtros plegables en móvil) ----
@@ -467,7 +469,7 @@ export default {
           const me = t.buyer === S.me.username ? 'compraste' : t.seller === S.me.username ? 'vendiste' : null;
           return h('button', { class: 'mk-row' + (me ? ' mine' : ''), onclick: () => openItem(a) }, thumb(a),
             h('div', { class: 'grow' }, h('b', {}, `${t.qty > 1 ? t.qty + '× ' : ''}${nameOf(a)}`),
-              h('div', { class: 'muted small' }, `${t.seller} → ${t.buyer}${me ? ` (${me})` : ''} · ${new Date(t.at).toLocaleString('es-ES')}`)),
+              h('div', { class: 'muted small' }, t.seller, npcTag(t.sellerNpc), ` → ${t.buyer}`, npcTag(t.buyerNpc), `${me ? ` (${me})` : ''} · ${new Date(t.at).toLocaleString('es-ES')}`)),
             h('div', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(t.price), h('span', { class: 'muted small' }, '/ud')));
         }, fb, fb.active() ? 'Ninguna operación coincide con los filtros.' : 'Todavía no hay ventas.');
       }

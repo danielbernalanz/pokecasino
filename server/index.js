@@ -30,6 +30,7 @@ const plinko = require('./games/plinko');
 const mines = require('./games/mines');
 const crash = require('./games/crash');
 const holdem = require('./games/holdem');
+const npc = require('./npc');
 
 const app = express();
 app.set('trust proxy', config.TRUST_PROXY);
@@ -125,7 +126,7 @@ hub.setIO(io);
 // ---- Presencia ----
 const online = new Map(); // userId -> nº de sockets
 function onlineList() {
-  return [...online.keys()].map((id) => db.userById(id)).filter(Boolean).map(hub.publicUser);
+  return [...online.keys()].map((id) => db.userById(id)).filter((u) => u && !u.npc).map(hub.publicUser);
 }
 const pushOnline = () => io.emit('online', onlineList());
 
@@ -133,6 +134,7 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function yesterday() { return new Date(Date.now() - 864e5).toISOString().slice(0, 10); }
 
 function claimDaily(user) {
+  if (user.npc) throw new Error('Los comerciantes NPC no reclaman recompensas.');
   if (user.daily.last === today()) throw new Error('Ya reclamaste tu recompensa de hoy. ¡Vuelve mañana!');
   user.daily.streak = user.daily.last === yesterday() ? user.daily.streak + 1 : 1;
   user.daily.last = today();
@@ -148,6 +150,7 @@ function claimDaily(user) {
 }
 
 function heal(user) {
+  if (user.npc) throw new Error('Los comerciantes NPC no usan el Centro Pokémon.');
   const locked = hub.lockedCoins(user);
   const why = healer.reason(user, locked);
   if (why) throw new Error(why);
@@ -159,7 +162,7 @@ function heal(user) {
 }
 
 function leaderboard() {
-  const users = Object.values(db.data.users).filter((u) => !u.banned);
+  const users = Object.values(db.data.users).filter((u) => !u.banned && !u.npc);
   const top = (fn) => users.map((u) => ({ username: u.username, level: u.level, buddy: u.buddy, ...hub.looks(u), value: fn(u) }))
     .sort((a, b) => b.value - a.value).slice(0, 10);
   return {
@@ -207,6 +210,7 @@ function giftCoins(user, { to, amount }) {
   const t = db.userByName(to);
   amount = Number(amount);
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
+  if (t.npc) throw new Error('Los comerciantes NPC no aceptan regalos.');
   if (!Number.isInteger(amount) || amount < 1 || amount > user.coins) throw new Error('Cantidad no válida.');
   user.coins -= amount;
   t.coins += amount;
@@ -222,6 +226,7 @@ function giftPoke(user, { to, id, shiny }) {
   canGift(user);
   const t = db.userByName(to);
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
+  if (t.npc) throw new Error('Los comerciantes NPC no aceptan regalos.');
   const p = gacha.takePoke(user, id, !!shiny);
   gacha.grant(t, p.id, !!shiny);
   hub.track(t, 'gift_recv');
@@ -257,6 +262,7 @@ function privateMessage(user, toName, text) {
   const t = db.userByName(toName);
   if (!t) throw new Error(`No existe el entrenador «${toName}».`);
   if (t.id === user.id) throw new Error('No puedes escribirte a ti mismo.');
+  if (t.npc) throw new Error('Los comerciantes NPC no leen mensajes privados.');
   const msg = { user: user.username, to: t.username, buddy: user.buddy, admin: user.isAdmin, ...hub.looks(user), text, at: Date.now(), private: true };
   db.data.dms ||= [];
   db.data.dms.push(msg);
@@ -277,7 +283,8 @@ function adminLog(user, action, target, detail) {
 }
 // Foto de la economía: monedas en circulación, de dónde salen y a dónde van, y actividad por día.
 function economy() {
-  const users = Object.values(db.data.users);
+  // Los comerciantes NPC no cuentan como jugadores: su tesorería va aparte.
+  const users = Object.values(db.data.users).filter((u) => !u.npc);
   const wallets = users.reduce((s, u) => s + u.coins, 0);
   const escrow = Object.values(db.data.escrow).reduce((s, e) => s + e.amount, 0);
   const listed = users.reduce((s, u) => s + market.lockedIn(u), 0);
@@ -290,6 +297,7 @@ function economy() {
     players: users.length, active7: users.filter((u) => (u.lastSeen || u.createdAt) > week).length,
     top10share: wallets ? rich.slice(0, Math.max(1, Math.ceil(users.length / 10))).reduce((s, u) => s + u.coins, 0) / wallets : 0,
     median: rich.length ? rich[Math.floor(rich.length / 2)].coins : 0,
+    npc: npc.treasury(),
     days, names: hub.GAME_LABELS, log: (db.data.adminLog || []).slice(-60).reverse(),
   };
 }
@@ -301,7 +309,7 @@ const admin = {
   users(user) {
     requireAdmin(user);
     return {
-      users: Object.values(db.data.users).map((u) => ({
+      users: Object.values(db.data.users).filter((u) => !u.npc).map((u) => ({
         username: u.username, coins: u.coins, dust: u.dust, level: u.level, banned: u.banned, isAdmin: u.isAdmin,
         dex: Object.keys(u.collection).length, createdAt: u.createdAt, online: online.has(u.id),
       })),
@@ -334,7 +342,7 @@ const admin = {
   ban(user, { username, banned }) {
     requireAdmin(user);
     const t = db.userByName(username);
-    if (!t || t.id === user.id) throw new Error('Jugador no válido.');
+    if (!t || t.npc || t.id === user.id) throw new Error('Jugador no válido.');
     t.banned = !!banned;
     adminLog(user, banned ? 'ban' : 'unban', t.username);
     if (t.banned) {
@@ -347,7 +355,7 @@ const admin = {
   reset(user, { username, password }) {
     requireAdmin(user);
     const t = db.userByName(username);
-    if (!t || typeof password !== 'string' || password.length < 6) throw new Error('Datos no válidos.');
+    if (!t || t.npc || typeof password !== 'string' || password.length < 6) throw new Error('Datos no válidos.');
     Object.assign(t, auth.hashPassword(password));
     adminLog(user, 'reset', t.username);
     for (const [k, s] of Object.entries(db.data.sessions)) if (s.userId === t.id) delete db.data.sessions[k];
@@ -365,7 +373,7 @@ const admin = {
   admin(user, { username, isAdmin }) {
     requireAdmin(user);
     const t = db.userByName(username);
-    if (!t || t.id === user.id) throw new Error('Jugador no válido.');
+    if (!t || t.npc || t.id === user.id) throw new Error('Jugador no válido.');
     t.isAdmin = !!isAdmin;
     adminLog(user, isAdmin ? 'admin' : 'unadmin', t.username);
     db.save();
@@ -529,6 +537,7 @@ db.init().then(() => {
   if (stopping) return;
   // Lo que quedó en juego si la versión anterior se apagó de golpe vuelve a sus dueños.
   market.init();
+  npc.start();
   const back = db.refundEscrow();
   if (back.n) console.log(`  ↩️  Devueltas ${back.total} monedas en juego a ${back.n} apuesta(s)/mesa(s) pendientes`);
   ready = true;

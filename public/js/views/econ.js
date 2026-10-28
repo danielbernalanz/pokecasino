@@ -34,9 +34,10 @@ export async function economyPanel() {
     h('div', { class: 'card stack' }, h('h3', {}, '🏦 Monedas en circulación'),
       h('div', { class: 'stat-row' },
         tile('Total', fmt(e.total)), tile('En carteras', fmt(e.wallets)), tile('En el Mercado', fmt(e.market)), tile('En juego ahora', fmt(e.escrow)),
-        tile('Saldo mediano', fmt(e.median)), tile('Del 10 % más rico', pct(e.top10share)), tile('Jugadores', `${e.players}`, `${e.active7} activos en 7 días`))),
+        tile('Saldo mediano', fmt(e.median)), tile('Del 10 % más rico', pct(e.top10share)), tile('Jugadores', `${e.players}`, `${e.active7} activos en 7 días`),
+        e.npc ? tile('Tesorería NPC', fmt(e.npc.coins + e.npc.locked), `${fmt(e.npc.coins)} libres · ${fmt(e.npc.locked)} en pedidos · inicial ${fmt(e.npc.start)}`) : null)),
     h('div', { class: 'card stack' }, h('h3', {}, '📅 Últimos días'),
-      h('p', { class: 'muted small' }, 'Creadas: recompensas, Enfermera Joy, polvo, ajustes… Destruidas: gacha, tienda, comisiones e impuestos del Mercado y lo que gana la casa en los juegos. Si «Neto» es positivo muchos días seguidos, hay inflación.'),
+      h('p', { class: 'muted small' }, 'Creadas: recompensas, Enfermera Joy, polvo, ajustes… Destruidas: gacha, tienda, comisiones e impuestos del Mercado y lo que gana la casa en los juegos. Si «Neto» es positivo muchos días seguidos, hay inflación. La tesorería de los comerciantes NPC no cuenta en el total (el fondo inicial aparece una vez como «Fondo NPC»).'),
       h('div', { class: 'table-wrap' }, h('table', { class: 'admin-table' },
         h('thead', {}, h('tr', {}, ['Día', 'Activos', 'Creadas', 'Destruidas', 'Neto', 'Apostado'].map((t) => h('th', {}, t)))),
         h('tbody', {}, [...e.days].reverse().slice(0, 14).map((d) => {

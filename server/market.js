@@ -16,6 +16,8 @@ const MAX_ORDERS = 30;
 const MAX_PRICE = 10_000_000;
 const MAX_QTY = { poke: 20, item: 999, dust: 1_000_000 };
 const M = () => db.data.market;
+// Comerciantes NPC (carga diferida: npc.js usa este módulo).
+const npc = () => require('./npc');
 const today = () => new Date().toISOString().slice(0, 10);
 
 // ---- Artículos ----
@@ -78,19 +80,23 @@ const salesTax = () => (marketDay() ? 0 : SALES_TAX);
 const fee = (total) => Math.max(1, Math.ceil(total * setupFee()));
 
 // ---- Historial de precios ----
-function record(a, qty, price, seller, buyer) {
+function record(a, qty, price, seller, buyer, npcFlags = {}) {
   const m = M();
   const t = { ref: a.ref, kind: a.kind, pokeId: a.pokeId, shiny: a.shiny, itemId: a.itemId, qty, price, seller, buyer, at: Date.now() };
+  // Operaciones con un comerciante NPC: se marcan y no entran en las medias de precio de los jugadores.
+  if (npcFlags.sellerNpc || npcFlags.buyerNpc) Object.assign(t, { npc: true, sellerNpc: !!npcFlags.sellerNpc, buyerNpc: !!npcFlags.buyerNpc });
   m.trades.push(t);
   if (m.trades.length > 500) m.trades.splice(0, m.trades.length - 500);
-  const day = ((m.history[a.ref] ||= {})[today()] ||= { n: 0, sum: 0, min: price, max: price });
-  day.n += qty;
-  day.sum += qty * price;
-  day.min = Math.min(day.min, price);
-  day.max = Math.max(day.max, price);
-  // Solo se guardan 30 días por artículo.
-  const days = Object.keys(m.history[a.ref]).sort();
-  for (const d of days.slice(0, Math.max(0, days.length - 30))) delete m.history[a.ref][d];
+  if (!t.npc) {
+    const day = ((m.history[a.ref] ||= {})[today()] ||= { n: 0, sum: 0, min: price, max: price });
+    day.n += qty;
+    day.sum += qty * price;
+    day.min = Math.min(day.min, price);
+    day.max = Math.max(day.max, price);
+    // Solo se guardan 30 días por artículo.
+    const days = Object.keys(m.history[a.ref]).sort();
+    for (const d of days.slice(0, Math.max(0, days.length - 30))) delete m.history[a.ref][d];
+  }
   if (qty * price >= 10000 || (a.kind === 'poke' && (a.shiny || ['L', 'M'].includes(BY_ID.get(a.pokeId).rarity)))) {
     hub.feed('market', `🏪 ${buyer} compró ${describe(a, qty)} a ${seller} por ${(qty * price).toLocaleString('es')} monedas`, a.kind === 'poke' ? { pokeId: a.pokeId, shiny: a.shiny } : {});
   }
@@ -106,7 +112,8 @@ function settle(a, qty, price, seller, buyer) {
   seller.stats.sold = (seller.stats.sold || 0) + qty;
   buyer.stats.bought = (buyer.stats.bought || 0) + qty;
   const dust = giveGoods(buyer, a, qty);
-  record(a, qty, price, seller.username, buyer.username);
+  record(a, qty, price, seller.username, buyer.username, { sellerNpc: seller.npc, buyerNpc: buyer.npc });
+  npc().note(seller, buyer, a, qty, price);
   hub.track(buyer, 'market_buy');
   hub.track(seller, 'market_sell');
   hub.emitUser(seller.id, 'toast', { kind: 'market', text: `🏪 Vendiste ${describe(a, qty)} a ${buyer.username}: +${(gross - tax).toLocaleString('es')} monedas` });
@@ -139,11 +146,17 @@ function sell(user, payload) {
   let earned = 0;
   const bids = book(a.ref, 'buy').filter((o) => o.price >= price && o.userId !== user.id)
     .sort((x, y) => y.price - x.price || x.createdAt - y.createdAt);
+  let why = null; // por qué un comerciante NPC no pudo llenar la orden
   for (const o of bids) {
     if (!left) break;
     const buyer = db.userById(o.userId);
     if (!buyer) continue;
-    const q = Math.min(left, o.qty);
+    if (user.npc && buyer.npc) continue; // los NPC nunca operan entre ellos
+    let q = Math.min(left, o.qty);
+    if (user.npc || buyer.npc) {
+      q = Math.min(q, npc().cap(user, buyer, a, o.price));
+      if (q <= 0) { why ||= npc().whyBlocked(user, buyer, a); continue; }
+    }
     takeGoods(user, a, q);
     o.qty -= q; // las monedas ya estaban en depósito en la orden de compra
     settle(a, q, o.price, user, buyer);
@@ -155,11 +168,11 @@ function sell(user, payload) {
     user.coins -= fee(left * price);
     hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
     takeGoods(user, a, left);
-    order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now() };
+    order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), ...(user.npc ? { npc: true } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');
   }
-  if (instant && left === qty) throw new Error('No hay pedidos de compra a ese precio.');
+  if (instant && left === qty) throw new Error(why || 'No hay pedidos de compra a ese precio.');
   removeEmpty();
   db.save();
   push();
@@ -180,11 +193,17 @@ function buy(user, payload) {
   let spent = 0;
   const asks = book(a.ref, 'sell').filter((o) => o.price <= price && o.userId !== user.id)
     .sort((x, y) => x.price - y.price || x.createdAt - y.createdAt);
+  let why = null;
   for (const o of asks) {
     if (!left) break;
     const seller = db.userById(o.userId);
     if (!seller) continue;
-    const q = Math.min(left, o.qty);
+    if (user.npc && seller.npc) continue; // los NPC nunca operan entre ellos
+    let q = Math.min(left, o.qty);
+    if (user.npc || seller.npc) {
+      q = Math.min(q, npc().cap(seller, user, a, o.price));
+      if (q <= 0) { why ||= npc().whyBlocked(seller, user, a); continue; }
+    }
     user.coins -= q * o.price;
     hub.ledger(user, -q * o.price, 'market_buy', `${q} × ${a.ref}`);
     o.qty -= q; // los artículos ya estaban en depósito en la orden de venta
@@ -197,11 +216,11 @@ function buy(user, payload) {
     user.coins -= left * price + fee(left * price);
     hub.ledger(user, -left * price, 'market_buy', `Pedido: ${left} × ${a.ref}`);
     hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
-    order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now() };
+    order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), ...(user.npc ? { npc: true } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');
   }
-  if (instant && left === qty) throw new Error('No hay ofertas de venta a ese precio.');
+  if (instant && left === qty) throw new Error(why || 'No hay ofertas de venta a ese precio.');
   removeEmpty();
   db.save();
   push();
@@ -242,7 +261,7 @@ function state() {
     stats[ref] = { avg: n ? Math.round(list.reduce((s, d) => s + d.sum, 0) / n) : 0, n };
   }
   return {
-    orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt })),
+    orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, npc }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, ...(npc ? { npc: true } : {}) })),
     trades: m.trades.slice(-40).reverse(), stats, setupFee: setupFee(), salesTax: salesTax(),
   };
 }
@@ -280,4 +299,4 @@ function init() {
   setInterval(sweep, 10 * 60 * 1000).unref();
 }
 
-module.exports = { init, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn };
+module.exports = { init, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee };

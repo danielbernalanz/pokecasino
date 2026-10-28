@@ -16,7 +16,8 @@ const badgeCount = (u) => (u.progress && u.progress.badges ? u.progress.badges.l
 const maxBetFor = (u) => MAX_BET_BY_BADGES[Math.min(8, badgeCount(u))];
 
 // Registro de eventos para misiones, medallas y colecciones (carga diferida para evitar ciclos).
-const track = (user, event, data) => require('./progress').track(user, event, data || {});
+// Los comerciantes NPC no tienen misiones ni medallas: así no cobran recompensas.
+const track = (user, event, data) => (user.npc ? undefined : require('./progress').track(user, event, data || {}));
 
 let io = null;
 const setIO = (server) => { io = server; };
@@ -203,7 +204,7 @@ function publicUser(u) {
   return {
     ...looks(u),
     username: u.username, level: u.level, buddy: u.buddy, dex: owned,
-    shinies: Object.values(u.collection).filter((c) => c.s > 0).length, isAdmin: u.isAdmin,
+    shinies: Object.values(u.collection).filter((c) => c.s > 0).length, isAdmin: u.isAdmin, npc: !!u.npc,
   };
 }
 
@@ -224,6 +225,6 @@ function lockedCoins(u) {
   return require('./market').lockedIn(u) + Object.values(db.data.escrow).filter((e) => e.userId === u.id).reduce((s, e) => s + e.amount, 0);
 }
 
-const pushMe = (u) => { daySnap(u); emitUser(u.id, 'me', privateUser(u)); };
+const pushMe = (u) => { if (u.npc) return; daySnap(u); emitUser(u.id, 'me', privateUser(u)); };
 
 module.exports = { lockedCoins, ledger, gameStat, history, econDay, econActive, daySnap, GAME_LABELS, dayKey, MAX_BET_BY_BADGES, looks, GAME_NAMES, maxBetFor, track, setIO, emitUser, emitRoom, broadcast, feed, addXp, takeBet, pay, buddyBonus, publicUser, privateUser, pushMe, validAmount };

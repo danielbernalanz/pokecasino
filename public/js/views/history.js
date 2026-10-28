@@ -13,7 +13,7 @@ export const REASONS = {
   gacha: '✨ Gacha', dust: '✦ Cambio de polvo', daily: '🎁 Recompensa diaria', heal: '💗 Enfermera Joy', gift_in: '🎁 Regalo recibido',
   gift_out: '🎁 Regalo enviado', admin: '🛠️ Ajuste del anfitrión', shop: '🛒 Tienda', market_sale: '🏪 Venta en el Mercado',
   market_buy: '🏪 Compra en el Mercado', market_fee: '🏪 Comisión de anuncio', market_refund: '🏪 Pedido devuelto', level: '⭐ Subida de nivel',
-  reward: '🏆 Misión o medalla', refund: '↩️ Devolución', poker_in: "🃏 Fichas de Hold'em", poker_out: "🃏 Levantarse de Hold'em", event: '🎉 Evento',
+  reward: '🏆 Misión o medalla', refund: '↩️ Devolución', poker_in: "🃏 Fichas de Hold'em", poker_out: "🃏 Levantarse de Hold'em", event: '🎉 Evento', npc_fund: '🏦 Fondo NPC',
 };
 const day = (d) => new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 const when = (t) => new Date(t).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });

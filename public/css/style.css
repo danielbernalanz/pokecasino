@@ -518,6 +518,7 @@ img.mk-big { transform: scale(1.3); }
 .tag-sell, .tag-buy { font: 800 10px Nunito; padding: 1px 6px; border-radius: 4px; }
 .tag-sell { background: #3ddc8433; color: var(--good); }
 .tag-buy { background: #60a5fa33; color: #93c5fd; }
+.npc-tag { font: 800 9px Nunito; padding: 1px 5px; margin-left: 5px; border-radius: 4px; background: #f59e0b33; color: #fbbf24; vertical-align: middle; letter-spacing: .04em; }
 .disabled-card { opacity: .55; }
 @media (max-width: 640px) {
   .mk-row { grid-template-columns: 48px minmax(0, 1fr) 80px; }

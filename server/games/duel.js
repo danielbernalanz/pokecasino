@@ -34,7 +34,7 @@ function create(user, { pokeId, shiny, wager, target }) {
   wager = Number(wager) || 0;
   if (target) {
     const t = db.userByName(target);
-    if (!t || t.id === user.id) throw new Error('Rival no encontrado.');
+    if (!t || t.npc || t.id === user.id) throw new Error('Rival no encontrado.');
     target = t.username;
   }
   // Se cobra al final de las comprobaciones: si algo falla no se pierde la apuesta.

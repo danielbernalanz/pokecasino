@@ -38,6 +38,12 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **¿Por qué usar el Mercado?** Los cosméticos solo salen de **Huevos Misteriosos** aleatorios, así que los repetidos se venden y el que quieres se compra. Las colecciones piden Pokémon concretos: el Mercado muestra cuántos hay a la venta de los que te faltan, con un filtro «Para mis colecciones». Además, la Medalla Alma exige vender 3 cosas, y el Mercado aparece en el tutorial y en las misiones diarias.
 
+**Comerciantes NPC** (con la etiqueta «NPC»): Kecleon (comunes, poco comunes y objetos de tienda), ColeccionBill (raras y épicas, sobre todo las de las colecciones), MercaderGinger (cosméticos y objetos sin tienda) y TratanteDorado (legendarias, míticas y variocolores) compran y venden en el Mercado como un jugador más (mismas comisiones e impuesto, mismo libro de órdenes), pero no son un grifo de monedas:
+- **Precios con tope y suelo fijos.** Compran a como mucho el 90 % de lo que da liberar un duplicado (el 50 % del precio en tienda para los objetos) y venden como mínimo al triple de su precio de compra (nunca por debajo de la tienda). Dentro de esos límites se guían por la mediana de las operaciones recientes entre jugadores (mínimo 3 operaciones de 2 vendedores distintos), así que comerciar a precios absurdos no los mueve. Ningún NPC compra más caro de lo que otro vende y los NPC nunca operan entre sí.
+- **Límites por jugador y día (UTC):** pueden cobrar de los NPC como mucho 1.500 + 100 × nivel monedas y 3 unidades por artículo (100 de polvo); pueden comprarles hasta 5 unidades por artículo. Las cuentas con menos de 24 h o de nivel menor que 3 no pueden venderles (sí comprarles).
+- **Tesorería finita:** cada uno empieza con 60.000 monedas (el panel de economía las ve como «Fondo NPC»), solo pujan con monedas depositadas, gastan como mucho el 15 % al día y por debajo del 20 % de su tesorería inicial solo venden. Venden únicamente lo que han comprado más un pequeño reabastecimiento diario de comunes, poco comunes y Huevos Misteriosos (nunca legendarias, míticas ni Master Ball).
+- No tienen contraseña, no salen en rankings ni en la lista de conectados, y no pueden recibir regalos ni jugar. Sus operaciones no cuentan en la media de precios de los jugadores.
+
 **Social**: chat con menciones `@nombre`, **mensajes privados** (`/w nombre mensaje` o «✉️» en la ficha), **emotes de Pokémon** (`:pikachu:` o el selector 😀), actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha y niveles. **Avisos** (🔔 en el menú del usuario): vibración, contador en la pestaña y notificación del sistema cuando te toca en el póker, te escriben, te mencionan o recibes algo.
 
 **Eventos** (hora de España): lunes ⚔️ Duelos sin comisión, miércoles 🎯 Misiones ×2, viernes 🏪 Mercado sin impuesto y comisión a la mitad, sábado y domingo ✨ Variocolor ×2 y 🤝 tope de bonus de compañero ×2. Se anuncian en el Vestíbulo y el anfitrión puede lanzar cualquiera de 1 a 72 horas.
@@ -136,6 +142,7 @@ server/
   gacha.js        Banners, probabilidades, Master Ball, variocolores y tienda de polvo
   items.js        Objetos, Tienda Poké y efectos
   market.js       Mercado entre jugadores con depósito
+  npc.js          Comerciantes NPC del Mercado (precios con tope, límites diarios, tesorería)
   progress.js     Ruta del Entrenador, misiones, medallas y colecciones
   cards.js        Baraja y evaluador de manos de póker
   games/          holdem, crash, race, duel, battle, blackjack, videopoker,

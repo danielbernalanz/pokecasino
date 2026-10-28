@@ -10,6 +10,7 @@ function hashPassword(pw, salt = crypto.randomBytes(16).toString('hex')) {
   return { salt, hash: crypto.scryptSync(pw, salt, 64).toString('hex') };
 }
 function checkPassword(pw, user) {
+  if (!user.salt || !user.hash) return false; // cuentas sin contraseña (comerciantes NPC)
   const h = crypto.scryptSync(pw, user.salt, 64);
   return crypto.timingSafeEqual(h, Buffer.from(user.hash, 'hex'));
 }
@@ -74,7 +75,7 @@ function userFromToken(token) {
   if (!s) return null;
   if (s.expires < Date.now()) { delete db.data.sessions[sha(token)]; db.save(); return null; }
   const u = db.userById(s.userId);
-  return u && !u.banned ? u : null;
+  return u && !u.banned && !u.npc ? u : null;
 }
 
 function destroySession(token) {
@@ -101,8 +102,9 @@ function register({ username, password, invite }, ip) {
   const master = OPEN_REGISTRATION || (code.length > 0 && code === String(ACCESS_KEY).toUpperCase());
   if (!master && !(single && !single.usedBy)) { noteFail(ip); throw new Error('Código de invitación no válido.'); }
   if (OPEN_REGISTRATION && !signupAllowed(ip)) throw new Error('Demasiadas cuentas nuevas desde tu conexión. Inténtalo mañana.');
-  if (db.userByName(username)) throw new Error('Ese nombre ya está en uso.');
-  const isFirst = Object.keys(db.data.users).length === 0;
+  // Los nombres de los comerciantes NPC están reservados aunque aún no existan sus cuentas.
+  if (db.userByName(username) || require('./npc').isNpcName(username)) throw new Error('Ese nombre ya está en uso.');
+  const isFirst = !Object.values(db.data.users).some((x) => !x.npc);
   const user = newUser(username, password, isFirst);
   if (!master) single.usedBy = user.username;
   db.addUser(user);
@@ -113,7 +115,7 @@ function register({ username, password, invite }, ip) {
 function login({ username, password }, ip) {
   if (tooMany(ip)) throw new Error('Demasiados intentos, espera unos minutos.');
   const u = db.userByName(username);
-  if (!u || typeof password !== 'string' || !checkPassword(password, u)) { noteFail(ip); throw new Error('Usuario o contraseña incorrectos.'); }
+  if (!u || u.npc || typeof password !== 'string' || !checkPassword(password, u)) { noteFail(ip); throw new Error('Usuario o contraseña incorrectos.'); }
   if (u.banned) throw new Error('Esta cuenta está suspendida.');
   return { user: u, token: createSession(u) };
 }
