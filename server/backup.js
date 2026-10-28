@@ -81,6 +81,18 @@ function audit() {
   // Una línea por jugador: los logs cortan las líneas muy largas.
   console.log('  🔎 AUDITORIA ' + JSON.stringify({ at: new Date().toISOString(), adminLog: adminLog.slice(-50) }));
   for (const r of rows) console.log('  🔎 AUDITORIA-JUGADOR ' + JSON.stringify(r));
+  // Ficha completa de las cuentas corregidas: cualquier rastro que quede (contadores, títulos, récords…).
+  for (const name of ['piti13579', 'tusmuertos']) {
+    const u = db.userByName(name);
+    if (!u) continue;
+    const { salt, hash, collection, hist, ...rest } = u;
+    const days = Object.entries((hist && hist.days) || {}).map(([d, x]) => `${d}:${x.lo}-${x.hi}→${x.c}`);
+    console.log('  🔎 AUDITORIA-FICHA ' + JSON.stringify({ ...rest, dexCount: Object.keys(collection || {}).length, histDays: days, histGames: hist && hist.games }));
+    const feed = (db.data.feed || []).filter((f) => (f.text || '').includes(name)).map((f) => f.text);
+    const trades = ((db.data.market && db.data.market.trades) || []).filter((t) => t.seller === name || t.buyer === name).map((t) => `${t.ref}x${t.qty}@${t.price}`);
+    const chat = (db.data.chat || []).filter((m) => m.user === name).length;
+    console.log('  🔎 AUDITORIA-RASTROS ' + JSON.stringify({ name, feed, trades, chat, econDays: Object.keys((db.data.econ && db.data.econ.days) || {}) }));
+  }
 }
 
 let timer = null;
