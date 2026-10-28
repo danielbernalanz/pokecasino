@@ -74,7 +74,7 @@ export async function initNews(hello) {
   if (location.hash.startsWith('#/news')) { bus.emit('news', fresh); return; } // la propia vista lo marca como visto
   const unknown = !S.newsSeen && !localSeen();
   // Cuenta creada tras la última novedad: ya parte de lo último, sin aviso.
-  if (unknown && hello.createdAt && hello.createdAt >= Date.parse(list[0].date + 'T00:00:00Z')) { await markSeen(); return; }
+  if (unknown && hello.createdAt && (hello.createdAt >= Date.parse(list[0].date + 'T00:00:00Z') || Date.now() - hello.createdAt < 3600e3)) { await markSeen(); return; }
   bus.emit('news', fresh);
   showNewsPopup(fresh);
 }

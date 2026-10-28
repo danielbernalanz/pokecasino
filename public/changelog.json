@@ -1,7 +1,20 @@
 [
   {
-    "version": "2026.10.29-a",
-    "date": "2026-10-29",
+    "version": "2026.10.28-f",
+    "date": "2026-10-28",
+    "title": "Caramelos, evolución y reciclaje",
+    "items": [
+      "🍬 Caramelos por familia: cada tirada del Gacha da 1 (3 si es nuevo) y transferir un Pokémon al Profesor Oak da polvo y caramelos (más cuanto más raro). «Transferir repetidos» lo hace de golpe y respeta favoritos, compañero y variocolores.",
+      "⬆️ Sube de nivel a tus Pokémon con caramelos (hasta Nv 100): en los duelos cuenta un poco (hasta +9,5 %).",
+      "✨ ¡Evoluciona! Desde la Caja PC, con caramelos y nivel mínimo, con animación de evolución. El ejemplar conserva naturaleza, IVs, mote y variocolor.",
+      "💪 Entrena los IVs de tus Pokémon con caramelos (10 al día por ejemplar).",
+      "🔄 Intercambio Milagroso: da un repetido y recibe uno al azar de la misma rareza (3 al día).",
+      "♻️ Tienda → Reciclaje: convierte objetos que no usas en polvo estelar."
+    ]
+  },
+  {
+    "version": "2026.10.28-e",
+    "date": "2026-10-28",
     "title": "Caja PC, Pokémon únicos y NPC con encargos",
     "items": [
       "📦 Nueva Caja PC (menú Más): cada Pokémon que tienes es único, con naturaleza, IVs, habilidad, 4 movimientos, sexo y amistad. Ponles mote, márcalos como favoritos, elige cuál es tu compañero o libera uno concreto.",
