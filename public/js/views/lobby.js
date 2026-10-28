@@ -28,6 +28,22 @@ const GAMES = [
   { id: 'market', name: 'Mercado', desc: 'Compra y vende Pokémon y objetos.', art: 52, ico: 'amulet-coin' },
 ];
 
+// Aviso a los anfitriones: hace tiempo que nadie descarga una copia (se puede cerrar hasta recargar).
+let backupDismissed = false;
+export function backupReminder() {
+  const box = h('div');
+  if (!S.me || !S.me.isAdmin || backupDismissed) return box;
+  act('admin:backups').then((r) => {
+    if (!r || (r.downloadAgo != null && r.downloadAgo < 7)) return;
+    const close = () => { backupDismissed = true; box.replaceChildren(); };
+    box.replaceChildren(h('div', { class: 'card row gap', style: { border: '2px solid #e0a100' } },
+      h('div', { class: 'grow' }, h('b', {}, '💾 Descarga una copia de seguridad'),
+        h('div', { class: 'small' }, `Última descarga: ${r.downloadAgo == null ? 'nunca' : `hace ${r.downloadAgo} días`}. La base de datos gratuita puede caducar.`)),
+      h('a', { class: 'btn small primary', href: '#/admin' }, 'Ir a Admin'), h('button', { class: 'btn small', onclick: close }, '✕')));
+  });
+  return box;
+}
+
 // Eventos activos y el siguiente, con la cuenta atrás en palabras.
 const left = (ms) => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} días`; };
 const WEEKDAY = (t) => new Date(t).toLocaleDateString('es-ES', { weekday: 'long', timeZone: 'Europe/Madrid' });
@@ -144,7 +160,7 @@ export default {
         h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio a pantalla completa, como una app.')),
         h('button', { class: 'btn primary', onclick: () => installApp() }, 'Instalar'),
         h('button', { class: 'icon-btn', 'aria-label': 'Ocultar', onclick: (e) => { try { localStorage.setItem('installHidden', '1'); } catch { /* nada */ } e.target.closest('.install-card').remove(); } }, '✕')) : '',
-      (() => { if (this.offEv) this.offEv(); const o1 = bus.on('events', () => this.remount(root)); const o2 = bus.on('mega', () => this.remount(root)); this.offEv = () => { o1(); o2(); }; return h('div', { class: 'stack' }, megaBanner(), eventsCard()); })(),
+      (() => { if (this.offEv) this.offEv(); const o1 = bus.on('events', () => this.remount(root)); const o2 = bus.on('mega', () => this.remount(root)); this.offEv = () => { o1(); o2(); }; return h('div', { class: 'stack' }, backupReminder(), megaBanner(), eventsCard()); })(),
       h('div', { class: 'cards3 progress-row' }, route, daily, badgeStrip),
       h('div', { class: 'cards3' },
         h('div', { class: 'card' },

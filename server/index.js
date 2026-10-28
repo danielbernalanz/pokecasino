@@ -85,6 +85,7 @@ app.get('/api/admin/backup', (req, res) => {
   const u = adminFromReq(req);
   if (!u) return res.status(403).json({ ok: false, error: 'Solo anfitriones.' });
   res.set('Content-Disposition', `attachment; filename="pokecasino-${new Date().toISOString().slice(0, 10)}.json"`);
+  backup.markDownload();
   res.type('application/json').send(backup.snapshot());
 });
 app.post('/api/admin/restore', express.json({ limit: '20mb' }), async (req, res) => {
@@ -343,7 +344,7 @@ const admin = {
   },
   async backups(user) {
     requireAdmin(user);
-    return { backups: await backup.list(), last: db.data.state.lastBackup || 0 };
+    return { backups: await backup.list(), last: db.data.state.lastBackup || 0, ...backup.status() };
   },
   async backupNow(user) {
     requireAdmin(user);

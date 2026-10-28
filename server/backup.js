@@ -96,6 +96,16 @@ function audit() {
   }
 }
 
+// Caducidad de la base de datos gratuita (DB_EXPIRES, fecha ISO opcional) y última descarga manual.
+const DAY = 864e5;
+const daysUntil = (iso, now = Date.now()) => { const t = Date.parse(iso || ''); return Number.isFinite(t) ? Math.ceil((t - now) / DAY) : null; };
+function status(now = Date.now()) {
+  const expires = process.env.DB_EXPIRES || null;
+  const last = (db.data.state && db.data.state.lastDownload) || 0;
+  return { expires, daysLeft: daysUntil(expires, now), lastDownload: last, downloadAgo: last ? Math.floor((now - last) / DAY) : null };
+}
+function markDownload(now = Date.now()) { db.data.state.lastDownload = now; db.save(); }
+
 let timer = null;
 function start() {
   // Correcciones de datos pendientes (con copia previa) y después la auditoría.
@@ -111,4 +121,4 @@ function start() {
   timer.unref();
 }
 
-module.exports = { start, backupNow, list, snapshot, audit };
+module.exports = { start, backupNow, list, snapshot, audit, daysUntil, status, markDownload };

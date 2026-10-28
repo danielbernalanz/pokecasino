@@ -55,10 +55,19 @@ export default {
     // Copias de seguridad: automáticas cada día; aquí se hace una al momento, se descarga o se restaura.
     function backupBox() {
       const list = h('div', { class: 'small muted' }, 'Cargando copias…');
+      const warn = h('div', { class: 'stack' });
+      const ago = (d) => (d == null ? 'nunca' : d <= 0 ? 'hoy' : d === 1 ? 'hace 1 día' : `hace ${d} días`);
+      const paintWarn = (r) => {
+        const soon = r.daysLeft != null && r.daysLeft < 21;
+        const dl = h('div', { class: 'small' + (r.downloadAgo == null || r.downloadAgo >= 7 ? ' warn' : ' muted') }, `Última descarga: ${ago(r.downloadAgo)}`);
+        warn.replaceChildren(...(soon ? [h('div', { class: 'card', style: { border: '2px solid #e0a100', background: 'rgba(224,161,0,.15)' } },
+          h('b', {}, `⚠️ La base de datos de Render caduca el ${new Date(r.expires).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} (quedan ${Math.max(0, r.daysLeft)} días). Descarga una copia y sigue la guía de migración.`),
+          h('div', { class: 'small muted' }, 'Guía: docs/MIGRAR-BASE-DE-DATOS.md')) ] : []), ...(r.expires || r.lastDownload ? [dl] : []));
+      };
       const paint = (r) => list.replaceChildren(...(r.backups.length ? r.backups.slice(0, 6).map((b) => h('div', { class: 'row between small' },
         h('span', {}, new Date(b.at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })),
         h('span', { class: 'muted' }, `${b.note} · ${Math.round(b.size / 1024)} KB`))) : [h('span', {}, 'Aún no hay copias.')]));
-      act('admin:backups').then((r) => r && paint(r));
+      act('admin:backups').then((r) => { if (r) { paint(r); paintWarn(r); } });
       const file = h('input', { type: 'file', accept: 'application/json,.json', class: 'hidden', onchange: async () => {
         const f = file.files[0];
         if (!f) return;
@@ -73,6 +82,7 @@ export default {
         else toast(res.error || 'No se pudo restaurar.', 'error');
       } });
       return h('div', { class: 'card stack' }, h('h3', {}, '💾 Copias de seguridad'),
+        warn,
         h('p', { class: 'muted small' }, 'Se hace una copia automática al día (se guardan 14). Descarga una de vez en cuando: la base de datos gratuita de Render caduca y con el archivo se puede restaurar todo en otra.'),
         list,
         h('div', { class: 'row gap wrap' },
@@ -84,6 +94,7 @@ export default {
             const a = h('a', { href: url, download: `pokecasino-${new Date().toISOString().slice(0, 10)}.json` });
             document.body.append(a); a.click(); a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 5000);
+            act('admin:backups').then((r) => r && paintWarn(r));
           } }, '⬇️ Descargar copia'),
           h('button', { class: 'btn danger', onclick: () => file.click() }, '♻️ Restaurar…'), file));
     }
