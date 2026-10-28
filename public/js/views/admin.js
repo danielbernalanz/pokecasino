@@ -28,7 +28,7 @@ export default {
             h('button', { class: 'btn primary', onclick: async (e) => { const x = await act('admin:invite', {}, e.target); if (x) { toast('Invitación: ' + x.code, 'success', 8000); load(); } } }, 'Generar invitación'),
             h('div', { class: 'invites' }, r.invites.slice(-12).reverse().map((i) => h('div', { class: 'row between small' }, h('code', {}, i.code), h('span', { class: i.usedBy ? 'muted' : 'good' }, i.usedBy ? 'usada por ' + i.usedBy : 'libre'))))),
           h('div', { class: 'card stack' }, h('h3', {}, '💥 Bote actual'), h('b', { class: 'big-num' }, fmt(r.jackpot))),
-          eventBox(), megaBox()),
+          eventBox(), megaBox(), backupBox()),
         h('div', { class: 'table-wrap' }, h('table', { class: 'admin-table' },
           h('thead', {}, h('tr', {}, ['Entrenador', 'Monedas', '✦', 'Nv', 'Dex', 'Estado', 'Acciones'].map((t) => h('th', {}, t)))),
           h('tbody', {}, r.users.map((u) => h('tr', { class: u.banned ? 'banned' : '' },
@@ -52,6 +52,42 @@ export default {
               } }, u.isAdmin ? 'Quitar 👑' : 'Hacer 👑') : null))))))));
     }
     // Lanzar un evento durante unas horas (además del calendario semanal).
+    // Copias de seguridad: automáticas cada día; aquí se hace una al momento, se descarga o se restaura.
+    function backupBox() {
+      const list = h('div', { class: 'small muted' }, 'Cargando copias…');
+      const paint = (r) => list.replaceChildren(...(r.backups.length ? r.backups.slice(0, 6).map((b) => h('div', { class: 'row between small' },
+        h('span', {}, new Date(b.at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })),
+        h('span', { class: 'muted' }, `${b.note} · ${Math.round(b.size / 1024)} KB`))) : [h('span', {}, 'Aún no hay copias.')]));
+      act('admin:backups').then((r) => r && paint(r));
+      const file = h('input', { type: 'file', accept: 'application/json,.json', class: 'hidden', onchange: async () => {
+        const f = file.files[0];
+        if (!f) return;
+        let parsed;
+        try { parsed = JSON.parse(await f.text()); } catch { return toast('Ese archivo no es una copia válida.', 'error'); }
+        const data = parsed.data || parsed;
+        const n = data.users ? Object.keys(data.users).length : 0;
+        if (!n) return toast('Ese archivo no es una copia de PokéCasino.', 'error');
+        if (!confirm(`¿Restaurar la copia${parsed.createdAt ? ' del ' + new Date(parsed.createdAt).toLocaleString('es-ES') : ''} (${n} cuentas)? Todo lo que haya ahora se sustituirá (antes se guarda una copia automática) y el casino se reiniciará.`)) return;
+        const res = await fetch('/api/admin/restore', { method: 'POST', headers: { 'content-type': 'application/json', 'x-token': S.token }, body: JSON.stringify({ data }) }).then((x) => x.json()).catch(() => ({ ok: false, error: 'No se pudo enviar.' }));
+        if (res.ok) toast('Copia restaurada. El casino se está reiniciando…', 'success', 8000);
+        else toast(res.error || 'No se pudo restaurar.', 'error');
+      } });
+      return h('div', { class: 'card stack' }, h('h3', {}, '💾 Copias de seguridad'),
+        h('p', { class: 'muted small' }, 'Se hace una copia automática al día (se guardan 14). Descarga una de vez en cuando: la base de datos gratuita de Render caduca y con el archivo se puede restaurar todo en otra.'),
+        list,
+        h('div', { class: 'row gap wrap' },
+          h('button', { class: 'btn', onclick: async (e) => { const r = await act('admin:backupNow', {}, e.target); if (r) { paint(r); toast('Copia guardada', 'success'); } } }, 'Hacer copia ahora'),
+          h('button', { class: 'btn primary', onclick: async () => {
+            const res = await fetch('/api/admin/backup', { headers: { 'x-token': S.token } });
+            if (!res.ok) return toast('No se pudo descargar.', 'error');
+            const url = URL.createObjectURL(await res.blob());
+            const a = h('a', { href: url, download: `pokecasino-${new Date().toISOString().slice(0, 10)}.json` });
+            document.body.append(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+          } }, '⬇️ Descargar copia'),
+          h('button', { class: 'btn danger', onclick: () => file.click() }, '♻️ Restaurar…'), file));
+    }
+
     function eventBox() {
       const ev = S.events || { all: [], active: [] };
       const sel = h('select', {}, ev.all.map((e) => h('option', { value: e.id }, `${e.icon} ${e.name}`)));

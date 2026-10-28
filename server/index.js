@@ -76,6 +76,29 @@ app.use((req, res, next) => {
   next();
 });
 app.use(compression());
+// Restaurar una copia de seguridad (solo anfitriones). Va antes del límite de 10 kB del resto de la API.
+const backup = require('./backup');
+const adminFromReq = (req) => { const u = auth.userFromToken(req.get('x-token')); return u && u.isAdmin && !u.banned ? u : null; };
+app.get('/api/admin/backup', (req, res) => {
+  const u = adminFromReq(req);
+  if (!u) return res.status(403).json({ ok: false, error: 'Solo anfitriones.' });
+  res.set('Content-Disposition', `attachment; filename="pokecasino-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.type('application/json').send(backup.snapshot());
+});
+app.post('/api/admin/restore', express.json({ limit: '20mb' }), async (req, res) => {
+  const u = adminFromReq(req);
+  if (!u) return res.status(403).json({ ok: false, error: 'Solo anfitriones.' });
+  const raw = req.body && req.body.data;
+  if (!raw || typeof raw !== 'object' || !raw.users || typeof raw.users !== 'object') return res.status(400).json({ ok: false, error: 'El archivo no es una copia de PokéCasino.' });
+  try {
+    await backup.backupNow('antes de restaurar');
+    await db.replaceAll(raw);
+    console.log(`  ♻️  Copia restaurada por ${u.username} (${Object.keys(raw.users).length} cuentas). Reiniciando…`);
+    res.json({ ok: true });
+    // Se reinicia para que todo (mesas, mercado, sesiones) arranque limpio con los datos restaurados.
+    setTimeout(async () => { await db.release().catch(() => {}); process.exit(0); }, 800);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.use(express.json({ limit: '10kb' }));
 // El service worker nunca se guarda en caché: así cada despliegue llega a los móviles.
 app.get('/sw.js', (req, res, next) => { res.set('Cache-Control', 'no-cache'); next(); });
@@ -267,6 +290,8 @@ function privateMessage(user, toName, text) {
 const myDms = (user) => (db.data.dms || []).filter((m) => m.user === user.username || m.to === user.username).slice(-30);
 
 // ---- Administración ----
+const ADMIN_GRANT_MAX = 10000;
+const ADMIN_GRANT_DAY = 50000;
 function requireAdmin(user) { if (!user.isAdmin) throw new Error('Solo administradores.'); }
 // Registro de lo que hacen los anfitriones (últimas 200 acciones).
 function adminLog(user, action, target, detail) {
@@ -311,6 +336,16 @@ const admin = {
       jackpot: db.data.state.jackpot,
     };
   },
+  async backups(user) {
+    requireAdmin(user);
+    return { backups: await backup.list(), last: db.data.state.lastBackup || 0 };
+  },
+  async backupNow(user) {
+    requireAdmin(user);
+    await backup.backupNow(`manual (${user.username})`);
+    adminLog(user, 'backup', null, 'copia manual');
+    return { backups: await backup.list() };
+  },
   invite(user) {
     requireAdmin(user);
     const code = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -324,6 +359,17 @@ const admin = {
     const t = db.userByName(username);
     delta = Number(delta);
     if (!t || !Number.isInteger(delta) || Math.abs(delta) > 1e9) throw new Error('Datos no válidos (máximo ±1.000.000.000).');
+    // Topes contra abusos: como mucho +10.000 por ajuste y +50.000 al día por anfitrión (quitar no tiene tope).
+    if (delta > ADMIN_GRANT_MAX) throw new Error(`Como mucho ${ADMIN_GRANT_MAX.toLocaleString('es')} monedas por ajuste.`);
+    if (delta > 0) {
+      const day = new Date().toISOString().slice(0, 10);
+      const rec = ((db.data.adminDaily ||= {})[user.id] ||= { day, given: 0 });
+      if (rec.day !== day) { rec.day = day; rec.given = 0; }
+      if (rec.given + delta > ADMIN_GRANT_DAY) throw new Error(`Límite diario de anfitrión: te quedan ${(ADMIN_GRANT_DAY - rec.given).toLocaleString('es')} monedas por dar hoy.`);
+      rec.given += delta;
+      // Darse monedas a uno mismo se anuncia a todos.
+      if (t.id === user.id) hub.feed('admin', `🛠️ ${user.username} (anfitrión) se ha dado ${delta.toLocaleString('es')} monedas`);
+    }
     const before = t.coins;
     t.coins = Math.min(1e12, Math.max(0, t.coins + delta));
     hub.ledger(t, t.coins - before, 'admin', user.username);
@@ -433,13 +479,17 @@ io.on('connection', (socket) => {
       if (!ready) return ack({ ok: false, error: BUSY });
       const user = db.userById(uid);
       if (!user || user.banned) return ack({ ok: false, error: 'Sesión no válida.' });
-      try {
-        const res = fn(user, payload && typeof payload === 'object' ? payload : {}) || {};
-        ack({ ok: true, ...res, me: hub.privateUser(user) });
+      const done = (res) => {
+        ack({ ok: true, ...(res || {}), me: hub.privateUser(user) });
         if (push) socket.to('u:' + uid).emit('me', hub.privateUser(user));
-      } catch (e) {
-        ack({ ok: false, error: e.message || 'Error' });
-      }
+      };
+      const fail = (e) => ack({ ok: false, error: (e && e.message) || 'Error' });
+      try {
+        const res = fn(user, payload && typeof payload === 'object' ? payload : {});
+        // Las acciones asíncronas (copias de seguridad) devuelven una promesa.
+        if (res && typeof res.then === 'function') res.then(done, fail);
+        else done(res);
+      } catch (e) { fail(e); }
     });
   }
 

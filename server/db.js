@@ -182,4 +182,10 @@ function addUser(u) {
 const userByName = (name) => byName.get(String(name || '').toLowerCase());
 const userById = (id) => data.users[id];
 
-module.exports = { getPool: () => pool, escrowSet, escrowDel, refundEscrow, data, save, flush, flushAll, init, release, isReadOnly, addUser, userByName, userById };
+// Sustituye todos los datos (restaurar una copia) y los guarda.
+async function replaceAll(raw) {
+  load(raw);
+  await flushAll();
+}
+
+module.exports = { replaceAll, getPool: () => pool, escrowSet, escrowDel, refundEscrow, data, save, flush, flushAll, init, release, isReadOnly, addUser, userByName, userById };
