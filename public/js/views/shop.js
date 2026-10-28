@@ -2,6 +2,8 @@ import { S, h, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, item
 import { openDetail } from './pokedex.js';
 import { pickPokemon } from '../picker.js';
 import { openItem } from './market.js';
+import { openEgg, useFx } from '../rewards.js';
+import { burstAt, coinRain, centerOf } from '../fx.js';
 
 let tab = 'items';
 
@@ -54,6 +56,8 @@ export default {
             ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
             : cos ? h('button', { class: 'btn' + (equipped ? ' active' : ''), disabled: equipped, onclick: async (e) => { if (await act('item:use', { itemId: id }, e.target)) { sfx('click'); toast(`${it.name} equipado`, 'success'); } } }, equipped ? 'Equipado' : 'Equipar')
             : h('button', { class: 'btn primary', onclick: async (e) => {
+              if (id === 'mystery-egg') return openEgg(e.target);
+              const at = centerOf(e.target);
               let payload = { itemId: id };
               if (id === 'rare-candy') {
                 const p = await pickPokemon({ title: '¿A quién le das el Caramelo Raro?' });
@@ -61,8 +65,7 @@ export default {
                 payload.pokeId = p.id;
               }
               const r = await act('item:use', payload, e.target);
-              if (r && r.got) { const c = S.data.cosmetics[r.got]; sfx('big'); toast(`🥚 ¡${c.name}! Equípalo en «Mi Entrenador» o véndelo en el Mercado.`, 'success', 6000); }
-              else if (r) { sfx('shiny'); toast(`Usaste ${it.name}`, 'success'); }
+              if (r) { useFx(id, at); toast(`Usaste ${it.name}`, 'success'); }
             } }, id === 'mystery-egg' ? 'Abrir' : 'Usar');
           return h('div', { class: 'shop-item item-card' }, itemImg(id, 'big'), h('div', { class: 'grow' }, h('b', {}, `${it.name} ×${n}`), h('div', { class: 'small muted' }, it.desc)),
             h('div', { class: 'stack' }, useBtn, h('button', { class: 'btn small', onclick: () => openItem({ kind: 'item', itemId: id }, 'sell') }, 'Vender')));
@@ -80,8 +83,9 @@ export default {
           h('img', { class: 'pixel' + (c ? '' : ' silhouette'), src: sprite(p.id), alt: '', loading: 'lazy', onclick: () => openDetail(p.id) }),
           h('div', { class: 'grow' }, h('b', {}, c ? p.name : '???'), h('div', { class: 'small muted' }, rarityName(p.rarity) + (c ? ` · ${'★'.repeat(Math.min(5, c.n))}` : ''))),
           h('button', { class: 'btn', disabled: S.me.dust < cost || (c && c.n >= 5), onclick: async (e) => {
+            const at = centerOf(e.target);
             const r = await act('shop:craft', { id: p.id }, e.target);
-            if (r) { sfx('win'); toast(`¡Fabricaste ${r.name}!`, 'success'); }
+            if (r) { sfx('win'); sfx('shiny'); burstAt(...at, '#a5b4fc', 26, { spread: 170, stars: 0.8 }); toast(`¡Fabricaste ${r.name}!`, 'success'); }
           } }, `${fmt(cost)} ✦`));
       }));
       return h('div', { class: 'stack' },
@@ -95,8 +99,9 @@ export default {
         h('div', { class: 'card stack' }, h('h3', {}, '💱 Polvo estelar → monedas'),
           h('p', { class: 'muted small' }, `1 ✦ = ${S.data.dustRate} monedas. Tienes ${fmt(S.me.dust)} ✦.`),
           h('div', { class: 'row gap' }, amount, h('button', { class: 'btn primary', onclick: async (e) => {
+            const at = centerOf(e.target);
             const r = await act('shop:exchange', { amount: Number(amount.value) }, e.target);
-            if (r) { sfx('win'); toast(`+${fmt(r.coins)} monedas`, 'success'); }
+            if (r) { sfx('win'); coinRain(r.coins, { from: at }); toast(`+${fmt(r.coins)} monedas`, 'success'); }
           } }, 'Cambiar'))),
         h('div', { class: 'card' }, h('h3', {}, '✦ ¿Cómo consigo polvo?'),
           h('p', { class: 'small' }, 'Los duplicados más allá de la 5ª copia y los variocolor repetidos se convierten en polvo estelar. También puedes liberar copias desde la Pokédex o comprarlo en el Mercado.')));

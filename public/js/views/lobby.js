@@ -1,5 +1,6 @@
 import { S, h, fmt, act, sfx, toast, art, item, pokeImg, badgeImg, bus } from '../core.js';
 import { canInstall, installApp } from '../main.js';
+import { dailyChest } from '../rewards.js';
 
 function rewardText(r) {
   const parts = [];
@@ -55,7 +56,11 @@ export default {
 
     const dailyBtn = h('button', { class: 'btn primary', disabled: dailyDone, onclick: async (e) => {
       const r = await act('daily:claim', {}, e.target);
-      if (r) { sfx('win'); toast(`+${fmt(r.reward)} monedas y 1 Ticket Gacha · racha de ${r.streak} días${r.charm ? ' · ¡+1 Amuleto Iris!' : ''}`, 'success', 6000); this.remount(root); }
+      if (r) {
+        toast(`+${fmt(r.reward)} monedas y 1 Ticket Gacha · racha de ${r.streak} días${r.charm ? ' · ¡+1 Amuleto Iris!' : ''}`, 'success', 6000);
+        await dailyChest({ reward: r.reward, streak: r.streak, charm: !!r.charm });
+        this.remount(root);
+      }
     } }, dailyDone ? 'Reclamado hoy ✓' : `Reclamar ${fmt(nextReward)}`);
 
     // Motivo por el que Joy no puede ayudar ahora, con los datos que ya tiene el cliente (el servidor decide al final).

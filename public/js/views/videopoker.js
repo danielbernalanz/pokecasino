@@ -1,4 +1,5 @@
 import { S, h, fmt, emit, sfx, toast, betInput, playingCard } from '../core.js';
+import { winFx, burstEl, floatText, flash, vibrate } from '../fx.js';
 
 export default {
   id: 'videopoker', title: 'Video Póker', icon: '🂡',
@@ -7,6 +8,7 @@ export default {
     let hand = null;
     let holds = [false, false, false, false, false];
     let phase = 'idle';
+    let stake = 0;
     const cardsBox = h('div', { class: 'vp-cards' });
     const msg = h('div', { class: 'table-msg' }, 'Reparte, guarda las cartas que quieras y cambia el resto.');
     const rows = S.data.vpPaytable.map(([name, mult]) => h('tr', { 'data-name': name }, h('td', {}, name), h('td', {}, '×' + mult)));
@@ -22,7 +24,7 @@ export default {
     async function deal() {
       try {
         const r = await emit('vp:deal', { bet: bet.value });
-        hand = r.hand; holds = [false, false, false, false, false]; phase = 'hold';
+        hand = r.hand; holds = [false, false, false, false, false]; phase = 'hold'; stake = bet.value;
         mainBtn.textContent = 'CAMBIAR';
         msg.textContent = r.hint ? `Ya tienes: ${r.hint}` : 'Elige qué cartas guardar.';
         sfx('flip'); render(r.hint);
@@ -36,6 +38,13 @@ export default {
         sfx(r.mult >= 25 ? 'big' : r.paid ? 'win' : 'lose');
         holds = [false, false, false, false, false];
         render(r.result);
+        if (r.paid) {
+          // Cada carta de la jugada ganadora destella; los premios altos escalan con el multiplicador.
+          [...cardsBox.children].forEach((c, k) => setTimeout(() => burstEl(c, '#ffd54f', 6, { spread: 80, stars: 0.7 }), k * 70));
+          floatText(r.result, cardsBox, { size: 26 });
+          if (r.mult >= 25) { flash('#ffe08a', 450); vibrate([40, 30, 80]); }
+          winFx(r.paid, stake, { el: cardsBox, title: r.mult >= 250 ? '¡ESCALERA REAL!' : '¡GRAN PREMIO!', icon: '🂡' });
+        }
       } catch (e) { toast(e.message, 'error'); }
     }
     root.append(

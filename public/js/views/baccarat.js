@@ -1,4 +1,5 @@
 import { S, h, fmt, emit, sfx, toast, playingCard, sleep, sprite } from '../core.js';
+import { winFx, burstEl, vibrate } from '../fx.js';
 
 const LABEL = { player: 'Punto', banker: 'Banca', tie: 'Empate' };
 
@@ -21,16 +22,22 @@ export default {
     async function play() {
       if (!bets.player && !bets.banker && !bets.tie) return toast('Coloca fichas primero.', 'error');
       playBtn.disabled = true;
+      const stake = bets.player + bets.banker + bets.tie;
       try {
         const r = await emit('baccarat:play', { bets });
         pBox.replaceChildren(); bBox.replaceChildren(); pScore.textContent = '–'; bScore.textContent = '–';
         const order = [[pBox, r.player[0]], [bBox, r.banker[0]], [pBox, r.player[1]], [bBox, r.banker[1]]];
         if (r.player[2]) order.push([pBox, r.player[2]]);
         if (r.banker[2]) order.push([bBox, r.banker[2]]);
-        for (const [box, c] of order) { box.append(playingCard(c, { cls: 'deal' })); sfx('flip'); await sleep(380); }
+        for (const [k, [box, c]] of order.entries()) {
+          // Suspense: la última carta se hace esperar.
+          if (k === order.length - 1) { sfx('charge', 0); vibrate(25); await sleep(450); }
+          box.append(playingCard(c, { cls: 'deal' })); sfx('flip'); await sleep(380);
+        }
         pScore.textContent = r.ps; bScore.textContent = r.bs;
         msg.replaceChildren(h('b', {}, `Gana ${LABEL[r.winner]} (${r.ps} – ${r.bs}) `), r.paid ? h('b', { class: 'good' }, `+${fmt(r.paid)}`) : h('span', { class: 'muted' }, 'sin premio'));
         sfx(r.paid ? 'win' : 'lose');
+        if (r.paid) { burstEl(r.winner === 'banker' ? bBox : pBox, '#ffd54f', 20, { spread: 150 }); winFx(r.paid, stake, { el: msg, icon: '🎴' }); }
       } catch (e) { toast(e.message, 'error'); }
       playBtn.disabled = false;
     }

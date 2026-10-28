@@ -1,4 +1,5 @@
-import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify } from './core.js';
+import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg } from './core.js';
+import { celebrate, coinRain, burstAt, vibrate } from './fx.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
 import lobby from './views/lobby.js';
 import slots from './views/slots.js';
@@ -61,6 +62,33 @@ function logout() {
   try { localStorage.removeItem('token'); } catch { /* nada */ }
   location.hash = '';
   location.reload();
+}
+
+// Celebración de los avisos del servidor: nivel y medalla a pantalla completa; misiones y regalos con monedas al contador.
+const coinsIn = (text) => { const m = /([\d.]+)\s+monedas/.exec(text); return m ? Number(m[1].replace(/\./g, '')) || 0 : 0; };
+function toastFx(t) {
+  const text = t.text || '';
+  if (t.kind === 'level') {
+    const n = (/nivel (\d+)/.exec(text) || [])[1];
+    celebrate('level', { title: n ? `¡NIVEL ${n}!` : '¡SUBISTE DE NIVEL!', subtitle: text.replace(/^¡Subiste a nivel \d+!\s*/, ''), icon: '⭐' });
+    return true;
+  }
+  if (t.kind === 'quest') {
+    const badge = (S.me?.progress?.badges || []).find((b) => text.includes(b.name));
+    if (badge) {
+      celebrate('medal', { title: badge.name.toUpperCase(), subtitle: text.replace(/^🎯 [^:]*:\s*/, ''), icon: badgeImg(badge.n, true, 'fx-badge') });
+      return true;
+    }
+    if (text.includes('Campeón de la Liga')) { celebrate('jackpot', { title: '¡CAMPEÓN DE LA LIGA!', subtitle: text.replace(/^🎯 [^:]*:\s*/, ''), icon: '👑' }); return true; }
+    if (text.includes('Colección')) { celebrate('level', { title: '¡COLECCIÓN COMPLETA!', subtitle: text.replace(/^🎯 /, ''), icon: '📚' }); return true; }
+    // Misión o paso de la Ruta completado.
+    sfx('win'); vibrate(40);
+    burstAt(window.innerWidth / 2, window.innerHeight * 0.35, '#4ade80', 26, { spread: 190, stars: 0.6 });
+    coinRain(coinsIn(text), { from: [window.innerWidth / 2, window.innerHeight * 0.35] });
+    return true;
+  }
+  if ((t.kind === 'gift' || t.kind === 'market') && coinsIn(text) && !/Compraste/.test(text)) { sfx('win'); coinRain(coinsIn(text), { from: [window.innerWidth / 2, window.innerHeight * 0.4] }); return true; }
+  return false;
 }
 
 // ---------- Cabecera ----------
@@ -236,7 +264,7 @@ function connect() {
       toast(`⚔️ ${r.players[1]} aceptó tu reto: ${won ? '¡ganaste!' : 'perdiste.'} Míralo en Duelos.`, won ? 'success' : 'info', 6000);
     }
   });
-  socket.on('toast', (t) => { toast(t.text, 'success', 5000); sfx('win'); notify(t.text, { vibrate: t.kind !== 'level' }); });
+  socket.on('toast', (t) => { toast(t.text, 'success', 5000); if (!toastFx(t)) sfx('win'); notify(t.text, { vibrate: t.kind !== 'level' }); });
   socket.on('notify', (n) => {
     // Turno en el póker: solo avisa si no estás ya mirando esa mesa.
     if (n.kind === 'turn' && !document.hidden && location.hash.startsWith('#/' + n.link)) return;

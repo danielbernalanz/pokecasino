@@ -1,4 +1,5 @@
 import { S, h, fmt, emit, sfx, toast, betInput, playingCard, sprite } from '../core.js';
+import { winFx, burstEl, flash, floatText, vibrate } from '../fx.js';
 
 const RESULT = { blackjack: '¡Blackjack!', win: 'Ganas', push: 'Empate', lose: 'Pierdes', bust: 'Te pasaste' };
 
@@ -27,7 +28,13 @@ export default {
       setButtons(g);
       if (g.done) {
         msg.replaceChildren(g.paid ? h('b', { class: 'good' }, `+${fmt(g.paid)} monedas`) : h('span', { class: 'muted' }, 'La casa gana esta vez.'));
-        sfx(g.paid ? (g.hands.some((x) => x.result === 'blackjack') ? 'big' : 'win') : 'lose');
+        const bj = g.hands.some((x) => x.result === 'blackjack');
+        sfx(g.paid ? (bj ? 'big' : 'win') : 'lose');
+        if (animate && g.paid) {
+          const stake = g.hands.reduce((a, x) => a + x.bet, 0);
+          if (bj) { flash('#ffe08a', 450); floatText('¡BLACKJACK!', handsBox, { size: 30 }); burstEl(handsBox, '#ffd54f', 36, { spread: 240, stars: 0.6 }); vibrate([40, 30, 80]); }
+          winFx(g.paid, stake, { el: handsBox, icon: '🃏' });
+        }
       } else msg.textContent = '¿Pides carta o te plantas?';
     }
     function setButtons(g) {

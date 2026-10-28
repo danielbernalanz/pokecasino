@@ -1,4 +1,5 @@
 import { S, h, fmt, act, sfx, bus, betInput, sprite } from '../core.js';
+import { winFx, burstEl, flash, shake, pop, vibrate } from '../fx.js';
 
 export default {
   id: 'crash', title: 'Crash Rocket', icon: '🚀',
@@ -17,6 +18,7 @@ export default {
     let st = null;
     let offset = 0;
     let raf = null;
+    let milestone = 1;
 
     const mult = (ms) => Math.floor(Math.exp(G * (ms / 1000)) * 100) / 100;
     const mine = () => st && st.players.find((p) => p.username === S.me.username);
@@ -78,7 +80,10 @@ export default {
         const m = mult(ms);
         drawGraph(ms, m, false);
         big.textContent = '×' + m.toFixed(2);
-        big.className = 'crash-mult fly';
+        big.className = 'crash-mult fly' + (m >= 10 ? ' x10' : m >= 5 ? ' x5' : m >= 2 ? ' x2' : '');
+        // Al cruzar ×2, ×5, ×10… el número rebota y suena una subida de tensión.
+        const ms2 = m >= 10 ? 10 : m >= 5 ? 5 : m >= 2 ? 2 : 1;
+        if (ms2 > milestone) { milestone = ms2; pop(big, 1.3); sfx('upgrade', ms2 >= 10 ? 2 : 0); if (mine() && !mine().cashedAt) vibrate(ms2 >= 10 ? [30, 30, 30] : 20); }
         const b = mine();
         if (b && !b.cashedAt) mainBtn.textContent = `RETIRAR ${fmt(b.amount * m)}`;
       } else {
@@ -96,7 +101,13 @@ export default {
       st = s;
       offset = s.now - Date.now();
       rocket.classList.toggle('gone', s.phase === 'crashed');
-      if (s.phase === 'crashed' && prevPhase === 'flying') sfx(mine() && !mine().cashedAt ? 'boom' : 'flip');
+      if (s.phase === 'betting') milestone = 1;
+      if (s.phase === 'crashed' && prevPhase === 'flying') {
+        const lost = mine() && !mine().cashedAt;
+        sfx(lost ? 'boom' : 'flip');
+        burstEl(rocket, lost ? '#ff4d6d' : '#ffffff88', lost ? 26 : 10, { spread: lost ? 180 : 100, stars: 0.1 });
+        if (lost) { flash('#ff4d6d', 350); shake(canvas.parentElement, 400); vibrate([60, 40, 120]); }
+      }
       status.textContent = s.phase === 'betting' ? 'Apuestas abiertas: ¡prepárate para el despegue!' : s.phase === 'flying' ? '¡Despegando!' : '¡El Team Rocket sale volando otra vez! 💥';
       const b = mine();
       if (s.phase === 'betting') { mainBtn.disabled = !!b; mainBtn.textContent = b ? 'APOSTADO ✓' : 'APOSTAR'; }
@@ -116,7 +127,7 @@ export default {
           h('div', { class: 'card stack' }, bet.el, h('label', {}, 'Retiro automático (opcional)', auto), mainBtn,
             h('p', { class: 'muted small' }, 'Todos juegan la misma ronda. Retírate antes de que Meowth salga volando. Devuelve de media el 97 % en cualquier punto.')),
           h('div', { class: 'card' }, h('h3', {}, 'Entrenadores en esta ronda'), players))));
-    this.offs = [bus.on('crash', onState), bus.on('crash:result', (r) => { if (r.paid) sfx('win'); })];
+    this.offs = [bus.on('crash', onState), bus.on('crash:result', (r) => { if (r.paid) { sfx('win'); winFx(r.paid, r.at ? r.paid / r.at : 0, { el: big, icon: '🚀' }); } })];
     if (S.crash) onState(S.crash);
     this.stop = () => cancelAnimationFrame(raf);
   },

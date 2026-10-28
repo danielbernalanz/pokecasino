@@ -177,6 +177,14 @@ export function sfx(name, n = 0) {
     else if (name === 'flip') tone(1200, 0.04, 'triangle', 0.04);
     else if (name === 'shiny') [1568, 2093, 2637, 3136].forEach((f, i) => tone(f, 0.12, 'sine', 0.05, i * 0.07));
     else if (name === 'chat') tone(990, 0.06, 'sine', 0.03);
+    // Efectos de celebración (fx.js)
+    else if (name === 'coin') { tone(1318 + n * 60, 0.05, 'square', 0.025); tone(1760 + n * 60, 0.09, 'square', 0.025, 0.05); }
+    else if (name === 'crack') { noise(0.12, 0.08); tone(220 + n * 70, 0.06, 'square', 0.04); }
+    else if (name === 'rumble') sweep(70, 140 + n * 40, 0.5, 'sawtooth', 0.04);
+    else if (name === 'whoosh') sweep(220, 1200, 0.25, 'triangle', 0.025);
+    else if (name === 'levelup') [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.16, 'triangle', 0.055, i * 0.07));
+    else if (name === 'jackpot') { [523, 659, 784, 1046, 1318, 1568, 2093].forEach((f, i) => { tone(f, 0.22, 'square', 0.05, i * 0.08); tone(f / 2, 0.22, 'triangle', 0.05, i * 0.08); }); [2093, 1568, 2093, 2637].forEach((f, i) => tone(f, 0.12, 'sine', 0.045, 0.7 + i * 0.1)); }
+    else if (name === 'sparkle') [2093, 2637, 3136].forEach((f, i) => tone(f, 0.08, 'sine', 0.035, i * 0.05));
   } catch { /* audio no disponible */ }
 }
 

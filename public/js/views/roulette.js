@@ -1,4 +1,5 @@
 import { S, h, fmt, emit, sfx, toast, item, TYPE_ES, sleep } from '../core.js';
+import { winFx, burstEl, glow, pop, vibrate, reduced } from '../fx.js';
 
 const COLORS = {
   pokeball: '#e3350d', normal: '#a8a77a', fire: '#ee8130', water: '#6390f0', electric: '#f7d02c', grass: '#7ac74c', ice: '#96d9d6',
@@ -22,6 +23,7 @@ export default {
     const disc = h('div', { class: 'wheel-disc', style: { background: `conic-gradient(${grad})` } },
       wheel.map((t, i) => h('div', { class: 'wheel-label', style: { transform: `rotate(${i * seg + seg / 2}deg)` } },
         t === 'pokeball' ? h('img', { class: 'pixel', src: item('poke-ball'), alt: '' }) : h('span', {}, TYPE_ES[t].slice(0, 3).toUpperCase()))));
+    const orbit = h('div', { class: 'rball-orbit' }, h('i', { class: 'rball' }));
     const resultEl = h('div', { class: 'wheel-result' }, 'Haz tus apuestas');
     const total = h('b', {}, '0');
 
@@ -62,6 +64,7 @@ export default {
       if (spinning) return;
       const list = [...bets].map(([k, amount]) => { const [kind, value] = k.split(':'); return { kind, value, amount }; });
       if (!list.length) return toast('Coloca alguna ficha en el tapete.', 'error');
+      const stake = list.reduce((a, b) => a + b.amount, 0);
       spinning = true; spinBtn.disabled = true;
       let res;
       try { res = await emit('roulette:spin', { bets: list }); } catch (e) { toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; return; }
@@ -69,6 +72,9 @@ export default {
       const target = 360 - (res.slot * seg + seg / 2);
       rotation += 360 * 5 + ((target - (rotation % 360)) + 360) % 360;
       disc.style.transform = `rotate(${rotation}deg)`;
+      // La bola corre en sentido contrario por el borde y frena junto con la ruleta hasta quedar bajo el puntero.
+      orbit.classList.add('on');
+      if (!reduced()) orbit.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-1800deg)' }], { duration: 4200, easing: 'cubic-bezier(.12,.7,.1,1)' });
       resultEl.textContent = '…';
       for (let i = 0; i < 12; i++) { sfx('tick'); await sleep(120 + i * 25); }
       await sleep(Math.max(0, 4200 - 12 * 120 - 66 * 25));
@@ -76,13 +82,16 @@ export default {
       resultEl.replaceChildren(h('span', { class: 'type t-' + t }, `${res.slot} · ${TYPE_ES[t]}`),
         res.paid ? h('b', { class: 'good' }, ` +${fmt(res.paid)}`) : h('span', { class: 'muted' }, ' sin premio'));
       sfx(res.paid ? 'win' : 'lose');
+      pop(orbit.firstChild, 1.8);
+      glow(disc.parentElement, COLORS[t], 900);
+      if (res.paid) { burstEl(orbit.firstChild, COLORS[t], 22, { spread: 130 }); vibrate(30); winFx(res.paid, stake, { el: disc.parentElement, icon: '🎡' }); }
       spinning = false; spinBtn.disabled = false;
     }
 
     root.append(
       h('div', { class: 'game-head' }, h('h1', {}, '🎡 Ruleta de Tipos'), h('p', { class: 'muted' }, 'Tipo exacto ×18 · Grupo ×3 · Par/Impar ×2 · La Poké Ball solo paga a quien apuesta por ella.')),
       h('div', { class: 'roulette-layout' },
-        h('div', { class: 'wheel-wrap' }, h('div', { class: 'wheel-pointer' }), disc, h('div', { class: 'wheel-hub' }, h('img', { class: 'pixel', src: item('master-ball'), alt: '' }))),
+        h('div', { class: 'wheel-wrap' }, h('div', { class: 'wheel-pointer' }), disc, orbit, h('div', { class: 'wheel-hub' }, h('img', { class: 'pixel', src: item('master-ball'), alt: '' }))),
         h('div', { class: 'stack' },
           resultEl,
           h('div', { class: 'card' },

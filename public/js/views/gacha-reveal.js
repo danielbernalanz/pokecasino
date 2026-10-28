@@ -1,6 +1,7 @@
 // Animación del Gacha: lanzamiento de la Poké Ball, sacudidas que la mejoran según la rareza,
 // «¿Quién es ese Pokémon?» para lo bueno, explosiones de partículas, sonido y vibración.
 import { S, h, sfx, art, pokeImg, rarityName, typeBadge, sleep, itemImg } from '../core.js';
+import { burst, centerOf } from '../fx.js';
 
 const RANK = { C: 0, U: 1, R: 2, E: 3, L: 4, M: 5 };
 const BALL_OF = { C: 'poke', U: 'poke', R: 'great', E: 'ultra', L: 'master', M: 'master' };
@@ -31,21 +32,6 @@ function ballEl(kind, cls = '') {
   return el;
 }
 
-// Partículas: estrellas y confeti que salen de un punto de la pantalla.
-function burst(layer, x, y, color, n, { spread = 260, stars = 0.4, size = 1 } = {}) {
-  if (reduceMotion()) n = Math.min(n, 8);
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const d = spread * (0.35 + Math.random() * 0.65);
-    const star = Math.random() < stars;
-    const p = h('span', { class: 'gx-p' + (star ? ' star' : '') }, star ? '★' : '');
-    p.style.cssText = `left:${x}px;top:${y}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 40}px;--rot:${(Math.random() - 0.5) * 720}deg;`
-      + `--s:${(0.6 + Math.random() * 0.9) * size};--c:${color};animation-duration:${700 + Math.random() * 700}ms`;
-    layer.append(p);
-    setTimeout(() => p.remove(), 1500);
-  }
-}
-const centerOf = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
 
 function card(r, cls = '') {
   const p = S.dexById.get(r.id);

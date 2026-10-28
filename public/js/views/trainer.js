@@ -1,5 +1,6 @@
 import { historyCard } from './history.js';
-import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, RAR_NAME, playingCard } from '../core.js';
+import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, playingCard } from '../core.js';
+import { openEgg } from '../rewards.js';
 
 // Cuántos anuncios hay en el Mercado de un Pokémon (para animar a comprar la pieza que falta).
 let marketCache = null;
@@ -83,8 +84,7 @@ export default {
         h('h3', {}, '🥚 Huevos Misteriosos'),
         h('p', { class: 'small muted' }, 'Cada huevo trae un cosmético al azar: Común 40 %, Poco común 30 %, Raro 18 %, Épico 9 %, Legendario 3 %. Los repetidos puedes venderlos en el Mercado y comprar los que te gusten.'),
         h('button', { class: 'btn primary', disabled: !eggs, onclick: async (e) => {
-          const r = await act('item:use', { itemId: 'mystery-egg' }, e.target);
-          if (r) { const c = S.data.cosmetics[r.got]; sfx(c.rarity === 'L' || c.rarity === 'E' ? 'big' : 'shiny'); toast(`🥚 ¡${c.name}! (${RAR_NAME[c.rarity]})`, 'success', 6000); }
+          await openEgg(e.target);
         } }, `Abrir huevo (${eggs})`));
 
       body.replaceChildren(card,

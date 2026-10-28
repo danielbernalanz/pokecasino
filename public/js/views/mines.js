@@ -1,4 +1,5 @@
 import { h, fmt, emit, sfx, toast, betInput, item, sprite } from '../core.js';
+import { winFx, burstEl, flash, shake, vibrate } from '../fx.js';
 
 export default {
   id: 'mines', title: 'Minas Geodude', icon: '💣',
@@ -39,9 +40,18 @@ export default {
       try {
         const r = await emit('mines:pick', { index: i });
         game = r.game;
-        if (r.boom !== undefined) { sfx('boom'); grid.classList.add('shake'); setTimeout(() => grid.classList.remove('shake'), 600); info.replaceChildren(h('b', { class: 'bad' }, '💥 ¡Un Geodude! Pierdes la apuesta.')); render(r.boom); return; }
-        if (r.paid) return finish(r);
+        if (r.boom !== undefined) {
+          sfx('boom'); grid.classList.add('shake'); setTimeout(() => grid.classList.remove('shake'), 600);
+          info.replaceChildren(h('b', { class: 'bad' }, '💥 ¡Un Geodude! Pierdes la apuesta.')); render(r.boom);
+          flash('#ff4d4d', 420); shake(); vibrate([80, 40, 140]);
+          burstEl(grid.children[r.boom], '#ef4444', 28, { spread: 170, stars: 0.1 });
+          return;
+        }
+        if (r.paid) { render(); burstEl(grid.children[i], '#52b788', 12, { spread: 90, stars: 0.8 }); return finish(r); }
         sfx('flip'); render();
+        // Cada acierto suena más agudo y suelta chispas: la tensión sube con la racha.
+        sfx('star', Math.min(8, game.revealed.length));
+        burstEl(grid.children[i], '#ffd54f', 8 + Math.min(10, game.revealed.length * 2), { spread: 90, stars: 0.8 }); vibrate(12);
       } catch (e) { toast(e.message, 'error'); }
     }
     async function cashout() {
@@ -52,6 +62,7 @@ export default {
       sfx('win');
       info.replaceChildren(h('b', { class: 'good' }, `💰 ×${r.mult} · +${fmt(r.paid)} monedas`));
       render();
+      winFx(r.paid, r.game.bet, { el: grid, icon: '💎' });
     }
     root.append(
       h('div', { class: 'game-head' }, h('h1', {}, '💣 Minas Geodude'), h('p', { class: 'muted' }, 'Descubre Trozos Estrella sin despertar a ningún Geodude. Más Geodude = más multiplicador.')),

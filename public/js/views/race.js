@@ -1,4 +1,5 @@
 import { S, h, fmt, act, sfx, bus, animImg, betInput } from '../core.js';
+import { winFx, burstEl, confetti, flash } from '../fx.js';
 
 export default {
   id: 'race', title: 'Gran Carrera', icon: '🏁',
@@ -13,6 +14,7 @@ export default {
     let raf = null;
     let offset = 0;
     let round = null;
+    const celebrated = new Set();
 
     function build(r) {
       round = r.round;
@@ -74,6 +76,13 @@ export default {
       if (r.phase === 'results') {
         const w = r.runners[r.result.order[0]];
         banner.replaceChildren('🏆 Ganador: ', h('b', {}, S.dexById.get(w.id).name), ` (×${w.odds})`);
+        // El ganador celebra en la meta; un favorito que sorprende (cuota alta) se nota más.
+        const lane = lanes[r.result.order[0]];
+        if (lane && !celebrated.has(r.round)) {
+          celebrated.add(r.round);
+          burstEl(lane.runner, '#ffd54f', w.odds >= 6 ? 40 : 22, { spread: 200, stars: 0.7 });
+          if (w.odds >= 6) flash('#ffe08a', 400);
+        }
       }
       if (r.phase === 'betting') banner.textContent = `Carrera #${r.round} · ${r.bettors} entrenador(es) apostando`;
       renderRunners(r);
@@ -91,7 +100,7 @@ export default {
     this.offs = [
       bus.on('race', onState),
       bus.on('race:payout', (p) => {
-        if (p.paid) { sfx('big'); banner.append(h('div', { class: 'good' }, `¡Ganaste ${fmt(p.paid)} monedas!`)); } else if (p.stake) sfx('lose');
+        if (p.paid) { sfx('big'); banner.append(h('div', { class: 'good' }, `¡Ganaste ${fmt(p.paid)} monedas!`)); confetti({ count: 36 }); winFx(p.paid, p.stake, { el: banner, icon: '🏁' }); } else if (p.stake) sfx('lose');
       }),
     ];
     if (S.race) onState(S.race);

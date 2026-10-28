@@ -1,4 +1,6 @@
 import { S, h, fmt, emit, act, sfx, toast, art, item, pokeImg, rarityName, typeBadge, sleep, itemImg } from '../core.js';
+import { useFx } from '../rewards.js';
+import { centerOf } from '../fx.js';
 import { reveal } from './gacha-reveal.js';
 
 let selected = 'kanto';
@@ -89,9 +91,9 @@ export default {
       const b = S.me.buffs || {};
       const parts = [];
       if (b.masterBall) parts.push(h('span', { class: 'chip active' }, itemImg('master-ball'), ' Master Ball preparada: tu próxima tirada será legendaria'));
-      else if (S.me.items['master-ball']) parts.push(h('button', { class: 'chip', onclick: async () => { if (await act('item:use', { itemId: 'master-ball' })) { sfx('shiny'); renderStage(); } } }, itemImg('master-ball'), ` Preparar Master Ball (${S.me.items['master-ball']})`));
+      else if (S.me.items['master-ball']) parts.push(h('button', { class: 'chip', onclick: async (e) => { const at = centerOf(e.currentTarget); if (await act('item:use', { itemId: 'master-ball' })) { useFx('master-ball', at); renderStage(); } } }, itemImg('master-ball'), ` Preparar Master Ball (${S.me.items['master-ball']})`));
       if (b.shinyCharges > 0) parts.push(h('span', { class: 'chip active' }, itemImg('shiny-charm'), ` Amuleto Iris: ${b.shinyCharges} tiradas ×4 variocolor`));
-      else if (S.me.items['shiny-charm']) parts.push(h('button', { class: 'chip', onclick: async () => { if (await act('item:use', { itemId: 'shiny-charm' })) { sfx('shiny'); renderStage(); } } }, itemImg('shiny-charm'), ` Activar Amuleto Iris (${S.me.items['shiny-charm']})`));
+      else if (S.me.items['shiny-charm']) parts.push(h('button', { class: 'chip', onclick: async (e) => { const at = centerOf(e.currentTarget); if (await act('item:use', { itemId: 'shiny-charm' })) { useFx('shiny-charm', at); renderStage(); } } }, itemImg('shiny-charm'), ` Activar Amuleto Iris (${S.me.items['shiny-charm']})`));
       return parts.length ? h('div', { class: 'row gap wrap buffs' }, parts) : '';
     }
 

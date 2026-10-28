@@ -1,4 +1,6 @@
 import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus } from '../core.js';
+import { useFx } from '../rewards.js';
+import { burstAt, centerOf } from '../fx.js';
 import { openItem } from './market.js';
 
 let filter = { q: '', show: null, rarity: '', type: '', gen: '' };
@@ -16,8 +18,8 @@ export function openDetail(id) {
     h('div', { class: 'row gap wrap' },
       h('button', { class: 'btn primary', onclick: async (e) => { if (await act('buddy:set', { id, shiny: false }, e.target)) { toast(`${p.name} es tu compañero`, 'success'); sfx('win'); } } }, '🤝 Compañero'),
       c.s > 0 ? h('button', { class: 'btn gold', onclick: async (e) => { if (await act('buddy:set', { id, shiny: true }, e.target)) { toast(`${p.name} ✨ es tu compañero`, 'success'); sfx('shiny'); } } }, '✨ Compañero variocolor') : null,
-      c.n > 1 ? h('button', { class: 'btn', onclick: async (e) => { if (await act('shop:release', { id, count: 1 }, e.target)) { toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); m.close(); openDetail(id); } } }, `Liberar 1 copia (+${r.dust} ✦)`) : null,
-      S.me.items['rare-candy'] && c.n < 5 ? h('button', { class: 'btn', onclick: async (e) => { if (await act('item:use', { itemId: 'rare-candy', pokeId: id }, e.target)) { sfx('shiny'); toast(`¡${p.name} gana una estrella!`, 'success'); m.close(); openDetail(id); } } }, `🍬 Caramelo Raro (${S.me.items['rare-candy']})`) : null,
+      c.n > 1 ? h('button', { class: 'btn', onclick: async (e) => { const at = centerOf(e.target); if (await act('shop:release', { id, count: 1 }, e.target)) { burstAt(...at, '#a5b4fc', 18, { spread: 120, stars: 0.8 }); sfx('shiny'); toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); m.close(); openDetail(id); } } }, `Liberar 1 copia (+${r.dust} ✦)`) : null,
+      S.me.items['rare-candy'] && c.n < 5 ? h('button', { class: 'btn', onclick: async (e) => { const at = centerOf(e.target); if (await act('item:use', { itemId: 'rare-candy', pokeId: id }, e.target)) { useFx('rare-candy', at); toast(`¡${p.name} gana una estrella!`, 'success'); m.close(); openDetail(id); } } }, `🍬 Caramelo Raro (${S.me.items['rare-candy']})`) : null,
       h('button', { class: 'btn', onclick: () => { m.close(); openItem({ kind: 'poke', pokeId: id, shiny: false }, 'sell'); } }, '🏪 Vender en el Mercado')),
     h('div', { class: 'row gap wrap' }, giftTo,
       h('datalist', { id: 'gift-users' }, S.online.filter((u) => u.username !== S.me.username).map((u) => h('option', { value: u.username }))),

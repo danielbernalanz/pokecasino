@@ -1,4 +1,5 @@
 import { S, h, fmt, act, sfx, bus, playingCard, modal, avatar, titleTag } from '../core.js';
+import { winFx, burstEl } from '../fx.js';
 
 let currentTable = null;
 
@@ -12,6 +13,7 @@ export default {
     let lastNo = null;
     let tick = null;
     let wasMyTurn = false;
+    let wonNo = null;
 
     const mySeat = () => (t ? t.seats.findIndex((s) => s && s.username === S.me.username) : -1);
 
@@ -86,6 +88,13 @@ export default {
         h('div', { class: 'p-table' }, h('div', { class: 'p-felt' }, center), seats),
         ...controls(me),
         h('div', { class: 'p-log' }, t.log.slice().reverse().map((l) => h('div', {}, l.text))));
+      // Premio de la mano: ráfaga en cada ganador y, si el bote es mío, monedas hacia el contador.
+      if (hd && hd.winners && hd.winners.length && wonNo !== hd.no) {
+        wonNo = hd.no;
+        tableBox.querySelectorAll('.p-seat.winner').forEach((el) => burstEl(el, '#ffd54f', 14, { spread: 120, stars: 0.7 }));
+        const mine = me !== -1 && hd.winners.find((w) => w.seat === me);
+        if (mine) winFx(mine.amount, t.bb * 4, { el: tableBox.querySelector('.p-seat.me') || undefined, icon: '♠️' });
+      }
       timerLoop();
     }
 

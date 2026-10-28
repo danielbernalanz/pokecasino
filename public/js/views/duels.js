@@ -1,5 +1,6 @@
 import { S, h, fmt, act, sfx, bus, sprite, animImg, modal, typeBadge, sleep } from '../core.js';
 import { pickPokemon } from '../picker.js';
+import { burstEl, shake, flash, confetti, coinRain, vibrate } from '../fx.js';
 
 // Reproduce un combate con animaciones.
 export function playBattle(record) {
@@ -47,7 +48,13 @@ export function playBattle(record) {
         spr[ev.by].classList.add('lunge'); sfx('click');
         await sleep(350);
         spr[ev.by].classList.remove('lunge');
-        if (!ev.miss && ev.dmg) { spr[tgt].classList.add('hit'); sfx(ev.eff > 1 ? 'boom' : 'flip'); }
+        if (!ev.miss && ev.dmg) {
+          spr[tgt].classList.add('hit'); sfx(ev.eff > 1 ? 'boom' : 'flip');
+          // Golpes críticos o supereficaces: chispas y temblor de la escena.
+          const strong = ev.crit || ev.eff > 1;
+          burstEl(spr[tgt], strong ? '#ffd54f' : '#ffffff', strong ? 22 : 8, { spread: strong ? 150 : 70, stars: strong ? 0.6 : 0 });
+          if (strong) { shake(scene, 350); vibrate(40); }
+        }
       }
       setHp(0, ev.hp[0]); setHp(1, ev.hp[1]);
       if (!skip) { await sleep(650); spr[tgt].classList.remove('hit'); }
@@ -55,7 +62,14 @@ export function playBattle(record) {
     const w = record.winner;
     spr[1 - w].classList.add('faint');
     text.replaceChildren(h('b', {}, `🏆 ¡${record.players[w]} gana con ${f[w].name}!`), record.prize ? ` +${fmt(record.prize)} monedas` : '');
-    sfx(record.players[w] === S.me.username ? 'big' : 'lose');
+    const won = record.players[w] === S.me.username;
+    sfx(won ? 'big' : 'lose');
+    if (won) {
+      burstEl(spr[w], '#ffd54f', 40, { spread: 260, stars: 0.6 });
+      confetti({ count: 40 });
+      vibrate([40, 30, 80]);
+      if (record.prize) { if (record.prize >= 5000) flash('#ffe08a', 400); coinRain(record.prize, { from: spr[w] }); }
+    }
     skipBtn.textContent = 'Cerrar';
     skipBtn.onclick = m.close;
   })();

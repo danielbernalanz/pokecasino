@@ -1,4 +1,5 @@
 import { S, h, fmt, emit, act, sfx, toast, sprite, betInput } from '../core.js';
+import { winFx, burstEl, flash, shake, vibrate, confetti } from '../fx.js';
 
 export default {
   id: 'voltorb', title: 'Voltorb Flip', icon: '⚡',
@@ -65,22 +66,34 @@ export default {
       }
       let r;
       try { r = await emit('voltorb:flip', { index: i }); } catch (e) { toast(e.message, 'error'); return; }
-      if (r.outcome) return end(r);
+      if (r.outcome) return end(r, i);
       sfx('flip');
       render(r);
+      const cell = cellEl(i);
+      const v = r.game.cells[i];
+      // Los ×2 y ×3 brillan más: lo bueno se siente.
+      if (cell && v > 1) { burstEl(cell, v === 3 ? '#fb923c' : '#60a5fa', 10 + v * 6, { spread: 100, stars: 0.8 }); sfx('star', v); vibrate(v === 3 ? [20, 20, 30] : 15); }
+      else if (cell) burstEl(cell, '#ffffff', 5, { spread: 50, stars: 0 });
     }
 
-    function end(r) {
+    // La cuadrícula intercala una pista tras cada fila: la carta i está en la posición fila*6 + columna.
+    const cellEl = (i) => grid.children[Math.floor(i / 5) * 6 + (i % 5)];
+    function end(r, i) {
+      const stake = state && state.game ? state.game.bet : 0;
       render(r, true);
       startBtn.classList.remove('hidden');
       bet.el.classList.remove('hidden');
       if (r.outcome === 'boom') {
         sfx('boom'); grid.classList.add('shake'); setTimeout(() => grid.classList.remove('shake'), 600);
+        flash('#ff4d4d', 420); shake(); vibrate([80, 40, 140]);
+        if (i !== undefined && cellEl(i)) burstEl(cellEl(i), '#f97316', 30, { spread: 190, stars: 0.1 });
         msg.replaceChildren(h('b', { class: 'bad' }, '💥 ¡Voltorb explotó! '), `Pierdes la apuesta. Nivel → ${r.newLevel}.`);
       } else if (r.outcome === 'clear') {
         sfx('big'); msg.replaceChildren(h('b', { class: 'good' }, `🏆 ¡Tablero completo! +${fmt(r.paid)} `), `Subes a nivel ${r.newLevel}.`);
+        confetti({ count: 45 }); winFx(r.paid, stake, { el: grid, title: '¡TABLERO COMPLETO!', icon: '⚡' });
       } else {
         sfx('win'); msg.replaceChildren(h('b', { class: 'good' }, `💰 Te retiras con ${fmt(r.paid)} monedas.`));
+        winFx(r.paid, stake, { el: grid, icon: '⚡' });
       }
     }
 

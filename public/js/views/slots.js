@@ -1,4 +1,5 @@
 import { S, h, fmt, emit, sfx, toast, bus, item, sprite, betInput, sleep } from '../core.js';
+import { winFx, burstEl, glow, vibrate } from '../fx.js';
 
 const ICON = {
   berry: item('oran-berry'), poke: item('poke-ball'), great: item('great-ball'), ultra: item('ultra-ball'),
@@ -32,6 +33,7 @@ export default {
       winBox.textContent = '…';
       winBox.className = 'slot-win';
       sfx('click');
+      const stake = bet.value;
       // Animación: cada rodillo gira con símbolos aleatorios.
       const timers = reelEls.map((r, i) => {
         r.classList.add('spinning');
@@ -47,21 +49,47 @@ export default {
         timers.forEach(clearInterval); reelEls.forEach((r) => r.classList.remove('spinning'));
         toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; auto = false; autoBtn.classList.remove('active'); return;
       }
+      // ¿Los dos primeros rodillos ya forman pareja en alguna línea? Entonces el último frena con suspense.
+      const pair = (a, b) => a === 'ditto' || b === 'ditto' || a === b;
+      const near = S.data.slots.lines.some((ln) => {
+        const a = res.grid[0][ln[0][1]];
+        const b = res.grid[1][ln[1][1]];
+        return pair(a, b) && !(a === 'berry' && b === 'berry') && (a !== 'ditto' || b !== 'ditto');
+      });
       for (let i = 0; i < 3; i++) {
-        await sleep(300 + i * 250);
+        if (i === 2 && near) {
+          reelEls[2].classList.add('tense');
+          sfx('charge', 0); vibrate([30, 40, 30]);
+          // El último rodillo gira cada vez más despacio, con tics más graves.
+          clearInterval(timers[2]);
+          for (const d of [110, 150, 210, 290, 400]) {
+            const strip = reels[2];
+            const k = Math.floor(Math.random() * strip.length);
+            reelEls[2].firstChild.replaceChildren(...[0, 1, 2].map((r) => symImg(strip[(k + r) % strip.length])));
+            sfx('tick'); await sleep(d);
+          }
+          reelEls[2].classList.remove('tense');
+        } else await sleep(300 + i * 250);
         clearInterval(timers[i]);
         reelEls[i].classList.remove('spinning');
         reelEls[i].firstChild.replaceChildren(...res.grid[i].map(symImg));
         sfx('flip');
+        if (i < 2) glow(reelEls[i], '#ffffff', 350);
       }
       for (const w of res.wins) {
         lineSvg.append(h('div', { class: 'payline pl-' + w.line }));
-        S.data.slots.lines[w.line].forEach(([r, row]) => reelEls[r].firstChild.children[row].classList.add('hit'));
+        S.data.slots.lines[w.line].forEach(([r, row]) => {
+          const cell = reelEls[r].firstChild.children[row];
+          cell.classList.add('hit');
+          if (res.paid > 0) burstEl(cell, '#ffd54f', 6, { spread: 70, stars: 0.6 });
+        });
       }
+      if (res.paid > 0) winFx(res.paid, stake, { el: winBox, jackpot: res.jackpotWon > 0, title: res.jackpotWon ? '¡BOTE!' : '¡GRAN PREMIO!', icon: res.jackpotWon ? '💥' : '🎰' });
+      else if (near) sfx('lose');
       if (res.jackpotWon) {
         winBox.textContent = `💥 ¡BOTE! +${fmt(res.paid)}`; winBox.className = 'slot-win jackpot'; sfx('big');
       } else if (res.paid > 0) {
-        const big = res.paid >= bet.value * 10;
+        const big = res.paid >= stake * 10;
         winBox.textContent = `${big ? '¡GRAN PREMIO! ' : ''}+${fmt(res.paid)}${res.bonus ? ` (compañero +${fmt(res.bonus)})` : ''}`;
         winBox.className = 'slot-win ' + (big ? 'big' : 'ok'); sfx(big ? 'big' : 'win');
       } else { winBox.textContent = 'Sin premio. ¡Otra vez!'; }
