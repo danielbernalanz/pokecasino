@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.10.28-g",
+    "date": "2026-10-28",
+    "title": "Amistad, compañero y Huerto de bayas",
+    "items": [
+      "💞 Amistad: tus Pokémon te cogen cariño si son tu compañero mientras juegas, si les das bayas o si ganan duelos. Con «Te adora» rinden un 3 % más en los duelos.",
+      "✨ Evoluciones por amistad (Pichu, Golbat, Chansey, Eevee → Espeon/Umbreon, Riolu…): con mucha amistad cuestan la mitad de caramelos y no piden nivel.",
+      "🎒 Tu compañero encuentra cosas cada 4 h (caramelos, bayas, polvo, a veces un ticket y algunas monedas). Recógelo en el Vestíbulo o en el Huerto.",
+      "🌱 Nuevo Huerto (menú Más): 4 parcelas para plantar bayas, regarlas y cosecharlas. Te regalamos 3 Bayas Aranja para empezar."
+    ]
+  },
+  {
     "version": "2026.10.28-f",
     "date": "2026-10-28",
     "title": "Caramelos, evolución y reciclaje",
