@@ -23,6 +23,9 @@ function ownedPick(user, { pokeId, shiny, mega }) {
     if (!f || f.species !== id || !require('../mega').megasOf(user)[f.formId]) throw new Error('No tienes desbloqueada esa megaevolución.');
     pick.mega = f.formId;
   }
+  // Ejemplar concreto: el del compañero si lo es; si no, el mejor por IVs con ese variocolor.
+  const sp = require('../specimen').bestFor(user, id, !!shiny);
+  if (sp) Object.assign(pick, { ivs: sp.ivs, nature: sp.nature, nick: sp.nick, uid: sp.uid });
   return pick;
 }
 

@@ -1,0 +1,30 @@
+/* Caja PC (views/pc.js) */
+.pc-grid { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
+.pc-card { min-width: 0; gap: 2px; }
+.pc-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-fav { position: absolute; top: 4px; right: 6px; color: var(--gold); font-size: 16px; }
+.filters .pc-check { flex: 0 0 auto; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; font-weight: 700; min-height: 40px; }
+.filters .pc-check input { width: 20px; min-width: 0; height: 20px; padding: 0; flex: 0 0 auto; }
+.pc-chip { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 800; }
+.pc-chip.hidden, .pc-more.hidden { display: none; }
+.pc-more { text-align: center; padding: 14px; }
+.pc-detail { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 16px; }
+.pc-detail-left { display: flex; align-items: center; justify-content: center; border-radius: 14px; padding: 8px; background: var(--panel); }
+.pc-detail-left .detail-art { width: 100%; max-width: 200px; }
+.pc-detail-right { min-width: 0; }
+.pc-table-wrap { overflow-x: auto; }
+.pc-stats { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pc-stats th { text-align: left; font-weight: 700; color: var(--muted); padding: 3px 4px; white-space: nowrap; }
+.pc-stats td { padding: 3px 4px; }
+.pc-stats tr.up th, .pc-stats tr.up .pc-final { color: var(--good); }
+.pc-stats tr.down th, .pc-stats tr.down .pc-final { color: var(--bad); }
+.pc-final { font-weight: 800; }
+.pc-ivcell { display: flex; align-items: center; gap: 6px; }
+.pc-ivbar { flex: 1; min-width: 40px; height: 8px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
+.pc-ivbar i { display: block; height: 100%; background: linear-gradient(90deg, #38bdf8, #4ade80); }
+.pc-nick { flex: 1; min-width: 0; }
+@media (max-width: 560px) {
+  .pc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .pc-detail { grid-template-columns: minmax(0, 1fr); }
+  .pc-detail-left .detail-art { max-width: 160px; }
+}

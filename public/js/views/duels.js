@@ -15,7 +15,7 @@ export function playBattle(record) {
     ? img(art(f[i].mega, f[i].shiny), { cls: 'pixel ' + cls, alt: f[i].name, fallback: art(f[i].mega, false) })
     : animImg(f[i].id, f[i].shiny, cls, back));
   const spr = [0, 1].map((i) => fimg(i, 'bt-sprite', i === side));
-  const box = (i) => h('div', { class: 'bt-box' }, h('b', {}, (f[i].mega ? '💠 ' : '') + f[i].name + (f[i].shiny ? ' ✨' : '')), h('span', { class: 'muted small' }, ` ${f[i].owner} · ${'★'.repeat(f[i].stars)}`),
+  const box = (i) => h('div', { class: 'bt-box' }, h('b', {}, (f[i].mega ? '💠 ' : '') + f[i].name + (f[i].nick ? ` «${f[i].nick}»` : '') + (f[i].shiny ? ' ✨' : '')), h('span', { class: 'muted small' }, ` ${f[i].owner} · ${'★'.repeat(f[i].stars)}`),
     h('div', { class: 'types' }, f[i].types.map(typeBadge)), h('div', { class: 'hpbar' }, bars[i]), hpTxt[i]);
   const text = h('div', { class: 'bt-text' }, `¡${record.players[0]} y ${record.players[1]} se enfrentan!`);
   const other = 1 - side;

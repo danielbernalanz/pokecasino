@@ -10,15 +10,29 @@ const MOVES = {
   dark: 'Triturar', steel: 'Cabeza de Hierro', fairy: 'Fuerza Lunar',
 };
 
-function fighter({ id, shiny, stars, owner, mega }) {
+// Factores del ejemplar (±5 % por IV, ±10 % por naturaleza). Sin datos de ejemplar: 1.
+const ivF = (iv) => 1 + ((iv ?? 15.5) / 31 - 0.5) * 0.10;
+function specimenFactors(id, sp) {
+  if (!sp || !Array.isArray(sp.ivs)) return { hp: 1, atk: 1, def: 1, spe: 1 };
+  const nm = (i) => require('../specimen').natureMult(sp.nature, i);
+  const st = BY_ID.get(id).stats;
+  const ai = st[1] >= st[3] ? 1 : 3; // el ataque que cuenta es el mejor de los dos
+  return {
+    hp: ivF(sp.ivs[0]), atk: ivF(sp.ivs[ai]) * nm(ai), spe: ivF(sp.ivs[5]) * nm(5),
+    def: ((ivF(sp.ivs[2]) * nm(2)) + (ivF(sp.ivs[4]) * nm(4))) / 2,
+  };
+}
+
+function fighter({ id, shiny, stars, owner, mega, ivs, nature, nick }) {
   const p = BY_ID.get(id);
   const form = mega ? require('../mega').BY_FORM.get(mega) : null;
   const b = form ? require('../mega').formBaseStats(mega) : baseStats(id);
   const mult = 1 + 0.04 * (stars - 1) + (shiny ? 0.05 : 0);
-  const hp = Math.round((b.hp + 60) * mult);
+  const f = specimenFactors(id, { ivs, nature });
+  const hp = Math.round((b.hp + 60) * mult * f.hp);
   return {
-    id, shiny, stars, owner, mega: form ? mega : undefined, name: form ? form.name : p.name, types: form ? form.types : p.types,
-    hp, maxHp: hp, atk: (b.atk + 5) * mult, def: (b.def + 5) * mult, spe: (b.spe + 5) * mult,
+    id, shiny, stars, owner, mega: form ? mega : undefined, name: form ? form.name : p.name, nick: nick || undefined, types: form ? form.types : p.types,
+    hp, maxHp: hp, atk: (b.atk + 5) * mult * f.atk, def: (b.def + 5) * mult * f.def, spe: (b.spe + 5) * mult * f.spe,
   };
 }
 
@@ -55,7 +69,7 @@ function simulate(a, b) {
     }
   }
   const winner = A.hp > 0 && B.hp <= 0 ? 0 : B.hp > 0 && A.hp <= 0 ? 1 : (A.hp / A.maxHp >= B.hp / B.maxHp ? 0 : 1);
-  const strip = (f) => ({ id: f.id, mega: f.mega, shiny: f.shiny, stars: f.stars, owner: f.owner, name: f.name, types: f.types, maxHp: f.maxHp });
+  const strip = (f) => ({ id: f.id, mega: f.mega, shiny: f.shiny, stars: f.stars, owner: f.owner, name: f.name, nick: f.nick, types: f.types, maxHp: f.maxHp });
   return { fighters: [strip(A), strip(B)], log, winner };
 }
 
