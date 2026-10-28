@@ -86,6 +86,66 @@ const FIXES = [
       return out;
     },
   },
+  {
+    // Últimos rastros: lo que piti13579 vendió a los NPC (Master Balls y legendarias del abuso), contadores
+    // internos, colecciones que ya no están completas y anuncios de «En vivo» de lo que se le quitó.
+    id: 'abuso-rastros-2026-10-28',
+    apply() {
+      const hub = require('./hub');
+      const { SETS } = require('./progress');
+      const out = [];
+      const piti = db.userByName('piti13579');
+      if (!piti) return out;
+      // Ventas a NPC de cosas conseguidas con el abuso: el NPC recupera sus monedas y pierde lo comprado.
+      const sold = ((db.data.market && db.data.market.trades) || []).filter((t) => t.seller === 'piti13579' && t.buyerNpc);
+      for (const t of sold) {
+        const npc = db.userByName(t.buyer);
+        const coins = t.qty * t.price - Math.floor(t.qty * t.price * 0.03); // lo que recibió (sin el impuesto)
+        const take = Math.min(coins, piti.coins);
+        piti.coins -= take;
+        hub.ledger(piti, -take, 'admin', `Corrección: venta a NPC (${t.ref})`);
+        if (npc) {
+          npc.coins += take;
+          if (t.kind === 'item' || t.ref.startsWith('item:')) {
+            const id = t.itemId || t.ref.slice(5);
+            npc.items[id] = Math.max(0, (npc.items[id] || 0) - t.qty);
+            if (!npc.items[id]) delete npc.items[id];
+          } else if (t.pokeId || t.ref.startsWith('poke:')) {
+            const id = t.pokeId || Number(t.ref.split(':')[1]);
+            const c = npc.collection && npc.collection[id];
+            if (c) { c.n -= t.qty; if (c.n <= 0) delete npc.collection[id]; }
+          }
+          // Si el NPC ya lo había puesto a la venta, se retira de su orden.
+          const m = db.data.market;
+          for (const o of m.orders.filter((o) => o.userId === npc.id && o.side === 'sell' && o.ref === t.ref)) o.qty = Math.max(0, o.qty - t.qty);
+          m.orders = m.orders.filter((o) => o.qty > 0);
+        }
+        out.push(`venta a ${t.buyer} de ${t.qty}× ${t.ref}: −${take} monedas`);
+      }
+      // Contadores internos coherentes con el nivel y las medallas actuales.
+      const p = piti.progress || {};
+      if (p.counters) { p.counters.level = Math.min(p.counters.level || 0, piti.level - 1); p.counters.badge = (p.badges || []).length; }
+      // Colecciones que ya no están completas: fuera la colección, su título y su bonus.
+      for (const set of SETS) {
+        if (!(p.sets || []).includes(set.id)) continue;
+        if (set.ids.every((id) => piti.collection[id])) continue;
+        p.sets = p.sets.filter((x) => x !== set.id);
+        p.titles = (p.titles || []).filter((x) => x !== 'set-' + set.id);
+        if (piti.equip && piti.equip.title === 'set-' + set.id) piti.equip.title = null;
+        out.push(`colección «${set.name}» ya no completa`);
+      }
+      // «En vivo»: fuera los anuncios de legendarias que ya no tiene.
+      const { BY_ID } = require('./pokedex');
+      const before = db.data.feed.length;
+      db.data.feed = db.data.feed.filter((f) => !(f.text || '').includes('piti13579 obtuvo') || !f.pokeId || piti.collection[f.pokeId]
+        || !['L', 'M'].includes((BY_ID.get(f.pokeId) || {}).rarity));
+      if (db.data.feed.length !== before) out.push(`${before - db.data.feed.length} anuncios de «En vivo» retirados`);
+      out.push(`monedas finales ${piti.coins}`);
+      db.data.adminLog ||= [];
+      db.data.adminLog.push({ at: Date.now(), by: 'sistema', action: 'fix', target: 'piti13579', detail: out.join(' · ').slice(0, 400) });
+      return out;
+    },
+  },
 ];
 
 // Copia de seguridad y después las correcciones pendientes.
