@@ -37,9 +37,10 @@ const BAL = require('./balance');
 const daily = require('./daily');
 const mega = require('./mega');
 const news = require('./news');
+const clientIpLib = require('./clientip');
 
 const app = express();
-app.set('trust proxy', config.TRUST_PROXY);
+app.set('trust proxy', config.TRUST_PROXY_HOPS || false);
 app.disable('x-powered-by');
 
 // Comprobación de salud para plataformas de alojamiento (no expone datos).
@@ -52,6 +53,7 @@ app.use('/api', (req, res, next) => (ready || req.path === '/static' ? next() : 
 
 // ---- Filtro de red y cabeceras ----
 app.use((req, res, next) => {
+  clientIpLib.logOnce(req.headers['x-forwarded-for'], config.TRUST_PROXY_HOPS);
   if (!net.isAllowed(req.ip)) return res.status(403).send('Acceso restringido a la red privada.');
   res.set({
     'Content-Security-Policy': [
@@ -452,11 +454,7 @@ setInterval(checkEvents, 60 * 1000).unref();
 
 // ---- Sockets ----
 function clientIp(socket) {
-  if (config.TRUST_PROXY) {
-    const xff = socket.handshake.headers['x-forwarded-for'];
-    if (xff) return xff.split(',')[0].trim();
-  }
-  return socket.handshake.address;
+  return clientIpLib.extractIp(socket.handshake.headers['x-forwarded-for'], socket.handshake.address, config.TRUST_PROXY_HOPS);
 }
 
 io.use((socket, next) => {

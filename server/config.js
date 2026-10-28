@@ -28,6 +28,9 @@ module.exports = {
   // Rangos extra permitidos, separados por comas (p. ej. "203.0.113.7/32")
   ALLOW_CIDRS: (process.env.ALLOW_CIDRS || '').split(',').map((s) => s.trim()).filter(Boolean),
   TRUST_PROXY: process.env.TRUST_PROXY === '1',
+  // Saltos de proxy de confianza: cuántas entradas de X-Forwarded-For (contando desde la derecha) añaden nuestros proxies.
+  // 1 = solo Render (se toma la última entrada); las de la izquierda las puede falsificar el cliente.
+  TRUST_PROXY_HOPS: process.env.TRUST_PROXY === '1' ? Math.max(1, Math.floor(Number(process.env.TRUST_PROXY_HOPS)) || 1) : 0,
   START_COINS: 5000,
   MIN_BET: 10,
   MAX_BET: 100000,
