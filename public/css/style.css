@@ -1119,3 +1119,27 @@ body.gx-open { overflow: hidden; }
   .mini-grid { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
   .mini-card img { width: 48px; height: 48px; }
 }
+
+/* ---------- Mercado: barra de búsqueda y filtros ---------- */
+.mkf { display: flex; flex-direction: column; gap: 8px; }
+.mkf-top { display: flex; gap: 8px; align-items: center; }
+.mkf-q { flex: 1; min-width: 0; }
+.mkf-toggle { display: none; }
+.mkf-panel { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mkf-panel select, .mkf-panel .mkf-num { min-width: 0; }
+.mkf-num { width: 120px; }
+.mkf-count { margin: 2px 0; }
+.mkf-empty { text-align: center; padding: 24px 12px; }
+.mkf-empty-ico { font-size: 32px; }
+.mk-filt { margin: 0; }
+@media (max-width: 560px) {
+  .mkf-toggle { display: inline-flex; flex: none; white-space: nowrap; }
+  .mkf-top { flex-wrap: wrap; }
+  .mkf-q { flex: 1 1 100%; }
+  .mkf-top .mkf-toggle { flex: 1 1 auto; }
+  .mkf-panel { display: none; }
+  .mkf-panel.open { display: grid; grid-template-columns: 1fr 1fr; }
+  .mkf-panel > * { width: 100%; }
+  .mkf-panel .mkf-seg, .mkf-panel .chip { grid-column: 1 / -1; }
+  .mkf-panel .chip { width: auto; justify-self: start; }
+}
