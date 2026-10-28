@@ -94,6 +94,8 @@ async function init() {
   }, 5000);
   heartbeat.unref();
   console.log(`  🐘 Datos en Postgres (${Object.keys(data.users).length} jugadores cargados)`);
+  // Copias diarias y auditoría (carga diferida: backup.js usa este módulo).
+  require('./backup').start();
 }
 
 // Otra instancia tomó el control: esta deja de escribir para no pisar sus datos.
@@ -180,4 +182,4 @@ function addUser(u) {
 const userByName = (name) => byName.get(String(name || '').toLowerCase());
 const userById = (id) => data.users[id];
 
-module.exports = { escrowSet, escrowDel, refundEscrow, data, save, flush, flushAll, init, release, isReadOnly, addUser, userByName, userById };
+module.exports = { getPool: () => pool, escrowSet, escrowDel, refundEscrow, data, save, flush, flushAll, init, release, isReadOnly, addUser, userByName, userById };
