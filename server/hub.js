@@ -190,6 +190,7 @@ function takeBet(user, amount, game, { extra = false, quiet = false, noXp = fals
   gameStat(user, game, amount, 0, extra ? 0 : 1);
   if (!noXp) addXp(user, amount * BAL.xpRate(game));
   accrueBonus(user, amount, game);
+  if (!user.npc) require('./bond').onBet(user, amount, game);
   if (!user.npc) require('./mega').onBet(user, amount, game, { play: !extra && !quiet });
   if (game && !extra && !quiet) track(user, 'play', { game });
   db.save();
@@ -260,7 +261,7 @@ function privateUser(u) {
     buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
     bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, lockedCoins: lockedCoins(u), locked: lockedView(u).box, lockedProg: lockedView(u).prog,
-    progress: require('./progress').view(u), mega: require('./mega').privateView(u),
+    progress: require('./progress').view(u), mega: require('./mega').privateView(u), buddyFinds: require('./bond').findsView(u), berries: u.berries || {},
   };
 }
 

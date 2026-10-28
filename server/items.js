@@ -15,6 +15,18 @@ const ITEMS = {
   'mystery-egg': { name: 'Huevo Misterioso', sprite: 'mystery-egg', price: null, desc: 'Ábrelo para obtener un cosmético al azar (marco, dorso de carta o título).' },
 };
 
+// Bayas (fase B3): salen del Huerto y de los hallazgos del compañero. Solo suben la amistad: sin precio de tienda y con un
+// reciclaje simbólico (1 ✦, ver candy.js), para que no sirvan de fuente de monedas. Viven aparte de `ITEMS` (en `u.berries`):
+// no se compran, no se venden en el Mercado ni los comercian los NPC. `grow`: horas hasta la cosecha.
+const BERRIES = {
+  'berry-aranja': { name: 'Baya Aranja', sprite: 'oran-berry', grow: 4, friend: 5 },
+  'berry-zidra': { name: 'Baya Zidra', sprite: 'sitrus-berry', grow: 8, friend: 10 },
+  'berry-frambu': { name: 'Baya Frambu', sprite: 'razz-berry', grow: 6, friend: 10 },
+  'berry-latano': { name: 'Baya Latano', sprite: 'nanab-berry', grow: 10, friend: 15 },
+  'berry-pinia': { name: 'Baya Pinia', sprite: 'pinap-berry', grow: 12, friend: 20 },
+};
+for (const b of Object.values(BERRIES)) b.desc = `Dásela a un Pokémon en la Caja PC: +${b.friend} de amistad. También es la semilla del Huerto (tarda ${b.grow} h en dar 2-4 bayas).`;
+
 // Cosméticos: solo salen de Huevos Misteriosos. Se equipan, los ven los demás y se comercian.
 const COSMETICS = {
   'frame-poke': { slot: 'frame', rarity: 'C', name: 'Marco Poké Ball', sprite: 'poke-ball' },
@@ -149,4 +161,4 @@ function use(user, { itemId, pokeId }) {
   return { used: itemId };
 }
 
-module.exports = { ITEMS, COSMETICS, give, take, buy, use, equip, openEgg };
+module.exports = { ITEMS, BERRIES, COSMETICS, give, take, buy, use, equip, openEgg };

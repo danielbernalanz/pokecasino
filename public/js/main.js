@@ -10,6 +10,7 @@ import duels from './views/duels.js';
 import gacha from './views/gacha.js';
 import pokedex from './views/pokedex.js';
 import pc from './views/pc.js';
+import huerto from './views/huerto.js';
 import shop from './views/shop.js';
 import ranking from './views/ranking.js';
 import admin from './views/admin.js';
@@ -27,7 +28,7 @@ import megaView from './views/mega.js';
 import news from './views/news.js';
 import { initNews, openPublicNews } from './news.js';
 
-const VIEWS = [lobby, news, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, shop, megaView, market, ranking, admin];
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, shop, megaView, market, ranking, admin];
 const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', quiz: 'Desafíos', gacha: 'Colección', market: 'Comunidad' };
 
 // ---------- Autenticación ----------
@@ -207,14 +208,14 @@ const TABS = [
   { id: 'games', icon: '🎰', label: 'Juegos', match: GAME_IDS },
   { id: 'gacha', icon: '🎁', label: 'Gacha' },
   { id: 'market', icon: '🏪', label: 'Mercado' },
-  { id: 'more', icon: '☰', label: 'Más', match: ['news', 'trainer', 'pokedex', 'pc', 'shop', 'mega', 'ranking', 'admin'] },
+  { id: 'more', icon: '☰', label: 'Más', match: ['news', 'trainer', 'pokedex', 'pc', 'huerto', 'shop', 'mega', 'ranking', 'admin'] },
 ];
 function gamesSheet() {
   const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => GAME_IDS.includes(v.id)).map((v) =>
     h('a', { class: 'gs-item' + (current && current.id === v.id ? ' active' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title)))), { title: 'Juegos' });
 }
 function moreSheet() {
-  const ids = ['news', 'trainer', 'mega', 'pokedex', 'pc', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
+  const ids = ['news', 'trainer', 'mega', 'pokedex', 'pc', 'huerto', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
   const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => ids.includes(v.id)).map((v) =>
     h('a', { class: 'gs-item' + (v.id === 'news' && newsFresh ? ' has-news' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title))),
   h('button', { class: 'gs-item', onclick: () => { m.close(); document.body.classList.add('social-open'); $('#chat-dot').classList.add('hidden'); } }, h('span', { class: 'gs-ico' }, '💬'), h('span', {}, 'Chat y conectados')),

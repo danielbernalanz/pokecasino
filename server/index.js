@@ -16,6 +16,7 @@ const gacha = require('./gacha');
 const specimen = require('./specimen');
 const locked = require('./locked');
 const candy = require('./candy');
+const bond = require('./bond');
 const slots = require('./games/slots');
 const roulette = require('./games/roulette');
 const voltorb = require('./games/voltorb');
@@ -148,7 +149,7 @@ const STATIC = {
   racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS, voltorbCap: voltorb.SCORE_CAP,
   items: items.ITEMS, marketFee: market.SETUP_FEE, salesTax: market.SALES_TAX, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
   plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
-  cosmetics: items.COSMETICS,
+  cosmetics: items.COSMETICS, berries: items.BERRIES, recycleBerry: { dust: candy.RECYCLE_BERRY_DUST, daily: candy.RECYCLE_BERRY_DAILY },
   heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },
   daily: { base: BAL.DAILY_BASE, step: BAL.DAILY_STEP, max: BAL.DAILY_MAX_STREAK },
   mega: mega.STATIC,
@@ -544,6 +545,13 @@ io.on('connection', (socket) => {
   on('shop:recycle', candy.recycle);
   on('pc:buddy', (u, p) => { const m = specimen.find(u, p); const r = setBuddy(u, { id: Number(p.id), shiny: m.shiny }); u.buddy.uid = m.uid; db.save(); return r; });
   on('buddy:mega', mega.setBuddyMega);
+  on('buddy:status', bond.buddyStatus, { push: false });
+  on('buddy:collect', bond.collect);
+  on('garden:view', bond.gardenView, { push: false });
+  on('garden:plant', bond.plant);
+  on('garden:water', bond.water);
+  on('garden:harvest', bond.harvest);
+  on('pc:feed', bond.feed);
   on('mega:state', (u) => mega.full(u), { push: false });
   on('mega:checkin', mega.checkin);
   on('mega:claim', mega.claim);

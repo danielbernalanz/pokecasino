@@ -1,0 +1,53 @@
+/* Fase B3: amistad, hallazgos del compañero y Huerto de bayas */
+.bd-hearts { display: inline-flex; gap: 1px; font-size: 15px; line-height: 1; color: #ff7aa8; }
+.bd-hearts i { font-style: normal; opacity: 0.55; }
+.bd-hearts i.on { opacity: 1; }
+.bd-hearts.sm { font-size: 12px; }
+.bd-hearts.love i.on { color: #ff4d8d; text-shadow: 0 0 6px #ff4d8d88; }
+.bd-friend .row { align-items: center; }
+.bd-feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.bd-feed-btn { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 6px; align-items: center; text-align: left; padding: 6px 8px; min-height: 44px; }
+.bd-feed-btn img { grid-row: span 2; width: 28px; height: 28px; }
+.bd-feed-btn span { font-weight: 800; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd-feed-btn small { color: var(--muted); font-size: 11px; }
+
+.bd-berry { width: 32px; height: 32px; image-rendering: pixelated; }
+
+.bd-find { margin: 8px 0; }
+.bd-find-btn { width: 100%; white-space: normal; animation: bd-wiggle 2.4s ease-in-out infinite; }
+.bd-find-wait { display: block; }
+
+.bd-plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.bd-plot { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0; }
+.bd-plot.ready { border-color: var(--gold); box-shadow: 0 0 14px #ffcb0544; }
+.bd-plot .btn { width: 100%; min-height: 44px; }
+.bd-soil { width: 76px; height: 64px; border-radius: 12px; background: radial-gradient(ellipse at 50% 80%, #6b4a2b, #4a3220); display: flex; align-items: center; justify-content: center; }
+.bd-soil .bd-berry { width: 44px; height: 44px; }
+.bd-sprout { opacity: 0; }
+.bd-grow { animation: bd-sway 3s ease-in-out infinite; transform-origin: bottom center; }
+.bd-bounce { animation: bd-hop 0.9s ease-in-out infinite; }
+.bd-bar { width: 100%; height: 8px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
+.bd-bar i { display: block; height: 100%; background: linear-gradient(90deg, #4ade80, #a3e635); transition: width 0.9s linear; }
+.bd-count { font-variant-numeric: tabular-nums; }
+.bd-plot.empty { border-style: dashed; }
+
+.bd-bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.bd-chip { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.bd-chip.none { opacity: 0.55; }
+.bd-chip .grow { min-width: 0; flex: 1; }
+.bd-n { font-size: 16px; }
+.bd-mini { min-height: 40px; min-width: 40px; padding: 4px 8px; }
+
+.bd-pick { display: grid; gap: 8px; }
+.bd-pick-item { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 10px; align-items: center; text-align: left; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; color: var(--text); padding: 8px 10px; min-height: 52px; cursor: pointer; }
+.bd-pick-item img { grid-row: span 2; width: 36px; height: 36px; }
+
+.bd-pop { position: fixed; z-index: 90; width: 32px; height: 32px; pointer-events: none; animation: bd-rise 1.2s ease-out forwards; }
+
+@keyframes bd-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes bd-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px) scale(1.06); } }
+@keyframes bd-rise { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-90px) scale(1.2); opacity: 0; } }
+@keyframes bd-wiggle { 0%, 88%, 100% { transform: rotate(0); } 91% { transform: rotate(-1.5deg); } 94% { transform: rotate(1.5deg); } 97% { transform: rotate(-1deg); } }
+
+@media (min-width: 760px) { .bd-plots { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .bd-grow, .bd-bounce, .bd-find-btn, .bd-pop { animation: none; } .bd-pop { display: none; } .bd-bar i { transition: none; } }

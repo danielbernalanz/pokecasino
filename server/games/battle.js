@@ -26,11 +26,11 @@ function specimenFactors(id, sp) {
 // Nivel del ejemplar (5-100): +0,1 % por nivel por encima del 5 (Nv. 100 ≈ +9,5 %). Sin datos: 1.
 const levelF = (level) => 1 + Math.max(0, (Number.isFinite(level) ? level : 5) - 5) * 0.001;
 
-function fighter({ id, shiny, stars, owner, mega, ivs, nature, nick, level }) {
+function fighter({ id, shiny, stars, owner, mega, ivs, nature, nick, level, friendship }) {
   const p = BY_ID.get(id);
   const form = mega ? require('../mega').BY_FORM.get(mega) : null;
   const b = form ? require('../mega').formBaseStats(mega) : baseStats(id);
-  const mult = (1 + 0.04 * (stars - 1) + (shiny ? 0.05 : 0)) * (Array.isArray(ivs) ? levelF(level) : 1);
+  const mult = (1 + 0.04 * (stars - 1) + (shiny ? 0.05 : 0)) * (Array.isArray(ivs) ? levelF(level) * require('../bond').loveFactor(friendship) : 1);
   const f = specimenFactors(id, { ivs, nature });
   const hp = Math.round((b.hp + 60) * mult * f.hp);
   return {

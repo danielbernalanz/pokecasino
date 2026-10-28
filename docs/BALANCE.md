@@ -417,3 +417,18 @@ Ninguna acción de esta fase crea monedas. Los caramelos no se pueden vender ni 
 | Con caramelos, evolución y Milagroso | ≈ 36 días | ≈ 160 | ≈ 310 | ≈ 470 |
 
 El 100 % pasa de ≈ 2 años a ≈ 15 meses para quien tira 20 veces al día: los Pokémon de fase 2 y 3 (que casi no salen) se consiguen evolucionando y el Milagroso reparte las últimas especies. Sigue siendo un objetivo de más de un año; no se ha tocado ningún número por esto.
+
+## Fase B3 · Personalidad y vínculo: amistad, hallazgos del compañero y Huerto (server/bond.js, test/bond.test.js)
+
+La única fuente nueva de monedas de toda la fase es el hallazgo del compañero: **máximo +200 monedas al día por jugador** (motivo `buddy` en el registro). Todo lo demás (amistad, bayas, caramelos) no tiene precio en monedas.
+
+| Mecánica | Números |
+|---|---|
+| Amistad | 0-255 por ejemplar (70 al obtenerlo). Compañero: +1 por cada 1.000 monedas apostadas (tope +20/día; los duelos no cuentan). Bayas: +5/+10/+10/+15/+20 (tope +60/día por ejemplar). Ganar un duelo: +3 (5 victorias al día). Máximo teórico por ejemplar y día: +95 |
+| Efecto | Amistad ≥ 220 («Te adora»): +3 % a PS, ataque, defensa y velocidad en duelos (menos que el +9,5 % del nivel 100). Corazones 0-5 y etiqueta: Indiferente (< 100), Amistoso, Muy amistoso (≥ 160), Te adora |
+| Evolución por amistad | 18 evoluciones (Pichu → Pikachu, Cleffa, Igglybuff, Golbat, Chansey, Eevee → Espeon/Umbreon, Togepi, Azurill, Budew, Buneary, Chingling, Riolu, Munchlax, Woobat, Swadloon, Código Cero, Snom). Con amistad ≥ 220: sin nivel mínimo y la mitad del coste base (25 → 13, 100 → 50). Se mantiene el suelo por subida de rareza (≤ 1,5 ✦ de polvo extra por caramelo), así que el argumento de «no hay arbitraje de polvo» de B2 sigue valiendo (`test/bond.test.js` lo comprueba). Espeon y Umbreon solo salen por amistad; el resto admite también la vía normal |
+| Hallazgos del compañero | Uno cada 4 h reales (sin conexión), máximo 3 acumulados (12 h; lleno, el contador se para). Premio: caramelos de su familia 2-5 (60 %), 1-2 bayas (≈ 24-30 %), 10-40 ✦ (≈ 8-12 %, tope 40 ✦ al día) o 1 Ticket Gacha (≈ 2-5 %, máximo 1 al día), más 20-80 monedas **con tope de 200 al día**. La amistad solo mejora los pesos de baya, polvo y ticket |
+| Huerto | 4 parcelas. Planta 1 baya y da 2-4 bayas de la misma clase: Aranja 4 h, Frambu 6 h, Zidra 8 h, Latano 10 h, Pinia 12 h. Regar una vez quita el 25 % del tiempo que falta. Regalo inicial: 3 Bayas Aranja |
+| Bayas | No están en `ITEMS`: no se compran, no entran en el Mercado ni las comercian los NPC. Reciclar da 1 ✦ por baya con un tope de 20 ✦ al día (dentro de los 300 ✦ del reciclaje general), es decir, ≤ 80 monedas al día en el peor caso si se cambia el polvo |
+
+**Coste máximo diario en valor de monedas por jugador (techo teórico):** hallazgos 200 monedas + ticket 150 + polvo 40 ✦ (160 monedas) + bayas recicladas 20 ✦ (80 monedas) ≈ 590 monedas equivalentes, siempre que se abra la app cada 4 h; en la práctica (3 hallazgos si se conecta 2 veces al día, ≈ 150 monedas de media) es mucho menos. Para comparar: la recompensa diaria y las misiones ya dan más, y el tope de bonus del compañero es de 300 + 50 × nivel.

@@ -25,7 +25,7 @@ function ownedPick(user, { pokeId, shiny, mega }) {
   }
   // Ejemplar concreto: el del compañero si lo es; si no, el mejor por IVs con ese variocolor.
   const sp = require('../specimen').bestFor(user, id, !!shiny);
-  if (sp) Object.assign(pick, { ivs: sp.ivs, nature: sp.nature, nick: sp.nick, uid: sp.uid, level: sp.level });
+  if (sp) Object.assign(pick, { ivs: sp.ivs, nature: sp.nature, nick: sp.nick, uid: sp.uid, level: sp.level, friendship: sp.friendship });
   return pick;
 }
 
@@ -99,6 +99,7 @@ function accept(user, { id, pokeId, shiny, mega }) {
   loser.stats.duelsLost++;
   for (const p of players) { hub.track(p, 'duel_play'); hub.track(p, 'play', { game: 'duel' }); }
   hub.track(winner, 'duel_win');
+  require('../bond').onDuelWin(winner, (result.winner === 0 ? d.poke : poke).uid);
   // La XP de lo apostado solo se cobra si el duelo se juega (crear y cancelar retos no da nada), y la fija
   // tiene tope diario: si no, dos cuentas gemelas podían cultivar niveles sin coste.
   if (d.wager) for (const p of players) hub.addXp(p, d.wager * require('../balance').xpRate('duel'));

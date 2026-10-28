@@ -66,14 +66,16 @@ function day(u) {
 
 // ---- Evolución ----
 const evolutionsOf = (id) => DEX.filter((p) => p.evolvesFrom === id);
-function evoCost(fromId, toId) {
+// `friend`: evolución por amistad (≥ 220): sin nivel mínimo y con la mitad del coste base. El suelo por subida de
+// rareza se mantiene, así que el polvo ganado por caramelo nunca supera 1,5 (sin arbitraje).
+function evoCost(fromId, toId, friend = false) {
   const from = BY_ID.get(fromId);
   const to = BY_ID.get(toId);
   const base = EVO[to.stage >= 3 ? 3 : 2];
   const gain = Math.max(0, RARITY[to.rarity].dust - RARITY[from.rarity].dust);
-  let cost = Math.max(base.cost, Math.ceil(gain / EVO_GAIN_PER_CANDY));
+  let cost = Math.max(friend ? Math.ceil(base.cost / 2) : base.cost, Math.ceil(gain / EVO_GAIN_PER_CANDY));
   if (to.rarity === 'L' || to.rarity === 'M') cost *= FIXED_MULT;
-  return { cost, level: base.level };
+  return { cost, level: friend ? 0 : base.level };
 }
 
 // ---- Transferir ----
@@ -136,7 +138,10 @@ function evolve(u, p) {
   const to = Number(p.to);
   const target = evolutionsOf(id).find((x) => x.id === to);
   if (!target) throw new Error('Ese Pokémon no puede evolucionar a eso.');
-  const { cost, level } = evoCost(id, to);
+  const bond = require('./bond');
+  const friend = bond.isFriendEvo(id, to) && bond.loves(bond.friendOf(m));
+  if (!friend && bond.isFriendEvo(id, to) && bond.FRIEND_ONLY.has(to)) throw new Error(`${target.name} solo evoluciona con mucha amistad (≥ ${bond.LOVE_MIN}).`);
+  const { cost, level } = evoCost(id, to, friend);
   if (m.level < level) throw new Error(`Necesita nivel ${level} (ahora ${m.level}).`);
   const c = u.collection[id];
   if (gacha.spareCopies(c) < 1) throw new Error(`Necesitas otra copia de ${BY_ID.get(id).name} para conservar su entrada en la Pokédex.`);
@@ -222,6 +227,8 @@ function wonder(u, p) {
 }
 
 // ---- Reciclaje ----
+const RECYCLE_BERRY_DUST = 1; // cada baya
+const RECYCLE_BERRY_DAILY = 20; // ✦ al día (dentro del tope general): ≈ 80 monedas como mucho
 function recycleValue(itemId) {
   const it = items.ITEMS[itemId];
   if (!it || !it.price || it.cosmetic || it.megaStone) return 0;
@@ -233,13 +240,16 @@ function recycleList() {
 function recycle(u, p) {
   const itemId = String(p.item);
   const qty = Number(p.qty === undefined ? 1 : p.qty);
-  const v = recycleValue(itemId);
+  const isBerry = !!items.BERRIES[itemId];
+  const v = isBerry ? RECYCLE_BERRY_DUST : recycleValue(itemId);
   if (!v) throw new Error('Ese objeto no se puede reciclar.');
   if (!Number.isInteger(qty) || qty < 1 || qty > 99) throw new Error('Cantidad no válida.');
   const d = day(u);
   const dust = v * qty;
   if (d.recycle + dust > RECYCLE_DAILY_DUST) throw new Error(`Tope diario de reciclaje: ${RECYCLE_DAILY_DUST} ✦ (te quedan ${Math.max(0, RECYCLE_DAILY_DUST - d.recycle)}).`);
-  items.take(u, itemId, qty);
+  if (isBerry && (d.berry || 0) + dust > RECYCLE_BERRY_DAILY) throw new Error(`Las bayas solo dan ${RECYCLE_BERRY_DAILY} ✦ de reciclaje al día (te quedan ${Math.max(0, RECYCLE_BERRY_DAILY - (d.berry || 0))}). Mejor dáselas a tus Pokémon.`);
+  if (isBerry) require('./bond').takeBerry(u, itemId, qty); else items.take(u, itemId, qty);
+  if (isBerry) d.berry = (d.berry || 0) + dust;
   d.recycle += dust;
   u.dust += dust;
   db.save();
@@ -254,12 +264,14 @@ function boxExtra(u) {
   return {
     candy: u.candy || {}, train, wonderLeft: WONDER_DAILY - d.wonder, recycleLeft: RECYCLE_DAILY_DUST - d.recycle,
     rules: { transfer: TRANSFER_CANDY, trainCost: TRAIN_COST, trainDaily: TRAIN_DAILY, wonderDaily: WONDER_DAILY, maxLevel: MAX_LEVEL, recycleDaily: RECYCLE_DAILY_DUST, recycle: Object.fromEntries(recycleList()),
-      evo: Object.fromEntries(DEX.filter((x) => x.evolvesFrom).map((x) => [x.id, evoCost(x.evolvesFrom, x.id)])) },
+      evo: Object.fromEntries(DEX.filter((x) => x.evolvesFrom).map((x) => [x.id, evoCost(x.evolvesFrom, x.id)])),
+      evoFriend: Object.fromEntries([...require('./bond').FRIEND_EVO].map(([to, from]) => [to, evoCost(from, to, true)])), loveMin: require('./bond').LOVE_MIN,
+      friendOnly: [...require('./bond').FRIEND_ONLY] },
   };
 }
 
 module.exports = {
-  TRANSFER_CANDY, PULL_CANDY, PULL_NEW_CANDY, MIN_LEVEL, MAX_LEVEL, EVO, EVO_GAIN_PER_CANDY, TRAIN_COST, TRAIN_DAILY, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST,
+  TRANSFER_CANDY, PULL_CANDY, PULL_NEW_CANDY, MIN_LEVEL, MAX_LEVEL, EVO, EVO_GAIN_PER_CANDY, TRAIN_COST, TRAIN_DAILY, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST, RECYCLE_BERRY_DAILY, RECYCLE_BERRY_DUST,
   levelCost, evoCost, evolutionsOf, candyOf, addCandy, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
   transfer, transferBulk, levelUp, evolve, train, wonder, recycle,
 };

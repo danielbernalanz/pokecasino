@@ -1,5 +1,6 @@
 import { S, h, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
 import { evolveAnim, wonderReveal } from './pc-fx.js';
+import { heartsEl, friendLabel, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
 
 const BATCH = 60;
 const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
@@ -69,15 +70,18 @@ function openMon(uid) {
   });
   const ru = box.rules;
   const evoRow = (t) => {
-    const e = ru.evo[t.id];
+    const love = m.friendship >= (ru.loveMin || LOVE_MIN);
+    const viaFriend = love && ru.evoFriend && ru.evoFriend[t.id];
+    const e = viaFriend || ru.evo[t.id];
     const reasons = [];
+    if (ru.friendOnly && ru.friendOnly.includes(t.id) && !love) reasons.push(`amistad ≥ ${LOVE_MIN}`);
     if (m.level < e.level) reasons.push(`Nv. ${e.level}`);
     if (candyOf(m.id) < e.cost) reasons.push(`${e.cost} 🍬`);
     if (spareCount(m.id) < 1) reasons.push('otra copia');
     const tc = S.me.collection[t.id];
     if (tc && tc.n >= 5) reasons.push('ya tienes 5 estrellas');
     return h('div', { class: 'pc-evo' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
-      h('div', { class: 'grow small' }, h('b', {}, t.name), h('div', { class: 'muted' }, `${e.cost} 🍬 · Nv. ${e.level} mín.` + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ''))),
+      h('div', { class: 'grow small' }, h('b', {}, t.name), h('div', { class: 'muted' }, (viaFriend ? `💖 Por amistad: ${e.cost} 🍬 · sin nivel mínimo` : `${e.cost} 🍬 · Nv. ${e.level} mín.`) + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ''))),
       h('button', { class: 'btn primary', disabled: reasons.length > 0, onclick: async (ev) => {
         const r = await act('pc:evolve', { id: m.id, uid, to: t.id }, ev.target);
         if (!r) return;
@@ -126,7 +130,23 @@ function openMon(uid) {
           spare > 0 ? h('button', { class: 'btn', onclick: (e) => bulkTransfer(m.id, e.target, () => { modalRef.close(); render && render(); }) }, 'Transferir repetidos') : null),
         h('div', { class: 'small muted' }, 'Intercambio Milagroso: entregas una copia sobrante (no favorita, compañero ni variocolor) y recibes otra de la misma rareza. Sin monedas.')));
   }
-  const hearts = Math.round(m.friendship / 255 * 5);
+  function friendPanel() {
+    const love = m.friendship >= LOVE_MIN;
+    const owned = berryIds().filter((id) => berryCount(id) > 0);
+    return h('div', { class: 'pc-box bd-friend' },
+      h('div', { class: 'row gap wrap' }, h('b', {}, 'Amistad: '), heartsEl(m.friendship), h('span', { class: 'small' }, `${friendLabel(m.friendship)} (${m.friendship}/255)`)),
+      love ? h('div', { class: 'small good' }, '💖 Te adora: +3 % a todas sus estadísticas en duelos.') : h('div', { class: 'small muted' }, `A partir de ${LOVE_MIN} te adora: +3 % en duelos y evoluciones por amistad. Sube con bayas, apostando con él de compañero y ganando duelos.`),
+      h('div', { class: 'small bd-feedlbl' }, '🍓 Dar baya (máx. +60 de amistad al día por Pokémon)'),
+      owned.length
+        ? h('div', { class: 'bd-feed' }, owned.map((id) => h('button', { class: 'btn bd-feed-btn', disabled: m.friendship >= 255, onclick: async (ev) => {
+          const r = await act('pc:feed', { id: m.id, uid, berry: id }, ev.currentTarget);
+          if (!r) return;
+          sfx(r.gain >= 15 ? 'shiny' : 'click');
+          toast(`${label(m)} se lo comió encantado: +${r.gain} de amistad`, 'success');
+          reopen(true);
+        } }, berryImg(id), h('span', {}, S.data.berries[id].name), h('small', {}, `×${berryCount(id)} · +${S.data.berries[id].friend}`))))
+        : h('div', { class: 'small muted' }, 'No tienes bayas. Plántalas en el ', h('a', { href: '#/huerto', onclick: () => modalRef.close() }, 'Huerto'), '.'));
+  }
   const nickInput = h('input', { class: 'pc-nick', maxlength: 12, value: m.nick, placeholder: 'Mote (máx. 12)' });
   const nickRow = h('div', { class: 'row gap', style: { display: 'none' } }, nickInput,
     h('button', { class: 'btn primary', onclick: async (e) => { reopen(await act('pc:nick', { id: m.id, uid, nick: nickInput.value }, e.target)); } }, 'Guardar'));
@@ -142,7 +162,7 @@ function openMon(uid) {
       h('div', {}, h('b', {}, `IV total ${total}/186`), ` · ${judge(total)}`),
       h('div', { class: 'small' }, h('b', {}, 'Habilidad: '), m.ability),
       h('div', { class: 'small' }, h('b', {}, 'Movimientos: '), m.moves.join(' · ')),
-      h('div', { class: 'small' }, h('b', {}, 'Amistad: '), '♥'.repeat(hearts) + '♡'.repeat(5 - hearts), ` (${m.friendship})`),
+      friendPanel(),
       h('div', { class: 'small muted' }, 'Obtenido: ' + new Date(m.at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })),
       nickRow,
       box.rules ? candyPanel() : null,
@@ -207,6 +227,7 @@ export default {
           h('img', { class: 'pixel', src: sprite(m.id, m.shiny), alt: p.name, loading: 'lazy' }),
           h('b', { class: 'pc-name' }, (m.shiny ? '✨ ' : '') + label(m)),
           h('span', { class: 'small muted' }, `Nv. ${m.level} ${genderTag(m)}`),
+          heartsEl(m.friendship, 'sm'),
           h('span', { class: 'small muted' }, m.nature));
       };
       let shown = Math.min(BATCH, list.length);

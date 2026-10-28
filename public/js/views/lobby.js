@@ -1,6 +1,7 @@
 import { S, h, fmt, act, sfx, toast, art, item, pokeImg, badgeImg, bus } from '../core.js';
 import { canInstall, installApp } from '../main.js';
 import { dailyChest } from '../rewards.js';
+import { buddyFindBlock } from './huerto.js';
 
 function rewardText(r) {
   const parts = [];
@@ -176,7 +177,8 @@ export default {
           me.buddy
             ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta (hoy te quedan ${fmt(me.bonusLeft)} de bonus: crece con lo que apuestas y llega como mucho a ${fmt(me.bonusCap)} al día).`)
             : h('p', { class: 'muted' }, 'Elige un compañero en tu Pokédex: aumenta tus ganancias según su rareza y estrellas.'),
-          h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'))),
+          buddyFindBlock(),
+          h('div', { class: 'row gap wrap' }, h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'), h('a', { class: 'btn', href: '#/huerto' }, '🌱 Huerto')))),
       h('h2', { class: 'section-title' }, `Juegos (${GAMES.length - 2} + Gacha y Mercado)`),
       h('div', { class: 'game-grid' }, GAMES.map((g) => h('a', { class: 'game-card', href: '#/' + g.id },
         h('img', { class: 'game-art', src: art(g.art), alt: '', loading: 'lazy' }),
