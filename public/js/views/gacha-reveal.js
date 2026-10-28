@@ -54,6 +54,9 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
     const top = results.reduce((m, r) => (RANK[r.rarity] > RANK[m] ? r.rarity : m), 'C');
     const multi = results.length > 1;
     let skip = false;
+    // En el sobre ×10 cada toque acelera solo la Poké Ball actual (una por toque); «Saltar todo» lo abre todo.
+    let hurry = false;
+    let phase = 'throw';
     let tapWaiter = null;
 
     const rays = h('div', { class: 'gx-rays' });
@@ -63,7 +66,7 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
     const hint = h('div', { class: 'gx-hint' }, 'Toca para saltar');
     const ov = h('div', { class: 'gx', role: 'dialog', 'aria-label': 'Resultado de la tirada' }, rays, stage, fx, flash, hint);
     const tap = () => {
-      if (tapWaiter) { const f = tapWaiter; tapWaiter = null; f(); } else skip = true;
+      if (tapWaiter) { const f = tapWaiter; tapWaiter = null; f(); } else if (phase === 'pack') hurry = true; else skip = true;
     };
     ov.addEventListener('click', (e) => { if (!e.target.closest('button')) tap(); });
     const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); tap(); } };
@@ -71,7 +74,7 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
     document.body.append(ov);
     document.body.classList.add('gx-open');
 
-    const wait = (ms) => sleep(skip ? 0 : reduceMotion() ? Math.min(ms, 150) : ms);
+    const wait = (ms) => sleep(skip ? 0 : hurry ? Math.min(ms, 90) : reduceMotion() ? Math.min(ms, 150) : ms);
     // Espera a que toquen la pantalla (o a que pase `ms`, si se indica).
     const waitTap = (ms) => new Promise((res) => { tapWaiter = res; if (ms) setTimeout(() => { if (tapWaiter === res) { tapWaiter = null; res(); } }, ms); });
     const level = (n) => { ov.dataset.lv = String(n); };
@@ -185,9 +188,13 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
       const counter = h('div', { class: 'gx-count' }, `0/${results.length}`);
       const grid = h('div', { class: 'gx-grid' }, slots);
       const pack = h('div', { class: 'gx-pack' }, counter, grid);
-      stage.replaceChildren(pack);
+      const skipAll = h('button', { class: 'btn small gx-skipall', onclick: () => { skip = true; skipAll.remove(); } }, '⏭ Saltar todo');
+      stage.replaceChildren(pack, skipAll);
+      phase = 'pack';
+      skip = false; // tocar durante el lanzamiento no salta el sobre
       level(1);
-      hint.textContent = 'Toca para abrirlas todas';
+      const packHint = 'Toca para abrir la siguiente más rápido';
+      hint.textContent = packHint;
       await wait(500);
       // Orden de apertura: las mejores al final (variocolores después de todo), manteniendo su posición en la cuadrícula.
       const score = (r) => RANK[r.rarity] + (r.shiny ? 10 : 0);
@@ -199,12 +206,13 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
         const rk = RANK[r.rarity];
         const ball = slots[i].firstChild;
         if ((rk >= 4 || r.newShiny) && !skip) {
+          hurry = false; // las legendarias y variocolores nuevas siempre tienen su momento
           ball.classList.add('focus', 'wobble');
           sfx('charge', 0); buzz([40, 40, 40]);
           await wait(900);
           await spotlight(r);
-          hint.textContent = 'Toca para abrirlas todas';
-          stage.replaceChildren(pack);
+          hint.textContent = packHint;
+          stage.replaceChildren(pack, ...(skip ? [] : [skipAll]));
         } else if (!skip) {
           // Se agranda y se sacude 1 (C/U), 2 (R) o 3 (E) veces antes de abrirse.
           ball.classList.add('focus');
@@ -218,6 +226,7 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
         }
         slots[i].replaceChildren(card(r, 'flip'));
         counter.textContent = `${++done}/${results.length}`;
+        hurry = false; // el siguiente toque acelera la siguiente
         if (!skip) {
           burst(fx, ...centerOf(slots[i]), COLOR[r.rarity], 10 + rk * 8, { spread: 90 + rk * 40 });
           sfx(rk >= 3 ? 'win' : rk === 2 ? 'reveal' : 'flip');
@@ -225,6 +234,8 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
           await wait(pause[rk]);
         }
       }
+      skipAll.remove();
+      phase = 'done';
       return pack;
     }
 

@@ -111,3 +111,6 @@
 @media (prefers-reduced-motion: reduce) {
   .fx-cel-icon, .fx-cel-title, .fxc-days .sday.today, .reel.tense, .crash-mult.fly.x10, .fxe-egg.shiver { animation: none; }
 }
+
+/* Sobre ×10: botón para abrirlo todo de golpe (tocar la pantalla solo acelera la Poké Ball actual). */
+.gx-skipall { position: relative; z-index: 3; margin-top: 6px; opacity: .85; }
