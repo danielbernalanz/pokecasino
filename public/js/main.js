@@ -17,14 +17,15 @@ import videopoker from './views/videopoker.js';
 import baccarat from './views/baccarat.js';
 import plinko from './views/plinko.js';
 import mines from './views/mines.js';
+import quiz from './views/quiz.js';
 import crash from './views/crash.js';
 import poker from './views/poker.js';
 import market from './views/market.js';
 import trainer from './views/trainer.js';
 import megaView from './views/mega.js';
 
-const VIEWS = [lobby, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, gacha, pokedex, shop, megaView, market, ranking, admin];
-const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', gacha: 'Colección', market: 'Comunidad' };
+const VIEWS = [lobby, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, shop, megaView, market, ranking, admin];
+const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', quiz: 'Desafíos', gacha: 'Colección', market: 'Comunidad' };
 
 // ---------- Autenticación ----------
 let mode = 'login';
@@ -190,7 +191,7 @@ function buildNav() {
 }
 
 // ---------- Barra inferior (móvil) ----------
-const GAME_IDS = ['poker', 'crash', 'race', 'duels', 'blackjack', 'videopoker', 'baccarat', 'roulette', 'slots', 'plinko', 'mines', 'voltorb'];
+const GAME_IDS = ['poker', 'crash', 'race', 'duels', 'blackjack', 'videopoker', 'baccarat', 'roulette', 'slots', 'plinko', 'mines', 'voltorb', 'quiz'];
 const TABS = [
   { id: 'lobby', icon: '🏠', label: 'Inicio' },
   { id: 'games', icon: '🎰', label: 'Juegos', match: GAME_IDS },

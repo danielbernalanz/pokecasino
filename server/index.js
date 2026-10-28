@@ -28,6 +28,7 @@ const videopoker = require('./games/videopoker');
 const baccarat = require('./games/baccarat');
 const plinko = require('./games/plinko');
 const mines = require('./games/mines');
+const quiz = require('./games/quiz');
 const crash = require('./games/crash');
 const holdem = require('./games/holdem');
 const npc = require('./npc');
@@ -143,7 +144,10 @@ const STATIC = {
   heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },
   daily: { base: BAL.DAILY_BASE, step: BAL.DAILY_STEP, max: BAL.DAILY_MAX_STREAK },
   mega: mega.STATIC,
+  quiz: quiz.STATIC,
 };
+// Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).
+app.get('/api/quiz/img/:token', quiz.imgHandler);
 app.get('/api/static', (req, res) => res.json(STATIC));
 
 const server = http.createServer(app);
@@ -546,6 +550,13 @@ io.on('connection', (socket) => {
   on('mines:start', mines.start);
   on('mines:pick', mines.pick);
   on('mines:cashout', mines.cashout);
+  on('quiz:state', quiz.state, { push: false });
+  on('quiz:start', quiz.start);
+  on('quiz:answer', quiz.answer);
+  on('quiz:next', quiz.next);
+  on('quiz:cashout', quiz.cashout);
+  on('quiz:board', quiz.board, { push: false });
+  if (process.env.NODE_ENV === 'test') on('quiz:peek', quiz.peek, { push: false }); // solo para pruebas automáticas
   on('crash:bet', crash.bet);
   on('crash:cashout', crash.cashout);
   on('poker:watch', (u, p) => holdem.watch(socket, p), { push: false });

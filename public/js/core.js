@@ -107,7 +107,7 @@ export function modal(content, { title, wide, onClose } = {}) {
 // ---- Avisos de acciones arriesgadas ----
 // Cada aviso se puede silenciar por apartado (clave 'warn:<key>' = 'off' en localStorage).
 const SECTION_NAMES = {
-  slots: 'Pika-Slots', roulette: 'la Ruleta', plinko: 'Plinko', mines: 'Minas', voltorb: 'Voltorb Flip', crash: 'Crash', race: 'las Carreras',
+  slots: 'Pika-Slots', roulette: 'la Ruleta', plinko: 'Plinko', mines: 'Minas', quiz: 'el Desafío', voltorb: 'Voltorb Flip', crash: 'Crash', race: 'las Carreras',
   blackjack: 'el Blackjack', videopoker: 'el Video Póker', baccarat: 'el Baccarat', duels: 'los Duelos', poker: 'el Póker', gacha: 'el Gacha',
   bj: 'el Blackjack', vp: 'el Video Póker', masterball: 'el Gacha', release: 'la Pokédex y la Tienda', item: 'la Mochila', market: 'el Mercado', pokedex: 'la Pokédex', shop: 'la Tienda', gift: 'los regalos', items: 'los objetos',
 };

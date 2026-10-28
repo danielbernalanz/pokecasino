@@ -20,6 +20,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 | 🔻 **Plinko** | Máquina | 12 filas, riesgo bajo/medio/alto, varias bolas a la vez. |
 | 💣 **Minas Geodude** | Máquina | 5×5, de 1 a 24 Geodude, retírate cuando quieras. |
 | ⚡ **Voltorb Flip** | Máquina | El minijuego de HeartGold/SoulSilver con 8 niveles. |
+| 🧠 **Desafío Pokémon** | Desafío | «¿Quién es ese Pokémon?» (escribe el nombre a partir de la silueta, un detalle o solo pistas) y Trivia (preguntas de opción múltiple generadas con la Pokédex + un banco de curiosidades de fan). 4 dificultades (Fácil 20 s, Normal 15 s, Difícil 12 s, Maestro 10 s), el multiplicador sube con cada acierto, retírate entre pregunta y pregunta o fija un objetivo de racha (3/5/10/15) con +3 %. Todo lo valida el servidor; las imágenes pasan por un proxy para no revelar el número del Pokémon. Clasificación de mejores rachas. |
 
 **Colección y economía**
 
@@ -56,7 +57,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Móvil**: barra de pestañas inferior, ventanas como hojas inferiores, controles fijos al pie en los juegos y **app instalable** (PWA: «Instalar app» o, en iPhone, Compartir → «Añadir a pantalla de inicio»).
 
-Todos los resultados se calculan en el servidor con `crypto`. RTP máximos con la mejor estrategia: Video Póker 99,5 % (9/6, juego óptimo), Blackjack 99,45 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash y Minas 97 %, Slots ≈96–97,5 %, Voltorb Flip 95 % (inferencia exacta; un jugador normal, mucho menos), Ruleta 94,7 %, Carrera ≤ 90 %. La experiencia es proporcional a la ventaja de la casa de cada juego (más XP donde la casa gana más) y el bonus de compañero, colecciones y Moneda Amuleto tiene dos topes diarios (300 + 50 × nivel y un 30 % de la ventaja de lo apostado ese día), de modo que ni los niveles ni el bonus pueden dar dinero seguro a la larga. En los duelos entre jugadores no hay bonus. Todo el análisis (antes → después) está en [docs/BALANCE.md](docs/BALANCE.md) y `node scripts/simulate-economy.js` lo reproduce.
+Todos los resultados se calculan en el servidor con `crypto`. RTP máximos con la mejor estrategia: Video Póker 99,5 % (9/6, juego óptimo), Blackjack 99,45 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash, Minas y Desafío Pokémon 97 % (un experto en cada dificultad, ≤ 96,8 %), Slots ≈96–97,5 %, Voltorb Flip 95 % (inferencia exacta; un jugador normal, mucho menos), Ruleta 94,7 %, Carrera ≤ 90 %. La experiencia es proporcional a la ventaja de la casa de cada juego (más XP donde la casa gana más) y el bonus de compañero, colecciones y Moneda Amuleto tiene dos topes diarios (300 + 50 × nivel y un 30 % de la ventaja de lo apostado ese día), de modo que ni los niveles ni el bonus pueden dar dinero seguro a la larga. En los duelos entre jugadores no hay bonus. Todo el análisis (antes → después) está en [docs/BALANCE.md](docs/BALANCE.md) y `node scripts/simulate-economy.js` lo reproduce.
 
 ## Puesta en marcha
 
@@ -150,7 +151,7 @@ server/
   progress.js     Ruta del Entrenador, misiones, medallas y colecciones
   cards.js        Baraja y evaluador de manos de póker
   games/          holdem, crash, race, duel, battle, blackjack, videopoker,
-                  baccarat, roulette, slots, plinko, mines, voltorb
+                  baccarat, roulette, slots, plinko, mines, voltorb, quiz (+ quizdata, banco de trivia)
 scripts/
   build-dex.js          Genera dexdata.json desde PokeAPI (rareza, fase evolutiva y cadena)
   simulate-economy.js   Simula 3 arquetipos de jugador, el RTP de cada juego y el coste de la Pokédex

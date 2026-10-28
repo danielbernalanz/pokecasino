@@ -22,6 +22,7 @@ const GAMES = [
   { id: 'slots', name: 'Pika-Slots', desc: '5 líneas, Ditto comodín y bote progresivo.', art: 25, ico: 'master-ball' },
   { id: 'plinko', name: 'Plinko', desc: 'Suelta Poké Balls entre los clavos.', art: 113, ico: 'great-ball' },
   { id: 'mines', name: 'Minas Geodude', desc: 'Descubre Trozos Estrella sin despertar a Geodude.', art: 74, ico: 'star-piece' },
+  { id: 'quiz', name: 'Desafío Pokémon', desc: '¿Quién es ese Pokémon? y trivia: acierta seguido y retírate a tiempo.', art: 201, ico: 'exp-share', tag: 'NUEVO' },
   { id: 'voltorb', name: 'Voltorb Flip', desc: 'El clásico de la Esquina de Juegos.', art: 100, ico: 'nugget' },
   { id: 'gacha', name: 'Poké Gacha', desc: 'Banners legendarios, Master Balls y variocolores.', art: 150, ico: 'great-ball' },
   { id: 'market', name: 'Mercado', desc: 'Compra y vende Pokémon y objetos.', art: 52, ico: 'amulet-coin' },

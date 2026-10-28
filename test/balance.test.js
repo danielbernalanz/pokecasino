@@ -24,6 +24,7 @@ const slots = require('../server/games/slots');
 const roulette = require('../server/games/roulette');
 const plinko = require('../server/games/plinko');
 const mines = require('../server/games/mines');
+const quiz = require('../server/games/quiz');
 const crash = require('../server/games/crash');
 const baccarat = require('../server/games/baccarat');
 const videopoker = require('../server/games/videopoker');
@@ -78,6 +79,18 @@ test('Ruleta, Plinko, Minas y Crash: RTP exacto ≤ declarado', () => {
   const N = 300000;
   for (let i = 0; i < N; i++) if (crash.crashPoint() >= 2) hit++;
   assert.ok(Math.abs((2 * hit) / N - 0.97) < 0.02, `crash ×2: ${(2 * hit) / N}`);
+});
+
+test('Desafío Pokémon: un experto en cada dificultad y objetivo devuelve ≤ 97 % (con XP ≥ 3 % de ventaja)', () => {
+  for (const d of Object.values(quiz.DIFFS)) {
+    for (let k = 1; k <= d.max; k++) {
+      for (const bonus of quiz.TARGETS.includes(k) ? [false, true] : [false]) {
+        assert.ok(Math.pow(d.acc, k) * quiz.finalMult(d.id, k, bonus) <= BAL.RTP.quiz + 1e-9, `${d.id} k=${k}`);
+      }
+    }
+  }
+  assert.ok(BAL.RTP.quiz <= 0.97 && BAL.edge('quiz') >= 0.03 - 1e-9);
+  assert.ok(quiz.MAX_MULT <= 50 && quiz.PAYOUT_CAP <= 20);
 });
 
 test('Baccarat: las tres apuestas devuelven menos que el RTP declarado', () => {
@@ -185,7 +198,7 @@ test('subir de nivel: monedas 3 × nivel, Caramelo cada 5 desde el 10 y Master B
 });
 
 test('el bonus de un día nunca supera la fracción de ventaja de lo apostado, juego a juego', () => {
-  for (const g of ['videopoker', 'blackjack', 'baccarat', 'slots', 'roulette', 'mines']) {
+  for (const g of ['videopoker', 'blackjack', 'baccarat', 'slots', 'roulette', 'mines', 'quiz']) {
     const u = user('bonus-' + g, { coins: 1e9, buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 3600e3 } });
     let staked = 0;
     let bonus = 0;

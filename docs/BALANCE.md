@@ -67,6 +67,7 @@ Efecto en la Pokédex: completarla solo con tiradas pasa de ≈ 13.800 a ≈ 14.
 | Ruleta de Tipos | 94,7 % | 94,7 % | 94,65 % ± 0,20 |
 | Plinko | 95,5 % (alto) – 97,5 % (bajo) | igual | 97,51 % ± 0,07 (bajo) |
 | Minas | 97 % | 97 % | 96,56 % ± 0,16 (3 Geodude, retirada tras 4 aciertos) |
+| Desafío Pokémon | (nuevo) | 97 % para un fan experto en cada dificultad (≤ 96,8 %) | ver «Desafío Pokémon» al final |
 | Crash | 97 % | 97 % | 97 % (P(explota ≥ x) = 0,97 / x; `test/balance.test.js` lo comprueba) |
 | Baccarat (Banca / Punto / Empate) | 98,9 / 98,8 / 85,8 % | igual | 99,12 % ± 0,18 (Banca) |
 | Video Póker 9/6 | 99,54 % (óptimo) | 99,54 % | 99,18 % ± 0,84 (jerarquía casi óptima) |
@@ -275,3 +276,24 @@ Reglas de diseño: **no se crea ninguna moneda** y cada fuente nueva está acota
 | Compañero Mega | +1 % al bonus | cae bajo los mismos topes diarios (fijo y «de sala») |
 
 Podio final (≥ 100 💠 ganados): 1.º Marco Mega + título + megapiedra a elegir; 2.º Dorso Megapiedra + megapiedra al azar; 3.º Marco Mega + megapiedra al azar. Los hitos alcanzados y sin reclamar se entregan solos al terminar.
+
+
+## Desafío Pokémon (server/games/quiz.js, test/quiz.test.js)
+
+Juego de habilidad con apuesta progresiva (como Minas): cada acierto sube el multiplicador, un fallo o quedarse sin tiempo pierde la apuesta y te retiras entre pregunta y pregunta. El RTP depende de **cuánto aciertas**, así que el multiplicador se calcula para una precisión supuesta de un fan **experto** en cada dificultad (`DIFFS[d].acc`).
+
+**Escalera.** Tras `k` aciertos seguidos: `multiplicador(k) = máx(1, ⌊100 × 0,94 / acc^k⌋ / 100)`, con tope ×50. Un experto que se retira tras `k` aciertos devuelve `acc^k × multiplicador(k) ≤ 0,94`; con **objetivo de racha** (3/5/10/15, cobro automático al alcanzarlo) el multiplicador lleva un +3 %: `0,94 × 1,03 = 0,968 < 0,97`. El único valor de `k` donde el máximo se queda en `0,95` (Fácil, `k = 1`) es porque el multiplicador no baja de ×1. `test/balance.test.js` y `test/quiz.test.js` comprueban que **ningún** `k` ni objetivo supera `BAL.RTP.quiz = 0,97` y simulan partidas con el código real (peek de la respuesta con probabilidad `acc`).
+
+| Dificultad | Tiempo | Opciones | Precisión supuesta | Racha máx. | Escalera ×(k) | Mejor retirada del experto | Casual (−15 pts) |
+|---|---|---|---|---|---|---|---|
+| Fácil | 20 s | 4 | 95 % | 10 | 1,00 · 1,04 · 1,09 · 1,21 (k=5) · 1,56 (k=10) | 95,0 % (k=1); 96,0 % (objetivo 3) | 80,0 % |
+| Normal | 15 s | 4 | 85 % | 15 | 1,10 · 1,30 · 1,53 · 2,11 (k=5) · 4,77 (k=10) · 10,76 (k=15) | 94,0 % (k=15); 96,8 % (objetivo 15) | 77,0 % |
+| Difícil | 12 s | 6 | 70 % | 12 | 1,34 · 1,91 · 2,74 · 5,59 (k=5) · 33,27 (k=10) · ×50 (k=12) | 94,0 % (k=9); 96,8 % (objetivo 10) | 73,7 % |
+| Maestro | 10 s | 6 | 50 % | 6 | 1,88 · 3,76 · 7,52 · 15,04 · 30,08 · ×50 (k=6) | 94,0 % (k=1); 96,8 % (objetivo 5) | 65,8 % |
+
+* **Tope de pago**: ×50 como máximo y, por ronda, `20 × maxBetFor(user)` (`capped` en la respuesta). La racha máxima por dificultad corta la escalera donde Difícil y Maestro ya rozan ×50 (y Fácil/Normal no superan ×1,56/×10,76): al llegar a ella se cobra solo.
+* **XP y bonus**: `BAL.RTP.quiz = 0,97` → ventaja ≥ 3 %: XP = 2,5 × 0,03 = **0,075 por moneda** apostada (`hub.takeBet`), y el bonus de compañero entra en los mismos topes diarios que Minas (`accrueBonus` usa la ventaja de `quiz`). `test/balance.test.js` incluye `quiz` en los invariantes de XP y de bonus.
+* **Preguntas**: 12 generadores sobre la Pokédex real (tipo, tipo secundario, «cuál NO es de tipo», comparar estadísticas, región/generación, evoluciones en los dos sentidos, número de Pokédex, línea de estadísticas, doble tipo, eficacia de tipos con `CHART`, inmunidades, ×4) + un banco de ~75 curiosidades de fans escritas a mano (`quizdata.js`, 4 niveles de dificultad). Cada pregunta se **construye con una sola opción correcta y se verifica** (`assemble`): `test/quiz.test.js` genera 2.000 preguntas por tipo. «¿Quién es ese Pokémon?» acepta nombres sin tildes ni mayúsculas ni signos y, desde 6 letras, una errata (Levenshtein ≤ 1); escribir el nombre exacto de otro Pokémon nunca se perdona (Nidorina ≠ Nidorino).
+* **Antifraude**: la pregunta, la respuesta, el plazo y las opciones barajadas viven en `user.games.quiz`; al cliente solo llegan el enunciado, las opciones y los milisegundos restantes. El plazo se controla en el servidor (+1 s de margen de latencia, +1 s más si hay imagen); quedarse sin tiempo, aunque no se vuelva a contestar, pierde la ronda. No hay cobro ni nueva pregunta mientras hay una en juego (no se puede ver la pregunta y luego retirarse: eso sería selección adversa que rompería el RTP). Las imágenes se sirven por `/api/quiz/img/<token>` (el servidor descarga el *official artwork*, lo guarda en caché, y genera **la silueta o el recorte en el propio servidor**; el token no contiene el número). Mínimo 250 ms entre acciones y el límite de eventos del socket.
+
+**Límite conocido (lo importante).** Como toda escalera geométrica, el RTP crece rápido si aciertas **más** de lo supuesto: con `+5` puntos de precisión el mejor plan devuelve ≈ 145 % (Fácil), 228 % (Normal), 201 % (Difícil) y 156 % (Maestro), y alguien que acierte el 99 % (por ejemplo buscando las respuestas) ganaría muchas veces la apuesta. Lo mitigan los tiempos cortos, que el modo de escribir y Maestro no tengan opciones que buscar a ciegas, el tope de pago por ronda (20 × límite de apuesta), la racha máxima por dificultad y el tope ×50; pero **no se elimina**. Si se detectara abuso, las medidas siguientes son baratas: precisión efectiva por jugador (ajustar la escalera con su acierto histórico), reducir el límite de apuesta del juego o quitar Fácil/Normal con rachas largas.

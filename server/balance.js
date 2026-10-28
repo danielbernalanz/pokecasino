@@ -9,6 +9,7 @@ const RTP = {
   roulette: 18 / 19,
   plinko: 0.976, // riesgo bajo; medio 96,4 % y alto 95,5 %
   mines: 0.97,
+  quiz: 0.97, // Desafío Pokémon: un fan experto en cada dificultad y objetivo se queda en ≤ 96,8 % (docs/BALANCE.md)
   crash: 0.97,
   voltorb: 0.95, // se recalcula con test/balance.test.js (estrategia razonable)
   videopoker: 0.9954, // Jacks or Better 9/6 con juego óptimo

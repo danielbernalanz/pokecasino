@@ -7,7 +7,7 @@ const BAL = require('./balance');
 
 const GAME_NAMES = {
   slots: 'Pika-Slots', roulette: 'la Ruleta de Tipos', voltorb: 'Voltorb Flip', race: 'la Gran Carrera', duel: 'un duelo',
-  blackjack: 'Blackjack', videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas Geodude',
+  blackjack: 'Blackjack', videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas Geodude', quiz: 'el Desafío Pokémon',
   crash: 'Crash', poker: "Texas Hold'em", mega: 'la Máquina Mega',
 };
 
@@ -102,7 +102,7 @@ function history(user) {
 }
 const GAME_LABELS = {
   slots: 'Pika-Slots', roulette: 'Ruleta', voltorb: 'Voltorb Flip', race: 'Carrera', duel: 'Duelos', blackjack: 'Blackjack',
-  videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas', crash: 'Crash', poker: "Hold'em", mega: 'Máquina Mega',
+  videopoker: 'Video Póker', baccarat: 'Baccarat', plinko: 'Plinko', mines: 'Minas', quiz: 'Desafío', crash: 'Crash', poker: "Hold'em", mega: 'Máquina Mega',
 };
 
 // ---- Nivel de entrenador ----
