@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.10.28-d",
+    "date": "2026-10-28",
+    "title": "Fabricar más rápido y con buscador",
+    "items": [
+      "🔎 Tienda → Fabricar: buscador por nombre o número y filtros de rareza, tipo, región y «me faltan / los tengo / puedo fabricarlos ahora», con orden por rareza, precio, número o nombre.",
+      "⚡ La lista de Fabricar carga por tandas al bajar, así abre al instante."
+    ]
+  },
+  {
     "version": "2026.10.28-c",
     "date": "2026-10-28",
     "title": "Desafío Pokémon, Mercado más claro y límites más relajados",
