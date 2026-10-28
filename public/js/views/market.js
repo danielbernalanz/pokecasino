@@ -5,8 +5,8 @@ let tab = 'browse';
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
 // Filtros por pestaña: se conservan al cambiar de pestaña durante la sesión.
 const DEF = {
-  browse: { q: '', cat: '', rar: '', type: '', gen: '', min: '', max: '', side: '', sort: '' },
-  sell: { q: '', cat: '', rar: '', dup: '', bids: '', sort: '' },
+  browse: { q: '', cat: '', sub: '', rar: '', ench: '', gen: '', sets: '', min: '', max: '', side: '', sort: '' },
+  sell: { q: '', cat: '', sub: '', rar: '', ench: '', gen: '', dup: '', bids: '', sort: '' },
   mine: { q: '', sort: '' },
   history: { q: '', side: 'mine', range: '' },
 };
@@ -155,175 +155,250 @@ function who(o) {
   return h('span', { class: 'mk-who' }, isMine(o) ? h('span', { class: 'mk-me' }, 'Tú') : o.username, npcTag(o.npc));
 }
 
-// Cantidad: número + deslizador + «Máx».
-function qtyField(max, init, onChange) {
-  const clamp = (v) => Math.max(1, Math.min(max, Math.floor(Number(v)) || 1));
-  const num = h('input', { type: 'number', class: 'mk-num', min: 1, max, value: clamp(init), inputmode: 'numeric', 'aria-label': 'Cantidad' });
-  const rng = h('input', { type: 'range', class: 'mk-range', min: 1, max, value: clamp(init), 'aria-label': 'Cantidad (deslizador)' });
-  num.addEventListener('input', () => { rng.value = clamp(num.value); onChange(); });
-  num.addEventListener('change', () => { num.value = clamp(num.value); rng.value = num.value; onChange(); });
-  rng.addEventListener('input', () => { num.value = rng.value; onChange(); });
-  const set = (v) => { num.value = clamp(v); rng.value = num.value; onChange(); };
-  return { el: h('div', { class: 'mk-qty' }, num, max > 1 ? rng : '', max > 1 ? h('button', { class: 'chip', type: 'button', onclick: () => set(max) }, 'Máx') : ''), get value() { return clamp(num.value); } };
-}
-const dlgHead = (a, sub) => h('div', { class: 'mk-dhead' }, thumb(a, 'mk-img'), h('div', { class: 'grow' }, h('b', {}, nameOf(a)), tags(a), sub ? h('div', { class: 'small muted' }, sub) : ''));
 
-// ---- Diálogos de compra y venta ----
-// Comprar de UNA orden concreta (botón «Comprar» de una oferta).
-function buyFromOrder(a, o) {
-  const max = Math.max(1, Math.min(o.qty, MAXQ[a.kind]));
-  const info = h('div', { class: 'mk-sum' });
-  const ok = h('button', { class: 'btn primary big mk-confirm', type: 'button' }, 'Comprar');
-  const q = qtyField(max, 1, upd);
-  const m = modal(h('div', { class: 'stack' }, dlgHead(a, h('span', {}, 'Vende ', who(o), ` · ${fmt(o.qty)} disponibles · caduca en ${timeLeft(o)}`)),
-    h('label', {}, 'Cantidad', q.el), info, ok), { title: 'Comprar' });
-  function upd() {
-    const total = q.value * o.price;
-    const after = S.me.coins - total;
-    info.replaceChildren(kv('Precio por unidad', money(o.price)), kv('Total', money(total), 'strong'), kv('Tus monedas después', after >= 0 ? money(after) : 'No te llegan', after >= 0 ? '' : 'bad'));
-    ok.disabled = after < 0;
-    ok.textContent = `Comprar ${fmt(q.value)}`;
-  }
-  upd();
-  ok.onclick = async (e) => {
-    const res = await act('market:buy', { ...a, qty: q.value, price: o.price, orderId: o.id, instant: true }, e.target);
-    if (res) { sfx('win'); toast(`Compraste ${fmt(res.filled)} por ${fmt(res.spent)} monedas`, 'success'); m.close(); }
+// ---- Lados del libro: SE VENDE (verde, ofertas de venta) y SE COMPRA (azul, pedidos de compra) ----
+const SELL_LBL = '🟢 Se vende (ofertas de venta)';
+const BUY_LBL = '🔵 Se compra (pedidos de compra)';
+// Precio medio: últimas 24 h si hay operaciones; si no, la media de 30 días.
+function avgOf(ref) {
+  const since = Date.now() - 86400000;
+  const t = state.trades.filter((x) => x.ref === ref && x.at >= since);
+  if (t.length) { const q = t.reduce((s, x) => s + x.qty, 0); return { v: Math.round(t.reduce((s, x) => s + x.qty * x.price, 0) / q), label: '24 h' }; }
+  const st = state.stats[ref];
+  return st && st.avg ? { v: st.avg, label: '30 d' } : null;
+}
+const tier = (a) => { const r = rarityOf(a); return r ? h('span', { class: 'mk-tier r-' + r, title: rarityName(r) }, r) : ''; };
+function icon(a, cls = 'mk-img') {
+  return h('span', { class: 'mk-ico' + (cls === 'mk-big' ? ' big' : '') }, thumb(a, cls), tier(a), a.shiny ? h('span', { class: 'mk-spark', title: 'Variocolor' }, '✨') : '');
+}
+
+// Cantidad: −/+ , número y deslizador.
+function qtyField(max, init, onChange) {
+  let mx = Math.max(1, max);
+  const clamp = (v) => Math.max(1, Math.min(mx, Math.floor(Number(v)) || 1));
+  const num = h('input', { type: 'number', class: 'mk-num', min: 1, max: mx, value: clamp(init), inputmode: 'numeric', 'aria-label': 'Cantidad' });
+  const rng = h('input', { type: 'range', class: 'mk-range', min: 1, max: mx, value: clamp(init), 'aria-label': 'Cantidad (deslizador)' });
+  const set = (v) => { num.value = clamp(v); rng.value = num.value; onChange(); };
+  num.addEventListener('input', () => { rng.value = clamp(num.value); onChange(); });
+  num.addEventListener('change', () => set(num.value));
+  rng.addEventListener('input', () => { num.value = rng.value; onChange(); });
+  const step = (d) => h('button', { class: 'chip mk-step', type: 'button', 'aria-label': d < 0 ? 'Menos' : 'Más', onclick: () => set(Number(num.value) + d) }, d < 0 ? '−' : '+');
+  return {
+    el: h('div', { class: 'mk-qty' }, h('div', { class: 'mk-stepper' }, step(-1), num, step(1)), rng, h('button', { class: 'chip', type: 'button', onclick: () => set(mx) }, 'Máx')),
+    get value() { return clamp(num.value); },
+    setMax(m) { mx = Math.max(1, m); num.max = mx; rng.max = mx; num.value = clamp(num.value); rng.value = num.value; },
   };
 }
-// Comprar ya: toma las ofertas más baratas.
-function buyNow(a) {
-  const asks = others(summary().get(a.ref)?.asks || []);
-  if (!asks.length) { toast('No hay ofertas de otros jugadores.', 'error'); return; }
-  const max = Math.max(1, Math.min(sumQty(asks), MAXQ[a.kind]));
-  const info = h('div', { class: 'mk-sum' });
-  const ok = h('button', { class: 'btn primary big mk-confirm', type: 'button' }, 'Comprar');
-  const q = qtyField(max, 1, upd);
-  const m = modal(h('div', { class: 'stack' }, dlgHead(a, `${fmt(sumQty(asks))} en venta en ${asks.length} ${asks.length === 1 ? 'orden' : 'órdenes'}`),
-    h('p', { class: 'small muted' }, 'Compras al momento a las ofertas más baratas, de menor a mayor precio.'),
-    h('label', {}, 'Cantidad', q.el), info, ok), { title: 'Comprar ya' });
-  function upd() {
-    const w = walk(asks, q.value);
-    const after = S.me.coins - w.total;
-    info.replaceChildren(kv('Órdenes que se tomarán', fmt(w.orders)), kv('Precio medio por unidad', money(Math.round(w.avg))), kv('Total', money(w.total), 'strong'),
-      kv('Tus monedas después', after >= 0 ? money(after) : 'No te llegan', after >= 0 ? '' : 'bad'));
-    ok.disabled = after < 0 || !w.filled;
-    ok.textContent = `Comprar ${fmt(q.value)} por ${fmt(w.total)}`;
-  }
-  upd();
-  ok.onclick = async (e) => {
-    const w = walk(asks, q.value);
-    const res = await act('market:buy', { ...a, qty: w.filled, price: w.worst, instant: true }, e.target);
-    if (res) { sfx('win'); toast(`Compraste ${fmt(res.filled)} por ${fmt(res.spent)} monedas`, 'success'); m.close(); }
+
+// ---- Diálogo único (como el de Albion): alterna entre operar ya y crear una orden ----
+// o: { side: 'buy'|'sell', mode: 'now'|'order', orderId, chart }
+function itemDialog(a, o = {}) {
+  const sell = o.side === 'sell';
+  let mode = o.mode || 'now';
+  const orderId = o.orderId || null;
+  const vals = { qty: 1, price: null, days: lastDays };
+  const bookOf = () => summary().get(a.ref) || { asks: [], bids: [] };
+  const nowList = () => {
+    const r = bookOf();
+    const list = others(sell ? r.bids : r.asks);
+    if (!orderId) return list;
+    const one = list.find((x) => x.id === orderId);
+    return one ? [one] : [];
   };
-}
-// Vender al momento: a todos los pedidos (`bid` = uno concreto) o a los más altos.
-function sellNow(a, bid) {
-  const bids = bid ? [bid] : others(summary().get(a.ref)?.bids || []);
-  const have = owned(a);
-  if (!have) { toast('No tienes este artículo.', 'error'); return; }
-  if (!bids.length) { toast('Nadie quiere comprar esto ahora mismo.', 'error'); return; }
-  const max = Math.max(1, Math.min(have, sumQty(bids), MAXQ[a.kind]));
-  const info = h('div', { class: 'mk-sum' });
-  const ok = h('button', { class: 'btn gold big mk-confirm', type: 'button' }, 'Vender');
-  const q = qtyField(max, 1, upd);
-  const m = modal(h('div', { class: 'stack' }, dlgHead(a, bid ? h('span', {}, 'Pide ', who(bid), ` · ${fmt(bid.qty)} uds · ${fmt(bid.price)}/ud`) : `Tienes ${fmt(have)} · ${fmt(sumQty(bids))} uds en pedidos de compra`),
-    h('p', { class: 'small muted' }, bid ? 'Vendes al momento a este pedido de compra.' : 'Vendes al momento a los pedidos de compra más altos.'),
-    h('label', {}, 'Cantidad', q.el), info, ok), { title: bid ? 'Vender a este pedido' : 'Vender ya' });
-  function upd() {
-    const w = walk(bids, q.value);
-    const tax = taxOf(w.total);
-    info.replaceChildren(kv('Pedidos que se llenarán', fmt(w.orders)), kv('Precio medio por unidad', money(Math.round(w.avg))), kv('Total bruto', money(w.total)),
-      kv(`− ${pct(salesTax())} % impuesto de venta`, '− ' + fmt(tax)), kv('Recibirás', money(w.total - tax), 'strong'));
-    ok.disabled = !w.filled;
-    ok.textContent = `Vender ${fmt(q.value)} y recibir ${fmt(w.total - tax)}`;
-  }
-  upd();
-  ok.onclick = async (e) => {
-    const w = walk(bids, q.value);
-    const res = await act('market:sell', { ...a, qty: w.filled, price: w.worst, instant: true, ...(bid ? { orderId: bid.id } : {}) }, e.target);
-    if (res) { sfx('win'); toast(`Vendiste ${fmt(res.filled)}: recibes ${fmt(res.earned - taxOf(res.earned))} monedas`, 'success'); m.close(); }
+  const head = h('div', { class: 'mk-dhead' });
+  const toggle = h('div', { class: 'mk-toggle ' + (sell ? 'buyside' : 'sellside'), role: 'tablist' });
+  const panelBox = h('div', { class: 'stack mk-mbody' });
+  const confirm = h('button', { class: 'btn big mk-confirm ' + (sell ? 'blue' : 'green'), type: 'button' });
+  const chartBox = h('div', { class: 'mk-chartbox' });
+  const chartBtn = h('button', { class: 'btn small mk-chartlink', type: 'button', 'aria-expanded': 'false', onclick: () => toggleChart() }, '📈 Historial de precios');
+  const m = modal(h('div', { class: 'stack mk-dlg' }, head, toggle, panelBox, confirm, h('div', {}, chartBtn, chartBox)), { title: sell ? 'Vender' : 'Comprar' });
+  let panel = null;
+  let hist = null;
+  let range = 0;
+  let chartOpen = false;
+
+  const paintHead = () => {
+    const p = a.kind === 'poke' ? S.dexById.get(a.pokeId) : null;
+    const av = avgOf(a.ref);
+    head.replaceChildren(icon(a, 'mk-big'), h('div', { class: 'grow' }, h('h2', { class: 'mk-dname' }, nameOf(a)), h('div', { class: 'row gap wrap' }, tags(a), ...(p ? p.types.map(typeBadge) : [])),
+      h('div', { class: 'small muted' }, `Precio medio ${av ? av.label : '24 h'}: `, av ? money(av.v) : '—', ` · Tienes ${fmt(owned(a))}`),
+      ...setsNeeding(a).slice(0, 1).map((s) => h('div', { class: 'small gold-text' }, `📚 Te sirve para «${s.name}»`))));
   };
-}
-// Orden de venta / pedido de compra: precio, cantidad y duración.
-function orderDialog(a, side) {
-  const sell = side === 'sell';
-  const have = owned(a);
-  if (sell && !have) { toast('No tienes este artículo.', 'error'); return; }
-  const r = summary().get(a.ref) || { asks: [], bids: [] };
-  const lowAsk = others(r.asks)[0];
-  const topBid = others(r.bids)[0];
-  const avg = state.stats[a.ref] && state.stats[a.ref].avg;
-  const max = sell ? Math.max(1, Math.min(have, MAXQ[a.kind])) : MAXQ[a.kind];
-  const start = sell ? (lowAsk ? Math.max(1, lowAsk.price - 1) : avg || (topBid ? topBid.price + 1 : 100)) : (topBid ? topBid.price + 1 : avg || (lowAsk ? Math.max(1, lowAsk.price - 1) : 100));
-  const price = h('input', { type: 'number', class: 'mk-num', min: 1, inputmode: 'numeric', value: start, 'aria-label': 'Precio por unidad' });
-  let days = lastDays;
-  const dur = h('div', { class: 'seg mk-dur' });
-  const paintDur = () => dur.replaceChildren(...DURS.map((d) => h('button', { type: 'button', class: 'chip' + (d === days ? ' active' : ''), onclick: () => { days = d; lastDays = d; paintDur(); upd(); } }, `${d} ${d === 1 ? 'día' : 'días'}`)));
-  const info = h('div', { class: 'mk-sum' });
-  const note = h('div', { class: 'small muted' });
-  const ok = h('button', { class: 'btn big mk-confirm ' + (sell ? 'gold' : 'primary'), type: 'button' }, sell ? 'Publicar orden de venta' : 'Publicar pedido de compra');
-  const q = qtyField(max, 1, upd);
-  const quick = (label, v, tip) => h('button', { class: 'chip', type: 'button', disabled: v == null, title: tip || '', onclick: () => { price.value = Math.max(1, Math.round(v)); upd(); } }, label);
-  const chips = sell
-    ? [quick('Igualar más bajo', lowAsk && lowAsk.price), quick('−1 al más bajo', lowAsk && Math.max(1, lowAsk.price - 1)), quick('Precio medio', avg || null)]
-    : [quick('Igualar mejor pedido', topBid && topBid.price), quick('+1 al mejor pedido', topBid && topBid.price + 1), quick('Precio medio', avg || null)];
-  const mkt = h('div', { class: 'small muted' }, sell
-    ? `Más bajo en venta: ${lowAsk ? fmt(lowAsk.price) : '—'} · Mejor pedido: ${topBid ? fmt(topBid.price) : '—'} · Medio 30 d: ${avg ? fmt(avg) : '—'}`
-    : `Mejor pedido: ${topBid ? fmt(topBid.price) : '—'} · Más bajo en venta: ${lowAsk ? fmt(lowAsk.price) : '—'} · Medio 30 d: ${avg ? fmt(avg) : '—'}`);
-  const m = modal(h('div', { class: 'stack' }, dlgHead(a, sell ? `Tienes ${fmt(have)}` : ''), mkt,
-    h('label', {}, 'Precio por unidad', h('div', { class: 'mk-priceRow' }, h('span', { class: 'coin-ico' }), price)),
-    h('div', { class: 'seg mk-quick' }, ...chips),
-    h('label', {}, 'Cantidad', q.el),
-    h('label', {}, 'Duración', dur), info, note, ok), { title: sell ? 'Orden de venta' : 'Pedido de compra' });
-  function upd() {
-    const p = Math.max(0, Math.floor(Number(price.value)) || 0);
-    const total = q.value * p;
-    const fee = feeOf(total);
-    if (sell) {
-      const tax = taxOf(total);
-      info.replaceChildren(kv(`Comisión de publicación ${pct(marketFee())} % (no se devuelve)`, money(fee)), kv(`Impuesto de venta ${pct(salesTax())} % al vender`, money(tax)), kv('Recibirás si se vende todo', money(total - tax), 'strong'),
-        kv('Tus monedas después de publicar', S.me.coins - fee >= 0 ? money(S.me.coins - fee) : 'No te llegan', S.me.coins - fee >= 0 ? '' : 'bad'));
-      ok.disabled = !p || S.me.coins < fee;
-      note.textContent = `Los artículos quedan en depósito hasta que se vendan, caduque la orden (${days} ${days === 1 ? 'día' : 'días'}) o la canceles; lo no vendido se te devuelve.`;
-      if (topBid && p && p <= topBid.price) note.textContent += ' Con ese precio parte se venderá al momento a pedidos ya publicados.';
-    } else {
-      const cost = total + fee;
-      info.replaceChildren(kv('Monedas apartadas', money(total)), kv(`Comisión ${pct(marketFee())} % (no se devuelve)`, money(fee)), kv('Total ahora', money(cost), 'strong'),
-        kv('Tus monedas después', S.me.coins - cost >= 0 ? money(S.me.coins - cost) : 'No te llegan', S.me.coins - cost >= 0 ? '' : 'bad'));
-      ok.disabled = !p || S.me.coins < cost;
-      note.textContent = `Las monedas apartadas se devuelven si cancelas o caduca el pedido (${days} ${days === 1 ? 'día' : 'días'}); la comisión no.`;
-      if (lowAsk && p && p >= lowAsk.price) note.textContent += ' Con ese precio parte se comprará al momento a ofertas ya publicadas.';
+  const modes = sell
+    ? [['now', 'Vender ya', 'Vende al momento a los pedidos de compra'], ['order', 'Poner en venta', 'Publica una orden de venta a tu precio']]
+    : [['now', 'Comprar ya', 'Compra al momento a las ofertas de venta'], ['order', 'Pedir a un precio', 'Publica un pedido de compra a tu precio']];
+  const paintToggle = () => {
+    const none = !nowList().length;
+    toggle.replaceChildren(...modes.map(([k, l, tip]) => h('button', { class: 'mk-mode' + (mode === k ? ' active' : ''), 'data-mode': k, type: 'button', role: 'tab', 'aria-selected': String(mode === k), title: tip, disabled: k === 'now' && none && mode !== 'now', onclick: () => { mode = k; build(); } }, l)));
+  };
+  const toggleChart = async () => {
+    chartOpen = !chartOpen;
+    chartBtn.setAttribute('aria-expanded', String(chartOpen));
+    if (!chartOpen) { chartBox.replaceChildren(); return; }
+    if (!hist) { hist = await act('market:history', a); if (!hist) { chartOpen = false; return; } }
+    const paint = () => {
+      const days = range ? hist.days.slice(-range) : hist.days;
+      chartBox.replaceChildren(h('div', { class: 'seg mk-filt' }, ...[[0, 'Todo'], [7, '7 días'], [14, '14 días']].map(([v, l]) => h('button', { class: 'chip' + (range === v ? ' active' : ''), type: 'button', onclick: () => { range = v; paint(); } }, l))), chart(days));
+    };
+    paint();
+  };
+
+  // Modo «ya»: operar al momento con las órdenes del otro lado.
+  function nowPanel() {
+    const have = owned(a);
+    const cap = () => Math.min(sumQty(nowList()), sell ? have : Infinity, MAXQ[a.kind]);
+    const info = h('div', { class: 'mk-sum ' + (sell ? 'buyside' : 'sellside') });
+    const q = qtyField(cap(), vals.qty, upd);
+    const say = h('p', { class: 'mk-say small' }, sell ? 'Se vende ahora al pedido de compra más alto, hasta agotar la cantidad.' : 'Se compra ahora a la oferta más barata, hasta completar la cantidad.');
+    const el = h('div', { class: 'stack' }, say, h('label', {}, 'Cantidad', q.el), info);
+    function upd() {
+      const list = nowList();
+      q.setMax(cap());
+      vals.qty = q.value;
+      confirm.textContent = sell ? 'Vender' : 'Comprar';
+      if (!list.length || (sell && !have)) {
+        info.replaceChildren(h('div', { class: 'muted small' }, sell ? (have ? 'Nadie ha publicado pedidos de compra ahora mismo.' : 'No tienes este artículo.') : 'Nadie vende este artículo ahora mismo.'));
+        confirm.disabled = true;
+        return;
+      }
+      const w = walk(list, q.value);
+      if (sell) {
+        const tax = taxOf(w.total);
+        info.replaceChildren(kv('Mejor pedido', money(list[0].price)), kv('Pedidos que se llenarán', fmt(w.orders)), kv('Precio medio de la venta', money(Math.round(w.avg))),
+          kv('Total bruto', money(w.total)), kv(`Impuesto de venta (${pct(salesTax())} %)`, '− ' + fmt(tax)), kv('Recibirás', money(w.total - tax), 'strong'), kv('Monedas después', money(S.me.coins + w.total - tax)));
+        confirm.disabled = !w.filled;
+      } else {
+        const after = S.me.coins - w.total;
+        info.replaceChildren(kv('Precio más bajo', money(list[0].price)), kv('Órdenes que se tomarán', fmt(w.orders)), kv('Precio medio de la compra', money(Math.round(w.avg))),
+          kv('Total', money(w.total), 'strong'), kv('Monedas después', after >= 0 ? money(after) : 'No te llegan', after >= 0 ? '' : 'bad'));
+        confirm.disabled = after < 0 || !w.filled;
+      }
     }
+    return {
+      el, upd,
+      async run(e) {
+        const w = walk(nowList(), q.value);
+        const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: w.filled, price: w.worst, instant: true, ...(orderId ? { orderId } : {}) }, e.target);
+        if (!res) return false;
+        sfx('win');
+        toast(sell ? `Vendiste ${fmt(res.filled)}: recibes ${fmt(res.earned - taxOf(res.earned))} monedas` : `Compraste ${fmt(res.filled)} por ${fmt(res.spent)} monedas`, 'success');
+        return true;
+      },
+    };
   }
-  price.oninput = upd;
-  paintDur();
-  upd();
-  ok.onclick = async (e) => {
-    const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: q.value, price: Math.floor(Number(price.value)), days }, e.target);
-    if (!res) return;
-    sfx('click');
-    const f = res.filled ? ` (ya se ${sell ? 'vendieron' : 'compraron'} ${fmt(res.filled)})` : '';
-    toast(res.order ? `${sell ? 'Orden de venta' : 'Pedido de compra'} publicado${f}` : `${sell ? 'Vendiste' : 'Compraste'} ${fmt(res.filled)} al momento`, 'success');
-    m.close();
-  };
+
+  // Modo «orden»: precio, cantidad y duración.
+  function orderPanel() {
+    const have = owned(a);
+    const ctx = () => { const r = bookOf(); return { lowAsk: others(r.asks)[0], topBid: others(r.bids)[0], av: avgOf(a.ref) }; };
+    const startPrice = () => {
+      const { lowAsk, topBid, av } = ctx();
+      const avg = av && av.v;
+      return sell ? (lowAsk ? Math.max(1, lowAsk.price - 1) : avg || (topBid ? topBid.price + 1 : 100)) : (topBid ? topBid.price + 1 : avg || (lowAsk ? Math.max(1, lowAsk.price - 1) : 100));
+    };
+    if (vals.price == null) vals.price = startPrice();
+    const cap = () => (sell ? Math.min(have, MAXQ[a.kind]) : MAXQ[a.kind]);
+    const price = h('input', { type: 'number', class: 'mk-num mk-price-in', min: 1, inputmode: 'numeric', value: vals.price, 'aria-label': 'Precio por unidad' });
+    const setPrice = (v) => { price.value = Math.max(1, Math.round(v)); upd(); };
+    const stepP = (d) => h('button', { class: 'chip mk-step', type: 'button', 'aria-label': d < 0 ? 'Bajar precio' : 'Subir precio', onclick: () => setPrice((Number(price.value) || 0) + d) }, d < 0 ? '−' : '+');
+    const chips = h('div', { class: 'seg mk-quick' });
+    const mkt = h('div', { class: 'small muted' });
+    const days = h('select', { class: 'mk-days', 'aria-label': 'Duración' }, DURS.map((d) => h('option', { value: d }, `${d} ${d === 1 ? 'día' : 'días'}`)));
+    days.value = String(vals.days);
+    days.onchange = () => { vals.days = Number(days.value); lastDays = vals.days; upd(); };
+    const q = qtyField(cap(), vals.qty, upd);
+    const info = h('div', { class: 'mk-sum ' + (sell ? 'sellside' : 'buyside') });
+    const note = h('div', { class: 'small muted' });
+    const say = h('p', { class: 'mk-say small' }, sell
+      ? 'Tu orden queda publicada a tu precio hasta que alguien te compre. El artículo queda en depósito; lo no vendido se te devuelve.'
+      : 'Tu pedido espera hasta que alguien te venda a ese precio; las monedas quedan apartadas y se te devuelven si cancelas o caduca.');
+    price.oninput = upd;
+    const el = h('div', { class: 'stack' }, say, mkt,
+      h('label', {}, 'Precio por unidad', h('div', { class: 'mk-priceRow' }, h('span', { class: 'coin-ico' }), stepP(-1), price, stepP(1))), chips,
+      h('label', {}, 'Cantidad', q.el), h('label', {}, 'Duración', days), info, note);
+    function upd() {
+      const { lowAsk, topBid, av } = ctx();
+      const avg = av && av.v;
+      const quick = (label, v) => h('button', { class: 'chip', type: 'button', disabled: v == null, onclick: () => setPrice(v) }, label);
+      chips.replaceChildren(...(sell
+        ? [quick('Igualar', lowAsk && lowAsk.price), quick('−1', lowAsk && lowAsk.price - 1), quick('Precio medio', avg || null)]
+        : [quick('Igualar', topBid && topBid.price), quick('+1', topBid && topBid.price + 1), quick('Precio medio', avg || null)]));
+      mkt.replaceChildren('Se vende desde ', h('b', { class: 'c-sell' }, lowAsk ? fmt(lowAsk.price) : '—'), ' · Se compra hasta ', h('b', { class: 'c-buy' }, topBid ? fmt(topBid.price) : '—'), ` · Medio ${av ? av.label : '24 h'}: ${avg ? fmt(avg) : '—'}`);
+      q.setMax(cap());
+      vals.qty = q.value;
+      const p = Math.max(0, Math.floor(Number(price.value)) || 0);
+      vals.price = p || vals.price;
+      const total = q.value * p;
+      const fee = feeOf(total);
+      confirm.textContent = sell ? 'Crear orden de venta' : 'Crear orden de compra';
+      const lines = [kv('Precio unitario', money(p)), kv('Cantidad', fmt(q.value)), kv(`Comisión de publicación (${pct(marketFee())} %)`, money(fee))];
+      if (sell) {
+        const tax = taxOf(total);
+        lines.push(kv(`Impuesto de venta (${pct(salesTax())} %)`, money(tax)), kv('Recibirás', money(total - tax), 'strong'), kv('Monedas después de publicar', S.me.coins - fee >= 0 ? money(S.me.coins - fee) : 'No te llegan', S.me.coins - fee >= 0 ? '' : 'bad'));
+        confirm.disabled = !p || !have || S.me.coins < fee;
+        note.textContent = have ? `El impuesto se cobra al venderse. Caduca en ${days.value} ${Number(days.value) === 1 ? 'día' : 'días'}.` : 'No tienes este artículo.';
+        if (have && topBid && p && p <= topBid.price) note.textContent += ' Con ese precio parte se venderá al momento a pedidos ya publicados.';
+      } else {
+        const cost = total + fee;
+        lines.push(kv('Total', money(cost), 'strong'), kv('Monedas después', S.me.coins - cost >= 0 ? money(S.me.coins - cost) : 'No te llegan', S.me.coins - cost >= 0 ? '' : 'bad'));
+        confirm.disabled = !p || S.me.coins < cost;
+        note.textContent = `Total = monedas apartadas (${fmt(total)}) + comisión (no se devuelve). Caduca en ${days.value} ${Number(days.value) === 1 ? 'día' : 'días'}.`;
+        if (lowAsk && p && p >= lowAsk.price) note.textContent += ' Con ese precio parte se comprará al momento a ofertas ya publicadas.';
+      }
+      info.replaceChildren(...lines);
+    }
+    return {
+      el, upd,
+      async run(e) {
+        const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: q.value, price: Math.floor(Number(price.value)), days: vals.days }, e.target);
+        if (!res) return false;
+        sfx('click');
+        const f = res.filled ? ` (ya se ${sell ? 'vendieron' : 'compraron'} ${fmt(res.filled)})` : '';
+        toast(res.order ? `${sell ? 'Orden de venta' : 'Pedido de compra'} publicado${f}` : `${sell ? 'Vendiste' : 'Compraste'} ${fmt(res.filled)} al momento`, 'success');
+        return true;
+      },
+    };
+  }
+
+  function build() {
+    paintHead();
+    paintToggle();
+    panel = mode === 'now' ? nowPanel() : orderPanel();
+    panelBox.replaceChildren(panel.el);
+    panel.upd();
+  }
+  confirm.onclick = async (e) => { if (panel && await panel.run(e)) m.close(); };
+  if (mode === 'now' && !nowList().length) mode = 'order';
+  build();
+  if (o.chart) toggleChart();
+  const refresh = () => { if (!document.contains(m.el)) { offs.forEach((f) => f()); return; } paintHead(); paintToggle(); panel.upd(); };
+  const offs = [bus.on('market', refresh), bus.on('me', refresh)];
 }
 
 // ---- Filas de artículo (acordeón) ----
 const openRows = { buy: new Set(), sell: new Set() };
-// Lista de órdenes individuales de un artículo. action 'buy' = botón Comprar; 'sell' = botón Vender a ese pedido.
+// Lista de órdenes individuales. action 'buy' = botón Comprar (oferta de venta); 'sell' = botón Vender a ese pedido.
 function orderList(a, orders, action) {
   if (!orders.length) return h('div', { class: 'muted small mk-none' }, action === 'buy' ? 'Nadie vende este artículo ahora mismo.' : 'Nadie ha publicado pedidos de compra.');
   const have = owned(a);
-  return h('div', { class: 'mk-olist' },
+  return h('div', { class: 'mk-olist ' + (action === 'buy' ? 'sellside' : 'buyside') },
     h('div', { class: 'mk-ohead small muted' }, h('span', {}, action === 'buy' ? 'Vendedor' : 'Comprador'), h('span', {}, 'Cant.'), h('span', {}, 'Precio/ud'), h('span', {}, 'Caduca'), h('span', {})),
     ...orders.slice(0, 25).map((o) => h('div', { class: 'mk-ord' + (isMine(o) ? ' mine' : ''), 'data-order': o.id },
       who(o), h('span', {}, '×' + fmt(o.qty)), h('span', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(o.price)), h('span', { class: 'small muted' }, timeLeft(o)),
       isMine(o) ? h('span', { class: 'small muted' }, 'Tu orden')
-        : action === 'buy' ? h('button', { class: 'btn small primary mk-order-buy', type: 'button', onclick: () => buyFromOrder(a, o) }, 'Comprar')
-          : h('button', { class: 'btn small gold mk-order-sell', type: 'button', disabled: !have, title: have ? '' : 'No tienes este artículo', onclick: () => sellNow(a, o) }, 'Vender'))),
+        : action === 'buy' ? h('button', { class: 'btn small green mk-order-buy', type: 'button', onclick: () => itemDialog(a, { side: 'buy', mode: 'now', orderId: o.id }) }, 'Comprar')
+          : h('button', { class: 'btn small blue mk-order-sell', type: 'button', disabled: !have, title: have ? '' : 'No tienes este artículo', onclick: () => itemDialog(a, { side: 'sell', mode: 'now', orderId: o.id }) }, 'Vender'))),
     orders.length > 25 ? h('div', { class: 'small muted' }, `… y ${orders.length - 25} órdenes más`) : '');
 }
-const quote = (label, value, cls = '') => h('div', { class: 'mk-q ' + cls }, h('span', { class: 'muted small' }, label), value);
+// Los dos lados del libro, bien separados: izquierda se vende (verde), derecha se compra (azul).
+function bookView(a, r) {
+  const ask = r.asks[0];
+  const bid = r.bids[0];
+  return h('div', { class: 'mk-book' },
+    h('div', { class: 'mk-side sellside' }, h('h4', {}, SELL_LBL), h('p', { class: 'small muted' }, 'Compra al momento al precio de la oferta (la más barata primero).'), orderList(a, r.asks, 'buy')),
+    h('div', { class: 'mk-side buyside' }, h('h4', {}, BUY_LBL), h('p', { class: 'small muted' }, 'Vende al momento al precio del pedido (el más alto primero).'), orderList(a, r.bids, 'sell')),
+    h('div', { class: 'mk-spread small' }, ask && bid ? ['Diferencia: ', money(ask.price - bid.price)] : 'Diferencia: — (falta alguno de los dos lados)'));
+}
 // mode: 'buy' (pestaña Comprar) | 'sell' (pestaña Vender). `have` = unidades que tienes (modo sell).
 function itemRow(a, r, mode, have) {
   r ||= { asks: [], bids: [] };
@@ -332,17 +407,16 @@ function itemRow(a, r, mode, have) {
   const rar = rarityOf(a);
   const lowAsk = r.asks[0];
   const topBid = r.bids[0];
-  const askOthers = others(r.asks);
-  const bidOthers = others(r.bids);
-  const price = (o) => (o ? h('b', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(o.price), npcTag(o.npc)) : h('b', { class: 'muted' }, '—'));
-  const quotes = mode === 'buy'
-    ? [quote('Precio más bajo', lowAsk ? price(lowAsk) : h('b', { class: 'muted' }, 'Sin ofertas'), 'ask'), quote('En venta', h('b', {}, lowAsk ? fmt(sumQty(r.asks)) : '—'))]
-    : [quote('Tienes', h('b', {}, fmt(have))), quote('Mejor pedido', price(topBid), 'bid'), quote('Precio más bajo en venta', price(lowAsk), 'ask')];
+  const av = avgOf(ref);
+  const price = (o, cls) => (o ? h('b', { class: 'mk-price ' + cls }, h('span', { class: 'coin-ico' }), fmt(o.price), npcTag(o.npc)) : h('b', { class: 'muted' }, '—'));
+  const col = (label, value, cls = '') => h('div', { class: 'mk-col ' + cls }, h('span', { class: 'mk-collbl' }, label), value);
   const sets = setsNeeding(a)[0];
   const el = h('div', { class: 'mk-item' + (open ? ' open' : '') + (rar ? ' r-' + rar : '') + (a.shiny ? ' shiny' : ''), 'data-ref': ref });
   const detail = h('div', { class: 'mk-orders' });
-  const fill = () => detail.replaceChildren(orderList(a, mode === 'buy' ? r.asks : r.bids, mode === 'buy' ? 'buy' : 'sell'),
-    h('button', { class: 'btn small mk-chartlink', type: 'button', onclick: () => openItem(a, mode) }, '📈 Ver historial de precios'));
+  const fill = () => {
+    const rr = summary().get(ref) || { asks: [], bids: [] };
+    detail.replaceChildren(bookView(a, rr), h('button', { class: 'btn small mk-chartlink', type: 'button', onclick: () => itemDialog(a, { side: mode, mode: 'now', chart: true }) }, '📈 Historial de precios'));
+  };
   const expand = h('button', { class: 'mk-expand', type: 'button', 'aria-expanded': String(open), 'aria-label': `Ver órdenes de ${nameOf(a)}`, onclick: () => {
     const now = !openRows[mode].has(ref);
     openRows[mode][now ? 'add' : 'delete'](ref);
@@ -350,65 +424,39 @@ function itemRow(a, r, mode, have) {
     expand.setAttribute('aria-expanded', String(now));
     if (now) { fill(); el.append(detail); } else detail.remove();
   } },
-  thumb(a), h('div', { class: 'mk-info' }, h('b', { class: 'mk-name' }, nameOf(a)), tags(a), sets ? h('div', { class: 'small gold-text' }, `📚 Para «${sets.name}»`) : ''),
-  h('div', { class: 'mk-quotes' }, quotes), h('span', { class: 'mk-chev', 'aria-hidden': 'true' }, '▸'));
-  const btns = mode === 'buy'
-    ? [askOthers.length ? h('button', { class: 'btn primary mk-buy-now', type: 'button', onclick: () => buyNow(a) }, 'Comprar') : '',
-      h('button', { class: 'btn mk-buy-order', type: 'button', onclick: () => orderDialog(a, 'buy') }, 'Pedido de compra')]
-    : [h('button', { class: 'btn gold mk-sell-now', type: 'button', disabled: !bidOthers.length, title: bidOthers.length ? '' : 'Nadie quiere comprar esto ahora', onclick: () => sellNow(a) }, 'Vender'),
-      h('button', { class: 'btn mk-sell-order', type: 'button', onclick: () => orderDialog(a, 'sell') }, 'Orden de venta')];
-  el.append(h('div', { class: 'mk-line' }, expand, h('div', { class: 'mk-btns' }, btns)));
+  h('span', { class: 'mk-chev', 'aria-hidden': 'true' }, '▸'), icon(a),
+  h('div', { class: 'mk-info' }, h('b', { class: 'mk-name' }, nameOf(a)), tags(a),
+    av ? h('div', { class: 'small muted' }, `Precio medio ${av.label}: `, money(av.v)) : '', sets ? h('div', { class: 'small gold-text' }, `📚 Para «${sets.name}»`) : ''));
+  const qty = mode === 'buy' ? col('Cantidad', h('b', {}, lowAsk ? fmt(sumQty(r.asks)) : '—')) : col('Cantidad', h('b', {}, fmt(have)));
+  const cols = [qty,
+    col('Se vende desde', price(lowAsk, 'c-sell'), 'sellcol' + (mode === 'buy' ? ' hl' : '')),
+    col('Se compra hasta', price(topBid, 'c-buy'), 'buycol' + (mode === 'sell' ? ' hl' : ''))];
+  const btn = mode === 'buy'
+    ? h('button', { class: 'btn green mk-buy-now', type: 'button', onclick: () => itemDialog(a, { side: 'buy' }) }, 'Comprar')
+    : h('button', { class: 'btn blue mk-sell-now', type: 'button', onclick: () => itemDialog(a, { side: 'sell' }) }, 'Vender');
+  el.append(h('div', { class: 'mk-line' }, expand, h('div', { class: 'mk-cols' }, cols), h('div', { class: 'mk-btns' }, btn)));
   if (open) { fill(); el.append(detail); }
   return el;
 }
 
-// ---- Ficha del artículo (la usan Pokédex, Tienda y el Historial) ----
+// ---- Ficha del artículo (la usan Pokédex, Tienda y Completadas) ----
 export async function openItem(a, side = 'buy') {
   a = { ...a, ref: refOf(a) };
   if (!state) { const s = await act('market:state'); if (!s) return; state = s; }
-  const body = h('div', { class: 'mk-detail' });
-  const m = modal(body, { title: 'Mercado', wide: true });
-  const histRes = await act('market:history', a);
-  let range = 0;
-  const render = () => {
-    const r = summary().get(a.ref) || { a, asks: [], bids: [] };
-    const have = owned(a);
-    const rar = rarityOf(a);
-    const p = a.kind === 'poke' ? S.dexById.get(a.pokeId) : null;
-    const avg = state.stats[a.ref] ? state.stats[a.ref].avg : null;
-    const days = histRes ? (range ? histRes.days.slice(-range) : histRes.days) : [];
-    const chips = h('div', { class: 'seg mk-filt' }, ...[[0, 'Todo'], [7, '7 días'], [14, '14 días']].map(([v, l]) => h('button', { class: 'chip' + (range === v ? ' active' : ''), type: 'button', onclick: () => { range = v; render(); } }, l)));
-    const buyBtns = [h('button', { class: 'btn primary mk-buy-now', type: 'button', disabled: !others(r.asks).length, onclick: () => buyNow(a) }, 'Comprar'), h('button', { class: 'btn mk-buy-order', type: 'button', onclick: () => orderDialog(a, 'buy') }, 'Pedido de compra')];
-    const sellBtns = have ? [h('button', { class: 'btn gold mk-sell-now', type: 'button', disabled: !others(r.bids).length, onclick: () => sellNow(a) }, 'Vender'), h('button', { class: 'btn mk-sell-order', type: 'button', onclick: () => orderDialog(a, 'sell') }, 'Orden de venta')] : [];
-    body.replaceChildren(
-      h('div', { class: 'mk-head' }, thumb(a, 'mk-big'),
-        h('div', { class: 'grow' },
-          h('h2', {}, nameOf(a)),
-          h('div', { class: 'row gap wrap' }, rar ? h('span', { class: 'rar r-' + rar }, rarityName(rar)) : '', ...(p ? p.types.map(typeBadge) : [])),
-          h('div', { class: 'small muted' }, `Tienes ${fmt(have)} · Media 30 días: ${avg ? fmt(avg) : '—'}`),
-          ...setsNeeding(a).map((s) => h('div', { class: 'small gold-text' }, `📚 Te sirve para «${s.name}» (${s.have}/${s.ids.length})`)))),
-      h('div', { class: 'mk-btns mk-fichabtns' }, side === 'sell' ? [...sellBtns, ...buyBtns] : [...buyBtns, ...sellBtns]),
-      chips, chart(days),
-      h('div', { class: 'mk-twocol' },
-        h('div', {}, h('h4', {}, `En venta (${fmt(sumQty(r.asks))})`), orderList(a, r.asks, 'buy')),
-        h('div', {}, h('h4', {}, `Pedidos de compra (${fmt(sumQty(r.bids))})`), orderList(a, r.bids, 'sell'))));
-  };
-  render();
-  const off = bus.on('market', () => { if (document.contains(body)) render(); else off(); });
-  void m;
+  itemDialog(a, { side: side === 'sell' ? 'sell' : 'buy' });
 }
 
 // ---- Vista principal ----
-const TABS = [['browse', '🛒 Comprar'], ['sell', '💰 Vender'], ['mine', '📋 Mis órdenes'], ['history', '📈 Historial']];
+const TABS = [['browse', '🛒', 'Comprar'], ['sell', '💰', 'Vender'], ['mine', '📋', 'Órdenes'], ['history', '✅', 'Completadas']];
 function helpBox() {
   let open = !matchMedia('(max-width: 640px)').matches; // en móvil empieza plegada
   try { const v = localStorage.getItem('mk:help'); if (v) open = v === '1'; } catch { /* sin almacenamiento */ }
   const d = h('details', { class: 'mk-help' }, h('summary', {}, '¿Cómo funciona el Mercado?'),
     h('ul', {},
-      h('li', {}, h('b', {}, 'Comprar: '), 'al momento a las ofertas más baratas, o con un «Pedido de compra» a tu precio: esperas a que alguien te venda.'),
-      h('li', {}, h('b', {}, 'Vender: '), 'al momento a los pedidos más altos, o con una «Orden de venta» a tu precio: queda publicada hasta que alguien la compre.'),
-      h('li', {}, h('b', {}, 'Costes: '), 'comisión de publicación 1,5 % al crear una orden (no se devuelve) e impuesto de venta 3 % que paga quien vende. Comprar y vender al momento no lleva comisión.'),
-      h('li', {}, h('b', {}, 'Caducidad: '), 'eliges 1, 3, 7 o 14 días. Si caduca o la cancelas, se te devuelve lo que quede en depósito (artículos o monedas apartadas).')));
+      h('li', {}, h('span', { class: 'c-sell' }, '🟢 Se vende: '), 'ofertas de otros jugadores. Pagas ese precio: «Comprar ya» al momento o «Pedir a un precio» y esperas.'),
+      h('li', {}, h('span', { class: 'c-buy' }, '🔵 Se compra: '), 'pedidos de otros jugadores. Recibes ese precio: «Vender ya» al momento o «Poner en venta» a tu precio.'),
+      h('li', {}, h('b', {}, 'Costes: '), 'comisión de publicación 1,5 % al crear una orden (no se devuelve) e impuesto de venta 3 % a quien vende. Al momento no hay comisión.'),
+      h('li', {}, h('b', {}, 'Caducidad: '), 'eliges 1, 3, 7 o 14 días; si caduca o la cancelas, se te devuelve lo depositado.')));
   if (open) d.open = true;
   d.addEventListener('toggle', () => { try { localStorage.setItem('mk:help', d.open ? '1' : '0'); } catch { /* nada */ } });
   return d;
@@ -418,57 +466,64 @@ export default {
   async mount(root) {
     if (S.marketQuery) { F.browse = { ...DEF.browse, q: S.marketQuery }; tab = 'browse'; S.marketQuery = null; }
     const tabs = h('div', { class: 'tabs mk-tabs', role: 'tablist' });
-    const body = h('div', {});
+    const body = h('div', { class: 'mk-main' });
 
+    function go(k) { tab = k; renderTabs(); render(); }
     function renderTabs() {
-      tabs.replaceChildren(...TABS.map(([k, l]) =>
-        h('button', { class: 'tab' + (tab === k ? ' active' : ''), 'data-tab': k, role: 'tab', 'aria-selected': String(tab === k), onclick: () => { tab = k; renderTabs(); render(); } }, l)));
+      tabs.replaceChildren(...TABS.map(([k, ico, l]) =>
+        h('button', { class: 'tab' + (tab === k ? ' active' : ''), 'data-tab': k, role: 'tab', 'aria-selected': String(tab === k), onclick: () => go(k) }, h('span', { class: 'tab-ico', 'aria-hidden': 'true' }, ico), h('span', { class: 'tab-lbl' }, l))));
     }
 
-    // ---- Barra de filtros compacta (búsqueda + filtros plegables en móvil) ----
-    // defs: [{ k, t: 'sel'|'num'|'chk'|'seg', ph, opts, sort }]. Devuelve { el, reset }.
+    // ---- Fila de filtros estilo Albion (plegable en móvil) ----
+    // defs: [{ k, t: 'sel'|'num'|'chk'|'seg', ph, opts (o función), main, sort, rebuild, dis }]. Devuelve { el, reset, active }.
     function filterBar(st, def, defs, ph, onChange) {
       const el = h('div', { class: 'mkf' });
       const activeN = () => defs.filter((d) => !d.sort && String(st[d.k]) !== String(def[d.k])).length;
+      const sortN = () => defs.filter((d) => d.sort && st[d.k] !== def[d.k]).length;
       let timer = null;
       const later = () => { clearTimeout(timer); timer = setTimeout(onChange, 150); };
       function reset() { Object.assign(st, def); build(); onChange(); }
       function build() {
-        const toggle = h('button', { class: 'btn small mkf-toggle', type: 'button', 'aria-expanded': String(panelOpen), onclick: () => { panelOpen = !panelOpen; panel.classList.toggle('open', panelOpen); toggle.setAttribute('aria-expanded', String(panelOpen)); } });
-        const clear = h('button', { class: 'btn small mkf-clear', type: 'button', onclick: reset }, 'Limpiar');
-        const sync = () => { toggle.textContent = `⚙ Filtros (${activeN()})`; clear.classList.toggle('hidden', !activeN() && !st.q && !defs.some((d) => d.sort && st[d.k] !== def[d.k])); };
-        const q = h('input', { type: 'search', class: 'mkf-q', placeholder: ph, 'aria-label': 'Buscar', autocomplete: 'off', oninput: (e) => { st.q = e.target.value; sync(); later(); } });
+        const toggle = h('button', { class: 'btn small mkf-toggle', type: 'button', 'aria-expanded': String(panelOpen), onclick: () => { panelOpen = !panelOpen; el.classList.toggle('open', panelOpen); toggle.setAttribute('aria-expanded', String(panelOpen)); } });
+        const clear = h('button', { class: 'btn small mkf-reset', type: 'button', title: 'Restablecer filtros', 'aria-label': 'Restablecer filtros', onclick: reset }, '↺');
+        const hasMore = defs.some((d) => !d.main);
+        const sync = () => { toggle.textContent = hasMore ? `⚙ Más filtros (${activeN() + sortN()})` : `⚙ Filtros (${activeN()})`; clear.classList.toggle('dim', !activeN() && !st.q && !sortN()); };
+        const q = h('input', { type: 'search', class: 'mkf-q', placeholder: ph, 'aria-label': 'Buscar artículo', autocomplete: 'off', oninput: (e) => { st.q = e.target.value; sync(); later(); } });
         q.value = st.q;
+        const lab = (d, c) => h('label', { class: 'mkf-f' }, h('span', {}, d.ph), c);
         const ctrl = (d) => {
           if (d.t === 'sel') {
-            const s = h('select', { 'aria-label': d.ph, onchange: (e) => { st[d.k] = e.target.value; sync(); onChange(); } }, d.opts.map(([v, l]) => h('option', { value: v }, l)));
+            const opts = typeof d.opts === 'function' ? d.opts() : d.opts;
+            const s = h('select', { 'aria-label': d.ph, disabled: !!(d.dis && d.dis()), onchange: (e) => { st[d.k] = e.target.value; if (d.onset) d.onset(); sync(); if (d.rebuild) build(); onChange(); } }, opts.map(([v, l]) => h('option', { value: v }, l)));
             s.value = st[d.k];
-            return s;
+            return lab(d, s);
           }
           if (d.t === 'num') {
-            const i = h('input', { type: 'number', min: 0, inputmode: 'numeric', class: 'mkf-num', placeholder: d.ph, 'aria-label': d.ph, oninput: (e) => { st[d.k] = e.target.value; sync(); later(); } });
+            const i = h('input', { type: 'number', min: 0, inputmode: 'numeric', class: 'mkf-num', placeholder: '—', 'aria-label': d.ph, oninput: (e) => { st[d.k] = e.target.value; sync(); later(); } });
             i.value = st[d.k];
-            return i;
+            return lab(d, i);
           }
           if (d.t === 'chk') {
-            const b = h('button', { class: 'chip' + (st[d.k] ? ' active' : ''), type: 'button', onclick: () => { st[d.k] = st[d.k] ? '' : '1'; b.classList.toggle('active', !!st[d.k]); sync(); onChange(); } }, d.ph);
+            const b = h('button', { class: 'chip mkf-chk' + (st[d.k] ? ' active' : ''), type: 'button', onclick: () => { st[d.k] = st[d.k] ? '' : '1'; b.classList.toggle('active', !!st[d.k]); sync(); onChange(); } }, d.ph);
             return b;
           }
-          // seg: chips excluyentes (pulsar el activo lo desactiva)
           const wrap = h('div', { class: 'seg mkf-seg' });
           const paint = () => wrap.replaceChildren(...d.opts.map(([v, l]) => h('button', { class: 'chip' + (st[d.k] === v ? ' active' : ''), type: 'button', onclick: () => { st[d.k] = st[d.k] === v ? '' : v; paint(); sync(); onChange(); } }, l)));
           paint();
-          return wrap;
+          return h('div', { class: 'mkf-f wide' }, h('span', {}, d.ph), wrap);
         };
-        const panel = h('div', { class: 'mkf-panel' + (panelOpen ? ' open' : '') }, defs.map(ctrl));
+        const mainD = defs.filter((d) => d.main);
+        const moreD = defs.filter((d) => !d.main);
+        el.className = 'mkf' + (panelOpen ? ' open' : '') + (hasMore ? ' has-more' : '');
+        el.replaceChildren(
+          h('div', { class: 'mkf-row' }, q, toggle, h('div', { class: 'mkf-sels' }, mainD.map(ctrl)), clear),
+          moreD.length ? h('div', { class: 'mkf-more' }, moreD.map(ctrl)) : '');
         sync();
-        el.replaceChildren(h('div', { class: 'mkf-top' }, q, toggle, clear), panel);
       }
       build();
-      return { el, reset, active: () => activeN() + (st.q ? 1 : 0) + defs.filter((d) => d.sort && st[d.k] !== def[d.k]).length };
+      return { el, reset, active: () => activeN() + (st.q ? 1 : 0) + sortN() };
     }
 
-    // Pinta la lista, el contador y el estado vacío (no toca la barra: así no se pierde el foco al teclear).
     function paintList(list, count, items, mk, fb, emptyMsg, limit = 120) {
       const n = items.length;
       count.textContent = `${fmt(n)} resultado${n === 1 ? '' : 's'}${n > limit ? ` · mostrando ${limit}` : ''}`;
@@ -476,27 +531,41 @@ export default {
         h('div', { class: 'mkf-empty-ico' }, '🔍'), h('p', { class: 'muted' }, emptyMsg),
         fb.active() ? h('button', { class: 'btn small', onclick: fb.reset }, 'Limpiar filtros') : '')]));
     }
-    const kindOf = (a) => (a.kind === 'poke' ? (a.shiny ? 'shiny' : 'poke') : a.kind === 'dust' ? 'dust' : isCos(a) ? 'cosmetic' : 'item');
-    const KINDS = [['', 'Todo'], ['poke', 'Pokémon'], ['shiny', 'Variocolor'], ['item', 'Objetos'], ['cosmetic', 'Cosméticos'], ['dust', 'Polvo estelar']];
-    const RARS = [['', 'Cualquier rareza'], ...RARITY_ORDER.map((r) => [r, rarityName(r)])];
-    // Cumple tipo de artículo, rareza, tipo Pokémon y región (los dos últimos solo aplican a Pokémon).
+    const catOf = (a) => (a.kind === 'poke' ? 'poke' : a.kind === 'dust' ? 'dust' : isCos(a) ? 'cosmetic' : 'item');
+    const CATS = [['', 'Todo'], ['poke', 'Pokémon'], ['item', 'Objetos'], ['cosmetic', 'Cosméticos'], ['dust', 'Polvo estelar']];
+    const SUBS = {
+      poke: () => [['', 'Todos los tipos'], ...S.data.types.map((t) => [t, TYPE_ES[t]])],
+      cosmetic: () => [['', 'Todos'], ['frame', 'Marco'], ['cardback', 'Dorso'], ['title', 'Título']],
+      item: () => [['', 'Todos'], ['consumable', 'Consumibles'], ['special', 'Especiales']],
+    };
+    const RARS = [['', 'Todos'], ...[...RARITY_ORDER].reverse().map((r) => [r, `${r} · ${rarityName(r)}`])];
+    const ENCH = [['', 'Todos'], ['normal', 'Normal'], ['shiny', 'Variocolor ✨']];
     function passItem(a, st) {
-      if (st.cat && st.cat !== 'sets' && kindOf(a) !== st.cat && !(st.cat === 'poke' && a.kind === 'poke')) return false;
-      if (st.cat === 'sets' && !setsNeeding(a).length) return false;
-      if (st.rar && rarityOf(a) !== st.rar) return false;
-      if (st.type || st.gen) {
-        if (a.kind !== 'poke') return false;
-        const p = S.dexById.get(a.pokeId);
-        if (st.type && !p.types.includes(st.type)) return false;
-        if (st.gen && p.gen !== Number(st.gen)) return false;
+      if (st.sets && !setsNeeding(a).length) return false;
+      if (st.cat && catOf(a) !== st.cat) return false;
+      if (st.sub) {
+        if (st.cat === 'poke') { if (!S.dexById.get(a.pokeId).types.includes(st.sub)) return false; }
+        else if (st.cat === 'cosmetic') { if (S.data.items[a.itemId].slot !== st.sub) return false; }
+        else if (st.cat === 'item') { if ((S.data.items[a.itemId].price != null) !== (st.sub === 'consumable')) return false; }
       }
+      if (st.rar && rarityOf(a) !== st.rar) return false;
+      if (st.ench === 'shiny' && !a.shiny) return false;
+      if (st.ench === 'normal' && a.shiny) return false;
+      if (st.gen) { if (a.kind !== 'poke' || S.dexById.get(a.pokeId).gen !== Number(st.gen)) return false; }
       return true;
     }
+    // Filtros comunes de Comprar y Vender (fila principal estilo Albion).
+    const albionDefs = (st) => [
+      { k: 'cat', t: 'sel', main: true, ph: 'Categoría', opts: CATS, rebuild: true, onset: () => { st.sub = ''; } },
+      { k: 'sub', t: 'sel', main: true, ph: 'Subcategoría', opts: () => (SUBS[st.cat] ? SUBS[st.cat]() : [['', 'Todas']]), dis: () => !SUBS[st.cat] },
+      { k: 'rar', t: 'sel', main: true, ph: 'Nivel', opts: RARS },
+      { k: 'ench', t: 'sel', main: true, ph: 'Encantamiento', opts: ENCH },
+      { k: 'gen', t: 'sel', main: true, ph: 'Región', opts: [['', 'Todas'], ...REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`])] },
+    ];
     const matchQ = (a, q) => !q || norm(nameOf(a)).includes(q);
     const byName = (x, y) => nameOf(x).localeCompare(nameOf(y), 'es');
     const rarIdx = (a) => RARITY_ORDER.indexOf(rarityOf(a) || 'C');
 
-    // Todo lo que se puede buscar aunque no tenga órdenes (para crear pedidos de compra).
     function catalog(q) {
       const out = [];
       for (const p of S.data.dex) if (norm(p.name).includes(q)) out.push({ kind: 'poke', pokeId: p.id, shiny: false }, { kind: 'poke', pokeId: p.id, shiny: true });
@@ -504,7 +573,8 @@ export default {
       if ('polvo estelar'.includes(q)) out.push({ kind: 'dust' });
       return out.map((a) => ({ ...a, ref: refOf(a) }));
     }
-
+    const thead = (mode) => h('div', { class: 'mk-thead small muted' }, h('span', {}, 'Artículo'), h('span', {}, mode === 'buy' ? 'Cantidad' : 'Cantidad'),
+      h('span', { class: 'c-sell' }, '🟢 Se vende desde'), h('span', { class: 'c-buy' }, '🔵 Se compra hasta'), h('span', {}));
 
     function browse() {
       const st = F.browse;
@@ -543,25 +613,20 @@ export default {
         }[st.sort];
         refs.sort((x, y) => (cmp && cmp(x, y)) || ((sum.has(y.ref) && sum.get(y.ref).asks.length > 0) - (sum.has(x.ref) && sum.get(x.ref).asks.length > 0)) || rarIdx(x) - rarIdx(y) || byName(x, y));
         paintList(list, count, refs, (a) => itemRow(a, sum.get(a.ref), 'buy'), fb,
-          q || fb.active() ? 'Nada coincide con tu búsqueda. Prueba con otro nombre o quita algún filtro.' : 'El mercado está vacío. Busca cualquier Pokémon u objeto para publicar un pedido de compra, o vende algo desde «Vender».');
+          q || fb.active() ? 'Nada coincide con tu búsqueda. Prueba con otro nombre o quita algún filtro.' : 'El mercado está vacío. Busca cualquier Pokémon u objeto para pedirlo a un precio, o vende algo desde «Vender».');
       }
-      const def = DEF.browse;
-      const fb = filterBar(st, def, [
-        { k: 'cat', t: 'sel', ph: 'Tipo de artículo', opts: [...KINDS, ['sets', 'Para mis colecciones']] },
-        { k: 'rar', t: 'sel', ph: 'Rareza', opts: RARS },
-        { k: 'type', t: 'sel', ph: 'Tipo Pokémon', opts: [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])] },
-        { k: 'gen', t: 'sel', ph: 'Región', opts: [['', 'Todas las regiones'], ...REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`])] },
+      const fb = filterBar(st, DEF.browse, [
+        ...albionDefs(st),
+        { k: 'sets', t: 'chk', ph: '📚 Para mis colecciones' },
         { k: 'min', t: 'num', ph: 'Precio mín.' },
         { k: 'max', t: 'num', ph: 'Precio máx.' },
         { k: 'side', t: 'sel', ph: 'Órdenes', opts: [['', 'Con o sin órdenes'], ['asks', 'Solo con ofertas de venta'], ['bids', 'Solo con pedidos de compra']] },
-        { k: 'sort', t: 'sel', sort: true, ph: 'Orden', opts: [['', 'Orden: relevancia'], ['cheap', 'Más barato'], ['exp', 'Más caro'], ['offers', 'Más ofertas'], ['sold', 'Más vendidos (30 días)'], ['name', 'Nombre']] },
-      ], 'Busca cualquier Pokémon u objeto…', draw);
+        { k: 'sort', t: 'sel', sort: true, ph: 'Ordenar', opts: [['', 'Relevancia'], ['cheap', 'Más barato'], ['exp', 'Más caro'], ['offers', 'Más ofertas'], ['sold', 'Más vendidos (30 días)'], ['name', 'Nombre']] },
+      ], 'Buscar artículo', draw);
       draw();
       return {
         redraw: draw,
-        el: h('div', { class: 'stack' }, fb.el, count,
-          h('p', { class: 'small muted' }, 'Pulsa un artículo para ver sus ofertas una a una. El precio mín./máx. se aplica a la oferta más barata.'),
-          list),
+        el: h('div', { class: 'stack' }, fb.el, count, thead('buy'), list),
       };
     }
 
@@ -593,14 +658,13 @@ export default {
           fb.active() ? 'Ninguno de tus artículos coincide. Prueba con otro nombre o quita algún filtro.' : 'No tienes nada que vender todavía.');
       }
       const fb = filterBar(st, DEF.sell, [
-        { k: 'cat', t: 'sel', ph: 'Tipo de artículo', opts: KINDS },
-        { k: 'rar', t: 'sel', ph: 'Rareza', opts: RARS },
+        ...albionDefs(st),
         { k: 'dup', t: 'chk', ph: 'Solo repetidos (2+)' },
         { k: 'bids', t: 'chk', ph: 'Con pedidos de compra' },
-        { k: 'sort', t: 'sel', sort: true, ph: 'Orden', opts: [['', 'Orden: más demandado'], ['rar', 'Rareza'], ['qty', 'Más copias'], ['bid', 'Mejor pedido'], ['name', 'Nombre']] },
-      ], 'Busca en tu inventario…', draw);
+        { k: 'sort', t: 'sel', sort: true, ph: 'Ordenar', opts: [['', 'Más demandado'], ['rar', 'Rareza'], ['qty', 'Más copias'], ['bid', 'Mejor pedido'], ['name', 'Nombre']] },
+      ], 'Buscar en tu inventario', draw);
       draw();
-      return { redraw: draw, el: h('div', { class: 'stack' }, fb.el, count, h('p', { class: 'small muted' }, 'Tu inventario. «Vender» llena los pedidos de compra más altos; «Orden de venta» publica tu precio. Pulsa un artículo para ver los pedidos de compra.'), list) };
+      return { redraw: draw, el: h('div', { class: 'stack' }, fb.el, count, thead('sell'), list) };
     }
 
     function mine() {
@@ -614,36 +678,38 @@ export default {
         const a = parseRef(o.ref);
         const sell = o.side === 'sell';
         const done = o.qty0 - o.qty;
-        return h('div', { class: 'mk-ocard', 'data-order': o.id },
-          thumb(a),
+        return h('div', { class: 'mk-ocard ' + (sell ? 'sellside' : 'buyside'), 'data-order': o.id },
+          icon(a),
           h('div', { class: 'mk-oinfo' }, h('b', {}, nameOf(a)),
             h('div', { class: 'small' }, `${fmt(done)}/${fmt(o.qty0)} ${sell ? 'vendidos' : 'comprados'}`),
             h('div', { class: 'mk-prog', role: 'progressbar', 'aria-valuenow': done, 'aria-valuemax': o.qty0 }, h('i', { style: { width: Math.round((done / o.qty0) * 100) + '%' } }))),
           h('div', { class: 'mk-ometa' },
-            h('span', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(o.price), h('span', { class: 'muted small' }, '/ud')),
+            h('span', { class: 'mk-price ' + (sell ? 'c-sell' : 'c-buy') }, h('span', { class: 'coin-ico' }), fmt(o.price), h('span', { class: 'muted small' }, '/ud')),
             h('span', { class: 'small ' + (urgent(o) ? 'bad' : 'muted') }, `Caduca en ${timeLeft(o)}`),
             sell ? '' : h('span', { class: 'small muted' }, `Apartadas: ${fmt(o.qty * o.price)}`)),
           h('button', { class: 'btn small danger mk-cancel', type: 'button', onclick: async (e) => { if (await act('market:cancel', { id: o.id }, e.target)) toast('Orden cancelada: se te devolvió lo que quedaba en depósito.', 'success'); } }, 'Cancelar'));
       };
+      const empty = (cls, msg, label, to) => h('div', { class: 'mk-emptybox ' + cls }, h('p', { class: 'small muted' }, msg), h('button', { class: 'btn small ' + (cls === 'sellside' ? 'green' : 'blue'), type: 'button', onclick: () => go(to) }, label));
       function draw() {
         const q = norm(st.q.trim());
         const cmp = { old: (x, y) => x.createdAt - y.createdAt, cheap: (x, y) => x.price - y.price, exp: (x, y) => y.price - x.price, soon: (x, y) => expiryOf(x) - expiryOf(y) }[st.sort] || ((x, y) => y.createdAt - x.createdAt);
         const all = state.orders.filter((o) => isMine(o) && matchQ(parseRef(o.ref), q)).sort(cmp);
         const sl = all.filter((o) => o.side === 'sell');
         const bl = all.filter((o) => o.side === 'buy');
-        const none = (m) => h('div', { class: 'muted small mk-none' }, m);
-        const empty = fb.active() ? 'Ninguna coincide con los filtros.' : null;
-        hs.textContent = `Órdenes de venta (${sl.length})`;
-        hb.textContent = `Pedidos de compra (${bl.length})`;
-        count.replaceChildren(`Monedas apartadas en pedidos: `, h('b', {}, fmt(bl.reduce((s, o) => s + o.qty * o.price, 0))));
-        sells.replaceChildren(...(sl.length ? sl.map(card) : [none(empty || 'No tienes órdenes de venta. Publícalas desde «Vender».')]));
-        buys.replaceChildren(...(bl.length ? bl.map(card) : [none(empty || 'No tienes pedidos de compra. Créalos desde «Comprar».')]));
+        const filtered = fb.active();
+        hs.textContent = `🟢 Mis ofertas de venta (${sl.length})`;
+        hb.textContent = `🔵 Mis pedidos de compra (${bl.length})`;
+        count.replaceChildren('Monedas apartadas en pedidos de compra: ', h('b', {}, fmt(bl.reduce((s, o) => s + o.qty * o.price, 0))));
+        sells.replaceChildren(...(sl.length ? sl.map(card) : [filtered ? h('div', { class: 'muted small mk-none' }, 'Ninguna coincide con los filtros.')
+          : empty('sellside', 'Una oferta de venta es un artículo tuyo en depósito a tu precio: aparece en «Se vende» hasta que alguien lo compre.', 'Poner algo en venta', 'sell')]));
+        buys.replaceChildren(...(bl.length ? bl.map(card) : [filtered ? h('div', { class: 'muted small mk-none' }, 'Ninguno coincide con los filtros.')
+          : empty('buyside', 'Un pedido de compra aparta tus monedas a tu precio: aparece en «Se compra» hasta que alguien te venda.', 'Crear un pedido de compra', 'browse')]));
       }
       const fb = filterBar(st, DEF.mine, [
-        { k: 'sort', t: 'sel', sort: true, ph: 'Orden', opts: [['', 'Más recientes'], ['old', 'Más antiguas'], ['soon', 'Caducan antes'], ['cheap', 'Precio: menor a mayor'], ['exp', 'Precio: mayor a menor']] },
-      ], 'Busca por artículo…', draw);
+        { k: 'sort', t: 'sel', main: true, sort: true, ph: 'Ordenar', opts: [['', 'Más recientes'], ['old', 'Más antiguas'], ['soon', 'Caducan antes'], ['cheap', 'Precio: menor a mayor'], ['exp', 'Precio: mayor a menor']] },
+      ], 'Buscar artículo', draw);
       draw();
-      return { redraw: draw, el: h('div', { class: 'stack' }, fb.el, count, hs, sells, hb, buys) };
+      return { redraw: draw, el: h('div', { class: 'stack' }, fb.el, count, h('section', { class: 'mk-section sellside' }, hs, sells), h('section', { class: 'mk-section buyside' }, hb, buys)) };
     }
 
     function historyTab() {
@@ -664,7 +730,7 @@ export default {
           const bought = t.buyer === me;
           const sold = t.seller === me;
           const verb = bought ? 'Compra' : sold ? 'Venta' : 'Operación';
-          return h('button', { class: 'mk-ocard mk-hist' + (bought ? ' bought' : sold ? ' sold' : ''), type: 'button', onclick: () => openItem(a) }, thumb(a),
+          return h('button', { class: 'mk-ocard mk-hist' + (bought ? ' bought' : sold ? ' sold' : ''), type: 'button', onclick: () => itemDialog(a, { side: 'buy', chart: true }) }, icon(a),
             h('div', { class: 'mk-oinfo' }, h('b', {}, `${t.qty > 1 ? t.qty + '× ' : ''}${nameOf(a)}`),
               h('div', { class: 'small' }, h('span', { class: bought ? 'tag-buy' : sold ? 'tag-sell' : 'mk-kind' }, verb.toUpperCase()), ` ${t.seller}`, npcTag(t.sellerNpc), ` → ${t.buyer}`, npcTag(t.buyerNpc)),
               h('div', { class: 'small muted' }, new Date(t.at).toLocaleString('es-ES'))),
@@ -673,11 +739,11 @@ export default {
         }, fb, fb.active() ? 'Ninguna operación coincide con los filtros.' : st.side === 'mine' ? 'Aún no has comprado ni vendido nada. Cuando lo hagas, aparecerá aquí.' : 'Todavía no hay ventas.');
       }
       const fb = filterBar(st, DEF.history, [
-        { k: 'side', t: 'sel', ph: 'Operaciones', opts: [['mine', 'Mis operaciones'], ['', 'Todo el mercado'], ['buy', 'Solo mis compras'], ['sell', 'Solo mis ventas']] },
+        { k: 'side', t: 'sel', main: true, ph: 'Operaciones', opts: [['mine', 'Mis operaciones'], ['', 'Todo el mercado'], ['buy', 'Solo mis compras'], ['sell', 'Solo mis ventas']] },
         { k: 'range', t: 'seg', ph: 'Fecha', opts: [['today', 'Hoy'], ['7', '7 días'], ['30', '30 días']] },
-      ], 'Busca por artículo…', draw);
+      ], 'Buscar artículo', draw);
       draw();
-      return { redraw: draw, el: h('div', { class: 'stack' }, fb.el, count, h('p', { class: 'small muted' }, 'Últimas operaciones del mercado. Pulsa una para ver la gráfica de precios del artículo.'), list) };
+      return { redraw: draw, el: h('div', { class: 'stack' }, fb.el, count, h('p', { class: 'small muted' }, 'Tus operaciones terminadas. Pulsa una para ver la gráfica de precios del artículo.'), list) };
     }
 
     let cur = null; // pestaña activa: { el, redraw }
@@ -685,7 +751,6 @@ export default {
       if (!state) return;
       cur = (tab === 'browse' ? browse : tab === 'sell' ? sellTab : tab === 'mine' ? mine : historyTab)();
       body.replaceChildren(cur.el);
-      paintRates();
     }
     const ratesLine = h('p', { class: 'muted' });
     const paintRates = () => {
@@ -693,11 +758,10 @@ export default {
         marketFee() < S.data.marketFee ? h('span', { class: 'event-pill' }, '🏪 Viernes de Mercado') : '');
     };
     paintRates();
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏪 Mercado'), ratesLine), helpBox(), tabs, body);
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏪 Mercado'), ratesLine), helpBox(), h('div', { class: 'mk-shell' }, tabs, body));
     renderTabs();
     let meTimer = null;
-    this.offs = [bus.on('market', (s) => { state = s; if (cur) cur.redraw(); else render(); }),
-      // Tu inventario cambia al comprar/vender: se repinta «Vender» con lo que realmente tienes.
+    this.offs = [bus.on('market', (s) => { state = s; paintRates(); if (cur) cur.redraw(); else render(); }),
       bus.on('me', () => { if (tab !== 'sell' || !cur || !state) return; clearTimeout(meTimer); meTimer = setTimeout(() => { if (cur && tab === 'sell') cur.redraw(); }, 120); })];
     const r = await act('market:state');
     if (r) { state = r; render(); }
