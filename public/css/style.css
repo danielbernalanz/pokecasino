@@ -976,3 +976,14 @@ details.rules[open] summary { margin-bottom: 6px; }
 .event-row { align-items: center; }
 .event-pill { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #ffcb0522; color: var(--gold); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
+
+/* Tienda y eventos en pantallas estrechas: la compra baja a su propia fila para que la descripción respire. */
+@media (max-width: 520px) {
+  .shop-grid.wide { grid-template-columns: 1fr; }
+  .item-card { flex-wrap: wrap; }
+  .item-card > .grow { flex: 1 1 calc(100% - 80px); }
+  .item-card > .stack { flex: 1 1 100%; flex-direction: row; align-items: center; justify-content: space-between; padding-left: 66px; }
+  .item-card > .btn { margin-left: 66px; }
+  .event-row { flex-wrap: wrap; }
+  .event-row > .nowrap { flex-basis: 100%; padding-left: 38px; }
+}

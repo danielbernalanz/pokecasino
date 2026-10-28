@@ -14,4 +14,4 @@ Si una fase falla y no se puede arreglar con seguridad, se revierte y se pasa a 
 | 6 | Panel del anfitrión | Estadísticas de economía (monedas totales, fuentes y sumideros, jugadores activos), registro de acciones del anfitrión | ✅ |
 | 7 | Eventos | Calendario semanal (Duelos sin comisión, Misiones ×2, Mercado sin impuesto, Variocolor ×2 y Compañero ×2 el fin de semana) anunciado en el Vestíbulo; el anfitrión puede lanzar eventos. Se descartó «XP doble»: duplicaría la devolución por nivel y algún juego daría dinero seguro | ✅ |
 | 8 | Seguridad y calidad | Cabeceras de seguridad, límites de registro, CI de GitHub con `npm test`, más tests | ✅ |
-| 9 | Regresión final | Todas las pruebas de navegador en escritorio y móvil, informe final para el usuario | |
+| 9 | Regresión final | Todas las pruebas de navegador en escritorio y móvil, informe final para el usuario | ✅ |
