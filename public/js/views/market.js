@@ -151,8 +151,16 @@ function tags(a) {
   const rar = rarityOf(a);
   return h('span', { class: 'mk-tags' }, rar ? h('span', { class: 'rar r-' + rar }, rarityName(rar)) : '', h('span', { class: 'mk-kind' + (a.shiny ? ' shiny' : '') }, kindLabel(a)));
 }
+// Quién está detrás de una orden: nombre bien visible (o «Tú») y etiqueta NPC si es un comerciante.
 function who(o) {
-  return h('span', { class: 'mk-who' }, isMine(o) ? h('span', { class: 'mk-me' }, 'Tú') : o.username, npcTag(o.npc));
+  return h('span', { class: 'mk-who' }, h('span', { class: 'mk-who-ico', 'aria-hidden': 'true' }, o.npc ? '🏪' : isMine(o) ? '⭐' : '👤'),
+    isMine(o) ? h('b', { class: 'mk-me' }, 'Tú') : h('b', {}, o.username), npcTag(o.npc));
+}
+// «vende Ana +2 más»: el jugador de la mejor orden y cuántos más hay a ese lado.
+function byLine(orders, verb) {
+  if (!orders || !orders.length) return '';
+  const names = [...new Set(orders.map((o) => (isMine(o) ? 'Tú' : o.username)))];
+  return h('span', { class: 'mk-by' }, `${verb} `, h('b', {}, names[0]), orders[0].npc ? npcTag(true) : '', names.length > 1 ? ` +${names.length - 1} más` : '');
 }
 
 
@@ -442,7 +450,7 @@ function itemRow(a, r, mode, have) {
   const lowAsk = r.asks[0];
   const topBid = r.bids[0];
   const av = avgOf(ref);
-  const price = (o, cls) => (o ? h('b', { class: 'mk-price ' + cls }, h('span', { class: 'coin-ico' }), fmt(o.price), npcTag(o.npc)) : h('b', { class: 'muted' }, '—'));
+  const price = (o, cls, list, verb) => (o ? h('span', { class: 'mk-pricebox' }, h('b', { class: 'mk-price ' + cls }, h('span', { class: 'coin-ico' }), fmt(o.price)), byLine(list, verb)) : h('b', { class: 'muted' }, '—'));
   const col = (label, value, cls = '') => h('div', { class: 'mk-col ' + cls }, h('span', { class: 'mk-collbl' }, label), value);
   const sets = setsNeeding(a)[0];
   const el = h('div', { class: 'mk-item' + (open ? ' open' : '') + (rar ? ' r-' + rar : '') + (a.shiny ? ' shiny' : ''), 'data-ref': ref });
@@ -463,8 +471,8 @@ function itemRow(a, r, mode, have) {
     av ? h('div', { class: 'small muted' }, `Precio medio ${av.label}: `, money(av.v)) : '', sets ? h('div', { class: 'small gold-text' }, `📚 Para «${sets.name}»`) : ''));
   const qty = mode === 'buy' ? col('Cantidad', h('b', {}, lowAsk ? fmt(sumQty(r.asks)) : '—')) : col('Cantidad', h('b', {}, fmt(have)));
   const cols = [qty,
-    col('Se vende desde', price(lowAsk, 'c-sell'), 'sellcol' + (mode === 'buy' ? ' hl' : '')),
-    col('Se compra hasta', price(topBid, 'c-buy'), 'buycol' + (mode === 'sell' ? ' hl' : ''))];
+    col('Se vende desde', price(lowAsk, 'c-sell', r.asks, 'vende'), 'sellcol' + (mode === 'buy' ? ' hl' : '')),
+    col('Se compra hasta', price(topBid, 'c-buy', r.bids, 'compra'), 'buycol' + (mode === 'sell' ? ' hl' : ''))];
   const btn = mode === 'buy'
     ? h('button', { class: 'btn green mk-buy-now', type: 'button', onclick: () => itemDialog(a, { side: 'buy' }) }, 'Comprar')
     : h('button', { class: 'btn blue mk-sell-now', type: 'button', onclick: () => itemDialog(a, { side: 'sell' }) }, 'Vender');
@@ -766,7 +774,7 @@ export default {
           const verb = bought ? 'Compra' : sold ? 'Venta' : 'Operación';
           return h('button', { class: 'mk-ocard mk-hist' + (bought ? ' bought' : sold ? ' sold' : ''), type: 'button', onclick: () => itemDialog(a, { side: 'buy', chart: true }) }, icon(a),
             h('div', { class: 'mk-oinfo' }, h('b', {}, `${t.qty > 1 ? t.qty + '× ' : ''}${nameOf(a)}`),
-              h('div', { class: 'small' }, h('span', { class: bought ? 'tag-buy' : sold ? 'tag-sell' : 'mk-kind' }, verb.toUpperCase()), ` ${t.seller}`, npcTag(t.sellerNpc), ` → ${t.buyer}`, npcTag(t.buyerNpc)),
+              h('div', { class: 'small' }, h('span', { class: bought ? 'tag-buy' : sold ? 'tag-sell' : 'mk-kind' }, verb.toUpperCase()), ' Vendió ', h('b', {}, t.seller === me ? 'tú' : t.seller), npcTag(t.sellerNpc), ' · compró ', h('b', {}, t.buyer === me ? 'tú' : t.buyer), npcTag(t.buyerNpc)),
               h('div', { class: 'small muted' }, new Date(t.at).toLocaleString('es-ES'))),
             h('div', { class: 'mk-ometa' }, h('span', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(t.price), h('span', { class: 'muted small' }, '/ud')),
               t.qty > 1 ? h('span', { class: 'small muted' }, `Total ${fmt(t.qty * t.price)}`) : '', h('span', { class: 'small gold-text' }, '📈 Precios')));

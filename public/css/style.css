@@ -1342,3 +1342,11 @@ button.mk-ocard { cursor: pointer; }
   .mk-ico.big .mk-img, .mk-big { width: 64px; height: 64px; }
   .mk-num { width: 80px; }
 }
+
+/* Mercado: quién vende y quién compra, siempre visible. */
+.mk-pricebox { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mk-by { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; line-height: 1.25; }
+.mk-by b { color: var(--text); font-weight: 800; }
+.mk-who { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.mk-who b { font-weight: 800; }
+.mk-who-ico { font-size: 13px; }
