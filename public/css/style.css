@@ -1360,3 +1360,28 @@ button.mk-ocard { cursor: pointer; }
 .locked-tag { font-weight: 700; }
 .set-mon.locked img { filter: grayscale(1); opacity: .7; }
 .gx-tag.unlocked { background: #0ea5e9; color: #fff; }
+
+/* ---- Encargos, ofertas flash y fichas de NPC ---- */
+.mk-special { display: grid; gap: 10px; background: linear-gradient(135deg, #ffcb0522, #e3350d1a); border: 1px solid #ffcb0566; border-radius: 12px; padding: 10px 12px; }
+.mk-special[hidden] { display: none; }
+.mk-sp-block h3 { margin: 0 0 2px; font-size: 16px; }
+.mk-sp-block p { margin: 0 0 6px; }
+.mk-sp-list { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.mk-sp-card { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--gl); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.mk-sp-card.flash { border-color: #ff7a3a99; }
+.mk-sp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mk-sp-rew { overflow-wrap: anywhere; }
+.mk-flash { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: linear-gradient(180deg, #ff7a3a, #e3350d); color: #fff; font: 800 10px Nunito, sans-serif; letter-spacing: .03em; white-space: nowrap; }
+.mk-npc-link { background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: 800; color: var(--gold); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; overflow-wrap: anywhere; text-align: left; }
+.mk-npc-link:hover { color: #fff; }
+.mk-npcard { display: grid; gap: 8px; min-width: 0; }
+.mk-npcard h4 { margin: 6px 0 0; }
+.mk-npc-head { display: flex; align-items: center; gap: 12px; }
+.mk-npc-head h3 { margin: 0; }
+.mk-npc-art { width: 96px; height: 96px; object-fit: contain; background: radial-gradient(circle, #ffcb0533, transparent 70%); border-radius: 50%; flex: none; }
+.mk-npc-quote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--gold); background: var(--panel2); border-radius: 0 8px 8px 0; font-style: italic; }
+.mk-npc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mk-npc-list li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.mk-npc-list li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.mk-npc-list .mk-img { width: 28px; height: 28px; }
+@media (max-width: 640px) { .mk-sp-list { grid-template-columns: 1fr; } }

@@ -567,6 +567,15 @@ const STATIC = {
   podium: PODIUM.map((p) => p.label),
 };
 
+// Regala 💠 sueltos (p. ej. premio de un encargo de los NPC): no cuentan para hitos ni ranking. Devuelve los entregados (0 si el evento no está activo).
+function giveFrags(user, n, now = Date.now()) {
+  n = Math.floor(n);
+  if (!user || user.npc || n <= 0 || !isActive(now)) return 0;
+  U(user).frags += n;
+  hub.emitUser(user.id, 'toast', { kind: 'mega', text: `💠 +${n} Megafragmentos` });
+  return n;
+}
+
 // Estadísticas base de una forma (mismo formato que baseStats de pokedex.js) para los duelos.
 function formBaseStats(formId) {
   const [hp, atk, def, spa, spd, spe] = BY_FORM.get(formId).stats;
@@ -579,5 +588,5 @@ function expectedFrags() { return OUTCOMES.reduce((s, o) => s + (o.w / TOTAL_W) 
 module.exports = {
   MISSION_BONUS, CFG, FORMS, BY_FORM, BY_STONE, OUTCOMES, MILESTONES, MISSIONS, STREAK, PODIUM, SYMBOLS, STATIC, TOTAL_W,
   isActive, currentHour, dayId, onBet, onEvent, checkin, claim, craft, pickStone, useStone, setBuddyMega, buddyMegaOk, megasOf,
-  spin, leaderboard, finalize, startEdition, tick, start, admin, publicState, privateView, full, formBaseStats, expectedFrags, state: S, U,
+  spin, giveFrags, leaderboard, finalize, startEdition, tick, start, admin, publicState, privateView, full, formBaseStats, expectedFrags, state: S, U,
 };

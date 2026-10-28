@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk } from '../core.js';
+import { S, h, fmt, act, art as artwork, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk } from '../core.js';
 
 // Mercado estilo Albion Online: libro de órdenes por artículo (ventas y pedidos de compra).
 let tab = 'browse';
@@ -154,15 +154,90 @@ function tags(a) {
 // Quién está detrás de una orden: nombre bien visible (o «Tú») y etiqueta NPC si es un comerciante.
 function who(o) {
   return h('span', { class: 'mk-who' }, h('span', { class: 'mk-who-ico', 'aria-hidden': 'true' }, o.npc ? '🏪' : isMine(o) ? '⭐' : '👤'),
-    isMine(o) ? h('b', { class: 'mk-me' }, 'Tú') : h('b', {}, o.username), npcTag(o.npc));
+    isMine(o) ? h('b', { class: 'mk-me' }, 'Tú') : o.npc ? npcLink(o.username) : h('b', {}, o.username), npcTag(o.npc),
+    isFlash(o) ? h('span', { class: 'mk-flash', title: 'Oferta flash' }, '🔥 Oferta') : '');
 }
 // «vende Ana +2 más»: el jugador de la mejor orden y cuántos más hay a ese lado.
 function byLine(orders, verb) {
   if (!orders || !orders.length) return '';
   const names = [...new Set(orders.map((o) => (isMine(o) ? 'Tú' : o.username)))];
-  return h('span', { class: 'mk-by' }, `${verb} `, h('b', {}, names[0]), orders[0].npc ? npcTag(true) : '', names.length > 1 ? ` +${names.length - 1} más` : '');
+  return h('span', { class: 'mk-by' }, `${verb} `, orders[0].npc && names[0] === orders[0].username ? npcLink(names[0]) : h('b', {}, names[0]), orders[0].npc ? npcTag(true) : '', names.length > 1 ? ` +${names.length - 1} más` : '');
 }
 
+
+// ---- Encargos, ofertas flash y fichas de los comerciantes NPC ----
+const npcData = () => (state && state.npcs) || { encargos: [], flash: [], cards: [] };
+const BONUS_TXT = { ticket: (n) => `🎟️ ${n}× Ticket Gacha`, egg: (n) => `🥚 ${n}× Huevo Misterioso`, frag: (n) => `💠 ${n} Megafragmentos` };
+const isFlash = (o) => !!o.flash && o.flash > Date.now();
+function countdown(ts) {
+  const m = Math.floor((ts - Date.now()) / 60000);
+  if (m < 0) return 'Caducando…';
+  return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${Math.max(1, m)} min`;
+}
+function npcLink(name) {
+  return h('button', { class: 'mk-npc-link', type: 'button', title: `Ver la ficha de ${name}`, onclick: (e) => { e.stopPropagation(); npcCard(name); } }, name);
+}
+function encCard(e) {
+  const a = parseRef(e.ref);
+  const have = owned(a);
+  const done = e.done.includes(S.me.username);
+  return h('div', { class: 'mk-sp-card enc', 'data-enc': e.id },
+    icon(a),
+    h('div', { class: 'mk-sp-info' },
+      h('b', { class: 'mk-name' }, nameOf(a)),
+      h('span', { class: 'small muted' }, npcLink(e.npc), npcTag(true), ` · ⏳ ${countdown(e.expiresAt)}`),
+      h('span', { class: 'mk-sp-rew small' }, 'Paga ', money(e.price), ` + ${fmt(e.premium)} de prima`, h('br', {}), h('b', { class: 'gold-text' }, '+ ' + BONUS_TXT[e.bonus.type](e.bonus.n)))),
+    h('button', { class: 'btn small blue mk-enc-sell', type: 'button', disabled: done || !have, title: done ? 'Ya cumpliste este encargo' : have ? '' : 'No tienes este artículo',
+      onclick: () => itemDialog(a, { side: 'sell', mode: 'now', orderId: e.orderId }) }, done ? '✔ Cumplido' : 'Vender'));
+}
+function flashCard(f) {
+  const a = parseRef(f.ref);
+  return h('div', { class: 'mk-sp-card flash', 'data-flash': f.id },
+    icon(a),
+    h('div', { class: 'mk-sp-info' },
+      h('b', { class: 'mk-name' }, nameOf(a), h('span', { class: 'mk-flash' }, '🔥 Oferta')),
+      h('span', { class: 'small muted' }, npcLink(f.npc), npcTag(true), ` · ⏳ ${countdown(f.until)}`),
+      h('span', { class: 'mk-sp-rew small' }, money(f.price), ' ', h('s', { class: 'muted' }, fmt(f.normal)), ` · −${Math.round((1 - f.price / f.normal) * 100)} %`)),
+    h('button', { class: 'btn small green mk-flash-buy', type: 'button', onclick: () => itemDialog(a, { side: 'buy', mode: 'now', orderId: f.orderId }) }, 'Comprar'));
+}
+// Franja de la parte superior de Comprar y Vender.
+function specialStrip() {
+  const el = h('section', { class: 'mk-special', 'aria-label': 'Encargos y ofertas' });
+  const update = () => {
+    const { encargos, flash } = npcData();
+    el.hidden = !encargos.length && !flash.length;
+    el.replaceChildren(
+      encargos.length ? h('div', { class: 'mk-sp-block' }, h('h3', {}, '📜 Encargos'),
+        h('p', { class: 'small muted' }, 'Pedidos especiales de los comerciantes: cobras el precio, una prima y un premio. Uno por encargo y 2 premios al día.'),
+        h('div', { class: 'mk-sp-list' }, encargos.map(encCard))) : '',
+      flash.length ? h('div', { class: 'mk-sp-block' }, h('h3', {}, '🔥 Ofertas flash'), h('div', { class: 'mk-sp-list' }, flash.map(flashCard))) : '');
+  };
+  update();
+  return { el, update };
+}
+function npcCard(name) {
+  const c = npcData().cards.find((x) => x.name === name);
+  if (!c) return;
+  const mine = state.orders.filter((o) => o.npc && o.username === name);
+  const lines = (side) => {
+    const os = mine.filter((o) => o.side === side).sort((x, y) => (side === 'buy' ? y.price - x.price : x.price - y.price)).slice(0, 6);
+    return os.length ? h('ul', { class: 'mk-npc-list' }, os.map((o) => { const a = parseRef(o.ref); return h('li', {}, thumb(a), h('span', {}, nameOf(a), o.qty > 1 ? ` ×${fmt(o.qty)}` : '', isFlash(o) ? h('span', { class: 'mk-flash' }, '🔥') : ''), h('b', {}, money(o.price))); }))
+      : h('p', { class: 'small muted' }, 'Ahora mismo no tiene órdenes de este tipo.');
+  };
+  const { encargos, flash } = npcData();
+  const encs = encargos.filter((e) => e.npc === name);
+  const fls = flash.filter((f) => f.npc === name);
+  const body = h('div', { class: 'mk-npcard' },
+    h('div', { class: 'mk-npc-head' }, h('img', { class: 'mk-npc-art', src: artwork(c.art), alt: '', width: 96, height: 96 }),
+      h('div', {}, h('h3', {}, c.name, npcTag(true)), h('div', { class: 'small gold-text' }, c.title))),
+    h('blockquote', { class: 'mk-npc-quote' }, `«${c.quote}»`),
+    h('p', { class: 'small' }, c.bio),
+    h('h4', {}, '📜 Encargos'), encs.length ? h('div', { class: 'mk-sp-list' }, encs.map(encCard)) : h('p', { class: 'small muted' }, 'Sin encargos ahora mismo. Suele publicar alguno cada día.'),
+    fls.length ? [h('h4', {}, '🔥 Oferta flash'), h('div', { class: 'mk-sp-list' }, fls.map(flashCard))] : '',
+    h('h4', {}, '🔵 Lo que busca'), h('p', { class: 'small muted' }, c.seeks), lines('buy'),
+    h('h4', {}, '🟢 Lo que vende'), h('p', { class: 'small muted' }, c.sells), lines('sell'));
+  modal(body, { title: 'Comerciante' });
+}
 
 // ---- Lados del libro: SE VENDE (verde, ofertas de venta) y SE COMPRA (azul, pedidos de compra) ----
 const SELL_LBL = '🟢 Se vende (ofertas de venta)';
@@ -468,6 +543,7 @@ function itemRow(a, r, mode, have) {
   } },
   h('span', { class: 'mk-chev', 'aria-hidden': 'true' }, '▸'), icon(a),
   h('div', { class: 'mk-info' }, h('b', { class: 'mk-name' }, nameOf(a)), tags(a),
+    lowAsk && isFlash(lowAsk) ? h('div', { class: 'small' }, h('span', { class: 'mk-flash' }, '🔥 Oferta'), ` termina en ${countdown(lowAsk.flash)}`) : '',
     av ? h('div', { class: 'small muted' }, `Precio medio ${av.label}: `, money(av.v)) : '', sets ? h('div', { class: 'small gold-text' }, `📚 Para «${sets.name}»`) : ''));
   const qty = mode === 'buy' ? col('Cantidad', h('b', {}, lowAsk ? fmt(sumQty(r.asks)) : '—')) : col('Cantidad', h('b', {}, fmt(have)));
   const cols = [qty,
@@ -666,9 +742,10 @@ export default {
         { k: 'sort', t: 'sel', sort: true, ph: 'Ordenar', opts: [['', 'Relevancia'], ['cheap', 'Más barato'], ['exp', 'Más caro'], ['offers', 'Más ofertas'], ['sold', 'Más vendidos (30 días)'], ['name', 'Nombre']] },
       ], 'Buscar artículo', draw);
       draw();
+      const strip = specialStrip();
       return {
-        redraw: draw,
-        el: h('div', { class: 'stack' }, fb.el, count, thead('buy'), list),
+        redraw: () => { draw(); strip.update(); }, strip,
+        el: h('div', { class: 'stack' }, strip.el, fb.el, count, thead('buy'), list),
       };
     }
 
@@ -706,7 +783,8 @@ export default {
         { k: 'sort', t: 'sel', sort: true, ph: 'Ordenar', opts: [['', 'Más demandado'], ['rar', 'Rareza'], ['qty', 'Más copias'], ['bid', 'Mejor pedido'], ['name', 'Nombre']] },
       ], 'Buscar en tu inventario', draw);
       draw();
-      return { redraw: draw, el: h('div', { class: 'stack' }, fb.el, count, thead('sell'), list) };
+      const strip = specialStrip();
+      return { redraw: () => { draw(); strip.update(); }, strip, el: h('div', { class: 'stack' }, strip.el, fb.el, count, thead('sell'), list) };
     }
 
     function mine() {
@@ -805,10 +883,11 @@ export default {
     let meTimer = null;
     this.offs = [bus.on('market', (s) => { state = s; paintRates(); if (cur) cur.redraw(); else render(); }),
       bus.on('me', () => { if (tab !== 'sell' || !cur || !state) return; clearTimeout(meTimer); meTimer = setTimeout(() => { if (cur && tab === 'sell') cur.redraw(); }, 120); })];
+    this.tick = setInterval(() => { if (cur && cur.strip) cur.strip.update(); }, 30000);
     const r = await act('market:state');
     if (r) { state = r; render(); }
   },
-  unmount() { this.offs.forEach((f) => f()); },
+  unmount() { this.offs.forEach((f) => f()); clearInterval(this.tick); },
 };
 
 // El estado del mercado se mantiene actualizado aunque no esté abierta la vista (para las fichas).

@@ -69,33 +69,39 @@ test('NPC: cada uno tiene un tope de compra por debajo del suelo de venta, para 
   for (const a of all) {
     const b = npc.bounds(market.parseRef(a));
     assert.ok(b, JSON.stringify(a));
-    assert.ok(b.cap >= 1 && b.cap < b.floor, JSON.stringify(a));
+    assert.ok(b.cap >= 1 && b.floor >= 2 * b.cap, 'ask ≥ 2 × tope de compra: ' + JSON.stringify(a));
+    assert.ok(Math.ceil(npc.FLASH.min * b.floor) > b.cap, 'incluso rebajado (80 % del suelo) supera el tope: ' + JSON.stringify(a));
     if (a.kind === 'poke') {
       const r = DEX.find((p) => p.id === a.pokeId).rarity;
       const release = RARITY[r].dust * gacha.DUST_RATE;
       const normal = npc.bounds(market.parseRef(poke(a.pokeId)));
-      assert.ok(normal.cap <= 0.9 * release, 'vender a un NPC nunca supera a liberar el duplicado');
-      assert.ok(normal.floor >= Math.max(3 * normal.cap, npc.POKE_FLOOR[r]));
+      assert.ok(normal.cap <= release, 'vender a un NPC nunca supera a liberar el duplicado');
+      assert.ok(normal.floor >= Math.max(2 * normal.cap, npc.POKE_FLOOR[r]));
       if (a.shiny) {
         assert.ok(b.cap <= 3 * normal.cap);
-        assert.ok(b.floor >= 4 * normal.floor);
+        assert.ok(b.floor >= 3 * normal.floor && b.floor >= 2.5 * b.cap);
       }
     }
     if (a.kind === 'item' && items.ITEMS[a.itemId].price) {
       const p = items.ITEMS[a.itemId].price;
-      assert.ok(b.cap <= 0.5 * p && b.floor >= p, 'objetos de tienda: nunca por debajo de la tienda');
+      assert.ok(b.cap < p && b.floor >= p && b.cap <= 0.6 * p, 'objetos de tienda: nunca por debajo de la tienda');
     }
-    if (a.kind === 'dust') assert.ok(b.cap < gacha.DUST_RATE && b.floor >= 2 * gacha.DUST_RATE);
+    if (a.kind === 'dust') assert.ok(b.cap <= gacha.DUST_RATE - 1 && b.floor >= 2 * gacha.DUST_RATE, 'polvo: nunca el tipo de cambio exacto');
   }
-  assert.strictEqual(npc.bounds(market.parseRef(item('master-ball'))).cap, 2000);
-  assert.strictEqual(npc.bounds(market.parseRef(item('master-ball'))).floor, 12000);
+  assert.deepStrictEqual(npc.bounds(market.parseRef(item('master-ball'))), { cap: 2300, floor: 9000 });
+  // Suelos nuevos de Pokémon normales y cosméticos.
+  assert.deepStrictEqual(['C', 'U', 'R', 'E', 'L', 'M'].map((r) => npc.bounds(market.parseRef(poke(byRarity(r)))).floor), [90, 200, 500, 1500, 9000, 18000]);
+  assert.deepStrictEqual(['C', 'U', 'R', 'E', 'L'].map((r) => npc.bounds(market.parseRef(item(Object.keys(items.ITEMS).find((i) => items.ITEMS[i].cosmetic && !items.ITEMS[i].event && items.ITEMS[i].rarity === r)))).floor), [150, 350, 900, 2700, 9000]);
 });
 
 test('NPC: vender al tope de compra de un NPC rinde menos que una tirada de gacha cuesta', () => {
   const ev = Object.entries(gacha.RATES).reduce((s, [r, rate]) => s + rate * npc.maxBid(r), 0);
-  assert.ok(ev < 0.6 * gacha.COST[10] / 10, `EV ${ev}`);
+  // Margen: ≈ 80-84 monedas por tirada frente a 101 (el 75 % de 135 de una tirada del ×10).
+  assert.ok(ev < 0.75 * gacha.COST[10] / 10, `EV ${ev}`);
   // Incluso contando el variocolor (1/64 de las tiradas, al triple).
-  assert.ok(ev * (1 + 3 * gacha.SHINY_RATE) < 0.6 * gacha.COST[10] / 10);
+  assert.ok(ev * (1 + 3 * gacha.SHINY_RATE) < 0.75 * gacha.COST[10] / 10);
+  // Y el suelo de las legendarias no baja del coste esperado de una legendaria al azar con tiradas sueltas.
+  assert.ok(npc.POKE_FLOOR.L >= gacha.COST[1] / gacha.RATES.L, `L ${npc.POKE_FLOOR.L} vs ${gacha.COST[1] / gacha.RATES.L}`);
 });
 
 test('NPC: comprar a un NPC y venderle de vuelta siempre pierde monedas', () => {
@@ -111,7 +117,7 @@ test('NPC: comprar a un NPC y venderle de vuelta siempre pierde monedas', () => 
   for (const raw of sample) {
     const a = market.parseRef(raw);
     const b = npc.bounds(a);
-    const p = user('arb' + i++, { level: 50 }); // límite diario 6.500: cabe un variocolor mítico
+    const p = user('arb' + i++, { level: 50 }); // límite diario 30.000: cabe un variocolor mítico
     // El NPC vende su stock al precio más bajo que se permite.
     if (a.kind === 'poke') seller.collection[a.pokeId] = { n: 1, s: a.shiny ? 1 : 0 };
     else if (a.kind === 'item') seller.items[a.itemId] = 1;
@@ -184,20 +190,35 @@ test('NPC: invariante global, la puja más alta de cualquier NPC es menor que la
     let hi = 0;
     let lo = Infinity;
     for (const med of [null, 1, 50, 10_000_000]) {
-      for (const p of npc.NPCS) for (let i = 0; i < 30; i++) { hi = Math.max(hi, npc.bidPrice(a, p, med)); lo = Math.min(lo, npc.askPrice(a, p, med)); }
+      for (const p of npc.NPCS) {
+        for (let i = 0; i < 30; i++) for (const have of [0, 1, 2, 5, 30]) for (const demand of [false, true]) {
+          hi = Math.max(hi, npc.bidPrice(a, p, med, { have, demand })); lo = Math.min(lo, npc.askPrice(a, p, med, { have }));
+        }
+      }
     }
     assert.ok(hi < lo, `${a.ref}: ${hi} vs ${lo}`);
+  }
+  // Y con precios flash (80 % del suelo) y con la prima de encargo (1,5 × tope) para TODO artículo.
+  for (const id of Object.keys(items.ITEMS)) for (const a of [item(id)]) {
+    const b = npc.bounds(market.parseRef(a));
+    if (b) assert.ok(1.5 * b.cap < npc.FLASH.min * b.floor || !npc.flashEligible(a), id);
+  }
+  for (const p of DEX) for (const sh of [false, true]) {
+    const a = market.parseRef(poke(p.id, sh));
+    const b = npc.bounds(a);
+    assert.ok(b.cap < npc.flashFloor(a) || !npc.flashEligible(a), a.ref);
+    assert.ok(1.5 * b.cap < b.floor, 'incluso con la prima de encargo (1,5 × tope) se paga menos que el suelo: ' + a.ref);
   }
 });
 
 test('NPC: límites diarios por jugador (monedas y unidades) al venderles', () => {
   clearNpcOrders();
   const g = N('ginger');
-  const p = user('vendedor-npc', { items: { 'rare-candy': 14, 'master-ball': 3 }, level: 3 });
-  const limit = npc.sellLimit(p); // 5000 + 500 × 3
-  assert.strictEqual(limit, 6500);
-  const candy = npc.bounds(market.parseRef(item('rare-candy'))).cap; // 450
-  const egg = npc.bounds(market.parseRef(item('master-ball'))).cap; // 2000
+  const p = user('vendedor-npc', { items: { 'rare-candy': 14, 'master-ball': 3 }, level: 10 });
+  const limit = npc.sellLimit(p); // 5000 + 500 × 10
+  assert.strictEqual(limit, 10000);
+  const candy = npc.bounds(market.parseRef(item('rare-candy'))).cap; // 517
+  const egg = npc.bounds(market.parseRef(item('master-ball'))).cap; // 2300
   market.buy(g, { ...item('rare-candy'), qty: 12, price: candy });
   market.buy(g, { ...item('master-ball'), qty: 3, price: egg });
   const r1 = market.sell(p, { ...item('rare-candy'), qty: 12, price: candy, instant: true });
@@ -275,17 +296,30 @@ test('NPC: tesorería finita y gasto diario', () => {
   k.coins = 60000;
 });
 
-test('NPC: el reabastecimiento diario solo crea comunes, poco comunes y huevos', () => {
-  for (const u of npcs()) { u.collection = {}; u.items = {}; }
-  delete npc.state().restockDay;
-  const r = npc.restock();
-  assert.ok(r.poke <= 10 && r.eggs <= 2);
-  assert.strictEqual(npc.restock().poke, 0, 'solo una vez al día');
-  for (const u of npcs()) {
-    for (const id of Object.keys(u.collection)) assert.ok(['C', 'U'].includes(DEX.find((p) => p.id === Number(id)).rarity));
-    assert.ok(Object.values(u.collection).every((c) => c.s === 0));
-    assert.deepStrictEqual(Object.keys(u.items).filter((i) => i !== 'mystery-egg'), []);
+test('NPC: el reabastecimiento diario crea C/U/R/E, a veces una legendaria no destacada y huevos; nunca míticos ni variocolores', () => {
+  const featured = new Set(gacha.BANNERS.flatMap((b) => b.featuredL || []));
+  let legends = 0;
+  for (let day = 0; day < 40; day++) {
+    for (const u of npcs()) { u.collection = {}; u.items = {}; }
+    delete npc.state().restockDay;
+    const r = npc.restock();
+    assert.ok(r.poke <= 10 && r.eggs <= 2 && r.rare >= 0 && r.rare <= 4 && r.epic <= 2 && r.legend <= 1);
+    assert.strictEqual(npc.restock().poke, 0, 'solo una vez al día');
+    for (const u of npcs()) {
+      for (const id of Object.keys(u.collection)) {
+        const rar = DEX.find((p) => p.id === Number(id)).rarity;
+        assert.ok(['C', 'U', 'R', 'E', 'L'].includes(rar), 'nunca míticos');
+        if (rar === 'L') { legends++; assert.ok(!featured.has(Number(id)), 'la legendaria no es destacada de ningún banner'); assert.strictEqual(u.id, 'npc-dorado'); }
+      }
+      assert.ok(Object.values(u.collection).every((c) => c.s === 0), 'nunca variocolores');
+      assert.deepStrictEqual(Object.keys(u.items).filter((i) => i !== 'mystery-egg'), [], 'ni Master Ball ni megapiedras');
+    }
   }
+  assert.ok(legends >= 8 && legends <= 32, `≈ 1 legendaria cada 2 días: ${legends}/40`);
+  // La legendaria que sale al mercado nunca baja del coste esperado de una legendaria al azar en el gacha.
+  const l = market.parseRef(poke(byRarity('L')));
+  for (const p of npc.NPCS) for (let i = 0; i < 20; i++) assert.ok(npc.askPrice(l, p, null, { have: 1 + (i % 6) }) >= gacha.COST[1] / gacha.RATES.L);
+  for (const u of npcs()) { u.collection = {}; u.items = {}; }
 });
 
 test('NPC: la visita respeta límites, no repite pedido y oferta, y marca sus órdenes', () => {
@@ -345,6 +379,7 @@ test('NPC: conservación de monedas con jugadores y NPC operando (solo bajan com
   const articles = [poke(16), poke(19), poke(149), poke(144, true), item('ticket'), item('rare-candy'), item('master-ball'), item('mystery-egg'), item('frame-poke'), item('back-mew'), { kind: 'dust' }];
   for (let i = 0; i < 300; i++) {
     if (i % 3 === 0) npc.run();
+    if (i % 60 === 30) { npc.newEncargo(); npc.newFlash(); } // encargos y ofertas flash también conservan las monedas
     const a = articles[Math.floor(Math.random() * articles.length)];
     const p = players[Math.floor(Math.random() * players.length)];
     const b = npc.bounds(market.parseRef(a));
@@ -370,4 +405,189 @@ test('NPC: conservación de monedas con jugadores y NPC operando (solo bajan com
     if (r) { assert.ok(r.got <= npc.sellLimit(u)); for (const n of Object.values(r.sold)) assert.ok(n <= 100); }
   }
   clearNpcOrders();
+});
+
+test('NPC: pujan al 90-100 % del tope con demanda o poco stock, 70-85 % si no, y piden menos cuanto más stock tienen', () => {
+  const a = market.parseRef(poke(byRarity('R')));
+  const { cap, floor } = npc.bounds(a);
+  for (const p of npc.NPCS) {
+    for (let r = 0; r <= 1; r += 0.25) {
+      const hot = npc.bidPrice(a, p, null, { have: 0, r });
+      const hotDemand = npc.bidPrice(a, p, null, { have: 4, demand: true, r });
+      const cold = npc.bidPrice(a, p, null, { have: 3, demand: false, r });
+      assert.ok(hot <= cap && hotDemand <= cap && cold <= cap, 'nunca por encima del tope');
+      assert.ok(hot >= 0.85 * cap && hotDemand >= 0.85 * cap, `con demanda/poco stock se acerca al tope: ${hot}/${cap}`);
+      assert.ok(cold <= 0.9 * cap && cold >= 0.6 * cap, `sin demanda: ${cold}/${cap}`);
+      assert.ok(hot >= cold);
+    }
+    // Más stock → más barato (hasta el suelo) y menos pujan.
+    const asks = [0, 1, 2, 3, 4, 8].map((have) => npc.askPrice(a, p, null, { have, r: 0.5 }));
+    for (let i = 1; i < asks.length; i++) assert.ok(asks[i] <= asks[i - 1] && asks[i] >= floor, asks.join());
+    assert.ok(asks[0] > asks[5] || asks[0] === floor);
+    const bids = [2, 4, 8].map((have) => npc.bidPrice(a, p, null, { have, demand: false, r: 0.5 }));
+    assert.ok(bids[0] >= bids[1] && bids[1] >= bids[2]);
+    // Con precio de referencia de jugadores también.
+    assert.ok(npc.bidPrice(a, p, 300, { have: 0, r: 0.5 }) >= npc.bidPrice(a, p, 300, { have: 6, r: 0.5 }));
+  }
+});
+
+test('NPC: el premio de cada encargo nunca supera el hueco suelo − (1,5 × tope): comprar y vender de vuelta pierde siempre', () => {
+  for (const p of npc.NPCS) {
+    for (const a of npc.encArticles(p)) {
+      const b = npc.bounds(a);
+      const r = a.kind === 'poke' ? DEX.find((x) => x.id === a.pokeId).rarity : items.ITEMS[a.itemId].rarity;
+      assert.ok(['R', 'E', 'L'].includes(r), 'solo raras, épicas y legendarias');
+      assert.ok(!a.shiny && !(a.kind === 'item' && items.ITEMS[a.itemId].event));
+      for (const [type, n] of npc.BONUS[r]) {
+        assert.ok(['ticket', 'egg', 'frag'].includes(type), 'el premio nunca son monedas');
+        const v = npc.bonusValue({ type, n });
+        const paid = Math.ceil(1.5 * b.cap); // tope + prima
+        assert.ok(b.floor - paid > v, `${a.ref}: suelo ${b.floor} − ${paid} ≤ premio ${v}`);
+        if (npc.flashEligible(a)) assert.ok(npc.flashFloor(a) - paid > v, `${a.ref} en oferta flash`);
+      }
+    }
+  }
+});
+
+function resetSpecial() {
+  clearNpcOrders();
+  const n = npc.state();
+  n.enc = []; n.flash = []; n.feed = { day: null, n: 0 };
+  for (const u of npcs()) { u.coins = 60000; u.collection = {}; u.items = {}; }
+  n.spent = {};
+}
+const fromRef = (ref) => { const [k, x, y] = ref.split(':'); return market.parseRef(k === 'poke' ? poke(Number(x), y === '1') : item(x)); };
+const snap = (u) => ({ coins: u.coins, ticket: u.items.ticket || 0, egg: u.items['mystery-egg'] || 0, frag: (u.mega && u.mega.frags) || 0 });
+
+test('NPC: encargos: premio extra que no son monedas, una vez por encargo y jugador y 2 al día', () => {
+  resetSpecial();
+  const made = [];
+  for (let i = 0; i < 12 && made.length < 3; i++) { const e = npc.newEncargo(); if (e) made.push(e); }
+  assert.strictEqual(made.length, 3);
+  for (const e of made) {
+    assert.ok(e.expiresAt - e.createdAt >= 2 * 3600e3 && e.expiresAt - e.createdAt <= 6 * 3600e3, 'dura 2-6 h');
+    assert.ok(['ticket', 'egg', 'frag'].includes(e.bonus.type));
+    const b = npc.bounds(fromRef(e.ref));
+    assert.ok(e.price <= b.cap, 'el pedido se publica al precio normal (≤ tope)');
+  }
+  const pub = npc.publicState().encargos;
+  assert.strictEqual(pub.length, 3);
+  assert.ok(pub.every((e) => e.orderId && e.qty >= 1 && e.expiresAt > Date.now()));
+  const owns = (ids) => Object.fromEntries(ids.map((id) => [id, { n: 5, s: 0 }]));
+  const mk = (name, extra = {}) => user(name, { level: 12, collection: owns(made.filter((e) => e.ref.startsWith('poke:')).map((e) => Number(e.ref.split(':')[1]))), items: Object.fromEntries(made.filter((e) => e.ref.startsWith('item:')).map((e) => [e.ref.slice(5), 5])), ...extra });
+  const sellTo = (p, e) => { const a = fromRef(e.ref); const before = snap(p); market.sell(p, { ...a, qty: 1, price: e.price, instant: true }); return { a, before, after: snap(p) }; };
+  const taxOf = (price) => Math.floor(price * market.state().salesTax);
+  const p1 = mk('enc-uno');
+  const extras = [];
+  for (const e of made) {
+    const { a, before, after } = sellTo(p1, e);
+    const b = npc.bounds(a);
+    const got = after.coins - before.coins - (e.price - taxOf(e.price));
+    const gotBonus = e.bonus.type === 'frag' ? after.frag - before.frag : e.bonus.type === 'egg' ? after.egg - before.egg : after.ticket - before.ticket;
+    if (extras.length < 2) {
+      assert.strictEqual(got, Math.floor(e.price * 0.5), 'prima del 50 % del precio cobrado');
+      assert.ok(got <= 0.5 * b.cap && e.price + got <= 1.5 * b.cap, 'como mucho 1,5 × tope');
+      assert.ok(gotBonus >= 1 || e.bonus.type === 'frag', 'premio entregado');
+      extras.push(got);
+    } else {
+      assert.strictEqual(got, 0, 'el tercer encargo del día ya no paga prima');
+      assert.strictEqual(gotBonus, 0, 'ni premio');
+    }
+  }
+  assert.strictEqual(npc.state().daily[p1.id].enc, 2, 'como mucho 2 premios por jugador y día');
+  // Cota diaria de la prima de monedas: 2 × 0,5 × tope máximo de un artículo de encargo.
+  const maxCap = Math.max(...npc.NPCS.flatMap((p) => npc.encArticles(p).map((a) => npc.bounds(a).cap)));
+  assert.ok(extras.reduce((t, x) => t + x, 0) <= 2 * 0.5 * maxCap);
+  // Una vez por encargo: vender otra unidad al mismo encargo no vuelve a pagar premio.
+  const again = sellTo(p1, made[0]);
+  assert.strictEqual(again.after.ticket + again.after.egg + again.after.frag, again.before.ticket + again.before.egg + again.before.frag);
+  assert.strictEqual(again.after.coins - again.before.coins, made[0].price - taxOf(made[0].price));
+  // Otro jugador sí cobra el mismo encargo.
+  const p2 = mk('enc-dos');
+  const o = sellTo(p2, made[1]);
+  assert.strictEqual(o.after.coins - o.before.coins, made[1].price - taxOf(made[1].price) + Math.floor(made[1].price * 0.5));
+  // Solo jugadores elegibles: nivel bajo o cuenta nueva no pueden venderles, así que no hay premio.
+  const low = mk('enc-bajo', { level: 2 });
+  const young = mk('enc-joven', { level: 20, createdAt: Date.now() + 1000 });
+  for (const u of [low, young]) {
+    const before = snap(u);
+    assert.throws(() => sellTo(u, made[2]), /NPC solo compran/);
+    assert.deepStrictEqual(snap(u), before);
+  }
+  // Pasado el plazo, el encargo desaparece y se devuelve el depósito.
+  npc.sweepSpecial(Date.now() + 7 * 3600e3);
+  assert.strictEqual(npc.state().enc.length, 0);
+  assert.strictEqual(npc.publicState().encargos.length, 0);
+  assert.ok(!db.data.market.orders.some((x) => x.npc && x.enc));
+  resetSpecial();
+});
+
+test('NPC: una oferta flash rebaja un 15-25 %, nunca por debajo del 80 % del suelo ni de ninguna puja de NPC', () => {
+  resetSpecial();
+  const g = N('ginger');
+  g.items['mystery-egg'] = 3;
+  N('bill').collection = { 19: { n: 2, s: 0 }, 149: { n: 1, s: 0 } };
+  const seen = new Set();
+  for (let i = 0; i < 20; i++) {
+    const f = npc.newFlash();
+    if (!f) { npc.sweepSpecial(Date.now() + 3 * 3600e3); continue; }
+    seen.add(f.ref);
+    const a = fromRef(f.ref);
+    const b = npc.bounds(a);
+    assert.ok(npc.flashEligible(a));
+    assert.ok(f.price >= npc.flashFloor(a) && f.price >= 0.8 * b.floor);
+    assert.ok(f.price < f.normal && f.price <= f.normal * 0.85 + 1, `rebaja: ${f.price} de ${f.normal}`);
+    for (const p of npc.NPCS) for (const have of [0, 1, 5]) for (const demand of [false, true]) assert.ok(npc.bidPrice(a, p, null, { have, demand, r: 1 }) < f.price, 'puja más alta < oferta flash');
+    assert.ok(npc.bounds(a).cap < f.price);
+    const o = db.data.market.orders.find((x) => x.id === f.orderId);
+    assert.ok(o && o.flash === f.until && f.until - Date.now() <= 2 * 3600e3 + 1000 && f.until - Date.now() >= 3500e3);
+    // El estado público lleva la marca para la insignia «Oferta».
+    assert.ok(market.state().orders.find((x) => x.id === f.orderId).flash === f.until);
+    assert.ok(npc.publicState().flash.some((x) => x.ref === f.ref));
+    // Comprar a precio flash y vender de vuelta pierde.
+    const p = user('flash' + i, { level: 50 });
+    const before = p.coins;
+    market.buy(p, { ...a, qty: 1, price: f.price, instant: true });
+    const bidder = db.userById(f.npc === 'npc-ginger' ? 'npc-bill' : 'npc-ginger');
+    bidder.coins = 60000;
+    market.buy(bidder, { ...a, qty: 1, price: b.cap });
+    market.sell(p, { ...a, qty: 1, price: b.cap, instant: true });
+    assert.ok(p.coins < before);
+    npc.sweepSpecial(Date.now() + 3 * 3600e3); // caduca y se retira
+    assert.ok(!db.data.market.orders.some((x) => x.flash));
+    clearNpcOrders();
+  }
+  assert.ok(seen.size >= 1);
+  // La visita normal respeta el suelo del 80 % para las flash y no las retira antes de tiempo.
+  resetSpecial();
+  g.items['mystery-egg'] = 3;
+  const f = npc.newFlash();
+  assert.ok(f);
+  npc.act(db.userById(f.npc));
+  assert.ok(db.data.market.orders.some((x) => x.id === f.orderId), 'la visita no cancela la oferta flash');
+  resetSpecial();
+});
+
+test('NPC: el feed «En vivo» recibe como mucho 4 líneas de NPC al día y el chat ninguna', () => {
+  resetSpecial();
+  const feed0 = db.data.feed.length;
+  const chat0 = (db.data.chat || []).length;
+  for (const u of npcs()) u.items['mystery-egg'] = 4;
+  N('bill').collection = { 19: { n: 3, s: 0 }, 149: { n: 3, s: 0 } };
+  for (let i = 0; i < 30; i++) { npc.newEncargo(); npc.newFlash(); npc.sweepSpecial(Date.now() + 10 * 3600e3); }
+  const lines = db.data.feed.slice(Math.max(0, feed0 - 0)).filter((f) => /^(📜|🔥)/.test(f.text));
+  assert.ok(lines.length >= 1 && lines.length <= npc.FEED_DAILY, `${lines.length} líneas`);
+  assert.strictEqual((db.data.chat || []).length, chat0, 'los NPC no escriben en el chat');
+  // Otro día, otro presupuesto.
+  npc.state().feed.day = '2000-01-01';
+  assert.ok(npc.npcFeed(npc.FEED_DAILY, '🔥 prueba', {}));
+  resetSpecial();
+});
+
+test('NPC: el plan diario tiene 3-6 encargos y 1-2 ofertas flash', () => {
+  const n = npc.state();
+  n.plan = null;
+  const plan = npc.dayPlan(Date.parse(hub.dayKey() + 'T00:00:00Z') + 1000);
+  assert.ok(plan.enc.length >= 3 && plan.enc.length <= 6 && plan.flash.length >= 1 && plan.flash.length <= 2, JSON.stringify([plan.enc.length, plan.flash.length]));
+  n.plan = null;
 });

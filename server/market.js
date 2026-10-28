@@ -106,7 +106,8 @@ function record(a, qty, price, seller, buyer, npcFlags = {}) {
     const days = Object.keys(m.history[a.ref]).sort();
     for (const d of days.slice(0, Math.max(0, days.length - 30))) delete m.history[a.ref][d];
   }
-  if (qty * price >= 10000 || (a.kind === 'poke' && (a.shiny || ['L', 'M'].includes(BY_ID.get(a.pokeId).rarity)))) {
+  // Los comerciantes NPC no llenan el feed con sus operaciones (solo anuncian encargos y ofertas, ver npc.js).
+  if (!t.npc && (qty * price >= 10000 || (a.kind === 'poke' && (a.shiny || ['L', 'M'].includes(BY_ID.get(a.pokeId).rarity))))) {
     hub.feed('market', `🏪 ${buyer} compró ${describe(a, qty)} a ${seller} por ${(qty * price).toLocaleString('es')} monedas`, a.kind === 'poke' ? { pokeId: a.pokeId, shiny: a.shiny } : {});
   }
 }
@@ -274,8 +275,8 @@ function state() {
     stats[ref] = { avg: n ? Math.round(list.reduce((s, d) => s + d.sum, 0) / n) : 0, n };
   }
   return {
-    orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt, npc }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt: expiresAt || createdAt + EXPIRE_MS, ...(npc ? { npc: true } : {}) })),
-    trades: m.trades.slice(-40).reverse(), stats, setupFee: setupFee(), salesTax: salesTax(),
+    orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt, npc, flash }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt: expiresAt || createdAt + EXPIRE_MS, ...(npc ? { npc: true } : {}), ...(flash ? { flash } : {}) })),
+    trades: m.trades.slice(-40).reverse(), stats, setupFee: setupFee(), salesTax: salesTax(), npcs: npc().publicState(),
   };
 }
 function push() { hub.broadcast('market', state()); }
@@ -312,4 +313,4 @@ function init() {
   setInterval(sweep, 10 * 60 * 1000).unref();
 }
 
-module.exports = { init, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee, DURATIONS, sweep };
+module.exports = { init, push, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee, DURATIONS, sweep };

@@ -329,3 +329,67 @@ revenderles siempre pierde) y las ventajas de la casa, no los topes diarios, as�
 | 💠 del evento Mega por jugar | 150 al día | 300 al día |
 
 Ingreso de un casual con todo hecho ≈ 3.300 monedas/día; una legendaria concreta sigue costando ≈ 2–3 semanas.
+
+## NPC más interesantes: precios justos, encargos y ofertas flash (28-10-2026)
+
+Petición: que los comerciantes sean menos «casa de empeños», más divertidos y un buff claro para los jugadores,
+sin chat lleno de mensajes y sin grifos de monedas. Todos los invariantes de `server/npc.js` siguen en `test/npc.test.js`.
+
+### Precios (antes → después)
+
+| Artículo | Suelo de venta antes | Suelo ahora | Tope de compra antes | Tope ahora |
+|---|---|---|---|---|
+| Pokémon C / U / R / E / L / M | 150 / 400 / 1.200 / 4.000 / 15.000 / 30.000 | **90 / 200 / 500 / 1.500 / 9.000 / 18.000** | 90 % del valor de liberar (18 / 43 / 108 / 288 / 900 / 1.800) | **100 %** (20 / 48 / 120 / 320 / 1.000 / 2.000) |
+| Variocolor | ≥ 4 × normal | **máx(3 × suelo normal, 2,5 × tope variocolor)** | 3 × normal | 3 × normal (= su valor de liberar) |
+| Cosméticos C / U / R / E / L | 250 / 600 / 1.500 / 4.500 / 15.000 | **150 / 350 / 900 / 2.700 / 9.000** | 60 / 150 / 400 / 1.200 / 4.000 | **69 / 172 / 450 / 1.350 / 4.500** |
+| Master Ball | 12.000 | **9.000** | 2.000 | 2.300 |
+| Amuleto Iris | 3.000 | **6.000** | 500 | 575 |
+| Huevo Misterioso | 900 | **600** | 150 | 172 |
+| Objetos de tienda | = precio de tienda | máx(precio, 2 × tope) (≥ tienda) | 50 % del precio | **57,5 %** del precio |
+| Polvo estelar | 9 | 8 | 3 | 3 (≤ tipo de cambio − 1: nunca el cambio exacto) |
+
+* **Invariante nuevo:** suelo ≥ 2 × tope de compra para TODOS los artículos (antes ≥ 3 ×), también con el precio flash
+  (80 % del suelo) y con la prima de encargo (1,5 × tope).
+* **Gacha:** Σ probabilidad × tope máximo ≈ **80 monedas por tirada** (≈ 84 con variocolor) frente a 135 que cuesta
+  una tirada del ×10: el test exige < 0,75 × 135 = 101 (antes < 0,6 × 135 = 81). El suelo de las legendarias (9.000)
+  es ≥ el coste esperado de una legendaria al azar con tiradas sueltas (150 / 0,0175 ≈ 8.571), comprobado en test.
+  Los suelos de R (500) y E (1.500) están por debajo del coste de una R/E al azar (1.000 / 2.941) a propósito: se
+  vende una concreta (no al azar) y solo en cantidad limitada (restock + 20 uds. al día por artículo).
+* **Precio según stock:** `ask = suelo × askMult × clamp(1,15 − 0,1 × uds, 0,8, 1,15)` (más stock → más barato, hasta
+  el suelo; menos → más caro, con tope 8 × suelo). Pujas: 90-100 % del tope con demanda (hay jugadores vendiéndolo)
+  o con ≤ 1 unidad; 70-85 % si no, y un 4 % menos por unidad a partir de la tercera. Nunca por encima del tope.
+
+### Encargos 📜
+
+* 3-6 al día entre todos los NPC (plan diario al azar; con `NPC_FAST=1` salen a los pocos segundos), 2-6 h de
+  duración, máximo 2 activos por NPC. Solo raras, épicas y legendarias normales (Kecleon: R · Bill: R/E · Ginger:
+  cosméticos R/E/L · Dorado: L), elegidas por lo que más falta a los jugadores (faltan en su colección, completan
+  una colección o se ofrecieron en las últimas 48 h).
+* El NPC deja un pedido de compra al precio normal (≤ tope). Quien le vende ese artículo cobra el precio normal
+  **más una prima de monedas del 50 % del precio cobrado** (≤ 1,5 × tope) **más un premio que no son monedas**:
+  Ticket Gacha, Huevo Misterioso o 💠 Megafragmentos (solo con el evento Mega activo; si acaba antes, tickets).
+* **Cotas:** una vez por encargo y jugador, 2 premios (y primas) al día por jugador, solo jugadores elegibles
+  (nivel ≥ 3, cuenta de > 24 h). La prima la paga el NPC de su tesorería (cuenta para su gasto diario): son monedas
+  que cambian de manos, no se crean. **Prima extra máxima por jugador y día = 2 × 0,5 × tope = 1 × tope** del artículo:
+  ≤ 1.000 con Pokémon L, ≤ 320 con E, ≤ 120 con R, y como mucho 4.500 con dos cosméticos L. Es el único caso en que un NPC paga
+  por encima de su tope, y el test lo comprueba explícitamente.
+* Los premios están valorados (ticket 150, huevo 600, 💠 ≈ 6) y el test exige que `suelo − 1,5 × tope > valor del
+  premio` (y con el 80 % del suelo en artículos que pueden estar en oferta flash): comprar a un NPC, venderle de
+  vuelta al encargo y cobrar el premio siempre pierde monedas.
+
+### Ofertas flash 🔥
+
+* 1-2 al día: un NPC rebaja un artículo de su stock un 15-25 % durante 1-2 h, nunca por debajo del 80 % del suelo
+  (y por tanto siempre por encima de cualquier puja de NPC: invariante `max puja < min venta` con precios flash).
+  Solo Pokémon C/U/R/E normales, Huevo Misterioso y Amuleto Iris (no tienda, L/M, variocolores ni cosméticos).
+
+### Reabastecimiento diario
+
+C/U (5-10, como antes) + **2-4 R** + **0-2 E** (con peso ×4 para las especies de colecciones) + una **L no destacada**
+de banner con probabilidad 0,5 (≈ 1 cada 2 días, al NPC Dorado) + 1-2 Huevos. Nunca míticos, variocolores, Master Ball
+ni megapiedras. Crea objetos, no monedas, y se venden por encima del suelo (sumidero de monedas).
+
+### Feed y chat
+
+Los NPC **nunca escriben en el chat**. En el feed «En vivo» solo aparecen anuncios de encargos (máx. 3) y ofertas
+flash, **4 líneas al día en total**; las operaciones con NPC ya no generan línea de feed.

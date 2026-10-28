@@ -257,7 +257,7 @@ test('bucle tienda → PNJ: los PNJ compran por menos de lo que cuesta en la tie
   for (const [id, it] of Object.entries(items.ITEMS)) {
     if (!it.price) continue;
     const b = npc.bounds({ kind: 'item', itemId: id });
-    assert.ok(b.cap <= it.price / 2, `${id}: compran a ${b.cap}`);
+    assert.ok(b.cap <= 0.6 * it.price && b.floor >= 2 * b.cap, `${id}: compran a ${b.cap}`);
     assert.ok(b.floor >= it.price, `${id}: venden a ${b.floor}`);
   }
 });
@@ -269,14 +269,14 @@ test('bucle gacha → liberar/vender a PNJ: una tirada devuelve como mucho ≈66
   const back = dustPerPull * shinyExtra * gacha.DUST_RATE + gifts;
   assert.ok(back < 0.7 * gacha.COST[1], `${back.toFixed(1)} de ${gacha.COST[1]}`);
   assert.ok(gacha.COST[10] <= gacha.COST[1] * 10 && gacha.COST[10] >= gacha.COST[1] * 8.5, 'el ×10 no regala más del 15 %');
-  // Los PNJ tampoco pagan más que el polvo del duplicado: cap ≤ 0,9 × liberar.
-  for (const r of Object.keys(dex.RARITY)) assert.ok(npc.maxBid(r) <= 0.9 * dex.RARITY[r].dust * gacha.DUST_RATE);
+  // Los PNJ tampoco pagan más que el polvo del duplicado: cap ≤ 1,0 × liberar (ver el invariante del EV en npc.test.js).
+  for (const r of Object.keys(dex.RARITY)) assert.ok(npc.maxBid(r) <= dex.RARITY[r].dust * gacha.DUST_RATE);
 });
 
 test('bucle Huevo Misterioso → cosméticos: abrirlo vale menos que comprarlo a un PNJ', () => {
   const W = items.EGG_WEIGHTS || { C: 40, U: 30, R: 18, E: 9, L: 3 };
   const total = Object.values(W).reduce((a, b) => a + b, 0);
-  const COSM = { C: 60, U: 150, R: 400, E: 1200, L: 4000 }; // lo que paga un PNJ por cada rareza
+  const COSM = { C: 69, U: 172, R: 450, E: 1350, L: 4500 }; // lo que paga un PNJ por cada rareza
   const avg = Object.entries(W).reduce((s, [r, w]) => s + (w / total) * npc.bounds({ kind: 'item', itemId: Object.keys(items.COSMETICS).find((k) => items.COSMETICS[k].rarity === r) }).cap, 0);
   assert.ok(avg <= Object.values(COSM).reduce((a, b) => a + b, 0), 'sanidad');
   const eggAsk = npc.bounds({ kind: 'item', itemId: 'mystery-egg' }).floor;
