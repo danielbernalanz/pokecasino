@@ -7,17 +7,54 @@ const pct = (x) => (x * 100).toFixed(1).replace('.', ',') + ' %';
 export default {
   id: 'gacha', title: 'Poké Gacha', icon: '🎁',
   mount(root) {
-    const banners = S.data.banners;
-    const tabs = h('div', { class: 'banner-tabs' });
+    const byId = new Map(S.data.banners.map((b) => [b.id, b]));
+    let rot = null; // rotación que manda el servidor: { permanent, promo, ends, next, now }
+    let skew = 0; // desfase reloj servidor - cliente
+    let timer = null;
+    let gone = false;
+    const tabs = h('div', { class: 'banner-tabs banner-duo' });
+    const nextLine = h('p', { class: 'small muted banner-next' });
     const stage = h('div', { class: 'banner-stage' });
+    const nowS = () => Date.now() + skew;
+    const left = (ms) => {
+      const m = Math.max(1, Math.ceil(ms / 60000));
+      if (m >= 1440) { const d = Math.floor(m / 1440); const hh = Math.floor((m % 1440) / 60); return `${d} d${hh ? ' ' + hh + ' h' : ''}`; }
+      return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+    };
+
+    async function loadRotation() {
+      try {
+        const r = await emit('gacha:banners');
+        rot = r; skew = r.now - Date.now();
+      } catch { /* sin conexión: se reintenta en el siguiente minuto */ }
+      if (gone) return;
+      if (!rot) rot = { permanent: 'kanto', promo: null, ends: 0, next: null };
+      if (selected !== rot.permanent && selected !== rot.promo) selected = rot.permanent;
+      renderTabs(); renderStage();
+    }
+
+    // Cada minuto se actualiza la cuenta atrás; al terminar la promoción se pide la nueva al servidor.
+    function tick() {
+      if (rot && rot.promo && nowS() >= rot.ends) { loadRotation(); return; }
+      renderTabs();
+    }
 
     function renderTabs() {
-      tabs.replaceChildren(...banners.map((b) => h('button', { class: 'banner-tab' + (b.id === selected ? ' active' : ''), style: { '--c': b.theme }, onclick: () => { selected = b.id; sfx('click'); renderTabs(); renderStage(); } },
-        h('img', { src: art(b.art), alt: '' }), h('span', {}, b.name))));
+      if (!rot) return;
+      const cards = [[rot.permanent, 'Permanente', 'siempre disponible']];
+      if (rot.promo) cards.push([rot.promo, 'Promocional', `termina en ${left(rot.ends - nowS())}`]);
+      tabs.replaceChildren(...cards.map(([id, kind, sub]) => {
+        const b = byId.get(id);
+        return h('button', { class: 'banner-tab' + (id === selected ? ' active' : ''), style: { '--c': b.theme }, onclick: () => { selected = id; sfx('click'); renderTabs(); renderStage(); } },
+          h('img', { src: art(b.art), alt: '' }),
+          h('span', {}, h('b', {}, kind), h('small', {}, b.name), h('small', { class: 'muted' }, sub)));
+      }));
+      nextLine.replaceChildren(rot.next ? `Próximo banner: ${rot.next.name} (dentro de ${left(rot.next.starts - nowS())})` : '');
     }
 
     function renderStage() {
-      const b = banners.find((x) => x.id === selected);
+      if (!rot) return;
+      const b = byId.get(selected);
       const today = new Date().toISOString().slice(0, 10);
       const freeAvail = S.me.daily.freePull !== today;
       const featured = [...b.featuredL, ...b.featuredE];
@@ -61,7 +98,7 @@ export default {
     async function pull(count, free, btn, ticket = false) {
       if (btn) btn.disabled = true;
       let res;
-      try { res = await emit('gacha:pull', { banner: selected, count, free, ticket }); } catch (e) { toast(e.message, 'error'); sfx('error'); if (btn) btn.disabled = false; return; }
+      try { res = await emit('gacha:pull', { banner: selected, count, free, ticket }); } catch (e) { toast(e.message, 'error'); sfx('error'); if (btn) btn.disabled = false; if (/disponible/.test(e.message)) loadRotation(); return; }
       // Al terminar se puede volver a tirar sin salir de la animación (con monedas o con tickets).
       const again = await reveal(res.results, {
         bonus: res.bonus || [],
@@ -73,8 +110,11 @@ export default {
     }
 
     const ev = S.events && S.events.active.find((e) => e.id === 'shiny');
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎁 Poké Gacha'), h('p', { class: 'muted' }, 'Lanza Poké Balls y descubre qué Pokémon atrapas.', ev ? h('span', { class: 'event-pill' }, `${ev.icon} ${ev.name}: variocolor ×2`) : null)), tabs, stage);
-    renderTabs(); renderStage();
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎁 Poké Gacha'), h('p', { class: 'muted' }, 'Lanza Poké Balls y descubre qué Pokémon atrapas.', ev ? h('span', { class: 'event-pill' }, `${ev.icon} ${ev.name}: variocolor ×2`) : null)), tabs, nextLine, stage);
+    loadRotation();
+    timer = setInterval(tick, 60000);
+    this.stopTimer = () => { gone = true; clearInterval(timer); };
   },
+  unmount() { if (this.stopTimer) this.stopTimer(); this.stopTimer = null; },
 };
 

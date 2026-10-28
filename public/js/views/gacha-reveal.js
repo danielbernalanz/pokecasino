@@ -193,34 +193,53 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
       }
     }
 
-    // ---- 3. Sobre ×10: cada Poké Ball (ya con su color) se abre por orden ----
+    // ---- 3. Sobre ×10: cada Poké Ball se abre por orden, de peor a mejor, con suspense creciente ----
     async function openPack() {
       const slots = results.map((r) => h('div', { class: 'gx-slot' }, ballEl(BALL_OF[r.rarity], 'gx-mini')));
+      const counter = h('div', { class: 'gx-count' }, `0/${results.length}`);
       const grid = h('div', { class: 'gx-grid' }, slots);
-      stage.replaceChildren(grid);
+      const pack = h('div', { class: 'gx-pack' }, counter, grid);
+      stage.replaceChildren(pack);
       level(1);
       hint.textContent = 'Toca para abrirlas todas';
-      await wait(350);
-      for (let i = 0; i < results.length; i++) {
+      await wait(500);
+      // Orden de apertura: las mejores al final (variocolores después de todo), manteniendo su posición en la cuadrícula.
+      const score = (r) => RANK[r.rarity] + (r.shiny ? 10 : 0);
+      const order = results.map((_, i) => i).sort((a, b) => score(results[a]) - score(results[b]) || a - b);
+      const pause = [450, 450, 900, 1400, 1400, 1400];
+      let done = 0;
+      for (const i of order) {
         const r = results[i];
-        if ((RANK[r.rarity] >= 4 || r.newShiny) && !skip) {
-          slots[i].firstChild.classList.add('wobble');
+        const rk = RANK[r.rarity];
+        const ball = slots[i].firstChild;
+        if ((rk >= 4 || r.newShiny) && !skip) {
+          ball.classList.add('focus', 'wobble');
           sfx('charge', 0); buzz([40, 40, 40]);
-          await wait(700);
+          await wait(900);
           await spotlight(r);
           hint.textContent = 'Toca para abrirlas todas';
-          stage.replaceChildren(grid);
+          stage.replaceChildren(pack);
+        } else if (!skip) {
+          // Se agranda y se sacude 1 (C/U), 2 (R) o 3 (E) veces antes de abrirse.
+          ball.classList.add('focus');
+          await wait(250);
+          const shakes = rk >= 3 ? 3 : rk === 2 ? 2 : 1;
+          for (let k = 1; k <= shakes && !skip; k++) {
+            ball.classList.remove('wob'); void ball.offsetWidth; ball.classList.add('wob');
+            sfx('wobble', k); buzz(25);
+            await wait(460);
+          }
         }
-        const c = card(r, 'flip');
-        slots[i].replaceChildren(c);
+        slots[i].replaceChildren(card(r, 'flip'));
+        counter.textContent = `${++done}/${results.length}`;
         if (!skip) {
-          burst(fx, ...centerOf(slots[i]), COLOR[r.rarity], 6 + RANK[r.rarity] * 6, { spread: 70 + RANK[r.rarity] * 30 });
-          sfx(RANK[r.rarity] >= 3 ? 'win' : RANK[r.rarity] === 2 ? 'reveal' : 'flip');
-          if (RANK[r.rarity] >= 2) buzz(20);
-          await wait([140, 170, 380, 600, 300, 300][RANK[r.rarity]]);
+          burst(fx, ...centerOf(slots[i]), COLOR[r.rarity], 10 + rk * 8, { spread: 90 + rk * 40 });
+          sfx(rk >= 3 ? 'win' : rk === 2 ? 'reveal' : 'flip');
+          if (rk >= 2) buzz(20);
+          await wait(pause[rk]);
         }
       }
-      return grid;
+      return pack;
     }
 
     function summary() {

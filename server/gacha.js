@@ -69,6 +69,30 @@ const BANNERS = [
   },
 ];
 const BANNER_BY_ID = new Map(BANNERS.map((b) => [b.id, b]));
+// ---- Rotación: banner permanente + un promocional que cambia cada 3 días ----
+const PERMANENT = 'kanto';
+const PROMOS = BANNERS.filter((b) => b.id !== PERMANENT);
+const ROTATION_MS = 3 * 864e5;
+const EPOCH = Date.parse('2026-10-26T23:00:00Z'); // lunes 00:00 en Madrid
+const slot = (now) => Math.floor((now - EPOCH) / ROTATION_MS);
+const promoAt = (n) => PROMOS[((n % PROMOS.length) + PROMOS.length) % PROMOS.length];
+
+function activeBanners(now = Date.now()) {
+  const n = slot(now);
+  const next = promoAt(n + 1);
+  return {
+    permanent: BANNER_BY_ID.get(PERMANENT),
+    promo: { ...promoAt(n), ends: EPOCH + (n + 1) * ROTATION_MS },
+    next: { id: next.id, name: next.name, art: next.art, starts: EPOCH + (n + 1) * ROTATION_MS },
+    now,
+  };
+}
+// Versión ligera para el cliente (los datos completos de cada banner ya van en /api/static).
+function bannersInfo(now = Date.now()) {
+  const a = activeBanners(now);
+  return { permanent: a.permanent.id, promo: a.promo.id, ends: a.promo.ends, next: a.next, now };
+}
+
 const RANK = { C: 0, U: 1, R: 2, E: 3, L: 4, M: 5 };
 
 // Rareza de una tirada: cada una es independiente. `minRare` (último sobre de un ×10 sin raras) solo
@@ -113,6 +137,8 @@ function grant(user, id, shiny) {
 function pull(user, { banner: bannerId, count, free, ticket }) {
   const banner = BANNER_BY_ID.get(bannerId);
   if (!banner) throw new Error('Banner desconocido.');
+  const act = activeBanners();
+  if (banner.id !== act.permanent.id && banner.id !== act.promo.id) throw new Error('Ese banner ya no está disponible.');
   count = Number(count) === 10 ? 10 : 1;
   const today = new Date().toISOString().slice(0, 10);
   if (free) {
@@ -225,4 +251,4 @@ function takePoke(user, id, shiny) {
   return p;
 }
 
-module.exports = { pull, takePoke, craft, exchangeDust, release, grant, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon };
+module.exports = { pull, takePoke, craft, exchangeDust, release, grant, activeBanners, bannersInfo, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon };

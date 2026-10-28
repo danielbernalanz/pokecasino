@@ -58,10 +58,28 @@ export default {
       if (r) { sfx('win'); toast(`+${fmt(r.reward)} monedas y 1 Ticket Gacha · racha de ${r.streak} días${r.charm ? ' · ¡+1 Amuleto Iris!' : ''}`, 'success', 6000); this.remount(root); }
     } }, dailyDone ? 'Reclamado hoy ✓' : `Reclamar ${fmt(nextReward)}`);
 
+    // Motivo por el que Joy no puede ayudar ahora, con los datos que ya tiene el cliente (el servidor decide al final).
+    const hl = S.data.heal;
+    const healWhy = () => {
+      if (S.me.coins >= hl.limit) return `Tienes ${fmt(S.me.coins)} monedas: Joy ayuda con menos de ${hl.limit}.`;
+      const wait = (S.me.lastHeal || 0) + hl.cooldown - Date.now();
+      if (wait > 0) return `Joy ya te ayudó hace poco. Vuelve en ${Math.ceil(wait / 60000)} min.`;
+      return '';
+    };
+    const healNote = h('p', { class: 'small muted' });
     const healBtn = h('button', { class: 'btn', onclick: async (e) => {
       const r = await act('center:heal', {}, e.target);
       if (r) { sfx('win'); toast('La enfermera Joy te prestó 1.000 monedas. ¡Suerte!', 'success'); }
+      else healNote.textContent = 'Joy no pudo ayudarte: revisa que no tengas monedas en el Mercado o en una partida.';
+      refreshHeal();
     } }, 'Pedir ayuda');
+    function refreshHeal() {
+      const why = healWhy();
+      healBtn.disabled = !!why;
+      if (why) healNote.textContent = why;
+      else if (!healNote.textContent.startsWith('Joy no pudo')) healNote.textContent = '';
+    }
+    refreshHeal();
 
     const days = h('div', { class: 'streak' }, [1, 2, 3, 4, 5, 6, 7].map((d) => h('span', { class: 'sday' + (d <= (dailyDone ? me.daily.streak : streak - 1) ? ' on' : '') }, d)));
 
@@ -110,7 +128,7 @@ export default {
         h('div', { class: 'card' },
           h('h3', {}, '🏥 Centro Pokémon'),
           h('p', { class: 'muted' }, '¿Sin fondos? Si tienes menos de 200 monedas, la enfermera Joy te presta 1.000 (una vez por hora).'),
-          healBtn),
+          healBtn, healNote),
         h('div', { class: 'card' },
           h('h3', {}, '🤝 Compañero'),
           me.buddy

@@ -76,15 +76,50 @@ test('sin pity: las tiradas son independientes y siguen las probabilidades', () 
 
 test('cada sobre ×10 trae al menos una Rara y la Master Ball da la legendaria destacada', () => {
   const banner = gacha.BANNERS.find((b) => b.id === 'hoenn');
+  const active = gacha.activeBanners().promo.id;
   for (let run = 0; run < 300; run++) {
     const user = { coins: 2000, dust: 0, items: {}, buffs: {}, collection: {}, stats: { pulls: 0 }, daily: {}, xp: 0, level: 1 };
-    const { results } = gacha.pull(user, { banner: 'hoenn', count: 10 });
+    const { results } = gacha.pull(user, { banner: active, count: 10 });
     assert.ok(results.some((r) => ['R', 'E', 'L', 'M'].includes(r.rarity)));
   }
   for (let i = 0; i < 100; i++) {
     const p = gacha.rollPokemon('L', banner, { masterBall: true });
     assert.ok(banner.featuredL.includes(p.id));
   }
+});
+
+test('banners rotativos: el promocional cambia cada 3 días y recorre los 10', () => {
+  const T0 = Date.parse('2026-10-26T23:00:00Z');
+  const D3 = 3 * 864e5;
+  const seen = [];
+  for (let k = 0; k < 20; k++) {
+    const a = gacha.activeBanners(T0 + k * D3);
+    assert.equal(a.permanent.id, 'kanto');
+    assert.notEqual(a.promo.id, 'kanto');
+    assert.equal(gacha.activeBanners(T0 + k * D3 + D3 - 1).promo.id, a.promo.id);
+    assert.equal(a.promo.ends, T0 + (k + 1) * D3);
+    assert.equal(a.next.id, gacha.activeBanners(T0 + (k + 1) * D3).promo.id);
+    assert.notEqual(a.next.id, a.promo.id);
+    if (k < 10) seen.push(a.promo.id);
+  }
+  assert.equal(new Set(seen).size, 10);
+  assert.equal(gacha.activeBanners(T0 + 10 * D3).promo.id, seen[0]);
+  const user = { coins: 5000, dust: 0, items: {}, buffs: {}, collection: {}, stats: { pulls: 0 }, daily: {}, xp: 0, level: 1 };
+  const inactive = gacha.BANNERS.find((b) => b.id !== 'kanto' && b.id !== gacha.activeBanners().promo.id);
+  assert.throws(() => gacha.pull(user, { banner: inactive.id, count: 1 }), /ya no está disponible/);
+  assert.equal(user.coins, 5000);
+  assert.doesNotThrow(() => gacha.pull(user, { banner: 'kanto', count: 1 }));
+});
+
+test('Centro Pokémon: motivos de rechazo y orden de comprobaciones', () => {
+  const heal = require('../server/heal');
+  const now = 10 * 3600e3;
+  assert.equal(heal.reason({ coins: 0, lastHeal: 0 }, 0, now), null);
+  assert.equal(heal.reason({ coins: 0 }, 0, now), null);
+  assert.match(heal.reason({ coins: 500, lastHeal: 0 }, 0, now), /aún te quedan/);
+  assert.match(heal.reason({ coins: 0, lastHeal: now - 600e3 }, 0, now), /Vuelve en 50 min/);
+  assert.match(heal.reason({ coins: 0, lastHeal: 0 }, 300, now), /Mercado o en juego/);
+  assert.equal(heal.reason({ coins: 0, lastHeal: now - heal.COOLDOWN }, 199, now), null);
 });
 
 test('las copias por encima de 5 se convierten en polvo', () => {

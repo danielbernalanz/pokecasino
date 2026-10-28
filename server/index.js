@@ -20,6 +20,7 @@ const race = require('./games/race');
 const duel = require('./games/duel');
 const { MOVES } = require('./games/battle');
 const items = require('./items');
+const healer = require('./heal');
 const market = require('./market');
 const events = require('./events');
 const blackjack = require('./games/blackjack');
@@ -112,6 +113,7 @@ const STATIC = {
   items: items.ITEMS, marketFee: market.SETUP_FEE, salesTax: market.SALES_TAX, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
   plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
   cosmetics: items.COSMETICS,
+  heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },
 };
 app.get('/api/static', (req, res) => res.json(STATIC));
 
@@ -145,17 +147,15 @@ function claimDaily(user) {
   return { reward, streak: user.daily.streak, charm };
 }
 
-const HEAL_COOLDOWN = 60 * 60 * 1000;
 function heal(user) {
   const locked = market.lockedIn(user) + Object.values(db.data.escrow).filter((e) => e.userId === user.id).reduce((s, e) => s + e.amount, 0);
-  if (user.coins + locked >= 200) throw new Error(locked ? 'La enfermera Joy ve que tienes monedas en el Mercado o en juego.' : 'La enfermera Joy dice que aún te quedan monedas.');
-  const wait = user.lastHeal + HEAL_COOLDOWN - Date.now();
-  if (wait > 0) throw new Error(`Vuelve en ${Math.ceil(wait / 60000)} min.`);
+  const why = healer.reason(user, locked);
+  if (why) throw new Error(why);
   user.lastHeal = Date.now();
-  user.coins += 1000;
-  hub.ledger(user, 1000, 'heal');
+  user.coins += healer.AMOUNT;
+  hub.ledger(user, healer.AMOUNT, 'heal');
   db.save();
-  return { coins: 1000 };
+  return { coins: healer.AMOUNT };
 }
 
 function leaderboard() {
@@ -456,6 +456,7 @@ io.on('connection', (socket) => {
   on('duel:cancel', duel.cancel);
   on('duel:replay', (u, { id }) => ({ record: duel.getRecord(id) || null }), { push: false });
   on('gacha:pull', gacha.pull);
+  on('gacha:banners', () => gacha.bannersInfo(), { push: false });
   on('shop:craft', gacha.craft);
   on('shop:exchange', gacha.exchangeDust);
   on('shop:release', gacha.release);
