@@ -10,7 +10,7 @@ const ITEMS = {
   'lucky-egg': { name: 'Huevo Suerte', sprite: 'lucky-egg', price: 1200, desc: 'Experiencia doble durante 1 hora.' },
   'amulet-coin': { name: 'Moneda Amuleto', sprite: 'amulet-coin', price: 2500, desc: '+10 % sobre tus ganancias netas durante 1 hora.' },
   'shiny-charm': { name: 'Amuleto Iris', sprite: 'shiny-charm', price: null, desc: 'Las próximas 10 tiradas tienen 4 veces más probabilidad de variocolor. Solo como premio.' },
-  'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada individual es legendaria seguro. Solo como premio.' },
+  'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada es legendaria seguro y, si el banner tiene destacadas, una de ellas. Solo como premio o en el Mercado.' },
   'mystery-egg': { name: 'Huevo Misterioso', sprite: 'mystery-egg', price: null, desc: 'Ábrelo para obtener un cosmético al azar (marco, dorso de carta o título).' },
 };
 

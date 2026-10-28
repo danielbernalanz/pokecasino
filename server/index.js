@@ -104,7 +104,7 @@ app.post('/api/logout', (req, res) => {
 const STATIC = {
   dex: dex.DEX, rarity: dex.RARITY, types: dex.TYPES, chart: dex.CHART, moves: MOVES,
   banners: gacha.BANNERS, gachaCost: gacha.COST, gachaRates: gacha.RATES, shinyRate: gacha.SHINY_RATE,
-  softPity: gacha.SOFT_PITY, hardPity: gacha.HARD_PITY, dustRate: gacha.DUST_RATE,
+  dustRate: gacha.DUST_RATE,
   slots: { symbols: slots.SYMBOLS, lines: slots.LINES, reels: slots.REELS },
   roulette: { wheel: roulette.WHEEL, groups: roulette.GROUPS, payout: roulette.PAYOUT },
   openRegistration: config.OPEN_REGISTRATION,

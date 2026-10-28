@@ -1,5 +1,6 @@
 'use strict';
-// Gacha "Poké Ball Gacha": banners con destacados, sistema de pity y variocolores.
+// Gacha "Poké Ball Gacha": banners con destacados y variocolores. Sin pity: cada tirada es independiente
+// y la única legendaria segura es la Master Ball (que además da el destacado del banner).
 const db = require('./db');
 const hub = require('./hub');
 const { BY_ID, BY_RARITY, RARITY } = require('./pokedex');
@@ -7,10 +8,8 @@ const { rand, pick, weighted } = require('./rng');
 
 const COST = { 1: 150, 10: 1350 };
 const SHINY_RATE = 1 / 64;
-// Probabilidades base por tirada.
-const RATES = { C: 0.5, U: 0.28, R: 0.15, E: 0.055, L: 0.013, M: 0.002 };
-const SOFT_PITY = 60;
-const HARD_PITY = 80;
+// Probabilidades por tirada (sin pity, las legendarias y míticas son algo más frecuentes que antes).
+const RATES = { C: 0.495, U: 0.282, R: 0.15, E: 0.052, L: 0.018, M: 0.003 };
 
 const BANNERS = [
   {
@@ -70,36 +69,22 @@ const BANNERS = [
   },
 ];
 const BANNER_BY_ID = new Map(BANNERS.map((b) => [b.id, b]));
+const RANK = { C: 0, U: 1, R: 2, E: 3, L: 4, M: 5 };
 
-function pity(user, banner) {
-  return (user.pity[banner.id] ||= { sinceL: 0, sinceR: 0, guaranteed: false });
-}
-
-function rollRarity(p, banner) {
-  p.sinceL++;
-  p.sinceR++;
+// Rareza de una tirada: cada una es independiente. `minRare` (último sobre de un ×10 sin raras) solo
+// sortea entre Rara y Épica.
+function rollRarity(banner, { minRare = false } = {}) {
   const mRate = RATES.M * (banner.mythicBoost || 1);
-  let top = RATES.L + mRate;
-  if (p.sinceL >= SOFT_PITY) top += (p.sinceL - SOFT_PITY + 1) * 0.06;
-  if (p.sinceL >= HARD_PITY) top = 1;
-  if (rand() < top) {
-    p.sinceL = 0;
-    p.sinceR = 0;
-    return rand() < mRate / (RATES.L + mRate) ? 'M' : 'L';
-  }
-  let pool = ['C', 'U', 'R', 'E'];
-  if (p.sinceR >= 10) pool = ['R', 'E'];
-  const r = weighted(pool, (k) => RATES[k]);
-  if (r === 'R' || r === 'E') p.sinceR = 0;
-  return r;
+  if (!minRare && rand() < RATES.L + mRate) return rand() < mRate / (RATES.L + mRate) ? 'M' : 'L';
+  return weighted(minRare ? ['R', 'E'] : ['C', 'U', 'R', 'E'], (k) => RATES[k]);
 }
 
-function rollPokemon(rarity, p, banner) {
+function rollPokemon(rarity, banner, { masterBall = false } = {}) {
   const all = BY_RARITY[rarity];
   if (rarity === 'L' && banner.featuredL.length) {
-    const featured = p.guaranteed || rand() < 0.5;
+    // 50 % destacado; con Master Ball, destacado seguro.
+    const featured = masterBall || rand() < 0.5;
     const pool = all.filter((x) => banner.featuredL.includes(x.id) === featured);
-    p.guaranteed = !featured;
     return pick(pool.length ? pool : all);
   }
   if (rarity === 'E' && banner.featuredE.length && rand() < 0.5) {
@@ -144,25 +129,25 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
     user.coins -= cost;
     hub.ledger(user, -cost, 'gacha', `×${count}`);
   }
-  const p = pity(user, banner);
   const results = [];
   for (let i = 0; i < count; i++) {
     let rarity;
-    if (user.buffs.masterBall) {
-      // La Master Ball preparada asegura legendaria y reinicia el pity.
+    const masterBall = !!user.buffs.masterBall;
+    if (masterBall) {
+      // La Master Ball preparada asegura legendaria (la destacada, si el banner tiene).
       user.buffs.masterBall = false;
-      p.sinceL = 0;
-      p.sinceR = 0;
       rarity = 'L';
     } else {
-      rarity = rollRarity(p, banner);
+      // Un sobre ×10 siempre trae al menos una Rara: si las 9 primeras no la tienen, la última sí.
+      const minRare = count === 10 && i === 9 && !results.some((r) => RANK[r.rarity] >= 2);
+      rarity = rollRarity(banner, { minRare });
     }
-    const poke = rollPokemon(rarity, p, banner);
+    const poke = rollPokemon(rarity, banner, { masterBall });
     const charm = user.buffs.shinyCharges > 0;
     if (charm) user.buffs.shinyCharges--;
     const shiny = rand() < SHINY_RATE * (charm ? 4 : 1) * (require('./events').has('shiny') ? 2 : 1);
     const g = grant(user, poke.id, shiny);
-    results.push({ id: poke.id, name: poke.name, rarity, shiny, ...g });
+    results.push({ id: poke.id, name: poke.name, rarity, shiny, masterBall, ...g });
     if (rarity === 'L' || rarity === 'M' || (shiny && rarity !== 'C')) {
       hub.feed('gacha', `✨ ${user.username} obtuvo ${shiny ? 'un ' + poke.name + ' VARIOCOLOR' : poke.name} (${RARITY[rarity].name}) en "${banner.name}"`, { pokeId: poke.id, shiny });
     }
@@ -179,7 +164,7 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
     for (const it of bonus) user.items[it] = (user.items[it] || 0) + 1;
   }
   db.save();
-  return { results, pity: p, bonus };
+  return { results, bonus };
 }
 
 // Tienda de polvo estelar.
@@ -240,4 +225,4 @@ function takePoke(user, id, shiny) {
   return p;
 }
 
-module.exports = { pull, takePoke, craft, exchangeDust, release, grant, BANNERS, COST, RATES, SHINY_RATE, SOFT_PITY, HARD_PITY, DUST_RATE, rollRarity };
+module.exports = { pull, takePoke, craft, exchangeDust, release, grant, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon };

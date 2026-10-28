@@ -212,7 +212,7 @@ function privateUser(u) {
     id: u.id, username: u.username, isAdmin: u.isAdmin, coins: u.coins, dust: u.dust,
     xp: u.xp, level: u.level, xpCur: xpForLevel(u.level), xpNext: xpForLevel(u.level + 1),
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy,
-    buddyBonus: buddyBonus(u), pity: u.pity, stats: u.stats, voltorbLevel: u.voltorb.level,
+    buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
     bonusLeft: bonusLeft(u), bonusCap: bonusCap(u),
     progress: require('./progress').view(u),

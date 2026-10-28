@@ -23,7 +23,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Colección y economía**
 
-- 🎁 **Poké Gacha**: 11 banners (uno nacional con los 1.025 Pokémon, Aves, Mewtwo/Mew y uno por región de Johto a Paldea con sus legendarios destacados), pity suave (60) y duro (80), rara garantizada cada 10, 50/50 de destacado, variocolores 1/64, tirada gratis diaria.
+- 🎁 **Poké Gacha**: 11 banners (uno nacional con los 1.025 Pokémon, Aves, Mewtwo/Mew y uno por región de Johto a Paldea con sus legendarios destacados), sin pity (cada tirada es independiente: 1,8 % legendaria y 0,3 % mítica), al menos una Rara en cada sobre ×10, 50 % de destacado, variocolores 1/64 y tirada gratis diaria. La **Master Ball** es la única legendaria segura y da la destacada del banner. Animación con la Poké Ball que sube de categoría al sacudirse (Poké → Super → Ultra → Master), «¿Quién es ese Pokémon?», explosiones de partículas, sonido, vibración y botón «Otra vez».
 - 📕 **Pokédex** con los 1.025 Pokémon de las 9 generaciones (nombres en español y estadísticas reales, que se usan en los duelos), filtro por región y estrellas por copias y compañero que da bonus a tus ganancias.
 - 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
 - 🏪 **Mercado** al estilo Albion Online: libro de órdenes por artículo (Pokémon normales o variocolor, objetos, cosméticos y polvo estelar) con **órdenes de venta y pedidos de compra**, cantidades y llenados parciales. «Comprar ya» toma las ofertas más baratas y «Vender ya» llena los pedidos más altos; lo que no se llena queda publicado en depósito. Comisión de publicación 1,5 % e impuesto de venta 3 %. Gráfica de precios de 30 días, historial de ventas y caducidad a 14 días con devolución.
@@ -121,7 +121,7 @@ Todo se hace desde el navegador, también desde el móvil. En la nube no hay red
 ## Desarrollo
 
 ```bash
-npm test   # RTP, pity, póker (conservación de fichas en 300 manos), mercado, progresión, combate y filtro de red
+npm test   # RTP, probabilidades del gacha, póker (conservación de fichas en 300 manos), mercado, progresión, combate y filtro de red
 ```
 
 ```
@@ -133,7 +133,7 @@ server/
   hub.js          Economía (apuestas, pagos, niveles, compañero) y difusión
   pokedex.js      Rarezas, tabla de tipos y estadísticas (lee dexdata.json)
   dexdata.json    Los 1.025 Pokémon (generado con scripts/build-dex.js desde PokeAPI)
-  gacha.js        Banners, pity, variocolores y tienda de polvo
+  gacha.js        Banners, probabilidades, Master Ball, variocolores y tienda de polvo
   items.js        Objetos, Tienda Poké y efectos
   market.js       Mercado entre jugadores con depósito
   progress.js     Ruta del Entrenador, misiones, medallas y colecciones

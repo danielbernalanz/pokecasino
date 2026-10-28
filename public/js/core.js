@@ -120,6 +120,32 @@ let muted = false;
 try { muted = localStorage.getItem('muted') === '1'; } catch { /* nada */ }
 export const isMuted = () => muted;
 export function toggleMute() { muted = !muted; try { localStorage.setItem('muted', muted ? '1' : '0'); } catch { /* nada */ } return muted; }
+// Barrido de frecuencia (lanzamientos, subidas de tensión).
+function sweep(f0, f1, dur, type = 'sine', vol = 0.05, delay = 0) {
+  if (muted) return;
+  actx ||= new (window.AudioContext || window.webkitAudioContext)();
+  const t0 = actx.currentTime + delay;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + dur);
+}
+// Ruido filtrado (explosión de la Poké Ball).
+function noise(dur, vol = 0.08, delay = 0) {
+  if (muted) return;
+  actx ||= new (window.AudioContext || window.webkitAudioContext)();
+  const t0 = actx.currentTime + delay;
+  const buf = actx.createBuffer(1, Math.floor(actx.sampleRate * dur), actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = actx.createBufferSource();
+  const f = actx.createBiquadFilter();
+  const g = actx.createGain();
+  f.type = 'lowpass'; f.frequency.setValueAtTime(3000, t0); f.frequency.exponentialRampToValueAtTime(200, t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  src.buffer = buf; src.connect(f).connect(g).connect(actx.destination); src.start(t0);
+}
 function tone(freq, dur, type = 'square', vol = 0.05, delay = 0) {
   if (muted) return;
   actx ||= new (window.AudioContext || window.webkitAudioContext)();
@@ -130,8 +156,17 @@ function tone(freq, dur, type = 'square', vol = 0.05, delay = 0) {
   g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + dur);
 }
-export function sfx(name) {
+export function sfx(name, n = 0) {
   try {
+    if (name === 'throw') sweep(300, 1400, 0.35, 'triangle', 0.05);
+    else if (name === 'land') { tone(140, 0.12, 'triangle', 0.08); tone(90, 0.1, 'sine', 0.06, 0.03); }
+    else if (name === 'wobble') { tone(520 + n * 140, 0.07, 'square', 0.04); tone(390 + n * 140, 0.07, 'square', 0.03, 0.08); }
+    else if (name === 'upgrade') [784, 988, 1175, 1568].forEach((f, i) => tone(f * (1 + n * 0.12), 0.1, 'triangle', 0.05, i * 0.05));
+    else if (name === 'charge') sweep(110, 880 + n * 300, 1.1 + n * 0.3, 'sawtooth', 0.025);
+    else if (name === 'burst') { noise(0.6, 0.12); tone(70, 0.4, 'sine', 0.12); }
+    else if (name === 'reveal') [659, 880].forEach((f, i) => tone(f, 0.12, 'triangle', 0.05, i * 0.08));
+    else if (name === 'star') tone(1046 + n * 160, 0.07, 'sine', 0.04);
+    else if (name === 'fanfare') [[523, 0], [523, 0.12], [523, 0.24], [698, 0.36], [880, 0.62], [784, 0.86], [880, 1.0], [1046, 1.14]].forEach(([f, t]) => { tone(f, 0.22, 'square', 0.05, t); tone(f / 2, 0.22, 'triangle', 0.05, t); });
     if (name === 'click') tone(660, 0.05, 'square', 0.03);
     else if (name === 'tick') tone(880, 0.03, 'square', 0.02);
     else if (name === 'win') [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.15, 'square', 0.05, i * 0.09));

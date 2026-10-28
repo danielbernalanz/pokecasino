@@ -1,8 +1,8 @@
 import { S, h, fmt, emit, act, sfx, toast, art, item, pokeImg, rarityName, typeBadge, sleep, itemImg } from '../core.js';
+import { reveal } from './gacha-reveal.js';
 
-const BALL = { C: 'poke-ball', U: 'poke-ball', R: 'great-ball', E: 'ultra-ball', L: 'master-ball', M: 'master-ball' };
-const RANK = { C: 0, U: 1, R: 2, E: 3, L: 4, M: 5 };
 let selected = 'kanto';
+const pct = (x) => (x * 100).toFixed(1).replace('.', ',') + ' %';
 
 export default {
   id: 'gacha', title: 'Poké Gacha', icon: '🎁',
@@ -18,7 +18,6 @@ export default {
 
     function renderStage() {
       const b = banners.find((x) => x.id === selected);
-      const pity = S.me.pity[b.id] || { sinceL: 0, sinceR: 0, guaranteed: false };
       const today = new Date().toISOString().slice(0, 10);
       const freeAvail = S.me.daily.freePull !== today;
       const featured = [...b.featuredL, ...b.featuredE];
@@ -29,9 +28,11 @@ export default {
             h('h2', {}, b.name), h('p', {}, b.desc),
             featured.length ? h('div', { class: 'featured' }, featured.map((id) => h('div', { class: 'feat' }, pokeImg(id, false), h('span', {}, S.dexById.get(id).name)))) : null,
             h('div', { class: 'pity' },
-              h('div', {}, 'Pity legendario: ', h('b', {}, `${pity.sinceL}/${S.data.hardPity}`), h('div', { class: 'pity-bar' }, h('i', { style: { width: (pity.sinceL / S.data.hardPity) * 100 + '%' } }))),
-              h('div', { class: 'small muted' }, `Rara o mejor garantizada cada 10 tiradas (${pity.sinceR}/10). Desde la ${S.data.softPity}ª tirada la probabilidad legendaria sube rápidamente.`),
-              b.featuredL.length ? h('div', { class: 'small ' + (pity.guaranteed ? 'good' : 'muted') }, pity.guaranteed ? '✔ Tu próxima legendaria será destacada.' : '50 % de que tu legendaria sea destacada; si no, la siguiente lo será.') : null)),
+              h('div', {}, 'Legendaria o mítica: ', h('b', {}, pct(S.data.gachaRates.L + S.data.gachaRates.M * (b.mythicBoost || 1))), ' en cada tirada · sin pity'),
+              h('div', { class: 'small muted' }, 'Cada tirada es independiente. Los sobres ×10 traen al menos una Rara.'),
+              h('div', { class: 'small' }, itemImg('master-ball'), b.featuredL.length
+                ? ' La Master Ball asegura una legendaria destacada de este banner (sin ella, 50 % de destacada).'
+                : ' La Master Ball asegura una legendaria.'))),
           h('img', { class: 'banner-art float', src: art(b.art), alt: '' })),
         buffsRow(),
         h('div', { class: 'pull-row' },
@@ -58,12 +59,17 @@ export default {
     }
 
     async function pull(count, free, btn, ticket = false) {
-      btn.disabled = true;
+      if (btn) btn.disabled = true;
       let res;
-      try { res = await emit('gacha:pull', { banner: selected, count, free, ticket }); } catch (e) { toast(e.message, 'error'); sfx('error'); btn.disabled = false; return; }
-      await reveal(res.results);
-      for (const it of res.bonus || []) toast(`🎁 ¡Regalo de la tirada ×10: ${S.data.items[it].name}!`, 'success', 6000);
+      try { res = await emit('gacha:pull', { banner: selected, count, free, ticket }); } catch (e) { toast(e.message, 'error'); sfx('error'); if (btn) btn.disabled = false; return; }
+      // Al terminar se puede volver a tirar sin salir de la animación (con monedas o con tickets).
+      const again = await reveal(res.results, {
+        bonus: res.bonus || [],
+        again: (n) => ticket ? (S.me.items.ticket || 0) >= n : S.me.coins >= S.data.gachaCost[n],
+        againLabel: (n) => ticket ? `Otra vez ×${n} (ticket${n > 1 ? 's' : ''})` : `Otra vez ×${n} · ${fmt(S.data.gachaCost[n])}`,
+      });
       renderStage();
+      if (again) pull(again, false, null, ticket);
     }
 
     const ev = S.events && S.events.active.find((e) => e.id === 'shiny');
@@ -72,43 +78,3 @@ export default {
   },
 };
 
-// Animación de apertura.
-function reveal(results) {
-  return new Promise((resolve) => {
-    const top = results.reduce((m, r) => (RANK[r.rarity] > RANK[m] ? r.rarity : m), 'C');
-    const anyShiny = results.some((r) => r.shiny);
-    let skip = false;
-    const ball = h('img', { class: 'pixel reveal-ball', src: item(BALL[top === 'M' ? 'L' : top]), alt: '' });
-    const flash = h('div', { class: 'reveal-flash r-' + top });
-    const cards = h('div', { class: 'reveal-cards' + (results.length > 1 ? ' multi' : '') });
-    const hint = h('div', { class: 'reveal-hint' }, 'Toca para saltar');
-    const done = h('button', { class: 'btn primary big hidden', onclick: () => { ov.remove(); resolve(); } }, 'Continuar');
-    const ov = h('div', { class: 'reveal' + (anyShiny ? ' has-shiny' : ''), onclick: (e) => { if (e.target !== done) skip = true; } }, flash, ball, cards, hint, done);
-    document.body.append(ov);
-    (async () => {
-      sfx('click');
-      ball.classList.add('shake');
-      await sleep(skip ? 0 : top === 'C' || top === 'U' ? 1200 : 2000);
-      ball.classList.add('open');
-      flash.classList.add('go');
-      sfx(RANK[top] >= 4 ? 'big' : RANK[top] >= 2 ? 'win' : 'flip');
-      await sleep(skip ? 0 : 450);
-      ball.remove();
-      for (const r of results) {
-        const p = S.dexById.get(r.id);
-        cards.append(h('div', { class: `pcard r-${r.rarity}${r.shiny ? ' shiny' : ''} pop` },
-          r.isNew ? h('span', { class: 'new-tag' }, '¡NUEVO!') : null,
-          r.newShiny ? h('span', { class: 'new-tag shiny-tag' }, '✨ VARIOCOLOR') : null,
-          pokeImg(r.id, r.shiny, 'pcard-art'),
-          h('b', {}, p.name), h('div', { class: 'types' }, p.types.map(typeBadge)),
-          h('span', { class: 'rar r-' + r.rarity }, rarityName(r.rarity)),
-          h('span', { class: 'stars' }, '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars)),
-          r.dust ? h('span', { class: 'small dust' }, `+${r.dust} ✦`) : null));
-        if (r.shiny) sfx('shiny');
-        if (!skip) await sleep(results.length > 1 ? (RANK[r.rarity] >= 3 ? 700 : 220) : 300);
-      }
-      hint.remove();
-      done.classList.remove('hidden');
-    })();
-  });
-}

@@ -62,27 +62,28 @@ test('las pistas de Voltorb Flip cuadran con el tablero', () => {
   }
 });
 
-test('el pity duro garantiza legendaria en 80 tiradas', () => {
+test('sin pity: las tiradas son independientes y siguen las probabilidades', () => {
   const banner = gacha.BANNERS[0];
-  for (let run = 0; run < 50; run++) {
-    const p = { sinceL: 0, sinceR: 0, guaranteed: false };
-    let got = false;
-    for (let i = 0; i < gacha.HARD_PITY; i++) {
-      const r = gacha.rollRarity(p, banner);
-      if (r === 'L' || r === 'M') { got = true; break; }
-    }
-    assert.ok(got);
+  const n = 200000;
+  const count = { C: 0, U: 0, R: 0, E: 0, L: 0, M: 0 };
+  for (let i = 0; i < n; i++) count[gacha.rollRarity(banner)]++;
+  for (const [r, p] of Object.entries(gacha.RATES)) {
+    const sd = Math.sqrt(p * (1 - p) / n);
+    assert.ok(Math.abs(count[r] / n - p) < 5 * sd, `${r}: ${count[r] / n} vs ${p}`);
   }
+  assert.ok(Math.abs(Object.values(gacha.RATES).reduce((a, b) => a + b, 0) - 1) < 1e-9);
 });
 
-test('cada 10 tiradas hay al menos una rara', () => {
-  const banner = gacha.BANNERS[0];
-  const p = { sinceL: 0, sinceR: 0, guaranteed: false };
-  let since = 0;
-  for (let i = 0; i < 5000; i++) {
-    const r = gacha.rollRarity(p, banner);
-    since = ['R', 'E', 'L', 'M'].includes(r) ? 0 : since + 1;
-    assert.ok(since < 10);
+test('cada sobre ×10 trae al menos una Rara y la Master Ball da la legendaria destacada', () => {
+  const banner = gacha.BANNERS.find((b) => b.id === 'hoenn');
+  for (let run = 0; run < 300; run++) {
+    const user = { coins: 2000, dust: 0, items: {}, buffs: {}, collection: {}, stats: { pulls: 0 }, daily: {}, xp: 0, level: 1 };
+    const { results } = gacha.pull(user, { banner: 'hoenn', count: 10 });
+    assert.ok(results.some((r) => ['R', 'E', 'L', 'M'].includes(r.rarity)));
+  }
+  for (let i = 0; i < 100; i++) {
+    const p = gacha.rollPokemon('L', banner, { masterBall: true });
+    assert.ok(banner.featuredL.includes(p.id));
   }
 });
 

@@ -56,7 +56,6 @@ function newUser(username, password, isAdmin) {
     lastHeal: 0,
     collection: {},
     buddy: null,
-    pity: {},
     voltorb: { level: 1, game: null },
     stats: { wagered: 0, won: 0, pulls: 0, biggestWin: 0, duelsWon: 0, duelsLost: 0, races: 0 },
   };
