@@ -223,17 +223,21 @@ test('NPC: límites diarios por jugador (monedas y unidades) al venderles', () =
 test('NPC: las cuentas nuevas o de nivel bajo no pueden venderles, pero sí comprarles', () => {
   const g = N('ginger');
   const low = user('novato-lvl', { level: 2, items: { 'master-ball': 2 } });
-  const young = user('novato-edad', { level: 9, createdAt: Date.now() - 3600 * 1000, items: { 'master-ball': 2 } });
+  // Cuenta creada después de que llegaran los NPC: tiene que esperar 24 h.
+  const young = user('novato-edad', { level: 9, createdAt: Date.now() + 1000, items: { 'master-ball': 2 } });
+  // Cuenta que ya existía antes de los NPC: no espera.
+  const veteran = user('veterana', { level: 3, createdAt: (db.data.npc.launchedAt || Date.now()) - 1000, items: {} });
   const legacy = user('sin-fecha', { level: 3, createdAt: undefined, items: { 'master-ball': 2 } });
   market.buy(g, { ...item('master-ball'), qty: 3, price: 1800 });
   const bids = () => db.data.market.orders.filter((o) => o.npc && o.side === 'buy').reduce((s, o) => s + o.qty, 0);
   for (const u of [low, young]) {
     assert.ok(!npc.eligible(u));
-    assert.throws(() => market.sell(u, { ...item('master-ball'), qty: 1, price: 1800, instant: true }), /nivel 3 o más/);
+    assert.throws(() => market.sell(u, { ...item('master-ball'), qty: 1, price: 1800, instant: true }), u === low ? /nivel 3 o más \(tienes nivel 2\)/ : /más de 24 h: podrás venderles dentro de \d+ h/);
     assert.strictEqual(market.sell(u, { ...item('master-ball'), qty: 1, price: 1800 }).filled, 0, 'orden normal: sin llenado contra NPC');
   }
   assert.strictEqual(bids(), 3);
   assert.ok(npc.eligible(legacy), 'sin createdAt solo cuenta el nivel');
+  assert.ok(npc.eligible(veteran), 'las cuentas anteriores a los NPC no esperan 24 h');
   assert.strictEqual(market.sell(legacy, { ...item('master-ball'), qty: 1, price: 1800, instant: true }).filled, 1, 'nivel 3: límite 1.800');
   clearNpcOrders();
   // Comprar sí pueden, con un máximo de 5 unidades por artículo y día.

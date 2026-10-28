@@ -118,6 +118,8 @@ function newNpcUser(p, name) {
 // Crea las cuentas que falten (una sola vez) con su tesorería inicial apuntada en el libro de monedas.
 // Si un jugador ya tenía ese nombre, el NPC usa otro (nombre corto + _NPC).
 function ensure() {
+  // Las cuentas que ya existían cuando llegaron los NPC no tienen que esperar 24 h para venderles.
+  if (!N().launchedAt) N().launchedAt = Date.now();
   for (const p of NPCS) {
     if (db.userById(p.id)) continue;
     let name = p.name;
@@ -137,7 +139,8 @@ const treasury = () => {
 };
 
 // ---- Límites diarios ----
-const eligible = (u) => (u.level || 1) >= MIN_LEVEL && (u.createdAt == null || Date.now() - u.createdAt >= MIN_AGE);
+const oldEnough = (u) => u.createdAt == null || u.createdAt < (N().launchedAt || 0) || Date.now() - u.createdAt >= MIN_AGE;
+const eligible = (u) => (u.level || 1) >= MIN_LEVEL && oldEnough(u);
 const sellLimit = (u) => SELL_COINS_BASE + SELL_COINS_PER_LEVEL * (u.level || 1);
 function dayRec(userId) {
   const n = N();
@@ -171,7 +174,8 @@ function cap(seller, buyer, a, price) {
 // Motivo (para el mensaje al jugador) de que un cruce con NPC no se llene; null si es cosa del NPC.
 function whyBlocked(seller, buyer, a) {
   if (buyer.npc) {
-    if (!eligible(seller)) return 'Los comerciantes NPC solo compran a entrenadores de nivel 3 o más.';
+    if ((seller.level || 1) < MIN_LEVEL) return `Los comerciantes NPC solo compran a entrenadores de nivel ${MIN_LEVEL} o más (tienes nivel ${seller.level || 1}).`;
+    if (!oldEnough(seller)) return `Los comerciantes NPC solo compran a cuentas con más de 24 h: podrás venderles dentro de ${Math.ceil((seller.createdAt + MIN_AGE - Date.now()) / 3600e3)} h.`;
     const r = dayRec(seller.id);
     if ((r.sold[a.ref] || 0) >= SELL_UNITS[a.kind] || r.got >= sellLimit(seller)) return 'Hoy ya no puedes vender más a los comerciantes NPC.';
     return null;
