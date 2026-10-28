@@ -49,6 +49,12 @@ async function list() {
     .map((f) => { const st = fs.statSync(path.join(DIR, f)); return { id: f, at: st.mtimeMs, note: 'archivo', size: st.size }; });
 }
 
+// Legendarias y míticas que tiene el jugador (por rareza de la Pokédex).
+function legendaries(u) {
+  const { BY_ID } = require('./pokedex');
+  return Object.keys(u.collection || {}).filter((id) => { const p = BY_ID.get(Number(id)); return p && (p.rarity === 'L' || p.rarity === 'M'); }).length;
+}
+
 // Resumen por jugador en el log (sin contraseñas ni sesiones).
 function audit() {
   const users = Object.values(db.data.users).filter((u) => !u.npc);
@@ -64,9 +70,17 @@ function audit() {
       dex: Object.keys(u.collection || {}).length, adminLedger: sum('admin'), adminLogN: grants.length,
       adminBy: [...new Set(grants.map((g) => g.by))].join('|'), giftIn: sum('gift_in'), giftOut: sum('gift_out'),
       gamesNet: games, days: Math.round((Date.now() - (u.createdAt || Date.now())) / 864e5 * 10) / 10,
+      // Lo que no se ve en las monedas: objetos, medallas, rarezas y lo apartado en el Mercado.
+      items: u.items || {}, badges: (u.progress && u.progress.badges) || [], titles: (u.progress && u.progress.titles) || [],
+      equip: u.equip || {}, legend: legendaries(u), shinies: Object.values(u.collection || {}).filter((c) => c.s > 0).length,
+      stars5: Object.values(u.collection || {}).filter((c) => c.n >= 5).length, xp: u.xp,
+      orders: ((db.data.market && db.data.market.orders) || []).filter((o) => o.userId === u.id).map((o) => `${o.side}:${o.ref}x${o.qty}@${o.price}`),
+      stats: u.stats || {}, daily: u.daily && u.daily.streak, lastHeal: u.lastHeal || 0,
     };
   }).sort((a, b) => b.coins - a.coins);
-  console.log('  🔎 AUDITORIA ' + JSON.stringify({ at: new Date().toISOString(), adminLog: adminLog.filter((l) => l.action === 'coins').slice(-50), players: rows }));
+  // Una línea por jugador: los logs cortan las líneas muy largas.
+  console.log('  🔎 AUDITORIA ' + JSON.stringify({ at: new Date().toISOString(), adminLog: adminLog.slice(-50) }));
+  for (const r of rows) console.log('  🔎 AUDITORIA-JUGADOR ' + JSON.stringify(r));
 }
 
 let timer = null;
