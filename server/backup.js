@@ -85,7 +85,10 @@ function audit() {
 
 let timer = null;
 function start() {
-  try { audit(); } catch (e) { console.error('Auditoría:', e.message); }
+  // Correcciones de datos pendientes (con copia previa) y después la auditoría.
+  require('./fixes').run(backupNow).catch((e) => console.error('Correcciones:', e.message)).finally(() => {
+    try { audit(); } catch (e) { console.error('Auditoría:', e.message); }
+  });
   const tick = () => {
     const last = db.data.state.lastBackup || 0;
     if (Date.now() - last >= EVERY && !db.isReadOnly()) backupNow('diaria').catch((e) => console.error('Copia de seguridad:', e.message));
