@@ -1,3 +1,4 @@
+import { aniImg } from '../anim.js';
 import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
 import { useFx } from '../rewards.js';
 import { burstAt, centerOf } from '../fx.js';
@@ -19,9 +20,11 @@ export function openDetail(id) {
   const c = S.me.collection[id];
   const lk = !c && S.me.locked && S.me.locked[id];
   let shiny = false;
-  const big = h('img', { class: 'detail-art' + (c ? '' : ' silhouette'), src: art(id), alt: p.name });
+  // Si lo tienes, sprite animado (arte oficial de respaldo); si no, la silueta estática.
+  const mkBig = () => (c ? aniImg(id, { shiny, cls: 'detail-art', alt: p.name, fallback: art(id, shiny) }) : h('img', { class: 'detail-art silhouette', src: art(id), alt: p.name }));
+  let big = mkBig();
   if (lk) big.classList.add('locked-art');
-  const toggle = c && c.s > 0 ? h('button', { class: 'btn', onclick: () => { shiny = !shiny; big.src = art(id, shiny); toggle.textContent = shiny ? 'Ver normal' : 'Ver variocolor ✨'; } }, 'Ver variocolor ✨') : null;
+  const toggle = c && c.s > 0 ? h('button', { class: 'btn', onclick: () => { shiny = !shiny; const nb = mkBig(); big.replaceWith(nb); big = nb; toggle.textContent = shiny ? 'Ver normal' : 'Ver variocolor ✨'; } }, 'Ver variocolor ✨') : null;
   const r = S.data.rarity[p.rarity];
   const giftTo = h('input', { list: 'gift-users', placeholder: 'Entrenador' });
   let actions = c ? h('div', { class: 'stack' },

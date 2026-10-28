@@ -207,9 +207,9 @@ const OVERRIDES = new Map(RAW.trim().split('\n').map((line) => {
 
 // `stage`: 0 bebé · 1 forma base · 2 primera evolución · 3 segunda evolución. `evolvesFrom`: id de la
 // preevolución (o null) y `chain`: id de la cadena evolutiva (PokeAPI).
-const DEX = DATA.map(([id, name, types, rarity, gen, stats, stage = 1, evolvesFrom = null, chain = id]) => {
+const DEX = DATA.map(([id, name, types, rarity, gen, stats, stage = 1, evolvesFrom = null, chain = id, slug = '']) => {
   const o = OVERRIDES.get(id);
-  return { id, name: o ? o.name : name, types, rarity: o ? o.rarity : rarity, gen, stats, stage, evolvesFrom, chain };
+  return { id, name: o ? o.name : name, types, rarity: o ? o.rarity : rarity, gen, stats, stage, evolvesFrom, chain, slug };
 });
 const BY_ID = new Map(DEX.map((p) => [p.id, p]));
 

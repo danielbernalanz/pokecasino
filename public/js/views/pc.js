@@ -1,3 +1,4 @@
+import { aniImg } from '../anim.js';
 import { S, h, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
 import { evolveAnim, wonderReveal } from './pc-fx.js';
 import { heartsEl, friendLabel, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
@@ -151,7 +152,7 @@ function openMon(uid) {
   const nickRow = h('div', { class: 'row gap', style: { display: 'none' } }, nickInput,
     h('button', { class: 'btn primary', onclick: async (e) => { reopen(await act('pc:nick', { id: m.id, uid, nick: nickInput.value }, e.target)); } }, 'Guardar'));
   const modalRef = modal(h('div', { class: 'pc-detail' },
-    h('div', { class: 'pc-detail-left r-' + p.rarity }, h('img', { class: 'detail-art', src: art(m.id, m.shiny), alt: p.name })),
+    h('div', { class: 'pc-detail-left r-' + p.rarity }, aniImg(m.id, { shiny: m.shiny, cls: 'detail-art', alt: p.name, fallback: art(m.id, m.shiny) })),
     h('div', { class: 'stack pc-detail-right' },
       h('h2', {}, `${m.shiny ? '✨ ' : ''}${label(m)} ${genderTag(m)}`),
       h('div', { class: 'muted small' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level} · ${m.nature}${m.buddy ? ' · 🤝 Compañero' : ''}`),

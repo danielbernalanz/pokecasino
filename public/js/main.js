@@ -1,3 +1,4 @@
+import { animPref, setAnimPref } from './anim.js';
 import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg } from './core.js';
 import { celebrate, coinRain, burstAt, vibrate } from './fx.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
@@ -167,6 +168,8 @@ $('#mute-btn').textContent = isMuted() ? '🔇' : '🔊';
 $('#menu-btn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
 $('#user-btn').addEventListener('click', () => {
   const muteBtn = h('button', { class: 'btn', onclick: () => { const m = toggleMute(); $('#mute-btn').textContent = m ? '🔇' : '🔊'; muteBtn.textContent = m ? '🔇 Sonido apagado' : '🔊 Sonido encendido'; } }, isMuted() ? '🔇 Sonido apagado' : '🔊 Sonido encendido');
+  const animLabel = () => (animPref() ? '🎞️ Animaciones de Pokémon: sí' : '🎞️ Animaciones de Pokémon: no');
+  const animBtn = h('button', { class: 'btn', title: 'Sprites animados en combates, Caja PC, Pokédex y compañero. Apágalas para ahorrar datos. (Se desactivan solas con «reducir movimiento».)', onclick: () => { setAnimPref(!animPref()); animBtn.textContent = animLabel(); toast(animPref() ? 'Animaciones activadas (se aplican al abrir cada pantalla).' : 'Animaciones desactivadas: se usarán imágenes estáticas.', 'info'); } }, animLabel());
   const nLabel = () => notifyEnabled() ? '🔔 Avisos activados' : '🔕 Activar avisos';
   const notifyBtn = h('button', { class: 'btn', title: 'Notificación cuando te toca en el póker, te escriben por privado o te mencionan, aunque no estés mirando', onclick: async () => { await toggleNotify(); notifyBtn.textContent = nLabel(); } }, nLabel());
   const menu = h('div', { class: 'stack' },
@@ -174,6 +177,7 @@ $('#user-btn').addEventListener('click', () => {
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/trainer'; } }, '🏅 Mi Entrenador'),
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/pokedex'; } }, '📕 Mi Pokédex'),
     muteBtn,
+    animBtn,
     notifyBtn,
     h('button', { class: 'btn', title: 'Vuelve a mostrar los avisos de acciones arriesgadas que marcaste como «no volver a avisar»', onclick: () => { const n = resetWarnings(); close(); toast(n ? `Avisos restablecidos (${n}): volverás a verlos.` : 'Todos los avisos ya estaban activos.', 'success'); } }, '⚠️ Restablecer avisos'),
     canInstall() ? h('button', { class: 'btn', onclick: () => { close(); installApp(); } }, '📲 Instalar app') : '',

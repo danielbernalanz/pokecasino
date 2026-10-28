@@ -69,7 +69,7 @@ const out = species.map((s) => {
   const st = stats[id];
   const bst = st.reduce((a, b) => a + b, 0);
   const from = s.evolves_from_species_id ? Number(s.evolves_from_species_id) : null;
-  // Formato: [id, nombre, tipos, rareza, generación, stats, fase, evoluciona de, cadena evolutiva]
+  // Formato: [id, nombre, tipos, rareza, generación, stats, fase, evoluciona de, cadena evolutiva] (+ slug de Showdown: scripts/add-slugs.js)
   return [id, names[id] || s.identifier, typeOf[id].filter(Boolean), rarity(s, bst), Number(s.generation_id), st, stageOf(s), from, Number(s.evolution_chain_id)];
 }).sort((a, b) => a[0] - b[0]);
 

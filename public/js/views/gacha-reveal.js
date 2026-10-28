@@ -1,5 +1,6 @@
 // Animación del Gacha: lanzamiento de la Poké Ball, sacudidas que la mejoran según la rareza,
 // «¿Quién es ese Pokémon?» para lo bueno, explosiones de partículas, sonido y vibración.
+import { upgradeToAni } from '../anim.js';
 import { S, h, sfx, art, pokeImg, rarityName, typeBadge, sleep, itemImg } from '../core.js';
 import { burst, centerOf } from '../fx.js';
 
@@ -146,6 +147,8 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
       const p = S.dexById.get(r.id);
       const big = RANK[r.rarity] >= 4;
       const img = h('img', { class: 'gx-art sil', src: art(r.id, r.shiny), alt: p.name });
+      // Tirada única o pieza grande: al cargar, el sprite animado sustituye al arte (si falla, se queda el arte).
+      if (final || big) upgradeToAni(img, r.id, { shiny: r.shiny });
       const name = h('h2', { class: 'gx-name' }, p.name, r.shiny ? ' ✨' : '');
       const stars = h('div', { class: 'gx-bigstars' }, Array.from({ length: 5 }, () => h('span', {}, '★')));
       const tags = h('div', { class: 'gx-tags' });

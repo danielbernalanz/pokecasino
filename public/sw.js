@@ -1,12 +1,13 @@
 // Service worker de PokéCasino.
 // - Archivos de la app: primero la red (siempre la última versión) y, sin conexión, la copia guardada.
 // - Sprites de PokeAPI: primero la caché (no cambian) para cargar mucho más rápido.
+// - GIF animados de Showdown (play.pokemonshowdown.com): no se guardan aquí (respuestas opacas, pesan más); los cachea el navegador.
 // - Nunca se guarda nada de /api, del socket ni de changelog.json (las novedades siempre frescas).
-const VERSION = 'v9';
+const VERSION = 'v10';
 const APP = 'pokecasino-app-' + VERSION;
 const SPRITES = 'pokecasino-sprites';
 const SPRITE_LIMIT = 1500;
-const SHELL = ['/', '/index.html', '/css/style.css', '/css/fx.css', '/css/mega.css', '/css/quiz.css', '/css/news.css', '/css/pc.css', '/css/bond.css', '/js/main.js', '/js/core.js', '/offline.html', '/icons/icon-192.png'];
+const SHELL = ['/', '/index.html', '/css/style.css', '/css/fx.css', '/css/mega.css', '/css/quiz.css', '/css/news.css', '/css/pc.css', '/css/bond.css', '/css/anim.css', '/js/main.js', '/js/core.js', '/offline.html', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -61,7 +61,7 @@ app.use((req, res, next) => {
   res.set({
     'Content-Security-Policy': [
       "default-src 'self'",
-      "img-src 'self' data: https://raw.githubusercontent.com",
+      "img-src 'self' data: https://raw.githubusercontent.com https://play.pokemonshowdown.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src https://fonts.gstatic.com",
       "connect-src 'self' ws: wss: https://raw.githubusercontent.com",

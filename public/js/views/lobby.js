@@ -1,3 +1,4 @@
+import { aniImg } from '../anim.js';
 import { S, h, fmt, act, sfx, toast, art, item, pokeImg, badgeImg, bus } from '../core.js';
 import { canInstall, installApp } from '../main.js';
 import { dailyChest } from '../rewards.js';
@@ -155,7 +156,7 @@ export default {
           h('div', { class: 'row gap wrap' },
             h('a', { class: 'btn primary big', href: '#/gacha' }, freeDone ? '🎁 Ir al Gacha' : '🎁 ¡Tirada gratis disponible!'),
             h('a', { class: 'btn big', href: '#/race' }, '🏁 Carrera en directo'))),
-        h('div', { class: 'hero-mons' }, me.buddy ? pokeImg(me.buddy.id, me.buddy.shiny, 'hero-buddy float', me.buddy.mega) : h('img', { class: 'hero-buddy float', src: art(52), alt: 'Meowth' }))),
+        h('div', { class: 'hero-mons' }, me.buddy ? aniImg(me.buddy.id, { shiny: me.buddy.shiny, mega: me.buddy.mega || 0, cls: 'hero-buddy float', alt: S.dexById.get(me.buddy.id)?.name || '', fallback: me.buddy.mega ? art(me.buddy.mega, me.buddy.shiny) : art(me.buddy.id, me.buddy.shiny) }) : h('img', { class: 'hero-buddy float', src: art(52), alt: 'Meowth' }))),
       canInstall() && (() => { try { return !localStorage.getItem('installHidden'); } catch { return true; } })() ? h('div', { class: 'card install-card' },
         h('img', { src: '/icons/icon-192.png', alt: '' }),
         h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio a pantalla completa, como una app.')),

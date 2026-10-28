@@ -1,6 +1,7 @@
 import { S, h, fmt, act, sfx, bus, sprite, art, img, animImg, modal, typeBadge, sleep, confirmBet } from '../core.js';
+import { aniImg, animEnabled, TYPE_COLOR } from '../anim.js';
 import { pickPokemon } from '../picker.js';
-import { burstEl, shake, flash, confetti, coinRain, vibrate } from '../fx.js';
+import { burstEl, shake, flash, confetti, coinRain, vibrate, floatText, reduced } from '../fx.js';
 
 // Reproduce un combate con animaciones.
 export function playBattle(record) {
@@ -10,18 +11,23 @@ export function playBattle(record) {
   const hp = [f[0].maxHp, f[1].maxHp];
   const bars = [0, 1].map(() => h('i', {}));
   const hpTxt = [0, 1].map((i) => h('span', {}, `${hp[i]}/${f[i].maxHp}`));
-  // Con Mega se pinta la forma Mega (arte oficial; el variocolor cae al normal si no existe).
-  const fimg = (i, cls, back) => (f[i].mega
-    ? img(art(f[i].mega, f[i].shiny), { cls: 'pixel ' + cls, alt: f[i].name, fallback: art(f[i].mega, false) })
-    : animImg(f[i].id, f[i].shiny, cls, back));
-  const spr = [0, 1].map((i) => fimg(i, 'bt-sprite', i === side));
+  // Sprites animados de Showdown (rival de frente, el propio de espaldas); sin ellos, el estático.
+  // Con Mega se pinta la forma Mega (arte oficial) cuando las animaciones están apagadas.
+  const fimg = (i, back) => (!animEnabled() && f[i].mega
+    ? img(art(f[i].mega, f[i].shiny), { cls: 'pixel bt-sprite', alt: f[i].name, fallback: art(f[i].mega, false) })
+    : aniImg(f[i].id, { shiny: f[i].shiny, back, mega: f[i].mega || 0, cls: 'pixel bt-sprite', alt: f[i].name }));
+  const spr = [0, 1].map((i) => fimg(i, i === side));
+  const slot = spr.map((el, i) => h('div', { class: 'bt-slot' + (i === side ? ' mine' : '') }, el));
   const box = (i) => h('div', { class: 'bt-box' }, h('b', {}, (f[i].mega ? '💠 ' : '') + f[i].name + (f[i].nick ? ` «${f[i].nick}»` : '') + (f[i].shiny ? ' ✨' : '')), h('span', { class: 'muted small' }, ` ${f[i].owner} · ${'★'.repeat(f[i].stars)}`),
     h('div', { class: 'types' }, f[i].types.map(typeBadge)), h('div', { class: 'hpbar' }, bars[i]), hpTxt[i]);
   const text = h('div', { class: 'bt-text' }, `¡${record.players[0]} y ${record.players[1]} se enfrentan!`);
   const other = 1 - side;
+  const pop = h('div', { class: 'bt-pop', 'aria-hidden': 'true' });
+  const say = (txt, kind) => { pop.textContent = txt; pop.className = 'bt-pop'; void pop.offsetWidth; pop.className = 'bt-pop show ' + kind; };
   const scene = h('div', { class: 'battle' },
-    h('div', { class: 'bt-foe' }, box(other), spr[other]),
-    h('div', { class: 'bt-me' }, spr[side], box(side)),
+    h('div', { class: 'bt-foe' }, box(other), slot[other]),
+    h('div', { class: 'bt-me' }, slot[side], box(side)),
+    pop,
     text);
   const skipBtn = h('button', { class: 'btn', onclick: () => { skip = true; } }, 'Saltar ⏩');
   let skip = false;
@@ -50,21 +56,30 @@ export function playBattle(record) {
       text.textContent = line;
       if (!skip) {
         spr[ev.by].classList.add('lunge'); sfx('click');
-        await sleep(350);
+        await sleep(300);
         spr[ev.by].classList.remove('lunge');
         if (!ev.miss && ev.dmg) {
-          spr[tgt].classList.add('hit'); sfx(ev.eff > 1 ? 'boom' : 'flip');
-          // Golpes críticos o supereficaces: chispas y temblor de la escena.
           const strong = ev.crit || ev.eff > 1;
-          burstEl(spr[tgt], strong ? '#ffd54f' : '#ffffff', strong ? 22 : 8, { spread: strong ? 150 : 70, stars: strong ? 0.6 : 0 });
-          if (strong) { shake(scene, 350); vibrate(40); }
-        }
+          const col = TYPE_COLOR[ev.type] || '#ffffff';
+          spr[tgt].classList.add('hit'); sfx(ev.eff > 1 ? 'boom' : 'flip');
+          slot[tgt].classList.add(ev.crit ? 'shake-big' : 'shake');
+          // Partículas del color del tipo del ataque; más y con estrellas si es crítico o supereficaz.
+          burstEl(spr[tgt], col, strong ? 26 : 12, { spread: strong ? 150 : 80, stars: strong ? 0.5 : 0.15 });
+          if (ev.crit) burstEl(spr[tgt], '#ffffff', 10, { spread: 110, stars: 0.8 });
+          floatText(`-${ev.dmg}`, spr[tgt], { color: ev.crit ? '#ff5a5a' : '#fff', size: ev.crit ? 30 : 22 });
+          if (ev.crit) say('¡Golpe crítico!', 'crit');
+          else if (ev.eff > 1) say('¡Es muy eficaz!', 'good');
+          else if (ev.eff < 1) say('No es muy eficaz…', 'meh');
+          if (strong && !reduced()) { shake(scene, 350); vibrate(ev.crit ? [50, 30, 50] : 40); }
+          if (ev.crit) flash('#ffffff', 160);
+        } else if (ev.miss) say('¡Falló!', 'meh');
+        else if (ev.eff === 0) say('No afecta…', 'meh');
       }
       setHp(0, ev.hp[0]); setHp(1, ev.hp[1]);
-      if (!skip) { await sleep(650); spr[tgt].classList.remove('hit'); }
+      if (!skip) { await sleep(600); spr[tgt].classList.remove('hit'); slot[tgt].classList.remove('shake', 'shake-big'); }
     }
     const w = record.winner;
-    spr[1 - w].classList.add('faint');
+    spr[1 - w].classList.add('faint'); slot[1 - w].classList.add('down');
     text.replaceChildren(h('b', {}, `🏆 ¡${record.players[w]} gana con ${f[w].name}!`), record.prize ? ` +${fmt(record.prize)} monedas` : '');
     const won = record.players[w] === S.me.username;
     sfx(won ? 'big' : 'lose');

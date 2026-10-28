@@ -1,6 +1,7 @@
 // Animaciones de la Caja PC: evolución (silueta que parpadea cada vez más rápido, destello y estallido)
 // y Intercambio Milagroso (carta que se da la vuelta). Respetan prefers-reduced-motion.
 import { S, h, sfx, art, sleep, typeBadge, rarityName } from '../core.js';
+import { aniImg } from '../anim.js';
 import { burstAt, flash, vibrate, reduced } from '../fx.js';
 
 function overlay(content) {
@@ -13,8 +14,9 @@ function overlay(content) {
 export async function evolveAnim(fromId, toId, shiny) {
   const from = S.dexById.get(fromId);
   const to = S.dexById.get(toId);
-  const a = h('img', { class: 'pcfx-img', src: art(fromId, shiny), alt: from.name });
-  const b = h('img', { class: 'pcfx-img pcfx-b', src: art(toId, shiny), alt: to.name });
+  // Sprites animados de Showdown (arte oficial si no existen o están apagados).
+  const a = aniImg(fromId, { shiny, cls: 'pcfx-img', alt: from.name, fallback: art(fromId, shiny) });
+  const b = aniImg(toId, { shiny, cls: 'pcfx-img pcfx-b', alt: to.name, fallback: art(toId, shiny) });
   const title = h('h2', { class: 'pcfx-title' }, `¿${from.name} está evolucionando?`);
   const stage = h('div', { class: 'pcfx-stage' }, a, b);
   const close = h('button', { class: 'btn primary big pcfx-close hidden', onclick: () => end() }, 'Continuar');
