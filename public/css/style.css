@@ -1144,3 +1144,9 @@ body.gx-open { overflow: hidden; }
   .mkf-panel .mkf-seg, .mkf-panel .chip { grid-column: 1 / -1; }
   .mkf-panel .chip { width: auto; justify-self: start; }
 }
+@media (max-width: 400px) {
+  .banner-duo .banner-tab { flex-direction: column; text-align: center; gap: 4px; padding: 8px 6px; }
+  .banner-duo .banner-tab span { align-items: center; }
+  .banner-duo .banner-tab span b { font-size: 12px; letter-spacing: 0; }
+  .banner-duo .banner-tab img { width: 48px; height: 48px; }
+}
