@@ -80,6 +80,11 @@ export default {
       else if (!healNote.textContent.startsWith('Joy no pudo')) healNote.textContent = '';
     }
     refreshHeal();
+    // Se reevalúa si cambian las monedas (otra pestaña, un regalo) o cuando termina la espera.
+    if (this.offHeal) this.offHeal();
+    const offMe = bus.on('me', refreshHeal);
+    const healTimer = setInterval(refreshHeal, 30000);
+    this.offHeal = () => { offMe(); clearInterval(healTimer); };
 
     const days = h('div', { class: 'streak' }, [1, 2, 3, 4, 5, 6, 7].map((d) => h('span', { class: 'sday' + (d <= (dailyDone ? me.daily.streak : streak - 1) ? ' on' : '') }, d)));
 
@@ -150,6 +155,6 @@ export default {
   },
   // Solo se repinta si el jugador sigue en el Vestíbulo (las respuestas pueden llegar tarde).
   remount(root) { if (S.view !== 'lobby') return; root.replaceChildren(); this.mount(root); },
-  unmount() { if (this.offEv) this.offEv(); this.offEv = null; },
+  unmount() { if (this.offEv) this.offEv(); this.offEv = null; if (this.offHeal) this.offHeal(); this.offHeal = null; },
 };
 const st = (l, v) => h('div', { class: 'stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v));
