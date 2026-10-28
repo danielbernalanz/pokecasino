@@ -11,7 +11,9 @@ const { BY_ID } = require('./pokedex');
 
 const SETUP_FEE = 0.015; // al publicar una orden (no se devuelve)
 const SALES_TAX = 0.03; // al vendedor en cada venta
-const EXPIRE_MS = 14 * 24 * 3600 * 1000;
+const DAY_MS = 24 * 3600 * 1000;
+const EXPIRE_MS = 14 * DAY_MS;
+const DURATIONS = [1, 3, 7, 14]; // días que puede durar una orden (por defecto 14)
 const MAX_ORDERS = 30;
 const MAX_PRICE = 10_000_000;
 const MAX_QTY = { poke: 20, item: 999, dust: 1_000_000 };
@@ -69,6 +71,12 @@ function giveGoods(user, a, qty) {
   return dust;
 }
 
+function validDays(payload) {
+  if (payload.days == null || payload.days === '') return 14;
+  const d = Number(payload.days);
+  if (!DURATIONS.includes(d)) throw new Error('Duración no válida: 1, 3, 7 o 14 días.');
+  return d;
+}
 function validQtyPrice(a, qty, price) {
   if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY[a.kind]) throw new Error(`Cantidad entre 1 y ${MAX_QTY[a.kind]}.`);
   if (!Number.isInteger(price) || price < 1 || price > MAX_PRICE) throw new Error('Precio por unidad entre 1 y 10.000.000.');
@@ -137,14 +145,16 @@ function sell(user, payload) {
   const a = parseRef(payload);
   const qty = Number(payload.qty);
   const price = Number(payload.price);
-  const instant = !!payload.instant;
+  const onlyId = payload.orderId != null ? Number(payload.orderId) : null; // llenar solo esa orden concreta
+  const instant = !!payload.instant || onlyId != null;
+  const days = validDays(payload);
   validQtyPrice(a, qty, price);
   if (owned(user, a) < qty) throw new Error(`No tienes ${describe(a, qty)}.`);
   if (!instant && user.coins < fee(qty * price)) throw new Error('No tienes monedas para la comisión de publicación.');
   checkOrderLimit(user, instant);
   let left = qty;
   let earned = 0;
-  const bids = book(a.ref, 'buy').filter((o) => o.price >= price && o.userId !== user.id)
+  const bids = book(a.ref, 'buy').filter((o) => o.price >= price && o.userId !== user.id && (onlyId == null || o.id === onlyId))
     .sort((x, y) => y.price - x.price || x.createdAt - y.createdAt);
   let why = null; // por qué un comerciante NPC no pudo llenar la orden
   for (const o of bids) {
@@ -168,7 +178,7 @@ function sell(user, payload) {
     user.coins -= fee(left * price);
     hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
     takeGoods(user, a, left);
-    order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), ...(user.npc ? { npc: true } : {}) };
+    order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');
   }
@@ -184,14 +194,16 @@ function buy(user, payload) {
   const a = parseRef(payload);
   const qty = Number(payload.qty);
   const price = Number(payload.price);
-  const instant = !!payload.instant;
+  const onlyId = payload.orderId != null ? Number(payload.orderId) : null; // llenar solo esa orden concreta
+  const instant = !!payload.instant || onlyId != null;
+  const days = validDays(payload);
   validQtyPrice(a, qty, price);
   const worst = qty * price + (instant ? 0 : fee(qty * price));
   if (user.coins < worst) throw new Error(`Necesitas hasta ${worst.toLocaleString('es')} monedas.`);
   checkOrderLimit(user, instant);
   let left = qty;
   let spent = 0;
-  const asks = book(a.ref, 'sell').filter((o) => o.price <= price && o.userId !== user.id)
+  const asks = book(a.ref, 'sell').filter((o) => o.price <= price && o.userId !== user.id && (onlyId == null || o.id === onlyId))
     .sort((x, y) => x.price - y.price || x.createdAt - y.createdAt);
   let why = null;
   for (const o of asks) {
@@ -216,7 +228,7 @@ function buy(user, payload) {
     user.coins -= left * price + fee(left * price);
     hub.ledger(user, -left * price, 'market_buy', `Pedido: ${left} × ${a.ref}`);
     hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
-    order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), ...(user.npc ? { npc: true } : {}) };
+    order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');
   }
@@ -261,7 +273,7 @@ function state() {
     stats[ref] = { avg: n ? Math.round(list.reduce((s, d) => s + d.sum, 0) / n) : 0, n };
   }
   return {
-    orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, npc }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, ...(npc ? { npc: true } : {}) })),
+    orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt, npc }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt: expiresAt || createdAt + EXPIRE_MS, ...(npc ? { npc: true } : {}) })),
     trades: m.trades.slice(-40).reverse(), stats, setupFee: setupFee(), salesTax: salesTax(),
   };
 }
@@ -270,7 +282,7 @@ function push() { hub.broadcast('market', state()); }
 // Caducidad de órdenes antiguas.
 function sweep() {
   const now = Date.now();
-  const old = M().orders.filter((o) => now - o.createdAt > EXPIRE_MS);
+  const old = M().orders.filter((o) => now > (o.expiresAt || o.createdAt + EXPIRE_MS));
   for (const o of old) {
     refundOrder(o);
     hub.emitUser(o.userId, 'toast', { kind: 'market', text: `🏪 Tu orden de ${o.side === 'sell' ? 'venta' : 'compra'} de ${describe(o, o.qty)} caducó y se te devolvió.` });
@@ -299,4 +311,4 @@ function init() {
   setInterval(sweep, 10 * 60 * 1000).unref();
 }
 
-module.exports = { init, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee };
+module.exports = { init, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee, DURATIONS, sweep };

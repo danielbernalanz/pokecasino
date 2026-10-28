@@ -186,3 +186,52 @@ test('mercado: los anuncios del formato antiguo pasan a ser órdenes de venta', 
   assert.strictEqual(o.qty, 2);
   assert.strictEqual(db.data.market.listings, undefined);
 });
+
+test('mercado: duración de las órdenes (1/3/7/14 días, 14 por defecto) y validación', () => {
+  const s = user('duracion', { items: { 'lucky-egg': 10 }, coins: 100000 });
+  const t0 = Date.now();
+  const def = market.sell(s, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 100 });
+  assert.ok(Math.abs(def.order.expiresAt - (t0 + 14 * 86400000)) < 5000);
+  const d3 = market.sell(s, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 100, days: 3 });
+  assert.ok(Math.abs(d3.order.expiresAt - (t0 + 3 * 86400000)) < 5000);
+  const b1 = market.buy(s, { kind: 'item', itemId: 'master-ball', qty: 1, price: 50, days: '7' });
+  assert.ok(Math.abs(b1.order.expiresAt - (t0 + 7 * 86400000)) < 5000);
+  for (const days of [0, 2, 15, -1, 'x']) {
+    assert.throws(() => market.sell(s, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 100, days }), /Duración/);
+    assert.throws(() => market.buy(s, { kind: 'item', itemId: 'master-ball', qty: 1, price: 50, days }), /Duración/);
+  }
+  assert.ok(market.state().orders.find((o) => o.id === d3.order.id).expiresAt);
+});
+
+test('mercado: la caducidad usa expiresAt y devuelve el depósito (y cae a 14 días en órdenes antiguas)', () => {
+  const s = user('caduca', { items: { 'lucky-egg': 3 }, coins: 100000 });
+  const a = market.sell(s, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 100, days: 1 });
+  const b = market.sell(s, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 100, days: 7 });
+  const old = market.sell(s, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 100 });
+  const raw = (o) => db.data.market.orders.find((x) => x.id === o.id);
+  raw(a.order).expiresAt = Date.now() - 1000; // caducada
+  delete raw(old.order).expiresAt; // orden antigua sin expiresAt
+  raw(old.order).createdAt = Date.now() - 13 * 86400000; // aún vigente
+  assert.ok(!s.items['lucky-egg']);
+  market.sweep();
+  assert.ok(!raw(a.order), 'la caducada desaparece');
+  assert.ok(raw(b.order) && raw(old.order), 'las vigentes siguen');
+  assert.strictEqual(s.items['lucky-egg'], 1, 'se devuelve el depósito');
+  raw(old.order).createdAt = Date.now() - 15 * 86400000;
+  market.sweep();
+  assert.ok(!raw(old.order));
+  assert.strictEqual(s.items['lucky-egg'], 2);
+});
+
+test('mercado: orderId llena solo esa orden aunque haya otras más baratas', () => {
+  const a = user('barata1', { items: { 'rare-candy': 2 } });
+  const c = user('cara1', { items: { 'rare-candy': 2 } });
+  const b = user('elegidor', { coins: 100000 });
+  const o1 = market.sell(a, { kind: 'item', itemId: 'rare-candy', qty: 2, price: 100 }).order;
+  const o2 = market.sell(c, { kind: 'item', itemId: 'rare-candy', qty: 2, price: 500 }).order;
+  const r = market.buy(b, { kind: 'item', itemId: 'rare-candy', qty: 1, price: 500, orderId: o2.id });
+  assert.strictEqual(r.spent, 500);
+  assert.strictEqual(market.state().orders.find((o) => o.id === o1.id).qty, 2, 'la barata no se toca');
+  assert.strictEqual(market.state().orders.find((o) => o.id === o2.id).qty, 1);
+  assert.throws(() => market.buy(b, { kind: 'item', itemId: 'rare-candy', qty: 1, price: 500, orderId: 999999 }), /No hay ofertas/);
+});
