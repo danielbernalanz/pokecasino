@@ -65,6 +65,27 @@ const FIXES = [
       return out;
     },
   },
+  {
+    // Rastros del abuso en el ranking y las estadísticas: récord de mayor premio y apostado/ganado.
+    id: 'abuso-ranking-2026-10-28',
+    apply() {
+      const out = [];
+      for (const name of ['piti13579', 'tusmuertos']) {
+        const u = db.userByName(name);
+        if (!u || !u.stats) continue;
+        out.push(`${name}: mayor premio ${u.stats.biggestWin || 0} → 0`);
+        u.stats.biggestWin = 0;
+        if (name === 'piti13579') {
+          out.push(`apostado/ganado ${u.stats.wagered}/${u.stats.won} → 0/0`);
+          u.stats.wagered = 0;
+          u.stats.won = 0;
+        }
+      }
+      db.data.adminLog ||= [];
+      db.data.adminLog.push({ at: Date.now(), by: 'sistema', action: 'fix', target: 'piti13579, tusmuertos', detail: out.join(' · ') });
+      return out;
+    },
+  },
 ];
 
 // Copia de seguridad y después las correcciones pendientes.
