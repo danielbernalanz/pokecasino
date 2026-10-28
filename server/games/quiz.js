@@ -18,10 +18,10 @@ const { BANK } = require('./quizdata');
 // `acc` es la precisión que se supone a un fan EXPERTO en cada dificultad (el multiplicador se calcula para que
 // incluso con esa precisión el retorno sea < 97 %: ver docs/BALANCE.md).
 const DIFFS = {
-  facil: { id: 'facil', label: 'Fácil', options: 4, secs: 20, acc: 0.95, max: 10 },
-  normal: { id: 'normal', label: 'Normal', options: 4, secs: 15, acc: 0.85, max: 15 },
-  dificil: { id: 'dificil', label: 'Difícil', options: 6, secs: 12, acc: 0.70, max: 12 },
-  maestro: { id: 'maestro', label: 'Maestro', options: 6, secs: 10, acc: 0.50, max: 6 },
+  facil: { id: 'facil', label: 'Fácil', options: 4, secs: 20, acc: 0.95, max: 5, prior: 20 },
+  normal: { id: 'normal', label: 'Normal', options: 4, secs: 15, acc: 0.85, max: 6, prior: 20 },
+  dificil: { id: 'dificil', label: 'Difícil', options: 6, secs: 12, acc: 0.70, max: 6, prior: 20 },
+  maestro: { id: 'maestro', label: 'Maestro', options: 6, secs: 10, acc: 0.50, max: 5, prior: 8 },
 };
 const LADDER_BASE = 0.94; // RTP del experto al retirarse tras k aciertos (sin objetivo)
 const TARGET_BONUS = 1.03; // +3 % al completar el objetivo elegido: 0,94 × 1,03 = 0,968 < 0,97
@@ -29,14 +29,39 @@ const MAX_MULT = 50;
 const MAX_STREAK = 20; // cota general de la escalera; cada dificultad se corta antes (`max`: allí se cobra solo)
 // Racha máxima por dificultad: la escalera crece como 1/precisión^k, así que quien acierte más de lo supuesto (o
 // busque las respuestas) ganaría más cuanto más larga fuera la racha. Se corta donde Maestro y Difícil ya rozan ×50.
-const TARGETS = [3, 5, 10, 15];
+const TARGETS = [3, 5];
 const PAYOUT_CAP = 20; // pago máximo por ronda: 20 × límite de apuesta del jugador
 const GRACE_MS = 1000; // margen de latencia
 const IMG_EXTRA_MS = 1000; // la imagen puede tardar en cargar
 const MIN_GAP_MS = 250; // entre dos acciones del mismo jugador
 
-const ladder = (diff, k) => (k <= 0 ? 1 : Math.min(MAX_MULT, Math.max(1, Math.floor((100 * LADDER_BASE) / Math.pow(DIFFS[diff].acc, k)) / 100)));
-const finalMult = (diff, k, bonus) => (k <= 0 ? 1 : Math.min(MAX_MULT, Math.floor(100 * ladder(diff, k) * (bonus ? TARGET_BONUS : 1)) / 100));
+// `acc` (opcional) es la precisión real del jugador: así la escalera se adapta a quien acierta más de lo previsto.
+const ladder = (diff, k, acc = DIFFS[diff].acc) => (k <= 0 ? 1 : Math.min(MAX_MULT, Math.max(1, Math.floor((100 * LADDER_BASE) / Math.pow(acc, k)) / 100)));
+const finalMult = (diff, k, bonus, acc) => (k <= 0 ? 1 : Math.min(MAX_MULT, Math.floor(100 * ladder(diff, k, acc) * (bonus ? TARGET_BONUS : 1)) / 100));
+
+// ---------- Precisión de cada jugador (por modo y dificultad) ----------
+// Se parte de la precisión supuesta (como si ya hubiera respondido PRIOR preguntas así) y se ajusta con sus
+// respuestas reales. Las rachas son cortas (5–6) porque en rachas largas cualquier error de la estimación se
+// multiplica y quien acierta casi todo (o busca las respuestas) ganaría. Nunca baja de la supuesta: quien acierta más ve multiplicadores más bajos y nadie puede
+// sacar dinero a la larga, sepa lo que sepa (o busque las respuestas).
+// Peso de la precisión supuesta (en preguntas). Maestro es más prudente: con una precisión supuesta del 50 %
+// es donde más ganaría quien acierta casi todo.
+const PRIOR = 20;
+const accKey = (mode, diff) => `${mode}:${diff}`;
+function playerAcc(user, mode, diff) {
+  const r = ((user.quizAcc ||= {})[accKey(mode, diff)]) || { ok: 0, n: 0 };
+  const base = DIFFS[diff].acc;
+  const prior = DIFFS[diff].prior || PRIOR;
+  const n = r.n + prior;
+  const mean = (r.ok + prior * base) / n;
+  // Estimación prudente (media + una desviación + 1 punto): con pocos datos se supone que el jugador es mejor.
+  return Math.min(0.995, Math.max(base, mean + Math.sqrt((mean * (1 - mean)) / n) + 0.01));
+}
+function noteAnswer(user, g, ok) {
+  const r = ((user.quizAcc ||= {})[accKey(g.mode, g.diff)] ||= { ok: 0, n: 0 });
+  r.n++;
+  if (ok) r.ok++;
+}
 const payoutOf = (user, bet, mult) => Math.min(Math.floor(bet * mult), PAYOUT_CAP * hub.maxBetFor(user));
 
 // ---------- Texto ----------
@@ -428,8 +453,9 @@ function view(user, g) {
   const bonusNext = g.target && g.streak + 1 === g.target;
   return {
     mode: g.mode, diff: g.diff, bet: g.bet, target: g.target, streak: g.streak, n: g.n, phase: g.phase, done: g.done,
-    mult: finalMult(g.diff, g.streak, false), next: finalMult(g.diff, g.streak + 1, bonusNext),
-    cash: g.streak > 0 ? payoutOf(user, g.bet, finalMult(g.diff, g.streak, false)) : 0,
+    mult: finalMult(g.diff, g.streak, false, g.acc), next: finalMult(g.diff, g.streak + 1, bonusNext, g.acc),
+    cash: g.streak > 0 ? payoutOf(user, g.bet, finalMult(g.diff, g.streak, false, g.acc)) : 0,
+    ladder: Array.from({ length: DIFFS[g.diff].max }, (_, i) => ladder(g.diff, i + 1, g.acc)),
     q: playing && g.phase === 'ask' ? publicQ(g, now) : null,
   };
 }
@@ -453,6 +479,7 @@ function reveal(g) {
   return q.kind === 'type' ? { name: q.reveal, names: q.names, img: imgToken(q.id, 'color') } : { answer: q.answer, idx: q.idx };
 }
 function lose(user, g, timeout) {
+  noteAnswer(user, g, false);
   const rv = reveal(g);
   g.done = true; g.phase = 'over';
   bump(user, g);
@@ -473,7 +500,7 @@ function start(user, { bet, mode, diff, target }) {
   if (!DIFFS[diff]) throw new Error('Dificultad no válida.');
   target = Number(target) || 0;
   if (target && (!TARGETS.includes(target) || target > DIFFS[diff].max)) throw new Error('Objetivo no válido.');
-  const g = { mode, diff, bet: 0, target, streak: 0, n: 0, phase: 'ask', done: false, q: null, recent: [], lastAct: Date.now() };
+  const g = { mode, diff, bet: 0, target, streak: 0, n: 0, phase: 'ask', done: false, q: null, recent: [], lastAct: Date.now(), acc: playerAcc(user, mode, diff) };
   issue(user, g); // si algo falla al generar, no se ha cobrado nada
   g.bet = hub.takeBet(user, bet, 'quiz');
   user.games.quiz = g;
@@ -482,7 +509,7 @@ function start(user, { bet, mode, diff, target }) {
 }
 
 function win(user, g, bonus) {
-  const mult = finalMult(g.diff, g.streak, bonus);
+  const mult = finalMult(g.diff, g.streak, bonus, g.acc);
   const amount = payoutOf(user, g.bet, mult);
   const paid = hub.pay(user, amount, g.bet, 'quiz').paid;
   g.done = true; g.phase = 'over'; g.q = null;
@@ -509,6 +536,7 @@ function answer(user, { option, text, giveUp }) {
     ok = matches(text, q.names);
   }
   if (!ok) return lose(user, g, false);
+  noteAnswer(user, g, true);
   const rv = reveal(g);
   g.streak++;
   g.q = null;
@@ -545,11 +573,22 @@ function cashout(user) {
   return { game: view(user, g), ...r };
 }
 
+// Escaleras personales (para mostrarlas antes de jugar).
+function myLadders(user) {
+  const out = {};
+  for (const mode of ['type', 'choice']) for (const d of Object.keys(DIFFS)) {
+    const acc = playerAcc(user, mode, d);
+    out[accKey(mode, d)] = { acc: Math.round(acc * 1000) / 10, ladder: Array.from({ length: DIFFS[d].max }, (_, i) => ladder(d, i + 1, acc)) };
+  }
+  return out;
+}
+
 function state(user) {
   const g = user.games.quiz;
-  if (!g || g.done) return { game: null, best: { ...best(user) } };
+  const ladders = myLadders(user);
+  if (!g || g.done) return { game: null, best: { ...best(user) }, ladders };
   settle(user, g);
-  return { game: g.done ? null : view(user, g), best: { ...best(user) } };
+  return { game: g.done ? null : view(user, g), best: { ...best(user) }, ladders };
 }
 
 // Mejores rachas por dificultad (top 10).
@@ -575,5 +614,5 @@ const STATIC = {
   targets: TARGETS, targetBonus: TARGET_BONUS, maxStreak: MAX_STREAK, maxMult: MAX_MULT, payoutCap: PAYOUT_CAP,
 };
 
-module.exports = { DIFFS, ladder, finalMult, payoutOf, LADDER_BASE, TARGET_BONUS, MAX_MULT, MAX_STREAK, TARGETS, PAYOUT_CAP, GRACE_MS, STATIC,
+module.exports = { playerAcc, PRIOR, DIFFS, ladder, finalMult, payoutOf, LADDER_BASE, TARGET_BONUS, MAX_MULT, MAX_STREAK, TARGETS, PAYOUT_CAP, GRACE_MS, STATIC,
   normalize, lev, matches, genChoice, genType, GEN, BANK, POOLS, start, answer, next, cashout, state, board, peek, imgHandler, processImage, decodePng, encodePng };

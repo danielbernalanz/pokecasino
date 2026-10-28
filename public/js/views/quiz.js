@@ -30,6 +30,8 @@ export default {
     let diff = pref('diff', 'normal');
     let target = Number(pref('target', '0')) || 0;
     let game = null;
+    // Escaleras personales (el servidor las ajusta a la precisión real de cada jugador).
+    let personal = {};
     let busy = false;
     let timer = null; let autoNext = null; let endAt = 0; let limit = 1; let lastSec = -1;
     let bestMap = {};
@@ -83,12 +85,13 @@ export default {
       drawLadder(preview, diff, 0, target, 8);
       const b = bestMap[diff];
       bestLine.replaceChildren('Tu mejor racha en ', h('b', {}, diffById[diff].label), ': ', h('b', { class: 'good' }, String(b || 0)),
-        h('span', { class: 'muted' }, ` · pago máximo por ronda ${Q.payoutCap} × tu límite de apuesta (×${Q.maxMult} máx.)`));
+        h('span', { class: 'muted' }, ` · pago máximo por ronda ${Q.payoutCap} × tu límite de apuesta (×${Q.maxMult} máx.)`),
+        personal[`${mode}:${diff}`] ? h('div', { class: 'small muted' }, `Tus multiplicadores se ajustan a tu precisión (${String(personal[`${mode}:${diff}`].acc).replace('.', ',')} % en este modo): cuanto más aciertas, más bajos.`) : '');
       drawBoard();
     }
     // Tira de multiplicadores: iluminados los ya conseguidos; el objetivo lleva bandera.
     function drawLadder(el, d, streak, tgt, cap) {
-      const lad = diffById[d].ladder;
+      const lad = (game && !game.done && game.diff === d && game.ladder) || (personal[`${mode}:${d}`] || {}).ladder || diffById[d].ladder;
       const n = Math.min(cap || diffById[d].max, tgt || diffById[d].max);
       el.replaceChildren(...Array.from({ length: n }, (_, i) => {
         const k = i + 1;
@@ -311,7 +314,7 @@ export default {
     // ---- Clasificación ----
     async function refreshBoard() {
       try { board = (await emit('quiz:board')).board; } catch { /* sin clasificación */ }
-      try { bestMap = (await emit('quiz:state')).best || bestMap; } catch { /* nada */ }
+      try { const st = await emit('quiz:state'); bestMap = st.best || bestMap; personal = st.ladders || personal; } catch { /* nada */ }
       drawBoard();
       if (!setup.classList.contains('hidden')) { /* el récord se ve en el pie del selector */ drawBestOnly(); }
     }
@@ -341,6 +344,7 @@ export default {
     try {
       const st = await emit('quiz:state');
       bestMap = st.best || {};
+      personal = st.ladders || {};
       game = st.game;
     } catch { /* sin partida */ }
     if (game && !game.done) { mode = game.mode; diff = game.diff; if (game.phase === 'ask' && game.q) drawQuestion(game.q); else { show(true); drawHud(); stage.className = 'qz-stage right'; stage.replaceChildren(h('div', { class: 'qz-qn small muted' }, 'Partida en curso'), h('div', { class: 'qz-actions' }, h('button', { class: 'btn primary big', onclick: next }, `Siguiente pregunta · ${mf(game.next)}`), h('button', { class: 'btn gold big', onclick: cashout }, `Retirar ${fmt(game.cash)}`))); } }

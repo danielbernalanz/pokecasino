@@ -297,3 +297,18 @@ Juego de habilidad con apuesta progresiva (como Minas): cada acierto sube el mul
 * **Antifraude**: la pregunta, la respuesta, el plazo y las opciones barajadas viven en `user.games.quiz`; al cliente solo llegan el enunciado, las opciones y los milisegundos restantes. El plazo se controla en el servidor (+1 s de margen de latencia, +1 s más si hay imagen); quedarse sin tiempo, aunque no se vuelva a contestar, pierde la ronda. No hay cobro ni nueva pregunta mientras hay una en juego (no se puede ver la pregunta y luego retirarse: eso sería selección adversa que rompería el RTP). Las imágenes se sirven por `/api/quiz/img/<token>` (el servidor descarga el *official artwork*, lo guarda en caché, y genera **la silueta o el recorte en el propio servidor**; el token no contiene el número). Mínimo 250 ms entre acciones y el límite de eventos del socket.
 
 **Límite conocido (lo importante).** Como toda escalera geométrica, el RTP crece rápido si aciertas **más** de lo supuesto: con `+5` puntos de precisión el mejor plan devuelve ≈ 145 % (Fácil), 228 % (Normal), 201 % (Difícil) y 156 % (Maestro), y alguien que acierte el 99 % (por ejemplo buscando las respuestas) ganaría muchas veces la apuesta. Lo mitigan los tiempos cortos, que el modo de escribir y Maestro no tengan opciones que buscar a ciegas, el tope de pago por ronda (20 × límite de apuesta), la racha máxima por dificultad y el tope ×50; pero **no se elimina**. Si se detectara abuso, las medidas siguientes son baratas: precisión efectiva por jugador (ajustar la escalera con su acierto histórico), reducir el límite de apuesta del juego o quitar Fácil/Normal con rachas largas.
+
+### Desafío Pokémon: escalera personal (revisión)
+
+La escalera fija (`0,94 / acc^k`) dejaba ganar a quien acierta más de lo supuesto: con +5 puntos de precisión
+devolvía 145–228 %, y buscando las respuestas, aún más. Ahora cada jugador tiene su propia escalera por modo y
+dificultad, calculada con una estimación prudente de su precisión real:
+
+- se empieza suponiendo un experto (≥ 90 %, peso de 8 preguntas), y la estimación es media + 2 desviaciones + 1 punto;
+- nunca baja de la precisión supuesta de la dificultad (quien falla más que eso juega con la escalera original);
+- la escalera de cada ronda se fija al empezarla.
+
+`test/quiz.test.js` simula 400 rondas por dificultad con jugadores del 99 % y de la precisión supuesta + 10 puntos,
+con el mejor punto de retirada para cada uno: el retorno esperado queda por debajo del 100 % en todos los casos.
+Coste: un jugador honrado muy bueno ve multiplicadores algo más bajos (≈ 85–90 % de retorno) y los primeros
+partidos de cualquiera empiezan con multiplicadores prudentes, que suben a medida que juega.

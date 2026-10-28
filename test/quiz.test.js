@@ -199,6 +199,7 @@ test('retirarse paga apuesta × multiplicador y solo entre preguntas', () => {
   const u = user();
   const before = u.coins;
   quiz.start(u, { bet: 1000, mode: 'choice', diff: 'dificil' });
+  const acc = u.games.quiz.acc; // escalera personal (se parte de suponer un experto)
   assert.throws(() => { free(u); quiz.cashout(u); }, /entre pregunta/);
   const r1 = right(u);
   assert.strictEqual(r1.correct, true);
@@ -209,7 +210,7 @@ test('retirarse paga apuesta × multiplicador y solo entre preguntas', () => {
   right(u);
   free(u);
   const out = quiz.cashout(u);
-  const mult = quiz.ladder('dificil', 2);
+  const mult = quiz.ladder('dificil', 2, acc);
   assert.strictEqual(out.mult, mult);
   assert.strictEqual(out.paid, Math.floor(1000 * mult));
   assert.strictEqual(u.coins, before - 1000 + Math.floor(1000 * mult));
@@ -220,13 +221,14 @@ test('con objetivo se cobra solo al alcanzarlo, con +3 %', () => {
   const u = user();
   const before = u.coins;
   quiz.start(u, { bet: 1000, mode: 'choice', diff: 'normal', target: 3 });
+  const acc = u.games.quiz.acc;
   right(u); free(u); quiz.next(u);
   right(u); free(u); quiz.next(u);
   const r = right(u);
   assert.strictEqual(r.auto, true);
   assert.strictEqual(r.bonus, true);
-  assert.strictEqual(r.mult, quiz.finalMult('normal', 3, true));
-  assert.ok(r.mult > quiz.ladder('normal', 3));
+  assert.strictEqual(r.mult, quiz.finalMult('normal', 3, true, acc));
+  assert.ok(r.mult > quiz.ladder('normal', 3, acc));
   assert.strictEqual(u.coins, before - 1000 + r.paid);
   assert.strictEqual(r.game.done, true);
   assert.throws(() => quiz.start(u, { bet: 100, mode: 'choice', diff: 'normal', target: 4 }), /Objetivo/);
@@ -247,22 +249,24 @@ test('mejor racha por dificultad y clasificación', () => {
 
 test('tope: ×50 como máximo, racha máxima por dificultad y pago ≤ 20 × el límite de apuesta', () => {
   assert.ok(quiz.MAX_MULT === 50 && quiz.MAX_STREAK === 20 && quiz.PAYOUT_CAP === 20);
-  assert.deepStrictEqual(DIFFS.map((d) => quiz.DIFFS[d].max), [10, 15, 12, 6]);
+  assert.deepStrictEqual(DIFFS.map((d) => quiz.DIFFS[d].max), [5, 6, 6, 5]);
   for (const d of DIFFS) for (let k = 1; k <= 40; k++) assert.ok(quiz.finalMult(d, k, true) <= 50);
   const u = user();
   const maxBet = hub.maxBetFor(u);
   const before = u.coins;
   quiz.start(u, { bet: maxBet, mode: 'choice', diff: 'maestro' });
-  u.games.quiz.streak = 4; // atajo: la escalera de Maestro llega pronto a ×50
-  const r5 = right(u);
-  assert.strictEqual(r5.correct, true);
-  assert.ok(!r5.auto);
+  u.games.quiz.streak = 3; // atajo: la escalera de Maestro sube muy deprisa
+  u.games.quiz.acc = quiz.DIFFS.maestro.acc; // como un jugador con la precisión supuesta (50 %)
+  const r4 = right(u);
+  assert.strictEqual(r4.correct, true);
+  assert.ok(!r4.auto);
   free(u); quiz.next(u);
-  const out = right(u); // 6.º acierto: ×50 y cobro automático (racha máxima de Maestro)
-  assert.strictEqual(quiz.ladder('maestro', 6), 50);
+  const out = right(u); // 5.º acierto: cobro automático (racha máxima de Maestro)
+  const m5 = quiz.ladder('maestro', 5, quiz.DIFFS.maestro.acc);
+  assert.ok(m5 > 20 && m5 <= 50);
   assert.strictEqual(out.auto, true);
-  assert.strictEqual(out.mult, 50);
-  assert.strictEqual(out.paid, 20 * maxBet); // 50 × apuesta superaría el tope de 20 × límite de apuesta
+  assert.strictEqual(out.mult, m5);
+  assert.strictEqual(out.paid, 20 * maxBet); // más de ×20 superaría el tope de 20 × límite de apuesta
   assert.strictEqual(out.capped, true);
   assert.ok(u.coins - before >= 19 * maxBet && u.coins - before < 19 * maxBet + 1000); // + subidas de nivel por la XP
   // El último acierto de la dificultad cobra solo
@@ -372,5 +376,36 @@ test('RTP simulado con el código real: expertos y casuales, por dificultad', ()
     let sum = 0;
     for (let i = 0; i < N; i++) sum += round(d, p - 0.15, 3, 0) / BET;
     assert.ok(sum / N < 0.9, `${d} casual: ${(sum / N).toFixed(3)}`);
+  }
+});
+
+test('la escalera se adapta a la precisión real: ni un experto (o quien busque) gana a la larga', () => {
+  const quiz = require('../server/games/quiz');
+  for (const diff of Object.keys(quiz.DIFFS)) {
+    const D = quiz.DIFFS[diff];
+    for (const p of [Math.min(0.99, D.acc + 0.1), 0.99]) {
+      // Mejor punto de retirada fijo para ese jugador, rondas sucesivas con la precisión que va aprendiendo el juego.
+      let best = 0;
+      for (let k = 1; k <= D.max; k++) {
+        const user = { quizAcc: {} };
+        let bet = 0, paid = 0;
+        for (let round = 0; round < 400; round++) {
+          const acc = quiz.playerAcc(user, 'choice', diff);
+          const rec = (user.quizAcc[`choice:${diff}`] ||= { ok: 0, n: 0 });
+          bet += 1;
+          let streak = 0;
+          while (streak < k) {
+            const ok = Math.random() < p;
+            rec.n++; if (ok) rec.ok++;
+            if (!ok) break;
+            streak++;
+          }
+          // Pago esperado de la ronda (sin el azar del cobro, que solo añade ruido a la medida).
+          paid += Math.pow(p, k) * Math.min(quiz.MAX_MULT, quiz.ladder(diff, k, acc));
+        }
+        best = Math.max(best, paid / bet);
+      }
+      assert.ok(best < 1, `${diff} con precisión ${p}: devuelve ${(best * 100).toFixed(1)} %`);
+    }
   }
 });
