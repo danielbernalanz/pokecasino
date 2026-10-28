@@ -13,6 +13,7 @@ const hub = require('./hub');
 const net = require('./netguard');
 const dex = require('./pokedex');
 const gacha = require('./gacha');
+const locked = require('./locked');
 const slots = require('./games/slots');
 const roulette = require('./games/roulette');
 const voltorb = require('./games/voltorb');
@@ -319,7 +320,7 @@ function economy() {
     players: users.length, active7: users.filter((u) => (u.lastSeen || u.createdAt) > week).length,
     top10share: wallets ? rich.slice(0, Math.max(1, Math.ceil(users.length / 10))).reduce((s, u) => s + u.coins, 0) / wallets : 0,
     median: rich.length ? rich[Math.floor(rich.length / 2)].coins : 0,
-    npc: npc.treasury(),
+    npc: npc.treasury(), suspicious: require('./suspicious').flagged(),
     days, names: hub.GAME_LABELS, log: (db.data.adminLog || []).slice(-60).reverse(),
   };
 }
@@ -521,6 +522,8 @@ io.on('connection', (socket) => {
   on('shop:craft', gacha.craft);
   on('shop:exchange', gacha.exchangeDust);
   on('shop:release', gacha.release);
+  on('locked:unlock', locked.unlock);
+  on('locked:state', (u) => locked.view(u) || { box: {}, prog: null }, { push: false });
   on('me:history', (u) => ({ history: hub.history(u) }), { push: false });
   on('buddy:set', setBuddy);
   on('buddy:mega', mega.setBuddyMega);

@@ -38,6 +38,7 @@ function card(r, cls = '') {
   return h('div', { class: `gx-card r-${r.rarity}${r.shiny ? ' shiny' : ''} ${cls}` },
     r.isNew ? h('span', { class: 'gx-tag' }, '¡NUEVO!') : null,
     r.newShiny ? h('span', { class: 'gx-tag shiny' }, '✨') : null,
+    r.unlocked ? h('span', { class: 'gx-tag unlocked' }, '🔓 ¡Recuperado!') : null,
     pokeImg(r.id, r.shiny, 'gx-card-art'),
     h('b', {}, p.name),
     h('span', { class: 'gx-stars' }, '★'.repeat(r.stars)),
@@ -174,6 +175,7 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
         await wait(110);
       }
       if (r.isNew) tags.append(h('span', { class: 'gx-stamp' }, '¡NUEVO!'));
+      if (r.unlocked) tags.append(h('span', { class: 'gx-stamp' }, '🔓 ¡Recuperado!'));
       if (r.newShiny) tags.append(h('span', { class: 'gx-stamp shiny' }, '✨ VARIOCOLOR NUEVO'));
       if (r.dust) tags.append(h('span', { class: 'gx-stamp dust' }, `+${r.dust} ✦ polvo`));
       if (!final) {

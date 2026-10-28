@@ -141,12 +141,16 @@ function rollPokemon(rarity, banner, { masterBall = false } = {}) {
 }
 
 // Añade un Pokémon a la colección. Más allá de 5 copias se convierte en polvo estelar.
-function grant(user, id, shiny) {
+// `unlock`: si la especie estaba con candado (ver locked.js), sus copias vuelven a la colección (solo desde el gacha).
+function grant(user, id, shiny, { unlock = false } = {}) {
   const p = BY_ID.get(id);
+  const unlocked = unlock && !!(user.locked && user.locked[id]);
+  let back = 0;
+  if (unlocked) back = require('./locked').restore(user, id);
   const c = (user.collection[id] ||= { n: 0, s: 0 });
   const isNew = c.n === 0;
   const newShiny = shiny && c.s === 0;
-  let dust = 0;
+  let dust = back;
   if (c.n < 5) c.n++;
   else dust += RARITY[p.rarity].dust;
   if (shiny) {
@@ -154,7 +158,7 @@ function grant(user, id, shiny) {
     else dust += RARITY[p.rarity].dust * 3;
   }
   user.dust += dust;
-  return { isNew, newShiny, dust, stars: Math.min(5, c.n) };
+  return { isNew, newShiny, dust, stars: Math.min(5, c.n), ...(unlocked ? { unlocked: true } : {}) };
 }
 
 function pull(user, { banner: bannerId, count, free, ticket }) {
@@ -196,13 +200,14 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
     const charm = user.buffs.shinyCharges > 0;
     if (charm) user.buffs.shinyCharges--;
     const shiny = rand() < SHINY_RATE * (charm ? 4 : 1) * (require('./events').has('shiny') ? 2 : 1);
-    const g = grant(user, poke.id, shiny);
+    const g = grant(user, poke.id, shiny, { unlock: true });
     results.push({ id: poke.id, name: poke.name, rarity, shiny, masterBall, ...g });
     if (rarity === 'L' || rarity === 'M' || (shiny && rarity !== 'C')) {
       hub.feed('gacha', `✨ ${user.username} obtuvo ${shiny ? 'un ' + poke.name + ' VARIOCOLOR' : poke.name} (${RARITY[rarity].name}) en "${banner.name}"`, { pokeId: poke.id, shiny });
     }
   }
   user.stats.pulls += count;
+  require('./locked').accrue(user);
   hub.addXp(user, count * 15);
   hub.track(user, 'pull', { count });
   // Las tiradas x10 pueden traer objetos de regalo.

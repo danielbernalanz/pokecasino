@@ -70,9 +70,26 @@ function econActive(u) {
   const d = econDay();
   if (!d.active.includes(u.id)) d.active.push(u.id);
 }
+// Seguimiento de ingresos por motivo (para detectar saldos sin origen): `hist.income[motivo]` acumula todo lo que entra
+// y sale (las partidas, netas, bajo «games»), `hist.incomeBase` es el saldo antes del primer movimiento seguido
+// y `hist.flow[día]` guarda lo ganado en neto y lo dado por anfitriones (14 días). Las cuentas antiguas solo
+// quedan explicadas desde que empezó el seguimiento. Ver suspicious.js.
+const FLOW_DAYS = 14;
+function trackIncome(user, reason, delta) {
+  if (!delta || user.npc) return;
+  const hst = histOf(user);
+  if (!hst.income) { hst.income = {}; hst.incomeBase = user.coins - delta; hst.incomeSince = Date.now(); hst.flow = {}; }
+  hst.income[reason] = (hst.income[reason] || 0) + delta;
+  const k = dayKey();
+  const f = hst.flow[k] || (hst.flow[k] = { net: 0, admin: 0 });
+  f.net += delta;
+  if (reason === 'admin' && delta > 0) f.admin += delta;
+  prune(hst.flow, FLOW_DAYS);
+}
 function ledger(user, delta, reason, label) {
   delta = Math.round(Number(delta) || 0);
   if (!user || !delta) return;
+  trackIncome(user, reason, delta);
   const hst = histOf(user);
   hst.log.push(label ? { t: Date.now(), d: delta, r: reason, l: String(label).slice(0, 60) } : { t: Date.now(), d: delta, r: reason });
   if (hst.log.length > 100) hst.log.splice(0, hst.log.length - 100);
@@ -88,6 +105,7 @@ function gameStat(user, game, bet, won, round = bet > 0 ? 1 : 0) {
   if (!game) return;
   const g = (histOf(user).games[game] ||= { bet: 0, won: 0, n: 0 });
   g.bet += bet; g.won += won; g.n = Math.max(0, g.n + round);
+  trackIncome(user, 'games', won - bet);
   daySnap(user);
   const d = econDay();
   if (bet) { d.bet[game] = (d.bet[game] || 0) + bet; d.rounds[game] = Math.max(0, (d.rounds[game] || 0) + round); }
@@ -168,6 +186,7 @@ function takeBet(user, amount, game, { extra = false, quiet = false, noXp = fals
   if (user.coins < amount) throw new Error('No tienes suficientes monedas.');
   user.coins -= amount;
   user.stats.wagered += amount;
+  require('./locked').accrue(user);
   gameStat(user, game, amount, 0, extra ? 0 : 1);
   if (!noXp) addXp(user, amount * BAL.xpRate(game));
   accrueBonus(user, amount, game);
@@ -240,7 +259,7 @@ function privateUser(u) {
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy,
     buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
-    bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, locked: lockedCoins(u),
+    bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, lockedCoins: lockedCoins(u), locked: lockedView(u).box, lockedProg: lockedView(u).prog,
     progress: require('./progress').view(u), mega: require('./mega').privateView(u),
   };
 }
@@ -249,6 +268,8 @@ function privateUser(u) {
 function lockedCoins(u) {
   return require('./market').lockedIn(u) + Object.values(db.data.escrow).filter((e) => e.userId === u.id).reduce((s, e) => s + e.amount, 0);
 }
+
+const lockedView = (u) => require('./locked').view(u) || { box: {}, prog: null };
 
 const pushMe = (u) => { if (u.npc) return; daySnap(u); emitUser(u.id, 'me', privateUser(u)); };
 

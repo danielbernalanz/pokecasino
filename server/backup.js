@@ -81,6 +81,7 @@ function audit() {
   // Una línea por jugador: los logs cortan las líneas muy largas.
   console.log('  🔎 AUDITORIA ' + JSON.stringify({ at: new Date().toISOString(), adminLog: adminLog.slice(-50) }));
   for (const r of rows) console.log('  🔎 AUDITORIA-JUGADOR ' + JSON.stringify(r));
+  for (const f of require('./suspicious').flagged()) console.log(`  ⚠️ SALDO SOSPECHOSO ${f.username}: ${f.coins} monedas (+${f.locked} apartadas) · explicado ${f.explained} · ${f.reasons.join(' · ')}`);
   // Ficha completa de las cuentas corregidas: cualquier rastro que quede (contadores, títulos, récords…).
   for (const name of ['piti13579', 'tusmuertos']) {
     const u = db.userByName(name);

@@ -1350,3 +1350,13 @@ button.mk-ocard { cursor: pointer; }
 .mk-who { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
 .mk-who b { font-weight: 800; }
 .mk-who-ico { font-size: 13px; }
+
+/* Pokémon con candado */
+.locked-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card, rgba(255,255,255,.04)); font-size: 13px; margin-bottom: 10px; }
+.locked-banner[hidden] { display: none; }
+.dex-card.locked { position: relative; filter: grayscale(1); opacity: .6; }
+.lock-tag { position: absolute; top: 4px; right: 4px; font-size: 14px; filter: none; }
+.detail-art.locked-art { filter: grayscale(1); opacity: .7; }
+.locked-tag { font-weight: 700; }
+.set-mon.locked img { filter: grayscale(1); opacity: .7; }
+.gx-tag.unlocked { background: #0ea5e9; color: #fff; }

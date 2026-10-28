@@ -36,6 +36,12 @@ export async function economyPanel() {
         tile('Total', fmt(e.total)), tile('En carteras', fmt(e.wallets)), tile('En el Mercado', fmt(e.market)), tile('En juego ahora', fmt(e.escrow)),
         tile('Saldo mediano', fmt(e.median)), tile('Del 10 % más rico', pct(e.top10share)), tile('Jugadores', `${e.players}`, `${e.active7} activos en 7 días`),
         e.npc ? tile('Tesorería NPC', fmt(e.npc.coins + e.npc.locked), `${fmt(e.npc.coins)} libres · ${fmt(e.npc.locked)} en pedidos · inicial ${fmt(e.npc.start)}`) : null)),
+    h('div', { class: 'card stack' }, h('h3', {}, '🚨 Saldos sospechosos'),
+      h('p', { class: 'muted small' }, 'Compara las monedas de cada jugador con lo que se explica por sus movimientos (saldo inicial + ingresos y partidas registrados). Marca a quien tiene más de 20.000 de más, más de 20.000 dadas por anfitriones en 7 días o más de 50.000 netos en un día. Solo cuenta desde que empezó el seguimiento en cada cuenta: las antiguas se juzgan desde ahí.'),
+      (e.suspicious || []).length ? h('div', { class: 'hl-list' }, e.suspicious.map((f) => h('div', { class: 'hl-row sus-row' },
+        h('span', {}, h('b', {}, f.username), ` · ${fmt(f.coins)} monedas${f.locked ? ` (+${fmt(f.locked)} apartadas)` : ''} · explicado ${fmt(f.explained)}`,
+          h('div', { class: 'bad small' }, f.reasons.join(' · '))), h('span', {}), h('span', {}))))
+        : h('p', { class: 'good small' }, '✔ Ningún saldo sospechoso.')),
     h('div', { class: 'card stack' }, h('h3', {}, '📅 Últimos días'),
       h('p', { class: 'muted small' }, 'Creadas: recompensas, Enfermera Joy, polvo, ajustes… Destruidas: gacha, tienda, comisiones e impuestos del Mercado y lo que gana la casa en los juegos. Si «Neto» es positivo muchos días seguidos, hay inflación. La tesorería de los comerciantes NPC no cuenta en el total (el fondo inicial aparece una vez como «Fondo NPC»).'),
       h('div', { class: 'table-wrap' }, h('table', { class: 'admin-table' },

@@ -146,6 +146,27 @@ const FIXES = [
       return out;
     },
   },
+  {
+    // Recorte «inteligente» de la Pokédex inflada con tiradas pagadas con monedas del abuso: en vez de borrar,
+    // se bloquean con candado (se recuperan apostando, tirando o saliendo en el gacha; ver locked.js) hasta
+    // dejar 120 especies. Primero las de menos valor: no variocolor, no compañero, ni legendarias/míticas, ni
+    // de colecciones completas, ni base de una Mega desbloqueada.
+    id: 'candado-2026-10-28',
+    apply() {
+      const locked = require('./locked');
+      const out = [];
+      for (const name of ['piti13579', 'tusmuertos']) {
+        const u = db.userByName(name);
+        if (!u) continue;
+        const before = Object.keys(u.collection).length;
+        const ids = locked.lockDown(u, 120);
+        out.push(`${name}: ${before} → ${Object.keys(u.collection).length} especies, ${ids.length} con candado`);
+      }
+      db.data.adminLog ||= [];
+      db.data.adminLog.push({ at: Date.now(), by: 'sistema', action: 'fix', target: 'piti13579, tusmuertos', detail: ('Pokémon con candado: ' + out.join(' · ')).slice(0, 400) });
+      return out;
+    },
+  },
 ];
 
 // Copia de seguridad y después las correcciones pendientes.

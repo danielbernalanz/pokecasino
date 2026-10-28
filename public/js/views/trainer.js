@@ -87,7 +87,16 @@ export default {
           await openEgg(e.target);
         } }, `Abrir huevo (${eggs})`));
 
-      body.replaceChildren(card,
+      // --- Caja con candado (solo si hay algo) ---
+      const lockedIds = Object.keys(me.locked || {}).map(Number);
+      const lp = me.lockedProg;
+      const lockedBox = lockedIds.length ? h('div', { class: 'card stack locked-box' },
+        h('h3', {}, `🔒 Caja con candado (${lockedIds.length})`),
+        h('p', { class: 'small muted' }, `Pokémon guardados que no cuentan en tu Pokédex ni en el ranking. Recuperaciones disponibles: ${lp ? lp.credits : 0} · progreso ${lp ? `${fmt(lp.wager)}/${fmt(lp.step.wager)} apostadas o ${lp.pulls}/${lp.step.pulls} tiradas` : ''}. También vuelven solos si te salen en el gacha.`),
+        h('div', { class: 'set-mons' }, lockedIds.map((id) => h('span', { class: 'set-mon owned locked', title: S.dexById.get(id).name },
+          h('img', { class: 'pixel', src: sprite(id), alt: S.dexById.get(id).name }))))) : null;
+
+      body.replaceChildren(card, lockedBox,
         h('h2', { class: 'section-title' }, `Medallas de Kanto (${got}/8)`), perks, badges,
         h('h2', { class: 'section-title' }, 'Aspecto'),
         h('div', { class: 'cards3' }, slotBox('frame', '🖼️ Marco de avatar'), slotBox('cardback', '🂠 Dorso de carta'), slotBox('title', '🏷️ Título'), eggBox),
