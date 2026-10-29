@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026.10.29-c",
+    "date": "2026-10-29",
+    "title": "Nueva interfaz de menú Pokémon",
+    "items": [
+      "🎮 Todo el casino estrena aspecto de juego de Pokémon: paneles con marco, barra roja de Poké Ball, botones de menú con cursor ▶ y avisos en la caja de texto de abajo.",
+      "🌙 Modo noche: actívalo en tu menú (por defecto sigue a tu dispositivo).",
+      "🧭 Menos menús: Inicio, Casino, Pokémon, Mercado y Entrenador, cada uno con fichas grandes. El Profesor Oak te sugiere qué probar y marca con «¡Nuevo!» lo que aún no has visitado; la primera vez que abres cada apartado clave ganas 50 monedas.",
+      "🖥️ Caja PC como en los juegos: cajas de 30 huecos con fondos, panel del Pokémon elegido y pantalla de Datos por páginas.",
+      "✨ Detallitos: Chansey en el Centro Pokémon, Meowth con tus monedas, Kecleon en la Tienda, Jigglypuff en el sonido, Pikachu en los grandes premios y Gengar por la noche."
+    ]
+  },
+  {
     "version": "2026.10.29-b",
     "date": "2026-10-29",
     "title": "Pokémon animados y Desafío sin preguntas repetidas",

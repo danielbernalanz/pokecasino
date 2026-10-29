@@ -19,7 +19,8 @@ const hubs = SECTIONS.filter((s) => s.id !== 'lobby').map((sec) => ({
     root.append(
       h('div', { class: 'game-head' }, h('h1', { class: 'hub-title' }, h('span', { class: 'hub-ico' }, secIcon(sec)), sec.label, monImg(MON.unown, 'unown-deco'))),
       say({ ...sec.say, cls: 'compact' }),
-      ...groupsOf(sec).map((g) => h('section', { class: 'hub-group' }, h('h2', { class: 'section-title' }, g.name), h('div', { class: 'hub-grid' }, g.items.map(card)))));
+      ...groupsOf(sec).map((g) => h('section', { class: 'hub-group' }, h('h2', { class: 'section-title' }, g.name), h('div', { class: 'hub-grid' }, g.items.map(card)))),
+      h('div', { class: 'footprints', 'aria-hidden': 'true' }));
   },
 }));
 export default hubs;
