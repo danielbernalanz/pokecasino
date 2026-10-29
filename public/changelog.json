@@ -1,5 +1,19 @@
 [
   {
+    "version": "2026.10.29-d",
+    "date": "2026-10-29",
+    "title": "Combates Pokémon de verdad y progresión casual",
+    "items": [
+      "⚔️ Nuevos Combates (Pokémon → Combates) con el simulador de Pokémon Showdown: individuales y dobles, movimientos y habilidades reales en español, Megaevolución. Lucha contra 20 entrenadores (los líderes de gimnasio se desbloquean con medallas) o reta a otros jugadores con apuesta opcional.",
+      "🛠️ Monta tus equipos desde la Caja PC y elige los movimientos de cada Pokémon. Ganar a la CPU da monedas (hasta 10 victorias al día), caramelos y amistad; perder no cuesta nada.",
+      "🔌 Si el casino se actualiza en mitad de un combate, se guarda y lo continúas donde lo dejaste.",
+      "📕 Completar la Pokédex ahora es mucho más rápido: el Gacha prefiere los Pokémon que te faltan, fabricar cuesta unas 4 veces menos, hay caramelos comodín y la primera evolución a una especie nueva es casi gratis.",
+      "⬆️ Maxear un Pokémon cuesta mucho menos: subir de nivel 4 veces más barato, entrenar IVs a 1 caramelo (60 al día), 5 Intercambios Milagrosos al día y la amistad sube más rápido.",
+      "🧭 Primera visita a cada apartado: ¡50 monedas de regalo!",
+      "🛡️ Regalos entre jugadores: hace falta nivel 3 y 3 días de cuenta, y cada uno puede recibir hasta 5.000 monedas regaladas al día."
+    ]
+  },
+  {
     "version": "2026.10.29-c",
     "date": "2026-10-29",
     "title": "Nueva interfaz de menú Pokémon",
