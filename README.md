@@ -1,0 +1,167 @@
+# 🎰 PokéCasino
+
+Casino Pokémon **online y multijugador** para jugar con tus amigos en una red privada. Monedas ficticias, sin dinero real. Proyecto de uso personal y no comercial; Pokémon y sus nombres son marcas de Nintendo / Game Freak / The Pokémon Company. Los sprites se cargan desde el repositorio público [PokeAPI/sprites](https://github.com/PokeAPI/sprites).
+
+## Qué incluye
+
+**12 juegos** (4 multijugador en tiempo real), gacha, mercado y objetos:
+
+| Juego | Tipo | Descripción |
+|---|---|---|
+| ♠️ **Texas Hold'em** | Multijugador | Póker No-Limit en 3 mesas (ciegas 10/20, 50/100, 250/500). Botes paralelos, all-in, 25 s por turno, sin comisión de la casa. |
+| 🚀 **Crash Rocket** | Multijugador | El multiplicador sube hasta que el Team Rocket sale volando; retírate a tiempo (manual o automático). |
+| 🏁 **Gran Carrera** | Multijugador | Carreras en directo cada ~45 s; todos ven la misma carrera. |
+| ⚔️ **Duelos PvP** | Multijugador | Reta a otros entrenadores con tus Pokémon; combate con tabla de tipos. |
+| 🃏 **Blackjack** | Mesa | 6 barajas, 3:2, doblar, dividir, el crupier se planta en 17. |
+| 🂡 **Video Póker** | Mesa | Jacks or Better 9/6. |
+| 🎴 **Baccarat** | Mesa | Punto, Banca (0,95:1) y Empate (8:1) con reglas oficiales de tercera carta. |
+| 🎡 **Ruleta de Tipos** | Mesa | 18 tipos + casilla Poké Ball. |
+| 🎰 **Pika-Slots** | Máquina | 5 líneas, Ditto comodín y bote progresivo compartido. |
+| 🔻 **Plinko** | Máquina | 12 filas, riesgo bajo/medio/alto, varias bolas a la vez. |
+| 💣 **Minas Geodude** | Máquina | 5×5, de 1 a 24 Geodude, retírate cuando quieras. |
+| ⚡ **Voltorb Flip** | Máquina | El minijuego de HeartGold/SoulSilver con 8 niveles. |
+| 🧠 **Desafío Pokémon** | Desafío | «¿Quién es ese Pokémon?» (escribe el nombre a partir de la silueta, un detalle o solo pistas) y Trivia (preguntas de opción múltiple generadas con la Pokédex + un banco de curiosidades de fan). 4 dificultades (Fácil 20 s, Normal 15 s, Difícil 12 s, Maestro 10 s), el multiplicador sube con cada acierto, retírate entre pregunta y pregunta o fija un objetivo de racha (3/5/10/15) con +3 %. Todo lo valida el servidor; las imágenes pasan por un proxy para no revelar el número del Pokémon. Clasificación de mejores rachas. |
+
+**Colección y economía**
+
+- 🎁 **Poké Gacha**: 2 banners activos: el **permanente** (Gran Banner Nacional, con los 1.025 Pokémon) y un **promocional rotativo** que cambia solo cada 3 días (Aves, Mewtwo/Mew y uno por región de Johto a Paldea, con sus legendarios destacados), sin pity (cada tirada es independiente: 1,75 % legendaria y 0,25 % mítica), al menos una Rara en cada sobre ×10, 50 % de destacado, variocolores 1/64 y tirada gratis diaria. Dentro de cada rareza, las **formas evolucionadas** salen mucho menos (primera evolución ×0,25 y evolución final ×0,06 respecto a una forma básica; legendarios y míticos no cambian): la evolución con caramelos llegará en una fase posterior. La **Master Ball** es la única legendaria segura y da la destacada del banner (se gana cada 25 niveles, al ser Campeón y, rara vez, en un ×10). Animación con la Poké Ball que sube de categoría al sacudirse (Poké → Super → Ultra → Master), «¿Quién es ese Pokémon?», explosiones de partículas, sonido, vibración y botón «Otra vez».
+- 📕 **Pokédex** con los 1.025 Pokémon de las 9 generaciones (nombres en español y estadísticas reales, que se usan en los duelos), filtro por región y estrellas por copias y compañero que da bonus a tus ganancias.
+- 🎒 **Objetos**: Ticket Gacha, Caramelo Raro, Huevo Suerte (XP ×2), Moneda Amuleto (+10 % ganancias y más margen de bonus), Amuleto Iris (variocolor ×4) y Master Ball (legendaria asegurada). Los cuatro primeros se compran en la Tienda Poké; los dos últimos solo se consiguen como premio (subir de nivel, racha diaria, tiradas ×10, Voltorb Flip) o en el Mercado.
+- 🏪 **Mercado** al estilo Albion Online, con pestañas **Comprar / Vender / Mis órdenes / Historial** y una caja «¿Cómo funciona el Mercado?». En *Comprar* cada artículo (Pokémon normales o variocolor, objetos, cosméticos y polvo estelar) muestra su precio más bajo y cuántos hay en venta, y se despliega para ver las **órdenes individuales** (vendedor, cantidad, precio, tiempo restante) con su propio botón «Comprar». «Comprar» toma al momento las ofertas más baratas y «Pedido de compra» publica tu precio; en *Vender*, «Vender» llena los pedidos más altos y «Orden de venta» publica el tuyo. Las órdenes duran **1, 3, 7 o 14 días** (por defecto 14) y, si caducan o las cancelas, se devuelve lo que quede en depósito. Comisión de publicación 1,5 % (no se devuelve) e impuesto de venta 3 %; comprar o vender al momento no paga comisión. Llenados parciales, gráfica de precios de 30 días e historial de operaciones.
+
+**Progresión (de novato a campeón)**
+
+1. **Ruta del Entrenador**: 10 pasos guiados con premio (recompensa diaria → primera tirada → compañero → primeras partidas → mesas → multijugador → Huevo Misterioso → Mercado → duelo → primera medalla). Los pasos que ya hayas cumplido se completan solos.
+2. **Misiones diarias**: 3 al día de una lista de 12, más un Huevo Misterioso si completas las tres.
+3. **8 medallas de Kanto** (Brock, Misty, Surge, Erika, Koga, Sabrina, Blaine y Giovanni), cada una con un reto distinto: nivel, Pokédex, victorias, colecciones, ventas en el Mercado, duelos/póker, variocolor y la final. Suben la apuesta máxima (de 10.000 a 100.000), abren las mesas de póker de Azulona (2 medallas) y Meseta Añil (5) y dan títulos. Con las 8 eres **Campeón de la Liga**.
+4. **Colecciones** (iniciales, Eeveelutions, fósiles, aves legendarias, línea de Ralts, trío del tiempo…): cada una da +1 % permanente a tus ganancias (hasta +8 %), un título y un Huevo Misterioso.
+5. **Aspecto**: marcos de avatar, dorsos de carta (los ven los demás en la mesa de póker) y títulos, visibles en chat, ranking, mesas y fichas.
+
+**¿Por qué usar el Mercado?** Los cosméticos solo salen de **Huevos Misteriosos** aleatorios, así que los repetidos se venden y el que quieres se compra. Las colecciones piden Pokémon concretos: el Mercado muestra cuántos hay a la venta de los que te faltan, con un filtro «Para mis colecciones». Además, la Medalla Alma exige vender 3 cosas, y el Mercado aparece en el tutorial y en las misiones diarias.
+
+**Comerciantes NPC** (con la etiqueta «NPC»): Kecleon (comunes, poco comunes y objetos de tienda), ColeccionBill (raras y épicas, sobre todo las de las colecciones), MercaderGinger (cosméticos y objetos sin tienda) y TratanteDorado (legendarias, míticas y variocolores) compran y venden en el Mercado como un jugador más (mismas comisiones e impuesto, mismo libro de órdenes), pero no son un grifo de monedas:
+- **Precios con tope y suelo fijos.** Compran a como mucho lo que da liberar un duplicado (≈ 57 % del precio en tienda para los objetos) y venden como mínimo al doble de su precio de compra (nunca por debajo de la tienda); cuanto más stock tienen de algo, más barato lo venden y menos pagan. Dentro de esos límites se guían por la mediana de las operaciones recientes entre jugadores (mínimo 3 operaciones de 2 vendedores distintos), así que comerciar a precios absurdos no los mueve. Ningún NPC compra más caro de lo que otro vende y los NPC nunca operan entre sí.
+- **Límites por jugador y día (UTC):** pueden cobrar de los NPC como mucho 5.000 + 500 × nivel monedas y 10 unidades por artículo (500 de polvo); pueden comprarles hasta 20 unidades por artículo. Las cuentas con menos de 24 h o de nivel menor que 3 no pueden venderles (sí comprarles).
+- **Tesorería finita:** cada uno empieza con 60.000 monedas (el panel de economía las ve como «Fondo NPC»), solo pujan con monedas depositadas, gastan como mucho el 15 % al día y por debajo del 20 % de su tesorería inicial solo venden. Venden únicamente lo que han comprado más un reabastecimiento diario de Pokémon (comunes, poco comunes, 2-4 raras, 0-2 épicas y, casi cada 2 días, una legendaria no destacada) y Huevos Misteriosos (nunca míticas, variocolores ni Master Ball).
+- **📜 Encargos y 🔥 ofertas flash:** cada día 3-6 encargos (2-6 h) de raras, épicas o legendarias que a los jugadores les faltan: vendérselas paga el precio normal más una prima de monedas del 50 % y un premio que no son monedas (Ticket Gacha, Huevo Misterioso o 💠 con el evento Mega); una vez por encargo y 2 premios al día por jugador. Y 1-2 rebajas del 15-25 % durante 1-2 h (nunca por debajo del 80 % del suelo). Se ven en una franja al inicio de Comprar y Vender; al pulsar el nombre de un comerciante se abre su ficha. No hablan por el chat: el feed «En vivo» recibe como mucho 4 líneas al día.
+- No tienen contraseña, no salen en rankings ni en la lista de conectados, y no pueden recibir regalos ni jugar. Sus operaciones no cuentan en la media de precios de los jugadores.
+
+**💠 Evento «Megaevolución»** (semanal, empieza al desplegar y se repite solo 7 días después de cada fin; el anfitrión puede reiniciarlo, alargarlo o lanzar una Hora Mega desde su panel): las **93 megaevoluciones** de PokeAPI (Mega-Charizard X/Y, Mega-Rayquaza con el Meteorito, las nuevas de Leyendas Z-A…) con su megapiedra comerciable en el Mercado. Se ganan **Megafragmentos 💠** jugando (1 por 200 monedas apostadas, con combo ×1,25/×1,5/×2 si juegas sin pausas de más de 2 min y **⚡ Hora Mega** ×2 al azar 1-2 veces al día), con 3 misiones diarias y una racha de entrada. Con 100 💠 fabricas la megapiedra que quieras; también salen de la **Máquina Mega** (3 rodillos, con 💠 o con 300 monedas; probabilidades publicadas en la propia vista), del **Bote Mega** progresivo (solo lo alimentan las tiradas con monedas), del **pase de recompensas** (7 hitos hasta una megapiedra a elegir) y del podio final. Usar una megapiedra exige tener a ese Pokémon: desbloquea su Mega y, con «⚡ Megaevolucionar», tu compañero se ve con su arte Mega en todas partes (+1 % de bonus, dentro de los mismos topes) y puede combatir como Mega en los duelos. Los datos se generan con `node scripts/build-mega.js <carpeta-csv>` (`server/megadata.json`). Economía en `docs/BALANCE.md`.
+
+**Social**: chat con menciones `@nombre`, **mensajes privados** (`/w nombre mensaje` o «✉️» en la ficha), **emotes de Pokémon** (`:pikachu:` o el selector 😀), actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha (1.000 el primer día, +150 por día hasta 1.900) y niveles. **Avisos** (🔔 en el menú del usuario): vibración, contador en la pestaña y notificación del sistema cuando te toca en el póker, te escriben, te mencionan o recibes algo.
+
+**Eventos** (hora de España): lunes ⚔️ Duelos sin comisión, miércoles 🎯 Misiones ×2, viernes 🏪 Mercado sin impuesto y comisión a la mitad, sábado y domingo ✨ Variocolor ×2 y 🤝 tope de bonus de compañero ×2. Se anuncian en el Vestíbulo y el anfitrión puede lanzar cualquiera de 1 a 72 horas.
+
+**Mi Entrenador → 📊 Mis monedas**: gráfica del saldo diario, resultado neto por juego y últimos movimientos (gacha, Mercado, regalos, recompensas…).
+
+**Panel del anfitrión**: jugadores (monedas, suspensiones, contraseñas, invitaciones), eventos y **🏦 Economía**: monedas en circulación, de dónde salen y a dónde van, retorno real de cada juego, jugadores activos y registro de acciones de los anfitriones.
+
+**Móvil**: barra de pestañas inferior, ventanas como hojas inferiores, controles fijos al pie en los juegos y **app instalable** (PWA: «Instalar app» o, en iPhone, Compartir → «Añadir a pantalla de inicio»).
+
+Todos los resultados se calculan en el servidor con `crypto`. RTP máximos con la mejor estrategia: Video Póker 99,5 % (9/6, juego óptimo), Blackjack 99,45 % (estrategia básica), Baccarat 98,9 %, Plinko 95,5–97,5 %, Crash, Minas y Desafío Pokémon 97 % (un experto en cada dificultad, ≤ 96,8 %), Slots ≈96–97,5 %, Voltorb Flip 95 % (inferencia exacta; un jugador normal, mucho menos), Ruleta 94,7 %, Carrera ≤ 90 %. La experiencia es proporcional a la ventaja de la casa de cada juego (más XP donde la casa gana más) y el bonus de compañero, colecciones y Moneda Amuleto tiene dos topes diarios (300 + 50 × nivel y un 30 % de la ventaja de lo apostado ese día), de modo que ni los niveles ni el bonus pueden dar dinero seguro a la larga. En los duelos entre jugadores no hay bonus. Todo el análisis (antes → después) está en [docs/BALANCE.md](docs/BALANCE.md) y `node scripts/simulate-economy.js` lo reproduce.
+
+## Puesta en marcha
+
+Requisitos: Node.js 18 o superior.
+
+```bash
+npm install
+npm start
+```
+
+Al arrancar verás en consola algo así:
+
+```
+🎰 PokéCasino escuchando en http://0.0.0.0:3000
+🔒 Modo de red: private
+🔑 Código de invitación maestro: 3F9A1C7B2E04
+```
+
+1. Abre `http://localhost:3000`, pulsa **Registrarse** y usa el código maestro. Serás el anfitrión (admin).
+2. Comparte con tus amigos la dirección del servidor y el código maestro, o genera **invitaciones de un solo uso** desde el panel 👑 Anfitrión.
+
+Los datos se guardan en `data/db.json` (jugadores, colecciones, chat). Haz copia de esa carpeta si quieres conservar las partidas.
+
+## Acceso restringido
+
+El servidor tiene dos capas de protección:
+
+1. **Filtro de red** (`NETWORK_MODE=private`, por defecto): solo acepta conexiones desde loopback, redes LAN (`10.x`, `172.16-31.x`, `192.168.x`), enlaces locales y el rango CGNAT `100.64.0.0/10` que usan **Tailscale** y otras VPN. Cualquier IP pública recibe un 403.
+2. **Invitación obligatoria**: nadie puede crear cuenta sin el código maestro o una invitación de un solo uso. Las contraseñas se guardan con `scrypt` y hay límite de intentos fallidos por IP.
+
+### Jugar con amigos fuera de tu casa
+
+La opción recomendada es una VPN privada como [Tailscale](https://tailscale.com/) o ZeroTier: instálala en el servidor y en los dispositivos de tus amigos, y conéctate a `http://<ip-tailscale-del-servidor>:3000`. Funciona sin abrir puertos del router y sin cambiar nada de la configuración.
+
+Si prefieres exponerlo detrás de un proxy inverso con HTTPS, usa `TRUST_PROXY=1` y añade las IPs permitidas con `ALLOW_CIDRS`, o `NETWORK_MODE=any` para depender solo de las invitaciones.
+
+## Alojarlo en la nube (sin PC propio)
+
+Todo se hace desde el navegador, también desde el móvil. En la nube no hay red privada, así que el acceso queda protegido **solo por las invitaciones**: `NETWORK_MODE=any` ya viene configurado en el `Dockerfile` y en `render.yaml`.
+
+### Railway (recomendado: datos persistentes, ~5 USD/mes)
+
+1. Entra en [railway.com](https://railway.com) con tu cuenta de GitHub.
+2. **New Project → Deploy from GitHub repo** → elige `pokecasino` (rama `main` una vez fusionado el PR). Railway usa el `Dockerfile` automáticamente.
+3. En el servicio: **Variables** → añade `ACCESS_KEY` con un código secreto que elijas (será el código de invitación maestro).
+4. **Click derecho sobre el servicio → Attach Volume** con ruta de montaje `/data`. Ahí se guardan las cuentas y colecciones; sin volumen se pierden en cada reinicio.
+5. **Settings → Networking → Generate Domain**. Esa URL `https://….up.railway.app` es la que compartes con tus amigos.
+
+### Render (gratis, para probar)
+
+1. Entra en [render.com](https://render.com) con GitHub → **New → Blueprint** → elige el repositorio; usa `render.yaml`.
+2. El código maestro está en **Environment → ACCESS_KEY** (generado automáticamente).
+3. El blueprint crea también una base **Postgres gratuita** y la conecta con `DATABASE_URL`: ahí se guardan las cuentas, porque el servicio gratuito no tiene disco persistente.
+4. Limitaciones del plan gratuito: el servicio se duerme tras 15 min sin visitas (tarda ~1 min en despertar) y la base Postgres gratuita de Render caduca a los 30 días (hay que pasarla a un plan de pago o crear otra).
+
+### Variables de entorno
+
+| Variable | Por defecto | Descripción |
+|---|---|---|
+| `PORT` | `3000` | Puerto HTTP. |
+| `HOST` | `0.0.0.0` | Interfaz de escucha (`127.0.0.1` para solo local). |
+| `NETWORK_MODE` | `private` | `private` = solo LAN/VPN; `any` = cualquier IP (solo invitaciones). |
+| `ALLOW_CIDRS` | — | Rangos extra permitidos, separados por comas: `203.0.113.7/32,198.51.100.0/24`. |
+| `ACCESS_KEY` | aleatorio | Código maestro. Si no se define se genera y se guarda en `data/config.json`. |
+| `TRUST_PROXY` | — | `1` si estás detrás de un proxy inverso (usa `X-Forwarded-For`). |
+| `OPEN_REGISTRATION` | — | `1` para permitir registrarse sin código de invitación (máx. 3 cuentas nuevas por IP al día). |
+| `DATA_DIR` | `./data` | Carpeta de datos. |
+| `DATABASE_URL` | — | Si se define, los datos se guardan en Postgres (para alojamientos sin disco). |
+
+## Desarrollo
+
+```bash
+npm test   # RTP, probabilidades del gacha, póker (conservación de fichas en 300 manos), mercado, progresión, combate y filtro de red
+```
+
+```
+server/
+  index.js        Express + Socket.IO, eventos, chat, administración
+  auth.js         Registro con invitación, sesiones, scrypt
+  netguard.js     Filtro de IP privada / VPN
+  db.js           Almacén JSON con escritura atómica
+  hub.js          Economía (apuestas, pagos, niveles, compañero) y difusión
+  balance.js      Constantes de equilibrio (RTP máximos, XP por ventaja de la casa, bonus, recompensas por nivel)
+  daily.js        Recompensa diaria con racha
+  pokedex.js      Rarezas, tabla de tipos y estadísticas (lee dexdata.json)
+  dexdata.json    Los 1.025 Pokémon (generado con scripts/build-dex.js desde PokeAPI)
+  gacha.js        Banners, probabilidades, Master Ball, variocolores y tienda de polvo
+  items.js        Objetos, Tienda Poké y efectos
+  market.js       Mercado entre jugadores con depósito
+  npc.js          Comerciantes NPC del Mercado (precios con tope, límites diarios, tesorería)
+  progress.js     Ruta del Entrenador, misiones, medallas y colecciones
+  cards.js        Baraja y evaluador de manos de póker
+  games/          holdem, crash, race, duel, battle, blackjack, videopoker,
+                  baccarat, roulette, slots, plinko, mines, voltorb, quiz (+ quizdata, banco de trivia)
+scripts/
+  build-dex.js          Genera dexdata.json desde PokeAPI (rareza, fase evolutiva y cadena)
+  simulate-economy.js   Simula 3 arquetipos de jugador, el RTP de cada juego y el coste de la Pokédex
+  calibrate-voltorb.js  Calibra los divisores de Voltorb Flip con inferencia exacta
+  strategies.js         Estrategias (Video Póker, Blackjack, Voltorb) usadas por las simulaciones
+docs/BALANCE.md         Auditoría de equilibrio: antes → después y razonamiento
+public/
+  index.html, css/style.css
+  js/core.js      Utilidades, sprites públicos, sonidos
+  js/main.js      Acceso, conexión y navegación
+  js/views/*.js   Una vista por sección
+```

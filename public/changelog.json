@@ -1,0 +1,271 @@
+[
+  {
+    "version": "2026.10.29-q",
+    "date": "2026-10-29",
+    "title": "Arreglos",
+    "items": [
+      "🔒 Seguridad: un registro con un nombre de usuario raro ya no puede dañar la base de datos.",
+      "🃏 Video Póker: si recargas a mitad de mano, la retomas donde la dejaste.",
+      "🛠️ Más arreglos: el aviso de Novedades no vuelve a salir al reconectar, la barra espaciadora funciona en el chat durante las celebraciones, la cabecera ya no se sale en móviles pequeños y la lluvia de monedas al cobrar en el Mercado vuelve a salir."
+    ]
+  },
+  {
+    "version": "2026.10.29-p",
+    "date": "2026-10-29",
+    "title": "Tiempo de juego",
+    "items": [
+      "⏱️ Ahora se cuenta tu tiempo de juego (solo mientras tienes el casino a la vista y estás jugando). Lo ves en Mi Entrenador.",
+      "🌐/🔒 Tú decides si es público o privado con el botón junto a tu tiempo: si es público aparece en tu ficha y en el nuevo ranking «Tiempo de juego»."
+    ]
+  },
+  {
+    "version": "2026.10.29-o",
+    "date": "2026-10-29",
+    "title": "Revisión general de errores",
+    "items": [
+      "🔧 Arreglado: en el Video Póker, si salías de la pantalla o recargabas a mitad de mano te quedabas bloqueado con «Termina la mano actual». Ahora la mano se retoma donde la dejaste.",
+      "📱 Arreglado: con el evento Mega activo y muchas monedas, la cabecera del móvil se salía de la pantalla.",
+      "🪙 Arreglado: al cobrar una venta del Mercado o un encargo no saltaba la lluvia de monedas.",
+      "💬 Las fichas de los comerciantes NPC ya no ofrecen «Mensaje privado» ni «Regalar monedas» (no los aceptan).",
+      "🧩 Arreglado: en la ventana «Nuevo movimiento» las filas de movimientos se cortaban por la derecha en ordenador.",
+      "⏱️ Póker, Huerto, Criadero y Expediciones ya no dejan temporizadores sueltos si cambias de pantalla mientras cargan."
+    ]
+  },
+  {
+    "version": "2026.10.29-n",
+    "date": "2026-10-29",
+    "title": "Combates en una sola pantalla",
+    "items": [
+      "🖥️ La pantalla de combate cabe entera sin desplazarte: en ordenador y con el móvil en horizontal, el campo va a la izquierda y el texto y los ataques a la derecha; en vertical, el campo se ajusta al espacio.",
+      "↩️ Contra otro jugador puedes «Cancelar elección» mientras el rival no haya elegido.",
+      "💚 Pulso Cura, Cura Floral y Purificación avisan de que curan a su objetivo: en combates individuales, al rival (como en los juegos)."
+    ]
+  },
+  {
+    "version": "2026.10.29-m",
+    "date": "2026-10-29",
+    "title": "Megaevolución más clara",
+    "items": [
+      "💠 En los combates, «Megaevolucionar» es ahora un botón grande: al activarlo se ilumina y dice «¡Charizard megaevolucionará este turno!»; luego eliges el movimiento.",
+      "🛠️ En Mis equipos, el botón «Llevar Mega» dice qué forma llevará (Mega-Charizard X ✓) y, si hay varias, cambia entre ellas al tocarlo.",
+      "⚔️ Duelos rápidos: interruptor «Megaevolucionar en el combate: SÍ/NO» bien visible.",
+      "🔧 Arreglado: en los combates entre jugadores, pulsar «Cambiar» dejaba la página colgada."
+    ]
+  },
+  {
+    "version": "2026.10.29-l",
+    "date": "2026-10-29",
+    "title": "Movimientos huevo y Tutor",
+    "items": [
+      "🥚 Los bebés del Criadero nacen sabiendo los movimientos huevo que conozca cualquiera de sus padres.",
+      "🎓 Nuevo Tutor de movimientos (Caja PC → Movimientos): enseña movimientos especiales a cambio de Fragmentos Rojo, Azul, Amarillo o Verde, que caen en las Expediciones largas (máx. 3 al día).",
+      "🎒 El constructor de equipos muestra el objeto que lleva cada Pokémon."
+    ]
+  },
+  {
+    "version": "2026.10.29-k",
+    "date": "2026-10-29",
+    "title": "Puntos de Batalla y objetos de combate",
+    "items": [
+      "🎖️ Nuevos Puntos de Batalla (PB): se ganan combatiendo (CPU y jugadores) y se gastan en la pestaña «Tienda de Combate» de la Tienda.",
+      "🎒 Objetos para llevar en combate (Restos, Vidasfera, Cintas Elección…), mentas que cambian el efecto de la naturaleza, Cápsula y Parche de Habilidad. Se equipan en Caja PC → Datos → Objeto.",
+      "🍓 Las bayas del Huerto ahora son bayas de verdad (Aranja, Zidra, Ziuela, Atania, Zanama) y se pueden llevar en combate.",
+      "🥚 En el Criadero, la habilidad oculta de la madre se hereda el 60 % de las veces. La habilidad ya no se elige gratis."
+    ]
+  },
+  {
+    "version": "2026.10.29-j",
+    "date": "2026-10-29",
+    "title": "Máquina MT",
+    "items": [
+      "💿 Nueva pestaña «Máquina MT» en la Tienda: fabrica las 229 MT de Escarlata/Púrpura con monedas y materiales. Filtra por tipo, precio o «compatible con…» un Pokémon.",
+      "🧩 Los materiales (Escama, Pluma, Garra, Polvo de Hada, Hoja, Chispa, Ascua, Roca y Esencia) caen en las Expediciones y al ganar combates según los tipos. Algunas MT salen como premio raro.",
+      "📀 Enseña una MT desde la Mochila, la Máquina o los Movimientos de un Pokémon (solo si es compatible; se gasta al usarla). Se pueden comprar y vender en el Mercado."
+    ]
+  },
+  {
+    "version": "2026.10.29-i",
+    "date": "2026-10-29",
+    "title": "Movimientos como en los juegos",
+    "items": [
+      "📖 Cada Pokémon aprende movimientos según su nivel: al subir de nivel o evolucionar puede querer aprender uno nuevo y tú decides cuál olvida (o «No aprender»).",
+      "🔁 En Caja PC → Datos → Movimientos puedes cambiar los 4 movimientos entre todos los que ya ha aprendido, cuando quieras y gratis.",
+      "⚔️ En los combates a «Nivel 50 (justo)» las estadísticas se igualan, pero cada uno usa los movimientos que de verdad ha aprendido.",
+      "♻️ Los Pokémon que ya tenías se han ajustado a los movimientos que les tocan por su nivel actual."
+    ]
+  },
+  {
+    "version": "2026.10.29-h",
+    "date": "2026-10-29",
+    "title": "Iconos de Pokémon en todo el casino",
+    "items": [
+      "🎁 Los emojis genéricos se han sustituido por objetos y Pokémon de verdad: Poké Balls, Caramelos Raros, Polvo Estelar, Piedras Evolutivas, Kecleon en las tiendas, Delibird en los regalos, Pikachu para celebrar…",
+      "✨ Se mantienen el brillo variocolor y los símbolos de interfaz. Si una imagen no carga, verás el emoji de siempre."
+    ]
+  },
+  {
+    "version": "2026.10.29-g",
+    "date": "2026-10-29",
+    "title": "Historial del Mercado y más protección",
+    "items": [
+      "📜 Mercado → Completadas: ahora guarda tus últimas 150 operaciones, aunque el mercado se mueva mucho.",
+      "🛡️ Las monedas de la Enfermera Joy no se pueden regalar ni usar para pagar de más en el Mercado durante 24 h, y cada jugador puede recibir hasta 10 Pokémon regalados al día (2 legendarios o míticos)."
+    ]
+  },
+  {
+    "version": "2026.10.29-f",
+    "date": "2026-10-29",
+    "title": "Criadero: huevos y bebés Pokémon",
+    "items": [
+      "🥚 Nuevo Criadero (Pokémon → Criadero): deja a dos Pokémon que compartan tipo (o a uno con Ditto) y cada 6 horas (4 si son de la misma especie) tendrás un huevo. Los legendarios y míticos no crían.",
+      "🎮 El huevo eclosiona jugando: cada 100 monedas apostadas son un paso (o espera 12 horas). Con animación de grieta, destello y sprite animado.",
+      "🧬 El bebé hereda 3 IV de los padres y, con un 50 %, la naturaleza de uno. Variocolor 1/128 (1/64 si algún padre lo es). Cuenta para la Pokédex y trae 3 caramelos de su familia.",
+      "🪙 Recoger el huevo cuesta una tarifa (desde 200 monedas, según la rareza). La segunda plaza del Criadero se abre en el nivel 20.",
+      "🔒 Los padres no se pueden liberar, vender ni usar en combates mientras estén en el Criadero (insignia 🥚 en la Caja PC)."
+    ]
+  },
+  {
+    "version": "2026.10.29-e",
+    "date": "2026-10-29",
+    "title": "Expediciones: tus Pokémon exploran solos",
+    "items": [
+      "🧭 Nueva sección Pokémon → Expediciones: manda de 1 a 3 Pokémon a una de 8 zonas (Bosque Verde, Cueva Celeste, Mar Espuma…) durante 1, 4, 8 o 12 horas y recoge el botín al volver, aunque hayas cerrado el casino.",
+      "🍬 Vuelven con caramelos de su familia y comodín, bayas, polvo estelar y, a veces, un objeto raro. Los Pokémon del tipo de la zona traen un 50 % más.",
+      "⬆️ Además suben niveles sin gastar caramelos (1 cada 2 horas, hasta 8 al día) y ganan amistad. Hay un pequeño hallazgo de monedas: 300 al día como máximo.",
+      "🔒 Mientras están fuera no se pueden liberar, transferir, vender, regalar ni usar en combates: en la Caja PC llevan una insignia 🧭.",
+      "⏱️ Puedes tener 2 expediciones a la vez (3 desde el nivel 15 de entrenador)."
+    ]
+  },
+  {
+    "version": "2026.10.29-d",
+    "date": "2026-10-29",
+    "title": "Combates Pokémon de verdad y progresión casual",
+    "items": [
+      "⚔️ Nuevos Combates (Pokémon → Combates) con el simulador de Pokémon Showdown: individuales y dobles, movimientos y habilidades reales en español, Megaevolución. Lucha contra 20 entrenadores (los líderes de gimnasio se desbloquean con medallas) o reta a otros jugadores con apuesta opcional.",
+      "🛠️ Monta tus equipos desde la Caja PC y elige los movimientos de cada Pokémon. Ganar a la CPU da monedas (hasta 10 victorias al día), caramelos y amistad; perder no cuesta nada.",
+      "🔌 Si el casino se actualiza en mitad de un combate, se guarda y lo continúas donde lo dejaste.",
+      "📕 Completar la Pokédex ahora es mucho más rápido: el Gacha prefiere los Pokémon que te faltan, fabricar cuesta unas 4 veces menos, hay caramelos comodín y la primera evolución a una especie nueva es casi gratis.",
+      "⬆️ Maxear un Pokémon cuesta mucho menos: subir de nivel 4 veces más barato, entrenar IVs a 1 caramelo (60 al día), 5 Intercambios Milagrosos al día y la amistad sube más rápido.",
+      "🧭 Primera visita a cada apartado: ¡50 monedas de regalo!",
+      "🛡️ Regalos entre jugadores: hace falta nivel 3 y 3 días de cuenta, y cada uno puede recibir hasta 5.000 monedas regaladas al día."
+    ]
+  },
+  {
+    "version": "2026.10.29-c",
+    "date": "2026-10-29",
+    "title": "Nueva interfaz de menú Pokémon",
+    "items": [
+      "🎮 Todo el casino estrena aspecto de juego de Pokémon: paneles con marco, barra roja de Poké Ball, botones de menú con cursor ▶ y avisos en la caja de texto de abajo.",
+      "🌙 Modo noche: actívalo en tu menú (por defecto sigue a tu dispositivo).",
+      "🧭 Menos menús: Inicio, Casino, Pokémon, Mercado y Entrenador, cada uno con fichas grandes. El Profesor Oak te sugiere qué probar y marca con «¡Nuevo!» lo que aún no has visitado; la primera vez que abres cada apartado clave ganas 50 monedas.",
+      "🖥️ Caja PC como en los juegos: cajas de 30 huecos con fondos, panel del Pokémon elegido y pantalla de Datos por páginas.",
+      "✨ Detallitos: Chansey en el Centro Pokémon, Meowth con tus monedas, Kecleon en la Tienda, Jigglypuff en el sonido, Pikachu en los grandes premios y Gengar por la noche."
+    ]
+  },
+  {
+    "version": "2026.10.29-b",
+    "date": "2026-10-29",
+    "title": "Pokémon animados y Desafío sin preguntas repetidas",
+    "items": [
+      "🎞️ Pokémon animados en los duelos, la Caja PC, la Pokédex, tu compañero, la evolución y el Gacha. Puedes desactivarlo en tu menú («Animaciones de Pokémon») para ahorrar datos.",
+      "💥 Duelos con más vida: embestidas, golpes con destello, partículas del color del tipo, daño flotante y «¡Es muy eficaz!».",
+      "🧠 Desafío Pokémon: las preguntas de fan ya no se repiten en 45 días y las generadas tampoco entre tus últimas 400. Los multiplicadores se ajustan a tu precisión reciente y hay un tope de ganancia diaria."
+    ]
+  },
+  {
+    "version": "2026.10.28-g",
+    "date": "2026-10-28",
+    "title": "Amistad, compañero y Huerto de bayas",
+    "items": [
+      "💞 Amistad: tus Pokémon te cogen cariño si son tu compañero mientras juegas, si les das bayas o si ganan duelos. Con «Te adora» rinden un 3 % más en los duelos.",
+      "✨ Evoluciones por amistad (Pichu, Golbat, Chansey, Eevee → Espeon/Umbreon, Riolu…): con mucha amistad cuestan la mitad de caramelos y no piden nivel.",
+      "🎒 Tu compañero encuentra cosas cada 4 h (caramelos, bayas, polvo, a veces un ticket y algunas monedas). Recógelo en el Vestíbulo o en el Huerto.",
+      "🌱 Nuevo Huerto (menú Más): 4 parcelas para plantar bayas, regarlas y cosecharlas. Te regalamos 3 Bayas Aranja para empezar."
+    ]
+  },
+  {
+    "version": "2026.10.28-f",
+    "date": "2026-10-28",
+    "title": "Caramelos, evolución y reciclaje",
+    "items": [
+      "🍬 Caramelos por familia: cada tirada del Gacha da 1 (3 si es nuevo) y transferir un Pokémon al Profesor Oak da polvo y caramelos (más cuanto más raro). «Transferir repetidos» lo hace de golpe y respeta favoritos, compañero y variocolores.",
+      "⬆️ Sube de nivel a tus Pokémon con caramelos (hasta Nv 100): en los duelos cuenta un poco (hasta +9,5 %).",
+      "✨ ¡Evoluciona! Desde la Caja PC, con caramelos y nivel mínimo, con animación de evolución. El ejemplar conserva naturaleza, IVs, mote y variocolor.",
+      "💪 Entrena los IVs de tus Pokémon con caramelos (10 al día por ejemplar).",
+      "🔄 Intercambio Milagroso: da un repetido y recibe uno al azar de la misma rareza (3 al día).",
+      "♻️ Tienda → Reciclaje: convierte objetos que no usas en polvo estelar."
+    ]
+  },
+  {
+    "version": "2026.10.28-e",
+    "date": "2026-10-28",
+    "title": "Caja PC, Pokémon únicos y NPC con encargos",
+    "items": [
+      "📦 Nueva Caja PC (menú Más): cada Pokémon que tienes es único, con naturaleza, IVs, habilidad, 4 movimientos, sexo y amistad. Ponles mote, márcalos como favoritos, elige cuál es tu compañero o libera uno concreto.",
+      "🛡️ Al vender, regalar o liberar por especie siempre se va tu copia menos valiosa; tus favoritos y tu compañero quedan protegidos.",
+      "⚔️ Duelos: tu ejemplar cuenta (IVs ±5 % y naturaleza ±10 %), se ve su mote, y puedes elegir la forma Mega al retar o aceptar.",
+      "📜 Encargos de los NPC: piden Pokémon y cosméticos raros y pagan +50 % y un regalo (tickets, huevos o 💠).",
+      "🔥 Ofertas flash de los NPC (−15 a −25 % durante 1–2 h), precios más justos (compran al 100 % del valor de liberar, venden más barato) y más variedad en su tienda. Pulsa el nombre de un NPC para ver su ficha.",
+      "🤫 Los NPC ya no llenan «En vivo» con sus compras."
+    ]
+  },
+  {
+    "version": "2026.10.28-d",
+    "date": "2026-10-28",
+    "title": "Fabricar más rápido y con buscador",
+    "items": [
+      "🔎 Tienda → Fabricar: buscador por nombre o número y filtros de rareza, tipo, región y «me faltan / los tengo / puedo fabricarlos ahora», con orden por rareza, precio, número o nombre.",
+      "⚡ La lista de Fabricar carga por tandas al bajar, así abre al instante."
+    ]
+  },
+  {
+    "version": "2026.10.28-c",
+    "date": "2026-10-28",
+    "title": "Desafío Pokémon, Mercado más claro y límites más relajados",
+    "items": [
+      "🧠 Nuevo juego «Desafío Pokémon»: «¿Quién es ese Pokémon?» (escribe el nombre) y Trivia Pokémon con preguntas de fan. Cuatro dificultades, multiplicador que sube con cada acierto y retirada cuando quieras. Tus multiplicadores se ajustan a tu precisión.",
+      "🏪 Mercado: ahora se ve quién vende y quién compra cada cosa («vende Ana», «compra Kecleon») y las operaciones dicen «Vendió X · compró Y».",
+      "😌 Experiencia más casual: puedes vender a los NPC hasta 10 unidades por artículo y 5.000 + 500 × tu nivel al día, comprarles 20, la Enfermera Joy te presta 1.000 cada 4 h y la recompensa diaria sube a 1.000 + 150 por día de racha (hasta 1.900).",
+      "💠 Evento Mega: hasta 300 megafragmentos al día jugando.",
+      "🔒 Pokémon con candado: algunos Pokémon pueden estar bloqueados; se recuperan cuando el Gacha te los da o con créditos que ganas apostando y tirando.",
+      "💾 Copias de seguridad automáticas cada día."
+    ]
+  },
+  {
+    "version": "2026.10.28-b",
+    "date": "2026-10-28",
+    "title": "Evento Megaevolución y avisos de riesgo",
+    "items": [
+      "💠 Evento «Megaevolución»: 93 Megaevoluciones con sus megapiedras. Gana Megafragmentos jugando (con combo y Horas Mega ×2), gira la Máquina Mega, persigue el Bote Mega, completa el pase de recompensas y fabrica la megapiedra que quieras con 100 💠.",
+      "✨ Megaevoluciona a tu compañero con una animación a pantalla completa: se verá en su forma Mega en todo el casino.",
+      "⚠️ Avisos antes de acciones muy arriesgadas (apostar casi todo, Crash sin retirada, Minas con muchos Geodude…). Puedes marcar «No volver a avisarme» en cada apartado y restablecerlos desde tu menú.",
+      "🎁 Gacha ×10: cada toque abre la siguiente Poké Ball más rápido; para abrirlo todo hay «⏭ Saltar todo»."
+    ]
+  },
+  {
+    "version": "2026.10.28-a",
+    "date": "2026-10-28",
+    "title": "Gacha renovado, Mercado estilo Albion y comerciantes NPC",
+    "items": [
+      "🎁 Gacha sin pity: cada tirada es independiente y la Master Ball asegura una legendaria (la destacada del banner). Animación nueva: la Poké Ball sube de categoría al sacudirse, «¿Quién es ese Pokémon?», explosiones y vibración.",
+      "🔄 Banners: uno permanente y uno promocional que cambia cada 3 días.",
+      "🏪 Mercado estilo Albion: pestañas Comprar / Vender / Órdenes / Completadas, ofertas («Se vende», en verde) y pedidos («Se compra», en azul) bien separados, duración de las órdenes y desglose de comisión e impuesto.",
+      "🤖 Comerciantes NPC (Kecleon, ColeccionistaBill, MercaderGinger y TratanteDorado) que compran y venden en el Mercado.",
+      "🔎 Buscador y filtros en todo el Mercado.",
+      "🎉 Animaciones y efectos en todo lo aleatorio: Huevo Misterioso, recompensa diaria, subidas de nivel, medallas y premios grandes en los juegos.",
+      "⚖️ Equilibrio de todo el juego: ningún juego da dinero seguro, las evoluciones salen menos en el Gacha y los objetos tienen precios coherentes."
+    ]
+  },
+  {
+    "version": "2026.10.27",
+    "date": "2026-10-27",
+    "title": "Móvil, app instalable y mucho más",
+    "items": [
+      "📱 Mucho más cómodo en el móvil: barra de pestañas abajo, ventanas desde abajo y controles fijos en los juegos.",
+      "📲 Se puede instalar como app (botón «Instalar app» o, en iPhone, Compartir → «Añadir a pantalla de inicio»).",
+      "✉️ Mensajes privados (/w nombre mensaje), emotes de Pokémon (:pikachu:) y avisos cuando te toca en el póker.",
+      "📊 Mi Entrenador → «Mis monedas»: gráfica de tu saldo, resultado por juego y movimientos.",
+      "🎉 Eventos semanales: lunes Duelos sin comisión, miércoles Misiones ×2, viernes Mercado sin impuesto y fin de semana Variocolor ×2."
+    ]
+  }
+]

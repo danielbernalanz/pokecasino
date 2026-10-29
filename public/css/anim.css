@@ -1,0 +1,46 @@
+/* Animaciones de Pokémon (anim.js): sprites animados de Showdown, combate, evolución. */
+img.ani { image-rendering: pixelated; }
+/* GIF animado en fichas grandes (el arte oficial de respaldo conserva su tamaño normal). */
+.detail-art.ani, .gx-card-art.ani, .hero-buddy.ani { width: auto; max-width: 100%; height: auto; max-height: 200px; min-height: 120px; aspect-ratio: auto; margin: 0 auto; }
+.hero-buddy.ani { max-height: 190px; min-height: 110px; }
+.gx-art.ani { width: auto; max-width: 72vw; height: auto; max-height: 300px; min-height: 160px; aspect-ratio: auto; }
+
+/* ---- Combate ---- */
+.bt-slot { display: inline-block; animation: btBob 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.bt-foe .bt-slot { animation-delay: -1.3s; }
+.bt-slot.shake { animation: btShake .4s linear; }
+.bt-slot.shake-big { animation: btShakeBig .55s linear; }
+.bt-slot.down { animation: none; }
+.bt-sprite { image-rendering: pixelated; width: 120px; height: 120px; object-fit: contain; transition: transform .22s cubic-bezier(.3, 1.6, .5, 1), opacity .8s, filter .8s; }
+.bt-sprite.lunge { transform: translate(46px, -26px) scale(1.1); }
+.bt-foe .bt-sprite.lunge { transform: translate(-46px, 26px) scale(1.1); }
+.bt-sprite.hit { animation: btHit .5s steps(1, end); }
+.bt-sprite.faint { opacity: 0; transform: translateY(56px) scale(.9); filter: grayscale(1) brightness(.7); }
+.bt-pop { position: absolute; left: 50%; top: 38%; transform: translate(-50%, 0); z-index: 3; pointer-events: none; opacity: 0; white-space: nowrap;
+  font: 900 18px Nunito, sans-serif; padding: 4px 12px; border-radius: 999px; background: #0009; color: #fff; text-shadow: 0 2px 0 #000a; }
+.bt-pop.show { animation: btPop 1.3s ease-out forwards; }
+.bt-pop.crit { color: #ffd54f; font-size: 22px; background: #7a1020cc; }
+.bt-pop.good { color: #8dff9a; }
+.bt-pop.meh { color: #cfd6e4; }
+@keyframes btBob { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-5px) scaleY(1.025); } }
+@keyframes btShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+@keyframes btShakeBig { 0%, 100% { transform: translate(0, 0) rotate(0); } 12% { transform: translate(-14px, 3px) rotate(-5deg); } 28% { transform: translate(12px, -4px) rotate(4deg); } 44% { transform: translate(-10px, 2px) rotate(-3deg); } 60% { transform: translate(8px, 0) rotate(2deg); } 80% { transform: translate(-3px, 0); } }
+@keyframes btHit { 0%, 40% { filter: brightness(0) invert(1); } 20%, 60% { filter: none; } 80% { filter: brightness(2.2); } 100% { filter: none; } }
+@keyframes btPop { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.7); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.12); } 25% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -14px) scale(1); } }
+@media (max-width: 640px) {
+  .bt-sprite { width: 84px; height: 84px; }
+  .bt-sprite.lunge { transform: translate(28px, -16px) scale(1.1); }
+  .bt-foe .bt-sprite.lunge { transform: translate(-28px, 16px) scale(1.1); }
+  .bt-pop { top: 34%; font-size: 15px; } .bt-pop.crit { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bt-slot, .bt-slot.shake, .bt-slot.shake-big { animation: none; }
+  .bt-sprite { transition: opacity .4s; }
+  .bt-sprite.lunge, .bt-foe .bt-sprite.lunge { transform: none; }
+  .bt-sprite.hit { animation: none; filter: brightness(1.6); }
+  .bt-pop.show { animation: btPopStill 1.3s linear forwards; }
+}
+@keyframes btPopStill { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---- Evolución: sprite animado dentro del escenario ---- */
+.pcfx-img.ani { image-rendering: pixelated; }

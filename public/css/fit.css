@@ -1,0 +1,343 @@
+/* Todo en una pantalla: reglas de ajuste de altura. Se carga la última. Referencia: battle.css (.bt2-wide).
+   --av = altura útil dentro de #view (sin barra superior, sin barra inferior móvil y sin los márgenes del .main). */
+:root { --av: calc(100dvh - 58px - 26px); }
+@media (max-width: 900px) { :root { --av: calc(100dvh - 58px - var(--tabbar-h, 62px) - 40px); } }
+@media (max-width: 640px) { :root { --av: calc(100dvh - 54px - var(--tabbar-h, 62px) - 40px); } }
+
+/* ---- Cabeceras compactas (escritorio) ---- */
+@media (min-width: 901px) {
+  .main { padding: 12px 20px 14px; }
+  .game-head { margin-bottom: 8px; gap: 4px 14px; flex-wrap: wrap; }
+  .game-head h1 { margin: 0; font-size: 18px; }
+  .game-head > p { margin: 0; flex: 1 1 260px; text-align: right; font-size: 12.5px; line-height: 1.3; }
+  .section-title { margin: 12px 0 6px; }
+  .say { margin-bottom: 8px; }
+  .say-av { width: 52px; height: 52px; }
+  .say-box { padding: 6px 26px 6px 12px; }
+}
+
+/* ---- Centros de sección (Casino, Pokémon, Mercado, Entrenador) ---- */
+.hub-head { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.hub-head .game-head { margin: 0; flex: none; }
+.hub-head .say { flex: 1; margin: 0; min-width: 0; }
+.hub-head .say-box { padding-top: 6px; padding-bottom: 6px; }
+.hub-head .say-who { margin-bottom: 2px; }
+.hub-grid { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
+.hub-card { padding: 0 8px 8px; gap: 2px; border-width: 2px; }
+.hub-art { height: 62px; margin: 0 -8px 4px; border-bottom-width: 2px; }
+.hub-art img { width: 56px; height: 56px; }
+.hub-name { font-size: 13px; }
+.hub-desc { font-size: 11.5px; line-height: 1.25; }
+.hub-group { margin-bottom: 2px; }
+@media (max-width: 640px) {
+  .hub-head { flex-direction: column; align-items: stretch; gap: 6px; }
+  .hub-head .say-av { width: 38px; height: 38px; }
+  .hub-head .say-who { display: none; }
+  .hub-head .say-box { font-size: 14px; line-height: 1.25; padding: 6px 24px 6px 10px; }
+  .hub-head .game-head h1 { font-size: 18px; }
+  .hub-grid { grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+  .hub-desc { display: none; }
+  .hub-card { padding: 0 4px 6px; }
+  .hub-art { margin: 0 -4px 3px; height: 44px; }
+  .hub-art img { width: 40px; height: 40px; }
+  .hub-name { font-size: 11px; line-height: 1.1; }
+  .hub-group .section-title { margin: 8px 0 6px; }
+  .hub-card .new-badge { font-size: 9px; padding: 1px 4px; top: 3px; right: 3px; }
+}
+@media (min-width: 901px) and (max-height: 840px) {
+  .hub-art { height: 50px; }
+  .hub-art img { width: 46px; height: 46px; }
+  .hub-group .section-title { margin: 8px 0 5px; }
+  .hub-desc { -webkit-line-clamp: 1; }
+}
+@media (max-height: 560px) {
+  .hub-head .say-av { width: 36px; height: 36px; }
+  .hub-head .say-who { display: none; }
+  .hub-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .hub-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .hub-desc { display: none; }
+  .hub-art { height: 34px; margin-bottom: 1px; }
+  .hub-art img { width: 34px; height: 34px; }
+  .hub-name { font-size: 11px; }
+  .hub-group .section-title { margin: 4px 0 4px; font-size: 12px; }
+}
+
+/* =====================  JUEGOS (escritorio y horizontal)  ===================== */
+@media (min-width: 901px) {
+  /* Pika-Slots: los rodillos se adaptan a la altura que queda */
+  .view-slots .sym { max-height: clamp(40px, calc((var(--av) - 400px) / 3), 110px); }
+  .view-slots .machine { padding: 10px 14px; }
+  .view-slots .machine-top { margin-bottom: 6px; font-size: 15px; }
+  .view-slots .machine-top img { width: 40px; }
+  .view-slots .reels { padding: 6px; }
+  .view-slots .slot-win { margin: 6px 0; padding: 8px; min-height: 34px; }
+  .view-slots .machine-controls { padding: 8px 10px; }
+  .view-slots .paytable { padding: 10px 12px; }
+  .view-slots .paytable .pay-row { padding: 2px 0; }
+  .view-slots .paytable .pay-row .sym { width: 30px; height: 30px; max-height: none; }
+  .view-slots .paytable p { margin: 4px 0; font-size: 11.5px; }
+
+  /* Ruleta: rueda y tapete lado a lado, ajustados a la altura */
+  .view-roulette .roulette-layout { grid-template-columns: minmax(220px, 1fr) minmax(310px, 1.1fr); gap: 16px; }
+  .view-roulette .wheel-wrap { max-width: calc(var(--av) - 70px); }
+  .view-roulette .stack { gap: 8px; }
+  .view-roulette .wheel-result { padding: 8px; font-size: 13px; }
+  .view-roulette .card { padding: 10px; }
+  .view-roulette .rtypes { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 4px; }
+  .view-roulette .rboard { margin: 8px 0; gap: 5px; }
+  .view-roulette .bcell { padding: 4px 4px; min-height: 36px; }
+  .view-roulette .rgroups { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 4px; }
+  .view-roulette .chip-btn { width: 36px; height: 36px; border-width: 3px; }
+  .view-roulette .chips { flex-wrap: nowrap; gap: 4px; }
+  .view-roulette .card > p.muted { margin: 4px 0; }
+
+  /* Gran Carrera: carriles bajos, corredores en rejilla */
+  .view-race .race-banner { padding: 6px 12px; margin-bottom: 6px; }
+  .view-race .lane { height: 38px; }
+  .view-race .runner { height: 36px; bottom: 2px; }
+  .view-race .runner-sprite { max-height: 36px; }
+  .view-race .track-wrap { padding: 6px; }
+  .view-race .race-layout { margin-top: 8px; gap: 10px; grid-template-columns: 250px minmax(0, 1fr); }
+  .view-race .runners { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+  .view-race .runner-card { padding: 4px 8px; gap: 6px; }
+  .view-race .rc-sprite { width: 36px; height: 36px; }
+  .view-race .runner-card .btn { padding: 5px 10px; }
+  .view-race .race-layout > .card { padding: 10px; gap: 6px; }
+}
+
+/* Desafío Pokémon: selector compacto */
+@media (min-width: 901px) {
+  .view-quiz .qz-layout { grid-template-columns: minmax(0, 1fr) 270px; gap: 12px; }
+  .view-quiz .qz-setup { gap: 6px; padding: 10px 12px; }
+  .view-quiz .qz-sec { font-size: 11px; }
+  .view-quiz .qz-mode, .view-quiz .qz-diff { min-height: 46px; padding: 4px 6px; gap: 0; border-radius: 10px; }
+  .view-quiz .qz-mode { flex-direction: row; flex-wrap: wrap; gap: 0 8px; }
+  .view-quiz .qz-mode .small { flex: 1 0 100%; font-size: 11px; line-height: 1.1; }
+  .view-quiz .qz-mode-ico { font-size: 18px; }
+  .view-quiz .qz-diff { line-height: 1.15; font-size: 11.5px; }
+  .view-quiz .qz-diff b { font-size: 14px; }
+  .view-quiz .qz-diffs, .view-quiz .qz-modes { gap: 6px; }
+  .view-quiz .qz-ladder { padding: 2px 2px 4px; }
+  .view-quiz .qz-step { min-width: 46px; padding: 2px 4px; }
+  .view-quiz .qz-setup .bet-box { margin: 0; }
+  .view-quiz .qz-board { padding: 10px; }
+  .view-quiz .qz-start { padding: 10px; }
+  /* Partida: la imagen se ajusta a la altura */
+  .view-quiz .qz-art { width: min(200px, 100%, calc(var(--av) - 390px)); min-width: 110px; }
+  .view-quiz .qz-opt { min-height: 44px; }
+}
+
+/* Evento Mega: columna de estado (cabecera, fragmentos, pestañas) y panel a la derecha con desplazamiento propio si es largo */
+@media (min-width: 901px) {
+  .main.view-mega { padding-top: 10px; }
+  .view-mega .mg { max-width: none; display: grid; grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; gap: 8px 14px; height: var(--av); align-items: start; }
+  .view-mega .mg > .mg-hero { grid-column: 1; padding: 10px; flex-direction: row; }
+  .view-mega .mg > .mg-hour { grid-column: 1; }
+  .view-mega .mg > .mg-hud { grid-column: 1; }
+  .view-mega .mg > .mg-tabs { grid-column: 1; grid-template-columns: 1fr 1fr 1fr; position: static; }
+  .view-mega .mg > .mg-body { grid-column: 2; grid-row: 1 / span 5; max-height: var(--av); overflow-y: auto; padding-right: 4px; }
+  .view-mega .mg-hero-sym { width: 46px; height: 46px; }
+  .view-mega .mg-title { font-size: 14px; }
+  .view-mega .mg-state { font-size: 10px; margin-top: 2px; }
+  .view-mega .mg-count { font-size: 21px; }
+  .view-mega .mg-hud { padding: 8px 10px; gap: 6px; }
+  .view-mega .mg-frag-ico { font-size: 24px; }
+  .view-mega .mg-frags-n { font-size: 30px; }
+  .view-mega .mg-chips { margin-left: 0; justify-content: flex-start; }
+  .view-mega .mg-tab { min-height: 40px; padding: 4px 0; }
+}
+@media (min-width: 901px) { .view-mega .mg-combo-bar { height: 28px; } .view-mega .mg-combo-txt { white-space: normal; font-size: 10px; line-height: 1.1; } }
+
+/* Plinko, Minas, Voltorb Flip, Video Póker: tableros limitados por la altura */
+@media (min-width: 901px) {
+  .view-plinko .plinko-layout { grid-template-columns: minmax(0, 1fr) 270px; gap: 14px; }
+  .view-plinko .plinko-wrap { width: min(100%, calc((var(--av) - 100px) * 1.1 + 20px)); margin: 0 auto; padding: 8px; }
+  .view-plinko .bucket { padding: 3px 0; }
+  .view-plinko .card { padding: 10px; }
+  .view-mines .mines-board, .view-voltorb .vf-board { width: min(100%, calc(var(--av) - 56px)); padding: 10px; }
+  .view-mines .vf-layout, .view-voltorb .vf-layout { gap: 14px; grid-template-columns: minmax(0, min(calc(var(--av) - 56px), 60%)) minmax(240px, 1fr); }
+  .view-mines .mines-grid, .view-voltorb .vf-grid { gap: 6px; }
+  .view-mines .card, .view-voltorb .card { padding: 10px; }
+  .view-mines .vf-layout > .stack, .view-voltorb .vf-layout > .stack { gap: 8px; }
+  .view-videopoker .vp-slot .pcard-play { width: clamp(64px, calc((var(--av) - 330px) * .72), 96px); height: auto; aspect-ratio: 5 / 7; }
+  .view-videopoker .vp-slot .pcard-play .pc-big { font-size: clamp(30px, calc((var(--av) - 330px) * .38), 52px); }
+  .view-videopoker .vp-layout { gap: 12px; }
+}
+
+/* Gacha, Expediciones, Criadero: bloques más bajos y en rejilla */
+@media (min-width: 901px) {
+  .empty-state { padding: 8px 12px; flex-direction: row; justify-content: center; gap: 12px; }
+  .empty-state img { width: 64px; height: 64px; }
+  .banner-tabs { margin-bottom: 8px; }
+  .banner-duo .banner-tab { padding: 5px 10px; }
+  .banner-duo .banner-tab img { width: 34px; height: 34px; }
+  .banner-next { margin: -2px 0 6px; font-size: 12px; }
+  .banner-stage { padding: 12px 16px; border-radius: 16px; }
+  .banner-hero { gap: 12px; }
+  .banner-info h2 { font-size: 16px; margin-bottom: 2px; }
+  .banner-info > p { margin: 2px 0 6px; font-size: 13.5px; }
+  .banner-art { width: clamp(110px, calc(var(--av) - 470px), 200px); height: clamp(110px, calc(var(--av) - 470px), 200px); }
+  .view-gacha .pity { padding: 6px 10px; gap: 2px; }
+  .view-gacha .pity .small { font-size: 11.5px; }
+  .view-gacha .pull-row { margin: 8px 0; gap: 8px; }
+  .view-gacha .pull-row .btn { padding: 8px 14px; }
+  .view-gacha .buffs { margin-top: 6px; }
+  .view-gacha .featured { gap: 6px; }
+
+  .view-expediciones .section-title { margin: 8px 0 6px; }
+  .view-expediciones .afk-runs { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .view-expediciones .afk-run { padding: 8px; gap: 5px; border-width: 2px; }
+  .view-expediciones .afk-host { width: 40px; height: 40px; }
+  .view-expediciones .afk-track { height: 46px; }
+  .view-expediciones .afk-walker { width: 40px; height: 40px; }
+  .view-expediciones .afk-run .btn, .view-expediciones .afk-zone .btn { min-height: 34px; padding: 5px 10px; }
+  .view-expediciones .afk-zones { gap: 8px; }
+  .view-expediciones .afk-zone { padding: 0 8px 8px; gap: 3px; border-width: 2px; }
+  .view-expediciones .afk-zone-art { height: 64px; margin: 0 -8px; width: calc(100% + 16px); }
+  .view-expediciones .afk-zone-img { max-width: 56px; max-height: 56px; }
+  .view-expediciones .afk-zone-name { font-size: 14px; }
+  .view-expediciones .afk-zone > .small { font-size: 11.5px; line-height: 1.25; }
+
+  .view-criadero .care-slots, .view-criadero .care-eggs { gap: 8px; }
+  .view-criadero .care-pair { padding: 8px 10px; gap: 6px; border-width: 2px; }
+  .view-criadero .care-slot { min-height: 56px; }
+  .view-criadero .care-actions .btn { min-height: 36px; padding: 5px 10px; }
+  .view-criadero .care-egg { padding: 8px; gap: 5px; border-width: 2px; }
+  .view-criadero .egg-img { width: 56px; height: 64px; }
+  .view-criadero .care-egg .btn { min-height: 34px; }
+}
+
+/* Pokédex: cabecera y filtros fijos, la lista larga se desplaza dentro de su panel */
+@media (min-width: 641px) {
+  .main.view-pokedex { display: flex; flex-direction: column; overflow: hidden; }
+  .view-pokedex .game-head { flex: none; margin-bottom: 6px; }
+  .view-pokedex .dex-count { min-width: 200px; font-size: 12.5px; }
+  .view-pokedex .dex-count .pity-bar { height: 8px; margin-top: 2px; }
+  .view-pokedex .filters { flex: none; margin-bottom: 8px; gap: 6px; }
+  .view-pokedex .filters > * { padding-top: 5px; padding-bottom: 5px; }
+  .view-pokedex .locked-banner { flex: none; padding: 6px 10px; margin-bottom: 6px; }
+  .view-pokedex .dex-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 2px 4px 2px 2px; }
+  .view-pokedex .dex-grid { grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 6px; }
+  .view-pokedex .dex-card { padding: 6px 2px; }
+  .view-pokedex .dex-card img { width: 64px; height: 64px; }
+}
+
+/* ---- Pantallas con listas largas: cabecera y pestañas fijas, el contenido se desplaza dentro de su panel ---- */
+@media (min-width: 641px) {
+  .main.view-shop, .main.view-news, .main.view-ranking, .main.view-market, .main.view-combates, .main.view-admin, .main.view-trainer {
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .view-shop > *, .view-news > *, .view-ranking > *, .view-market > *, .view-combates > *, .view-admin > *, .view-trainer > * { flex: none; }
+  .view-shop > :last-child, .view-news > :last-child, .view-ranking > :last-child, .view-market > :last-child,
+  .view-combates > :last-child, .view-admin > :last-child, .view-trainer > :last-child { flex: 1 1 0; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  /* Dentro del panel que se desplaza, los bloques no se encogen (la tabla de jugadores del anfitrión quedaba con altura 0). */
+  .view-admin > :last-child > *, .view-trainer > :last-child > *, .view-news > :last-child > * { flex-shrink: 0; }
+  .view-shop .tabs, .view-ranking .tabs, .view-combates .tabs { margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
+  .view-shop .tabs .tab, .view-ranking .tabs .tab, .view-combates .tabs .tab { padding: 6px 10px 5px; font-size: 13px; flex: 1 1 auto; }
+  .view-shop .say.compact { margin-bottom: 6px; }
+  .view-shop .say-av { width: 40px; height: 40px; }
+  .view-shop .say-box { padding: 4px 24px 4px 12px; }
+  .view-shop .say-who { display: none; }
+  .view-shop .shop-grid.wide { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px; }
+  .view-shop .shop-item { padding: 6px 8px; gap: 8px; }
+  .view-shop .shop-item img { width: 44px; height: 44px; }
+  .view-shop .shop-item .small, .view-shop .shop-item .muted { font-size: 11.5px; line-height: 1.25; }
+  .view-shop .shop-item .qty { width: 52px; }
+
+  .view-news .news-rel { padding: 10px 12px; }
+  .view-news > p.muted { margin: 0 0 6px; }
+
+  .view-market .mk-help { margin-bottom: 6px; padding: 4px 12px; }
+  .view-market .mk-shell { overflow: hidden; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .view-market .mk-main { overflow-y: auto; min-height: 0; padding-right: 4px; }
+  .view-market .mk-tabs { align-self: start; }
+  .view-market .mk-tabs .tab { padding: 7px 10px; min-height: 36px; }
+
+  .view-combates .bt-ctl { padding: 8px 12px; }
+  .view-combates .bt-ctl p { margin: 4px 0; font-size: 11.5px; }
+  .view-combates .bt-wins { font-size: 13px; }
+  .view-combates .bt-content { display: flex; flex-direction: column; gap: 8px; }
+  .view-combates .bt-content > .tr-grid { flex: 1 1 0; min-height: 120px; overflow-y: auto; padding-right: 4px; align-content: start; }
+  .view-combates .tr-grid { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 8px; }
+  .view-combates .tr-card { padding: 8px; gap: 4px; }
+  .view-combates .tr-sil, .view-combates .tr-sil img { height: 40px; }
+  .view-combates .tr-sil img { width: 40px; }
+  .view-combates .tr-name { font-size: 15px; }
+  .view-combates .tr-quote { min-height: 0; font-size: 11px; }
+}
+
+/* Mi Entrenador en pestañas (Perfil, Medallas, Aspecto, Colecciones) */
+.tr-profile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.tr-tabs { margin-bottom: 8px; }
+@media (max-width: 900px) { .tr-profile { grid-template-columns: 1fr; } }
+@media (min-width: 641px) {
+  .view-trainer .tr-tabs .tab { flex: 1 1 auto; padding: 6px 10px; }
+  .view-trainer .trainer-card { padding: 10px; gap: 10px; }
+  .view-trainer .badge-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .view-trainer .badge-card { padding: 8px; }
+  .view-trainer .set-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+  .view-trainer .set-card { padding: 8px; }
+  .view-trainer .tr-looks { gap: 8px; margin: 0; }
+  .view-trainer .tr-hist .section-title { margin-top: 0; }
+}
+@media (min-width: 901px) and (max-height: 840px) {
+  .main .say { margin-bottom: 6px; }
+  .main .say-av { width: 40px; height: 40px; }
+  .main .say-who { display: none; }
+  .main .say-box { padding: 4px 24px 4px 12px; line-height: 1.25; }
+  .view-expediciones .afk-zone-art { height: 44px; }
+  .view-expediciones .afk-zone-img { max-width: 40px; max-height: 40px; }
+  .view-expediciones .afk-zone > .small { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .view-expediciones .afk-zone .types { margin: 0; }
+  .view-expediciones .afk-zone .types .type { font-size: 9px; padding: 1px 6px; }
+  .view-expediciones .empty-state { padding: 2px; }
+  .view-expediciones .empty-state img { width: 40px; height: 40px; }
+}
+
+/* Texas Hold'em: salas compactas y mesa ajustada a la altura */
+@media (min-width: 901px) {
+  .view-poker .poker-lobby { gap: 8px; margin-bottom: 6px; }
+  .view-poker .poker-room { padding: 6px 10px; gap: 2px; font-size: 13px; }
+  .view-poker .p-table { width: min(100%, calc((var(--av) - 300px) * 1.9)); margin: 44px auto 58px; }
+  .view-poker .p-controls { padding: 8px; gap: 6px; }
+  .view-poker .p-board { min-height: 80px; }
+  .view-poker .p-log { margin-top: 6px; max-height: 70px; }
+}
+@media (min-width: 901px) {
+  .view-videopoker .vp-cards { flex-wrap: nowrap; gap: 8px; }
+  .view-videopoker .vp-slot { flex: 0 1 auto; min-width: 0; }
+  .view-videopoker .vp-slot .pcard-play { width: clamp(56px, min(calc((var(--av) - 330px) * .72), 11vw), 96px); }
+}
+
+/* ---- Móvil: la acción principal siempre a la vista ---- */
+@media (max-width: 640px) {
+  .view-gacha .pull-row:has(.btn.gold) { position: sticky; bottom: calc(var(--tabbar-h, 62px) + 8px + env(safe-area-inset-bottom)); z-index: 5; background: var(--bg2); border: 3px solid var(--ink); border-radius: 14px; padding: 6px; margin: 8px -2px; gap: 6px; box-shadow: 3px 3px 0 #2a2f4540; }
+  .view-gacha .pull-row:has(.btn.gold) .btn { flex: 1 1 100%; padding: 8px; min-width: 0; }
+  .view-gacha .banner-art { width: 96px; height: 96px; }
+  .view-gacha .banner-hero { gap: 6px; }
+  .view-gacha .banner-tab { padding: 4px 6px; }
+  .view-gacha .banner-tab img { width: 30px; height: 30px; }
+  .view-gacha .pity { padding: 6px 8px; }
+  .view-gacha .pity .small { font-size: 11px; }
+  .view-quiz .qz-sec { font-size: 11px; }
+  .view-quiz .qz-mode, .view-quiz .qz-diff { min-height: 48px; padding: 4px; }
+  .view-quiz .qz-mode .small { font-size: 10.5px; }
+  .view-quiz .qz-diff { font-size: 11px; }
+  .view-quiz .qz-setup { gap: 6px; }
+  .empty-state { padding: 10px; }
+  .empty-state img { width: 64px; height: 64px; }
+}
+/* Móvil en horizontal: pantallas con listas largas y una sola columna útil */
+@media (max-height: 560px) and (min-width: 641px) {
+  .main { padding: 6px 12px 8px; }
+  :root { --av: calc(100dvh - 46px - 14px); }
+  .game-head { margin-bottom: 4px; }
+  .main .say { display: none; }
+  .view-slots .sym { max-height: clamp(30px, calc((var(--av) - 250px) / 3), 80px); }
+  .view-roulette .wheel-wrap { max-width: calc(var(--av) - 20px); }
+  .view-quiz .qz-layout { grid-template-columns: 1fr; }
+  .view-quiz .qz-board { display: none; }
+  .view-quiz .qz-mode .small, .view-quiz .qz-diff .small { display: none; }
+  .view-mega .mg { height: var(--av); }
+  .view-mega .mg-hero-sym { display: none; }
+}

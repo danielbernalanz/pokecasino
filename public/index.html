@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PokéCasino</title>
+  <meta name="theme-color" content="#e3350d">
+  <script src="/js/theme.js"></script>
+  <link rel="icon" type="image/png" href="/icons/favicon-64.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="PokéCasino">
+  <link rel="preload" href="/fonts/nunito-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/jersey-10-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/fx.css">
+  <link rel="stylesheet" href="/css/mega.css">
+  <link rel="stylesheet" href="/css/quiz.css">
+  <link rel="stylesheet" href="/css/news.css">
+  <link rel="stylesheet" href="/css/pc.css">
+  <link rel="stylesheet" href="/css/bond.css">
+  <link rel="stylesheet" href="/css/afk.css">
+  <link rel="stylesheet" href="/css/anim.css">
+  <link rel="stylesheet" href="/css/battle.css">
+  <link rel="stylesheet" href="/css/fit.css">
+</head>
+<body>
+  <!-- Pantalla de acceso -->
+  <section id="auth" class="auth hidden">
+    <div class="auth-card">
+      <div class="logo big"><span class="logo-ball"></span>Poké<b>Casino</b></div>
+      <p class="muted" id="auth-sub">Casino privado para entrenadores invitados</p>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-mode="login" type="button">Entrar</button>
+        <button class="tab" data-mode="register" type="button">Registrarse</button>
+      </div>
+      <form id="auth-form" autocomplete="on">
+        <label>Entrenador<input name="username" required minlength="3" maxlength="16" autocomplete="username" pattern="[A-Za-z0-9_\-]+"></label>
+        <label>Contraseña<input name="password" type="password" required minlength="6" autocomplete="current-password"></label>
+        <label class="reg-only hidden">Código de invitación<input name="invite" autocomplete="off" placeholder="Pídeselo al anfitrión"></label>
+        <button class="btn primary big" type="submit">Entrar</button>
+        <p id="auth-error" class="error"></p>
+      </form>
+      <button class="auth-news" id="auth-news" type="button">📰 Novedades</button>
+      <div class="auth-mons" id="auth-mons"></div>
+    </div>
+  </section>
+
+  <!-- Aplicación -->
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menu-btn" aria-label="Menú">☰</button>
+      <a class="logo" href="#/lobby"><span class="logo-ball"></span><span class="logo-text">Poké<b>Casino</b></span></a>
+      <div class="jackpot-pill" title="Bote progresivo de Pika-Slots">BOTE <b id="jackpot">0</b></div>
+      <div class="wallet">
+        <span class="pill coins" title="Monedas"><img class="pixel meow" alt="" width="34" height="34" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png"><span class="coin-ico"></span><b id="coins">0</b></span>
+        <a class="pill mega-pill hidden" id="mega-pill" href="#/mega" title="Megafragmentos (evento Megaevolución)">💠 <b id="mega-frags">0</b><i id="mega-mult"></i></a>
+        <span class="pill dust" title="Polvo estelar">✦ <b id="dust">0</b></span>
+        <span class="pill lvl" title="Nivel de entrenador">Nv <b id="level">1</b><i class="xpbar"><i id="xpfill"></i></i></span>
+      </div>
+      <button class="icon-btn" id="mute-btn" aria-label="Sonido"></button>
+      <button class="icon-btn" id="social-btn" aria-label="Chat">💬<span class="dot hidden" id="chat-dot"></span></button>
+      <button class="user-btn" id="user-btn"><span id="buddy-mini"></span><span id="uname"></span></button>
+    </header>
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main" id="view"></main>
+    <aside class="social" id="social">
+      <div class="social-tabs">
+        <button class="stab active" data-pane="chat">Chat</button>
+        <button class="stab" data-pane="feed">En vivo</button>
+        <button class="stab" data-pane="online">Online <span id="online-count">0</span></button>
+      </div>
+      <div class="pane" id="pane-chat">
+        <div class="chat-log" id="chat-log"></div>
+        <form class="chat-form" id="chat-form"><button type="button" class="btn emote-btn" id="emote-btn" title="Emotes de Pokémon" aria-label="Emotes">😀</button><input id="chat-input" maxlength="300" placeholder="Mensaje… (/w nombre para privado)" autocomplete="off" enterkeyhint="send"><button class="btn" aria-label="Enviar">➤</button></form>
+      </div>
+      <div class="pane hidden" id="pane-feed"><div class="feed" id="feed"></div></div>
+      <div class="pane hidden" id="pane-online"><div class="online" id="online"></div></div>
+    </aside>
+  </div>
+  <!-- Barra de navegación inferior (solo en móvil) -->
+  <nav class="tabbar hidden" id="tabbar" aria-label="Navegación principal"></nav>
+  <div id="toasts" class="toasts"></div>
+  <div id="conn" class="conn hidden">Reconectando…</div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
