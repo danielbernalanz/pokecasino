@@ -66,7 +66,7 @@ function playerAcc(user, mode, diff) {
 // mayor de las dos: quien mejora de golpe (por ejemplo, porque se ha aprendido preguntas) ve bajar sus
 // multiplicadores en pocas rondas.
 const ACC_DECAY = 0.95;
-const RECENT_PRIOR = 3;
+const RECENT_PRIOR = 1;
 function noteAnswer(user, g, ok) {
   const r = ((user.quizAcc ||= {})[accKey(g.mode, g.diff)] ||= { ok: 0, n: 0 });
   r.n++;
