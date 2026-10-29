@@ -95,7 +95,8 @@ function signupAllowed(ip) {
 
 function register({ username, password, invite }, ip) {
   if (tooMany(ip)) throw new Error('Demasiados intentos, espera unos minutos.');
-  if (!NAME_RE.test(username || '')) throw new Error('Nombre: 3-16 caracteres (letras, números, _ o -).');
+  // Solo texto: un JSON con el nombre como lista u objeto pasaba la expresión regular (se convierte a texto) y dejaba una cuenta corrupta.
+  if (typeof username !== 'string' || !NAME_RE.test(username)) throw new Error('Nombre: 3-16 caracteres (letras, números, _ o -).');
   if (typeof password !== 'string' || password.length < 6 || password.length > 128) throw new Error('La contraseña necesita al menos 6 caracteres.');
   const code = String(invite || '').trim().toUpperCase();
   const single = db.data.invites[code];
@@ -114,7 +115,7 @@ function register({ username, password, invite }, ip) {
 
 function login({ username, password }, ip) {
   if (tooMany(ip)) throw new Error('Demasiados intentos, espera unos minutos.');
-  const u = db.userByName(username);
+  const u = typeof username === 'string' ? db.userByName(username) : null;
   if (!u || u.npc || typeof password !== 'string' || !checkPassword(password, u)) { noteFail(ip); throw new Error('Usuario o contraseña incorrectos.'); }
   if (u.banned) throw new Error('Esta cuenta está suspendida.');
   return { user: u, token: createSession(u) };

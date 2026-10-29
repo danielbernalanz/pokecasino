@@ -39,10 +39,21 @@ function load(raw) {
   data.market = Object.assign({ orders: [], trades: [], history: {}, nextId: 1 }, data.market);
   data.escrow ||= {};
   byName.clear();
-  for (const u of Object.values(data.users)) { migrateUser(u); byName.set(u.username.toLowerCase(), u); }
+  for (const [id, u] of Object.entries(data.users)) {
+    // Una cuenta corrupta (sin nombre de texto) no debe tumbar la carga de todas las demás.
+    if (!u || typeof u.username !== 'string') { console.error(`  ⚠️ Cuenta ${id} descartada: nombre no válido.`); delete data.users[id]; continue; }
+    migrateUser(u); byName.set(u.username.toLowerCase(), u);
+  }
 }
 
-try { load(JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch { load(null); /* base nueva */ }
+try { load(JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) {
+  // Base nueva si no hay archivo. Si lo hay pero no se pudo leer, se aparta una copia antes de empezar de cero:
+  // el primer guardado lo sobrescribiría y se perderían todos los datos.
+  if (e && e.code !== 'ENOENT') {
+    try { fs.copyFileSync(FILE, `${FILE}.corrupta-${Date.now()}`); console.error(`  ⚠️ No se pudo cargar ${path.basename(FILE)} (${e.message}): copia apartada y arranque con base nueva.`); } catch { /* sin copia */ }
+  }
+  load(null);
+}
 
 // ---- Postgres opcional (DATABASE_URL): para alojamientos sin disco persistente ----
 // En un redespliegue, Render arranca la instancia nueva antes de apagar la vieja. Para que no se

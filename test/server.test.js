@@ -42,6 +42,9 @@ test('registro, inicio de sesión y validaciones', async () => {
   assert.strictEqual((await post('/api/register', { username: 'a', password: 'secret123' })).status, 400);
   assert.strictEqual((await post('/api/register', { username: 'Ana<script>', password: 'secret123' })).status, 400);
   assert.strictEqual((await post('/api/register', { username: 'Ana', password: '123' })).status, 400);
+  // Un nombre que no es texto (lista u objeto en el JSON) pasaba la expresión regular y dejaba una cuenta corrupta que vaciaba la base al reiniciar.
+  for (const bad of [['Listilla'], { toString: 1 }, 12345, true]) assert.strictEqual((await post('/api/register', { username: bad, password: 'secret123' })).status, 400, JSON.stringify(bad));
+  assert.strictEqual((await post('/api/login', { username: ['Listilla'], password: 'secret123' })).status, 400);
   const ok = await post('/api/register', { username: 'Ana', password: 'secret123' });
   assert.ok(ok.body.ok && /^[0-9a-f]{64}$/.test(ok.body.token));
   assert.strictEqual((await post('/api/register', { username: 'ana', password: 'secret123' })).body.error, 'Ese nombre ya está en uso.');
