@@ -320,7 +320,7 @@ function settle(b) {
   const humans = b.humans();
   const res = { id: b.id, at: Date.now(), mode: b.mode, format: b.format, level: b.level, wager: b.wager, turns: b.turn, players: b.sides.map((s) => s.name), winner: b.winner === null || b.winner === undefined ? null : b.winner, trainer: b.trainer ? b.trainer.id : null };
   if (b.mode === 'sim') return res;
-  const rec = { ...res, log: { p1: b.sides[0].log, p2: b.sides[1].log }, users: b.sides.map((s) => s.userId) };
+  const rec = { ...res, log: { p1: b.sides[0].log, p2: b.sides[1].log }, users: b.sides.map((s) => s.userId), roster: { p1: b.sides[0].roster, p2: b.sides[1].roster }, pickN: b.pickN };
   history.unshift(rec);
   history.length = Math.min(history.length, HIST_KEEP);
   if (b.mode === 'cpu') {
@@ -524,7 +524,7 @@ function replay(user, { id }) {
   const rec = history.find((h) => h.id === String(id) && h.users.includes(user.id));
   if (!rec) return { replay: null };
   const i = rec.users.indexOf(user.id);
-  return { replay: { id: rec.id, mode: rec.mode, format: rec.format, players: rec.players, winner: rec.winner, side: 'p' + (i + 1), log: rec.log['p' + (i + 1)] } };
+  return { replay: { id: rec.id, mode: rec.mode, format: rec.format, players: rec.players, winner: rec.winner, side: 'p' + (i + 1), log: rec.log['p' + (i + 1)], roster: rec.roster, pickN: rec.pickN } };
 }
 
 // ---- Equipos guardados y constructor ----
@@ -576,7 +576,7 @@ function boxForBuilder(user) {
     const forms = Object.keys(megas).map(Number).map((fid) => mega.BY_FORM.get(fid)).filter((f) => f && f.species === id && (() => { try { return !!sd.megaSetup(f.formId); } catch { return false; } })()).map((f) => f.formId);
     for (const m of arr) {
       sd.ensureSd(id, m);
-      out.push({ id, uid: m.uid, nick: m.nick, level: m.level, gender: m.gender, shiny: m.shiny, friendship: m.friendship, nature: m.nature, ability: m.sdAbility, moves: m.sdMoves, megas: forms });
+      out.push({ id, uid: m.uid, nick: m.nick, level: m.level, gender: m.gender, shiny: m.shiny, friendship: m.friendship, nature: m.nature, ability: m.sdAbility, moves: m.sdMoves, megas: forms, iv: (m.ivs || []).reduce((a, x) => a + x, 0) });
     }
   }
   db.save();

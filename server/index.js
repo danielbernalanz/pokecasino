@@ -231,11 +231,9 @@ function setBuddy(user, { id, shiny }) {
   return {};
 }
 
-// Con el registro abierto, las cuentas recién creadas no pueden regalar (evita granjear cuentas).
-function canGift(user) {
-  if (user.isAdmin) return;
-  if (user.level < 3 || Date.now() - user.createdAt < 24 * 3600 * 1000) throw new Error('Para regalar necesitas nivel 3 y una cuenta de al menos 1 día.');
-}
+// Las cuentas nuevas no pueden regalar y cada cuenta recibe un máximo de monedas regaladas al día (evita granjear
+// cuentas secundarias): ver transfer.js.
+const canGift = (user) => require('./transfer').canGift(user);
 
 function giftCoins(user, { to, amount }) {
   canGift(user);
@@ -244,6 +242,9 @@ function giftCoins(user, { to, amount }) {
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
   if (t.npc) throw new Error('Los comerciantes NPC no aceptan regalos.');
   if (!Number.isInteger(amount) || amount < 1 || amount > user.coins) throw new Error('Cantidad no válida.');
+  const left = require('./transfer').giftInLeft(t);
+  if (amount > left) throw new Error(left ? `${t.username} solo puede recibir ${left.toLocaleString('es')} monedas más en regalos hoy.` : `${t.username} ya ha recibido el máximo de monedas en regalos hoy.`);
+  require('./transfer').noteGiftIn(t, amount);
   user.coins -= amount;
   t.coins += amount;
   hub.ledger(user, -amount, 'gift_out', t.username);

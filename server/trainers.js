@@ -44,7 +44,7 @@ const badgeCount = (u) => (u.progress && u.progress.badges ? u.progress.badges.l
 const unlocked = (t, u) => badgeCount(u) >= t.badges;
 
 function listFor(u) {
-  return TRAINERS.map((t) => ({ id: t.id, name: t.name, cls: t.cls, tier: t.tier, gym: !!t.gym, sig: t.sig, quote: t.quote, badges: t.badges, locked: !unlocked(t, u), coins: COINS[t.tier], types: t.types }));
+  return TRAINERS.map((t) => ({ id: t.id, name: t.name, cls: t.cls, tier: t.tier, gym: !!t.gym, sig: t.sig, quote: t.quote, badges: t.badges, locked: !unlocked(t, u), coins: COINS[t.tier], types: t.types, dl: LEVEL_DELTA[t.tier] }));
 }
 
 function candidatePool(t) {

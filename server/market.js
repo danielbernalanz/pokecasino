@@ -200,6 +200,8 @@ function buy(user, payload) {
   const instant = !!payload.instant || onlyId != null;
   const days = validDays(payload);
   validQtyPrice(a, qty, price);
+  const maxP = require('./transfer').maxBuyPrice(user, a);
+  if (price > maxP) throw new Error(`Las cuentas nuevas (menos de nivel 5 o de 3 días) no pueden pagar más de ${maxP.toLocaleString('es')} por unidad de esto.`);
   const worst = qty * price + (instant ? 0 : fee(qty * price));
   if (user.coins < worst) throw new Error(`Necesitas hasta ${worst.toLocaleString('es')} monedas.`);
   checkOrderLimit(user, instant);
