@@ -21,7 +21,7 @@ export function monTile(m, { cls = '', mark = '' } = {}) {
   const p = S.dexById.get(m.id);
   return h('div', { class: 'afk-tile ' + cls },
     h('img', { class: 'pixel', src: sprite(m.id, m.shiny), alt: '', loading: 'lazy', draggable: 'false' }),
-    h('div', { class: 'afk-tile-txt' }, h('b', {}, `${m.shiny ? '✨ ' : ''}${label(m)}`), h('span', { class: 'small muted' }, `Nv. ${m.level} · #${String(m.id).padStart(3, '0')}`),
+    h('div', { class: 'afk-tile-txt' }, h('b', {}, `${m.shiny ? '✨ ' : ''}${label(m)}`), h('span', { class: 'small muted' }, `${m.level ? `Nv. ${m.level} · ` : ''}#${String(m.id).padStart(3, '0')}`),
       h('span', { class: 'types' }, p.types.map(typeBadge))),
     mark ? h('span', { class: 'afk-mark' }, mark) : null);
 }

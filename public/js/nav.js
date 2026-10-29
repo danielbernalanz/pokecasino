@@ -20,6 +20,7 @@ export const META = {
   pc: { t: 'Caja PC', d: 'Tus Pokémon, en cajas como en los juegos', art: 137, tone: 'b', ico: '🖥️' },
   pokedex: { t: 'Pokédex', d: 'Colección completa y compañero', art: 479, tone: 'r', ico: '📕' },
   huerto: { t: 'Huerto de bayas', d: 'Planta bayas y haz amigos', art: 43, tone: 'g', ico: '🌱' },
+  criadero: { t: 'Criadero', d: 'Huevos, eclosiones y bebés Pokémon', art: 242, tone: 'p', ico: '🥚' },
   expediciones: { t: 'Expediciones', d: 'Manda a tu equipo de paseo y vuelve con botín', art: 12, tone: 'g', ico: '🧭' },
   combates: { t: 'Combates', d: 'Combates Pokémon de verdad', art: 448, tone: 'p', ico: '⚔️' },
   duels: { t: 'Duelos rápidos', d: 'Un Pokémon a ciegas contra otro entrenador', art: 68, tone: 'r', ico: '🥊' },
@@ -40,7 +41,7 @@ export const SECTIONS = [
     { name: 'Multijugador', items: ['poker', 'crash', 'race'] },
     { name: 'Desafíos', items: ['quiz'] }] },
   { id: 'pokemon', label: 'Pokémon', ico: { item: 'poke-ball' }, say: { emoji: '🧑‍🔬', who: 'Prof. Oak', text: 'Aquí cuidas de tu equipo: captura, entrena y presume.' }, groups: [
-    { name: 'Tu equipo', items: ['gacha', 'pc', 'pokedex', 'huerto'] },
+    { name: 'Tu equipo', items: ['gacha', 'pc', 'pokedex', 'huerto', 'criadero'] },
     { name: 'Aventura', items: ['combates', 'expediciones', 'duels', 'mega'] }] },
   { id: 'mercado', label: 'Mercado', ico: { item: 'nugget' }, say: { mon: 352, who: 'Kecleon', text: 'Compra, vende y haz buenos negocios con otros entrenadores.' }, groups: [
     { name: 'Comercio', items: ['market', 'shop'] }] },
@@ -149,6 +150,7 @@ const TIPS = [
   { id: 'blackjack', text: '¿Una partida de Blackjack contra Snorlax? Recuerda: nunca se rinde… ni se levanta.', go: 'Jugar' },
   { id: 'market', text: 'En el Mercado puedes vender tus repetidos a otros entrenadores.', go: 'Ir al Mercado' },
   { id: 'quiz', text: '¿Sabes quién es ese Pokémon? Demuéstralo en el Desafío.', go: 'Probar' },
+  { id: 'criadero', text: 'En el Criadero, dos Pokémon compatibles te dejan un huevo. ¡Juega para que eclosione!', go: 'Ir al Criadero' },
   { id: 'expediciones', text: 'Tus Pokémon pueden salir de expedición mientras no estás: vuelven con caramelos, bayas y niveles.', go: 'Explorar' },
   { id: 'combates', text: '¡Combates de verdad! Prepara tu equipo y reta a un entrenador.', go: 'A combatir' },
   { id: 'shop', text: 'En la Tienda hay objetos que te vendrán de maravilla.', go: 'Ir a la Tienda' },

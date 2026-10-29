@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026.10.29-f",
+    "date": "2026-10-29",
+    "title": "Criadero: huevos y bebés Pokémon",
+    "items": [
+      "🥚 Nuevo Criadero (Pokémon → Criadero): deja a dos Pokémon que compartan tipo (o a uno con Ditto) y cada 6 horas (4 si son de la misma especie) tendrás un huevo. Los legendarios y míticos no crían.",
+      "🎮 El huevo eclosiona jugando: cada 100 monedas apostadas son un paso (o espera 12 horas). Con animación de grieta, destello y sprite animado.",
+      "🧬 El bebé hereda 3 IV de los padres y, con un 50 %, la naturaleza de uno. Variocolor 1/128 (1/64 si algún padre lo es). Cuenta para la Pokédex y trae 3 caramelos de su familia.",
+      "🪙 Recoger el huevo cuesta una tarifa (desde 200 monedas, según la rareza). La segunda plaza del Criadero se abre en el nivel 20.",
+      "🔒 Los padres no se pueden liberar, vender ni usar en combates mientras estén en el Criadero (insignia 🥚 en la Caja PC)."
+    ]
+  },
+  {
     "version": "2026.10.29-e",
     "date": "2026-10-29",
     "title": "Expediciones: tus Pokémon exploran solos",

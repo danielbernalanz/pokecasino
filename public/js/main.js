@@ -14,6 +14,7 @@ import pokedex from './views/pokedex.js';
 import pc from './views/pc.js';
 import huerto from './views/huerto.js';
 import expediciones from './views/expediciones.js';
+import criadero from './views/criadero.js';
 import shop from './views/shop.js';
 import ranking from './views/ranking.js';
 import admin from './views/admin.js';
@@ -34,7 +35,7 @@ import hubs, { notFound } from './views/hubs.js';
 import { buildSidebar, buildTabbar, markNav, refreshNew, markVisited, resetVisited } from './nav.js';
 
 duels.title = 'Duelos rápidos'; // los duelos de siempre (1 Pokémon a ciegas) pasan a llamarse así junto a los nuevos Combates
-const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, shop, megaView, market, ranking, admin, ...hubs];
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, criadero, shop, megaView, market, ranking, admin, ...hubs];
 
 // ---------- Autenticación ----------
 let mode = 'login';

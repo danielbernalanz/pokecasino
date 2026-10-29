@@ -452,6 +452,22 @@ Los ejemplares salen de la Caja durante 1, 4, 8 o 12 h reales (1-3 por equipo, 2
 
 **Ejemplares ocupados** (`m.away = 'exp:<id>'`, o `'care'` en el criadero): no se pueden liberar (`pc:release`), transferir (`pc:transfer` y en bloque), intercambiar (Milagroso), evolucionar, regalar ni vender en el Mercado (`gacha.takePoke` y `market.owned` descuentan los ocupados y, si solo quedan copias ocupadas, se rechaza con un mensaje claro), liberar por especie (`gacha.release`) ni llevar a combates o equipos guardados. `specimen.sync` nunca descarta a un ocupado (prioridad +20). El compañero sí puede ir de expedición.
 
+## Fase B5 · Criadero (server/daycare.js, test/daycare.test.js)
+
+Dos ejemplares compatibles (comparten un tipo, o uno es Ditto; sin legendarios, míticos ni familias cuya forma base lo sea) producen un huevo cada **6 h** (**4 h** si son de la misma especie). Recoger el huevo cuesta una tarifa (motivo `daycare`, sumidero); eclosiona con **pasos** (1 por cada 100 monedas apostadas, sin duelos; 50 / 70 / 100 / 150 pasos para C / U / R / E) o, esperando, **12 h** después de recogerlo. Una pareja (la segunda, a nivel de entrenador 20) y como máximo 2 huevos sin eclosionar.
+
+| Elemento | Número |
+|---|---|
+| Especie del bebé | forma base de la familia de la madre (la hembra, o la primera plaza); con Ditto, la del otro padre |
+| Herencia | 3 IV al azar tomados de uno de los padres; naturaleza de un padre con 50 % |
+| Variocolor | 1/128 por huevo (1/64 si algún padre es variocolor: «Método Masuda» simplificado) |
+| Bebé | ejemplar nuevo Nv. 5 por `gacha.grant` (Pokédex, estrellas; a 5 estrellas solo da polvo) + 3 caramelos de su familia |
+| Tarifa | `máx(200, ⌈1,2 × reventa esperada⌉)` donde reventa esperada = `polvo × 4 × (1 + 2/64)` (= tope de compra de un PNJ, con la cota alta del variocolor ×3): C 200 · U 200 · R 200 · E 400 |
+
+**No es un grifo de monedas.** El máximo que se recupera de un bebé normal es el tope de compra de un PNJ = el polvo de liberarlo cambiado a 4 monedas (C 20, U 48, R 120, E 320); la tarifa de todas las rarezas (200-400) lo supera, y también la reventa esperada con el variocolor. El test (`economía: criar → vender/liberar…`) lo comprueba para todas las rarezas y todas las formas base criables, y simula el bucle completo (tarifa → eclosión → liberar → cambiar polvo) con pérdida neta. Además cada huevo tarda ≥ 4 h reales y, para los pasos, ≥ 5.000-15.000 monedas apostadas (o 12 h). Los caramelos que da transferir al bebé (hasta 5-16) no tienen valor en monedas.
+
+Los padres llevan `away = 'care'` y están protegidos igual que en las expediciones (ver Fase B6).
+
 ## Fase B7 · Combates Showdown: Liga de entrenadores y PvP (server/showdown.js, test/showdown.test.js)
 
 Combates reales con el simulador oficial de Pokémon Showdown (individuales y dobles). Los «Duelos rápidos» de siempre (`server/games/duel.js`) no cambian.
