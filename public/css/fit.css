@@ -230,6 +230,8 @@
   .view-shop > *, .view-news > *, .view-ranking > *, .view-market > *, .view-combates > *, .view-admin > *, .view-trainer > * { flex: none; }
   .view-shop > :last-child, .view-news > :last-child, .view-ranking > :last-child, .view-market > :last-child,
   .view-combates > :last-child, .view-admin > :last-child, .view-trainer > :last-child { flex: 1 1 0; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  /* Dentro del panel que se desplaza, los bloques no se encogen (la tabla de jugadores del anfitrión quedaba con altura 0). */
+  .view-admin > :last-child > *, .view-trainer > :last-child > *, .view-news > :last-child > * { flex-shrink: 0; }
   .view-shop .tabs, .view-ranking .tabs, .view-combates .tabs { margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
   .view-shop .tabs .tab, .view-ranking .tabs .tab, .view-combates .tabs .tab { padding: 6px 10px 5px; font-size: 13px; flex: 1 1 auto; }
   .view-shop .say.compact { margin-bottom: 6px; }
