@@ -158,7 +158,7 @@ export default {
         sel('rarity', [['', 'Cualquier rareza'], ...['M', 'L', 'E', 'R', 'U', 'C'].map((r) => [r, rarityName(r)])]),
         sel('type', [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])]),
         sel('gen', [['', 'Todas las regiones'], ...REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`])])),
-      grid);
+      h('div', { class: 'dex-scroll' }, grid)); // la lista (1.025) se desplaza dentro de su panel: la pantalla no
     render();
     this.off = bus.on('me', render);
     this.stopObs = () => observer && observer.disconnect();

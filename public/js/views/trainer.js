@@ -15,14 +15,19 @@ async function marketCounts() {
   return by;
 }
 
+let trTab = 'perfil';
 export default {
   id: 'trainer', title: 'Mi Entrenador', icon: '🏅',
   async mount(root) {
-    const body = h('div', { class: 'stack' });
-    const hist = h('div', {});
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏅 Mi Entrenador'), h('p', { class: 'muted' }, 'Medallas, colecciones, tu aspecto y tus cuentas.')), body,
-      h('h2', { class: 'section-title' }, 'Historial'), hist);
-    historyCard().then((c) => hist.replaceChildren(c));
+    const body = h('div', { class: 'stack tr-panel' });
+    const hist = h('div', { class: 'tr-hist' }, h('h2', { class: 'section-title' }, 'Historial'));
+    // Pestañas: todo el perfil cabe en una pantalla; cada pestaña muestra un bloque.
+    const TABS = [['perfil', '🙋', 'Perfil'], ['medallas', '🏅', 'Medallas'], ['aspecto', '🎨', 'Aspecto'], ['colecciones', '📚', 'Colecciones']];
+    const tabsEl = h('div', { class: 'tabs tr-tabs', role: 'tablist' });
+    const paintTabs = () => tabsEl.replaceChildren(...TABS.map(([id, ico, l]) => h('button', { class: 'tab' + (trTab === id ? ' active' : ''), role: 'tab', 'aria-selected': String(trTab === id), onclick: () => { trTab = id; paintTabs(); render(); } }, `${ico} ${l}`)));
+    paintTabs();
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏅 Mi Entrenador'), h('p', { class: 'muted' }, 'Medallas, colecciones, tu aspecto y tus cuentas.')), tabsEl, body);
+    historyCard().then((c) => hist.append(c));
     let counts = {};
 
     function render() {
@@ -96,13 +101,10 @@ export default {
         h('div', { class: 'set-mons' }, lockedIds.map((id) => h('span', { class: 'set-mon owned locked', title: S.dexById.get(id).name },
           h('img', { class: 'pixel', src: sprite(id), alt: S.dexById.get(id).name }))))) : null;
 
-      body.replaceChildren(card, lockedBox || '',
-        h('h2', { class: 'section-title' }, `Medallas de Kanto (${got}/8)`), perks, badges,
-        h('h2', { class: 'section-title' }, 'Aspecto'),
-        h('div', { class: 'cards3' }, slotBox('frame', '🖼️ Marco de avatar'), slotBox('cardback', '🂠 Dorso de carta'), slotBox('title', '🏷️ Título'), eggBox),
-        h('h2', { class: 'section-title' }, 'Colecciones'),
-        h('p', { class: 'small muted' }, 'Toca un Pokémon que te falte para buscarlo en el Mercado. 🏪 indica cuántos hay a la venta.'),
-        sets);
+      if (trTab === 'perfil') body.replaceChildren(h('div', { class: 'tr-profile' }, h('div', { class: 'stack' }, card, lockedBox || ''), hist));
+      else if (trTab === 'medallas') body.replaceChildren(h('h2', { class: 'section-title' }, `Medallas de Kanto (${got}/8)`), perks, badges);
+      else if (trTab === 'aspecto') body.replaceChildren(h('div', { class: 'cards3 tr-looks' }, slotBox('frame', '🖼️ Marco de avatar'), slotBox('cardback', '🂠 Dorso de carta'), slotBox('title', '🏷️ Título'), eggBox));
+      else body.replaceChildren(h('p', { class: 'small muted' }, 'Toca un Pokémon que te falte para buscarlo en el Mercado. 🏪 indica cuántos hay a la venta.'), sets);
     }
     async function equip(slot, id) { if (await act('equip', { slot, id })) sfx('click'); }
     render();
