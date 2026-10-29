@@ -2,7 +2,7 @@
 // Límites a pasar monedas entre jugadores (regalos y Mercado) para que nadie pueda granjear cuentas
 // secundarias y volcarlo todo en la principal. Es casual: entre amigos se puede regalar, con un tope diario.
 const DAY = 864e5;
-const GIFT_MIN_LEVEL = 5;
+const GIFT_MIN_LEVEL = 3;
 const GIFT_MIN_DAYS = 3;
 const GIFT_IN_DAILY = 5000; // monedas que una cuenta puede RECIBIR en regalos al día
 const YOUNG_PRICE_MULT = 3; // cuentas nuevas: en el Mercado no pagan más de 3 × el precio mínimo de referencia

@@ -17,7 +17,7 @@ const videopoker = require('../server/games/videopoker');
 const blackjack = require('../server/games/blackjack');
 
 function user(name, extra = {}) {
-  const u = { id: 'id-' + name, username: name, coins: 10000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: {}, stats: {}, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 1, ...extra };
+  const u = { id: 'id-' + name, username: name, coins: 10000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: {}, stats: {}, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 3, createdAt: 1, ...extra };
   db.addUser(u);
   return u;
 }
