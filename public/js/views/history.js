@@ -10,7 +10,7 @@ const svg = (tag, attrs = {}, ...kids) => {
 };
 
 export const REASONS = {
-  gacha: '✨ Gacha', dust: '✦ Cambio de polvo', daily: '🎁 Recompensa diaria', explore: '🧭 Exploración', heal: '💗 Enfermera Joy', buddy: '🎒 Hallazgo del compañero', gift_in: '🎁 Regalo recibido',
+  gacha: '✨ Gacha', dust: '✦ Cambio de polvo', daily: '🎁 Recompensa diaria', explore: '🧭 Exploración', heal: '💗 Enfermera Joy', buddy: '🎒 Hallazgo del compañero', expedition: '🧭 Expedición', daycare: '🥚 Criadero', gift_in: '🎁 Regalo recibido',
   gift_out: '🎁 Regalo enviado', admin: '🛠️ Ajuste del anfitrión', shop: '🛒 Tienda', market_sale: '🏪 Venta en el Mercado',
   market_buy: '🏪 Compra en el Mercado', market_fee: '🏪 Comisión de anuncio', market_refund: '🏪 Pedido devuelto', level: '⭐ Subida de nivel',
   reward: '🏆 Misión o medalla', refund: '↩️ Devolución', poker_in: "🃏 Fichas de Hold'em", poker_out: "🃏 Levantarse de Hold'em", event: '🎉 Evento', npc_fund: '🏦 Fondo NPC',

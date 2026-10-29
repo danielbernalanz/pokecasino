@@ -16,6 +16,8 @@ const ivTotal = (m) => m.ivs.reduce((s, v) => s + v, 0);
 const judge = (t) => (t >= 170 ? 'Increíble' : t >= 140 ? 'Muy bueno' : t >= 100 ? 'Bueno' : 'Normal');
 const genderTag = (m) => (m.gender === 'M' ? '♂' : m.gender === 'F' ? '♀' : '');
 const label = (m) => m.nick || S.dexById.get(m.id).name;
+const awayIcon = (m) => (m.away === 'care' ? '🥚' : '🧭');
+const awayText = (m) => (m.away === 'care' ? 'Está en el Criadero' : 'Está de expedición');
 
 const candyOf = (id) => box.candy[S.dexById.get(id).chain] || 0;
 const famNames = new Map();
@@ -29,7 +31,7 @@ const spareCount = (id) => { const c = S.me.collection[id]; return c ? Math.max(
 // Mismo criterio que el servidor: ni favoritos, ni compañero, ni variocolor; si no hay protegidos se conserva el mejor.
 function bulkList(id) {
   const all = mons.filter((m) => m.id === id);
-  const cand = all.filter((m) => !m.fav && !m.shiny && !m.buddy);
+  const cand = all.filter((m) => !m.fav && !m.shiny && !m.buddy && !m.away);
   cand.sort((a, b) => b.level - a.level || ivTotal(b) - ivTotal(a) || a.at - b.at);
   return all.length - cand.length ? cand : cand.slice(1);
 }
@@ -75,6 +77,7 @@ function openMon(uid, openPage = 'info') {
     const e = viaFriend || ru.evo[t.id];
     const reasons = [];
     if (ru.friendOnly && ru.friendOnly.includes(t.id) && !love) reasons.push(`amistad ≥ ${LOVE_MIN}`);
+    if (m.away) reasons.push('fuera ahora');
     if (m.level < e.level) reasons.push(`Nv. ${e.level}`);
     if (candyOf(m.id) < e.cost) reasons.push(`${e.cost} 🍬`);
     if (spareCount(m.id) < 1 && !(ru.evoFirst && ru.evoFirst.includes(t.id))) reasons.push('otra copia');
@@ -115,12 +118,12 @@ function openMon(uid, openPage = 'info') {
           if (r) { sfx('click'); toast(`${TRAIN_STATS[Number(statSel.value)]}: IV ${r.iv}/31`, 'success'); reopen(true); } } }, 'Entrenar'))),
       h('div', { class: 'pc-box' }, h('h4', {}, '🎓 Profesor Oak y Intercambio Milagroso'),
         h('div', { class: 'row gap wrap' },
-          h('button', { class: 'btn', disabled: spare < 1, onclick: async (e) => {
+          h('button', { class: 'btn', disabled: spare < 1 || !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
             if ((m.shiny || m.fav || m.buddy) && !(await confirmRisk('release-precious', { title: 'Vas a transferir un ejemplar especial', danger: 'Transferir igualmente', safe: 'Conservarlo',
               text: `${label(m)} es ${[m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ')}. Solo recibes ${tDust} ✦ y ${tCandy} 🍬 y no se puede deshacer.` }))) return;
             const r = await act('pc:transfer', { id: m.id, uid }, e.target);
             if (r) { sfx('shiny'); toast(`Transferido: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await load(); modalRef.close(); render && render(); } } }, `Transferir (+${tDust} ✦ +${tCandy} 🍬)`),
-          h('button', { class: 'btn', disabled: spare < 1 || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
+          h('button', { class: 'btn', disabled: spare < 1 || !!m.away || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
             const r = await act('pc:wonder', { id: m.id, uid }, e.target);
             if (!r) return;
             modalRef.close();
@@ -153,6 +156,7 @@ function openMon(uid, openPage = 'info') {
   // Pantalla de «Datos» como en los juegos: páginas en lugar de un scroll largo.
   const pages = {
     info: () => h('div', { class: 'stack' },
+      m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}: no se puede liberar, transferir, evolucionar ni llevar a combates hasta que vuelva.`) : null,
       h('div', { class: 'muted small' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level} · Naturaleza ${m.nature}${m.buddy ? ' · 🤝 Compañero' : ''}`),
       h('div', { class: 'types' }, p.types.map(typeBadge), h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity))),
       h('div', { class: 'small' }, h('b', {}, 'Habilidad: '), m.ability),
@@ -183,7 +187,7 @@ function openMon(uid, openPage = 'info') {
         h('button', { class: 'btn', onclick: () => { show('info'); nickRow.style.display = nickRow.style.display === 'none' ? '' : 'none'; nickInput.focus(); } }, '✏️ Mote'),
         h('button', { class: 'btn', onclick: async (e) => { reopen(await act('pc:fav', { id: m.id, uid, fav: !m.fav }, e.target)); } }, m.fav ? '★ Quitar favorito' : '☆ Favorito'),
         h('button', { class: 'btn primary', disabled: m.buddy, onclick: async (e) => { if (await act('pc:buddy', { id: m.id, uid }, e.target)) { toast(`${label(m)} es tu compañero`, 'success'); sfx('win'); reopen(true); } } }, '🤝 Compañero'),
-        h('button', { class: 'btn danger', onclick: async (e) => {
+        h('button', { class: 'btn danger', disabled: !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
           const c = S.me.collection[m.id];
           if (!c || c.n - (c.cn || 0) < 2) return toast('Debes conservar al menos una copia de cada Pokémon.', 'error');
           const dust = S.data.rarity[p.rarity].dust;
@@ -233,6 +237,7 @@ export default {
         h('div', { class: 'small muted' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level}`),
         h('div', { class: 'types' }, p.types.map(typeBadge)),
         heartsEl(m.friendship, 'sm'),
+        m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}`) : null,
         h('div', { class: 'pc-sel-actions' },
           h('button', { class: 'btn primary', type: 'button', onclick: () => openMon(m.uid) }, 'Datos'),
           h('button', { class: 'btn', type: 'button', onclick: async (e) => { if (await act('pc:fav', { id: m.id, uid: m.uid, fav: !m.fav }, e.target)) { await load(); render(); } } }, m.fav ? '★' : '☆'),
@@ -274,13 +279,14 @@ export default {
       if (selUid && !mons.some((x) => x.uid === selUid)) selUid = null;
       const slot = (m) => {
         const p = S.dexById.get(m.id);
-        return h('button', { class: `pc-slot pc-card r-${p.rarity}${m.shiny ? ' shiny' : ''}${m.buddy ? ' buddy' : ''}${m.uid === selUid ? ' sel' : ''}`, type: 'button', title: `${label(m)} Nv. ${m.level}`,
+        return h('button', { class: `pc-slot pc-card r-${p.rarity}${m.away ? ' away' : ''}${m.shiny ? ' shiny' : ''}${m.buddy ? ' buddy' : ''}${m.uid === selUid ? ' sel' : ''}`, type: 'button', title: `${label(m)} Nv. ${m.level}`,
           onclick: () => { selUid = m.uid; grid.querySelectorAll('.pc-slot.sel').forEach((n) => n.classList.remove('sel')); sfx('click'); drawSide(); grid.querySelector(`[data-uid="${m.uid}"]`)?.classList.add('sel'); }, 'data-uid': m.uid },
           h('img', { class: 'pixel', src: sprite(m.id, m.shiny), alt: '', loading: 'lazy' }),
           m.shiny ? h('span', { class: 'sl-shiny' }, '✨') : null,
           m.fav ? h('span', { class: 'sl-fav' }, '★') : null,
           m.buddy ? h('span', { class: 'sl-buddy' }, '🤝') : null,
-          h('span', { class: 'sr-only' }, `${label(m)} Nv. ${m.level}`));
+          m.away ? h('span', { class: 'sl-away', title: awayText(m) }, awayIcon(m)) : null,
+          h('span', { class: 'sr-only' }, `${label(m)} Nv. ${m.level}${m.away ? ' · ' + awayText(m) : ''}`));
       };
       const cells = slice.map(slot);
       while (cells.length < PER_BOX) cells.push(h('div', { class: 'pc-slot empty', 'aria-hidden': 'true' }));

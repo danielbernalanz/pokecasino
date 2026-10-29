@@ -433,6 +433,25 @@ La única fuente nueva de monedas de toda la fase es el hallazgo del compañero:
 
 **Coste máximo diario en valor de monedas por jugador (techo teórico):** hallazgos 200 monedas + ticket 150 + polvo 40 ✦ (160 monedas) + bayas recicladas 20 ✦ (80 monedas) ≈ 590 monedas equivalentes, siempre que se abra la app cada 4 h; en la práctica (3 hallazgos si se conecta 2 veces al día, ≈ 150 monedas de media) es mucho menos. Para comparar: la recompensa diaria y las misiones ya dan más, y el tope de bonus del compañero es de 300 + 50 × nivel.
 
+## Fase B6 · Expediciones AFK (server/expedition.js, test/expedition.test.js)
+
+Los ejemplares salen de la Caja durante 1, 4, 8 o 12 h reales (1-3 por equipo, 2 expediciones a la vez; la tercera, a nivel de entrenador 15) y vuelven con un botín. **Nunca dan Pokémon** (ni legendarios ni míticos) y nada se paga por adelantado: la única fuente de monedas es un hallazgo pequeño con tope.
+
+| Recompensa (por expedición de `H` horas) | Número | Tope |
+|---|---|---|
+| Caramelos de la familia de cada participante | `H × 1 × (1,5 si comparte tipo con la zona) × (1 + nivel/200)` | sin tope diario (un ejemplar solo puede estar en una expedición a la vez: ≤ 24 h al día) |
+| Caramelos comodín | `H` (por expedición) | |
+| Bayas | `⌈H/4⌉` tiradas de 1-2 bayas al azar | tope de 999 por baya |
+| Polvo estelar | `H…2H` | **20 ✦ al día** por jugador |
+| Objeto raro (Ticket Gacha 70 % / Huevo Misterioso 30 %) | solo 8 h (10 %) y 12 h (20 %) | **1 al día** entre los dos |
+| Niveles (sin caramelos) | `⌊H/2⌋` por participante | **8 al día** por ejemplar y nivel 100 |
+| Amistad | `5 × H` (vía `bond.addFriend`, fuente `exp`) | **40 al día** por ejemplar |
+| Monedas (motivo `expedition`) | `8 × H × (1 + 0,5 × proporción que coincide)`: 12 h con todos coincidiendo = 144 | **300 al día** por jugador |
+
+**Valor máximo diario** (`expedition.dailyMaxValue()`, test): 300 monedas + 20 ✦ × 4 monedas (cambio de polvo) + 1 objeto raro valorado al tope de compra de un PNJ (Huevo Misterioso 172) = **552 monedas equivalentes**, es decir, ≈ 22 % del ingreso diario de un casual (≈ 2.500) y menos que los hallazgos del compañero (590 en el techo teórico). El test comprueba que el tope de monedas se alcanza pero no se supera tras 12 expediciones de 12 h el mismo día, que el polvo y el objeto raro respetan su tope y que no hay ningún otro movimiento positivo en el libro. Maxear por niveles gratis: +8 niveles al día por ejemplar (de Nv. 5 a 100, ≥ 12 días por ejemplar con las expediciones solas; con caramelos se acorta).
+
+**Ejemplares ocupados** (`m.away = 'exp:<id>'`, o `'care'` en el criadero): no se pueden liberar (`pc:release`), transferir (`pc:transfer` y en bloque), intercambiar (Milagroso), evolucionar, regalar ni vender en el Mercado (`gacha.takePoke` y `market.owned` descuentan los ocupados y, si solo quedan copias ocupadas, se rechaza con un mensaje claro), liberar por especie (`gacha.release`) ni llevar a combates o equipos guardados. `specimen.sync` nunca descarta a un ocupado (prioridad +20). El compañero sí puede ir de expedición.
+
 ## Fase B7 · Combates Showdown: Liga de entrenadores y PvP (server/showdown.js, test/showdown.test.js)
 
 Combates reales con el simulador oficial de Pokémon Showdown (individuales y dobles). Los «Duelos rápidos» de siempre (`server/games/duel.js`) no cambian.

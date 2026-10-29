@@ -12,7 +12,7 @@ const { randInt, pick, weighted } = require('./rng');
 const FRIEND_MAX = 255;
 const LOVE_MIN = 220; // «Te adora»: +3 % a todas las estadísticas en duelos y evolución por amistad
 const LOVE_BONUS = 0.03;
-const CAP = { buddy: 30, feed: 100, duel: 15, battle: 10 }; // por ejemplar y día (duel = 5 victorias × 3; battle = 5 victorias de combate × 2)
+const CAP = { buddy: 30, feed: 100, duel: 15, battle: 10, exp: 40 }; // por ejemplar y día (duel = 5 victorias × 3; battle = 5 victorias de combate × 2)
 const BET_STEP = 500; // monedas apostadas por +1 de amistad del compañero
 const DUEL_WIN = 3;
 const BERRY_CAP = 999;
@@ -34,7 +34,7 @@ const stageName = (f) => (f >= LOVE_MIN ? 'Te adora' : f >= 160 ? 'Muy amistoso'
 
 function dayCounters(m) {
   const k = hub.dayKey();
-  if (!m.fd || m.fd.day !== k) m.fd = { day: k, buddy: 0, feed: 0, duel: 0, battle: 0 };
+  if (!m.fd || m.fd.day !== k) m.fd = { day: k, buddy: 0, feed: 0, duel: 0, battle: 0, exp: 0 };
   return m.fd;
 }
 // Suma amistad respetando el tope diario de esa fuente y el máximo 255. Devuelve lo que se sumó.

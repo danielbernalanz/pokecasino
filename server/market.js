@@ -52,7 +52,9 @@ function owned(user, a) {
     const c = user.collection[a.pokeId];
     if (!c) return 0;
     // Las estrellas de Caramelo Raro están ligadas: no se venden (y se conserva una copia real que las respalde).
-    return (c.cn || 0) > 0 ? Math.min(a.shiny ? c.s : c.n - c.cn - c.s, gacha.spareCopies(c)) : a.shiny ? c.s : c.n - c.s;
+    const busy = require('./specimen').busyCount(user, a.pokeId); // los ejemplares de expedición o criadero no se venden
+    const free = (c.cn || 0) > 0 ? Math.min(a.shiny ? c.s : c.n - c.cn - c.s, gacha.spareCopies(c)) : a.shiny ? c.s : c.n - c.s;
+    return Math.max(0, free - (a.shiny ? busy.shiny : busy.total - busy.shiny));
   }
   if (a.kind === 'item') return user.items[a.itemId] || 0;
   return user.dust;

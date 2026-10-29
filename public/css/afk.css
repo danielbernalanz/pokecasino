@@ -1,0 +1,95 @@
+/* Fases B5 y B6: Expediciones AFK y Criadero (views/expediciones.js, views/criadero.js, views/afk-common.js) */
+.afk-runs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.afk-run { background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.afk-run.ready { border-color: var(--gold); box-shadow: var(--card-sh), 0 0 14px #ffcb0555; }
+.afk-run-head, .afk-zone-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.afk-run-head .grow { min-width: 0; }
+.afk-host { width: 56px; height: 56px; flex: none; image-rendering: pixelated; background: var(--tile, var(--panel2)); border: 2px solid var(--ink); border-radius: 50%; }
+.afk-count { font-variant-numeric: tabular-nums; }
+.afk-run .btn, .afk-zone .btn { min-height: 44px; }
+
+/* Camino con el equipo paseando */
+.afk-track { position: relative; height: 72px; border-radius: 10px; overflow: hidden; border: 2px solid var(--ink); background: linear-gradient(180deg, var(--tile, #b8d4ff) 0 62%, #8cc971 62% 100%); }
+.afk-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: repeating-linear-gradient(90deg, #c9a46a 0 18px, #b8935a 18px 36px); opacity: .65; }
+.afk-flag { position: absolute; right: 6px; top: 4px; font-size: 20px; }
+.afk-walker { position: absolute; bottom: calc(6px + var(--lane, 0px)); left: 0; width: 56px; height: 56px; animation: afk-walk 9s linear infinite, afk-bob .5s ease-in-out infinite; will-change: transform; }
+.afk-track.done .afk-walker { animation: afk-bob .9s ease-in-out infinite; left: auto; right: calc(40px + var(--lane, 0px) * 4); }
+@keyframes afk-walk { from { left: -60px; } to { left: calc(100% + 4px); } }
+@keyframes afk-bob { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 6px; } }
+
+.afk-zones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.afk-zone { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 0 10px 12px; background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); min-width: 0; overflow: hidden; }
+.afk-zone-art { width: calc(100% + 20px); margin: 0 -10px; height: 96px; display: grid; place-items: center; background: var(--tile, var(--panel2)); border-bottom: 3px solid var(--ink); }
+.afk-zone-img { max-width: 80px; max-height: 80px; image-rendering: pixelated; }
+.afk-zone-name { font: 700 16px var(--pixel); }
+.afk-zone .btn { width: 100%; margin-top: auto; }
+.afk-hours { display: flex; gap: 8px; flex-wrap: wrap; }
+.afk-hours .chip { min-height: 40px; min-width: 56px; }
+.afk-est { background: var(--panel2); border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px; display: grid; gap: 3px; }
+
+/* Selector de ejemplares */
+.afk-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; max-height: 40vh; overflow-y: auto; padding: 2px; }
+.afk-pick-item { text-align: left; background: var(--panel2); border: 2px solid var(--ink); border-radius: 10px; color: var(--text); padding: 4px 6px; cursor: pointer; min-height: 56px; min-width: 0; font: inherit; }
+.afk-pick-item.on { background: var(--gold); color: #26304a; }
+.afk-pick-item:disabled { opacity: .45; cursor: not-allowed; }
+.afk-tile { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.afk-tile img { width: 48px; height: 48px; flex: none; image-rendering: pixelated; }
+.afk-tile-txt { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
+.afk-tile-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afk-tile .types { justify-content: flex-start; }
+.afk-mark { position: absolute; right: 2px; top: 0; font-size: 11px; font-weight: 800; }
+
+/* Recompensas */
+.afk-rw-mons { display: grid; gap: 6px; }
+.afk-rw-mon { display: flex; align-items: center; gap: 8px; background: var(--panel2); border: 2px solid var(--ink); border-radius: 10px; padding: 4px 8px; min-width: 0; }
+.afk-rw-mon img { width: 48px; height: 48px; image-rendering: pixelated; }
+.afk-rw-mon .grow { min-width: 0; }
+.afk-rw-loot { display: flex; flex-wrap: wrap; gap: 6px; }
+.afk-rw-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--panel); border: 2px solid var(--ink); border-radius: 999px; padding: 3px 10px; font-weight: 800; font-size: 13px; }
+.afk-rw-chip.gold { background: var(--gold); color: #26304a; }
+.afk-rw-chip img { width: 24px; height: 24px; image-rendering: pixelated; }
+
+/* Criadero */
+.care-slots { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.care-pair { background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.care-parents { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); gap: 6px; align-items: center; }
+.care-heart { text-align: center; font-size: 22px; animation: afk-bob 1.2s ease-in-out infinite; }
+.care-slot { min-height: 76px; border: 3px dashed var(--line); border-radius: 12px; padding: 6px; display: flex; align-items: center; justify-content: center; background: var(--panel2); min-width: 0; font: inherit; color: var(--text); cursor: pointer; }
+.care-slot.filled { border-style: solid; border-color: var(--ink); cursor: default; }
+.care-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.care-actions .btn { flex: 1 1 140px; min-height: 44px; }
+.care-eggs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.care-egg { background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 12px; display: grid; gap: 8px; justify-items: center; text-align: center; min-width: 0; }
+.care-egg.ready { border-color: var(--gold); box-shadow: var(--card-sh), 0 0 14px #ffcb0555; }
+.care-egg .bar { width: 100%; }
+.care-egg .btn { width: 100%; min-height: 44px; }
+.egg-img { width: 84px; height: 96px; display: block; transform-origin: 50% 100%; }
+.egg-img.wobble { animation: egg-wobble 2.4s ease-in-out infinite; }
+.egg-img.ready { animation: egg-wobble 0.9s ease-in-out infinite; }
+@keyframes egg-wobble { 0%, 60%, 100% { transform: rotate(0); } 66% { transform: rotate(-9deg); } 72% { transform: rotate(8deg); } 78% { transform: rotate(-6deg); } 84% { transform: rotate(4deg); } 90% { transform: rotate(0); } }
+.hatch-ov { position: fixed; inset: 0; z-index: 95; background: radial-gradient(circle at 50% 40%, #3a3260, #0b0816 80%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #fff; padding: 16px; text-align: center; }
+.hatch-stage { position: relative; width: min(70vw, 280px); aspect-ratio: 1; display: grid; place-items: center; }
+.hatch-stage .egg-img { width: 60%; height: auto; }
+.hatch-stage .egg-img.shake { animation: egg-shake .35s linear infinite; }
+.hatch-stage .egg-img.crack { filter: drop-shadow(0 0 10px #fff); }
+.hatch-mon { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transform: scale(.4); }
+.hatch-mon.in { opacity: 1; transform: scale(1); transition: transform .5s cubic-bezier(.2, 1.6, .4, 1), opacity .2s; }
+.hatch-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.hatch-flash.go { animation: hatch-flash .6s ease-out; }
+@keyframes egg-shake { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes hatch-flash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Insignia de ocupado en la Caja PC */
+.pc-slot .sl-away { position: absolute; left: 2px; bottom: 2px; font-size: 14px; line-height: 1; filter: drop-shadow(0 1px 0 #0008); }
+.pc-slot.away img { opacity: .55; }
+.pc-away-note { font-size: 12px; font-weight: 800; background: var(--panel2); border: 2px dashed var(--ink); border-radius: 10px; padding: 4px 8px; text-align: center; }
+
+@media (min-width: 760px) {
+  .afk-runs, .care-slots, .care-eggs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .afk-zones { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .afk-walker, .care-heart, .egg-img, .egg-img.wobble, .egg-img.ready, .egg-img.shake, .hatch-flash.go { animation: none !important; }
+  .afk-walker { left: calc(var(--lane, 0px) * 4 + 12px); }
+  .hatch-mon.in { transition: none; }
+}

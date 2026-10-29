@@ -272,6 +272,8 @@ function release(user, { id, count }) {
   const p = BY_ID.get(Number(id));
   const c = p && user.collection[p.id];
   count = Number(count) || 1;
+  const busy = require('./specimen').busyCount(user, p ? p.id : 0).total;
+  if (busy && c && count >= 1 && count > realCopies(c) - busy) throw new Error('Esa copia está de expedición o en el criadero: espera a que vuelva.');
   if (!c || !Number.isInteger(count) || count < 1 || count > spareCopies(c)) throw new Error('Debes conservar al menos una copia (las estrellas de Caramelo Raro no se pueden liberar).');
   c.n -= count;
   if (c.s > realCopies(c)) c.s = realCopies(c);
@@ -289,6 +291,11 @@ function takePoke(user, id, shiny) {
   if (shiny && !(c.s > 0)) throw new Error('No tienes la versión variocolor.');
   if (!shiny && c.s >= realCopies(c)) throw new Error('Todas tus copias son variocolor: elige la versión variocolor.');
   if ((c.cn || 0) > 0 && realCopies(c) <= 1) throw new Error('Tus estrellas de Caramelo Raro necesitan una copia real: no puedes quitar la última.');
+  // Ejemplares fuera (expedición/criadero): no se pueden vender ni regalar. Si solo quedan copias ocupadas, se avisa.
+  const busy = require('./specimen').busyCount(user, p.id);
+  if (busy.total && realCopies(c) - busy.total < 1) throw new Error(`${p.name} está de expedición o en el criadero: espera a que vuelva para venderlo o regalarlo.`);
+  if (busy.shiny && shiny && c.s - busy.shiny < 1) throw new Error(`Tu ${p.name} variocolor está de expedición o en el criadero.`);
+  if (busy.total && !shiny && (c.n - c.s) - (busy.total - busy.shiny) < 1) throw new Error(`Tus ${p.name} normales están de expedición o en el criadero.`);
   c.n--;
   if (shiny) c.s--;
   if (c.n <= 0) {

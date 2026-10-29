@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026.10.29-e",
+    "date": "2026-10-29",
+    "title": "Expediciones: tus Pokémon exploran solos",
+    "items": [
+      "🧭 Nueva sección Pokémon → Expediciones: manda de 1 a 3 Pokémon a una de 8 zonas (Bosque Verde, Cueva Celeste, Mar Espuma…) durante 1, 4, 8 o 12 horas y recoge el botín al volver, aunque hayas cerrado el casino.",
+      "🍬 Vuelven con caramelos de su familia y comodín, bayas, polvo estelar y, a veces, un objeto raro. Los Pokémon del tipo de la zona traen un 50 % más.",
+      "⬆️ Además suben niveles sin gastar caramelos (1 cada 2 horas, hasta 8 al día) y ganan amistad. Hay un pequeño hallazgo de monedas: 300 al día como máximo.",
+      "🔒 Mientras están fuera no se pueden liberar, transferir, vender, regalar ni usar en combates: en la Caja PC llevan una insignia 🧭.",
+      "⏱️ Puedes tener 2 expediciones a la vez (3 desde el nivel 15 de entrenador)."
+    ]
+  },
+  {
     "version": "2026.10.29-d",
     "date": "2026-10-29",
     "title": "Combates Pokémon de verdad y progresión casual",

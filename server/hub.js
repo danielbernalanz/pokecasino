@@ -192,6 +192,7 @@ function takeBet(user, amount, game, { extra = false, quiet = false, noXp = fals
   accrueBonus(user, amount, game);
   if (!user.npc) require('./bond').onBet(user, amount, game);
   if (!user.npc) require('./mega').onBet(user, amount, game, { play: !extra && !quiet });
+  if (!user.npc) require('./daycare').onBet(user, amount, game);
   if (game && !extra && !quiet) track(user, 'play', { game });
   db.save();
   return amount;

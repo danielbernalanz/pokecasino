@@ -116,7 +116,7 @@ function bulkPlan(u, id) {
   if (!BY_ID.has(id) || !u.collection[id]) throw new Error('Pokémon no válido.');
   const arr = specimen.sync(u, id);
   const buddyUid = u.buddy && u.buddy.id === id ? u.buddy.uid : null;
-  const cand = arr.filter((m) => !m.fav && !m.shiny && m.uid !== buddyUid);
+  const cand = arr.filter((m) => !m.fav && !m.shiny && !m.away && m.uid !== buddyUid);
   const keepers = arr.length - cand.length;
   const best = (a, b) => b.level - a.level || specimen.ivTotal(b) - specimen.ivTotal(a) || a.at - b.at;
   cand.sort(best);
@@ -158,6 +158,7 @@ function levelUp(u, p) {
 const isFirstEvo = (u, to) => !(u.collection[to] && u.collection[to].n > 0) && !(u.evoReg && u.evoReg[to]);
 function evolve(u, p) {
   const m = specimen.find(u, p);
+  specimen.assertFree(m, BY_ID.get(Number(p.id)).name);
   const id = Number(p.id);
   const to = Number(p.to);
   const target = evolutionsOf(id).find((x) => x.id === to);
@@ -230,6 +231,7 @@ function wonder(u, p) {
   const id = Number(p.id);
   const src = BY_ID.get(id);
   if (src.rarity === 'M') throw new Error('Los Pokémon míticos no se pueden intercambiar.');
+  specimen.assertFree(m, src.name);
   if (m.fav) throw new Error('No puedes intercambiar un favorito.');
   if (m.shiny) throw new Error('No puedes intercambiar un variocolor.');
   if (u.buddy && u.buddy.id === id && u.buddy.uid === m.uid) throw new Error('No puedes intercambiar a tu compañero.');

@@ -64,6 +64,7 @@ function resolveTeam(user, members, { format, level }) {
     if (!m || typeof m !== 'object') throw new Error('Equipo no válido.');
     const id = Number(m.id);
     const sp = specimen.find(user, { id, uid: m.uid });
+    specimen.assertFree(sp, BY_ID.get(id).name);
     if (!sd.canBattle(id)) throw new Error(`${BY_ID.get(id).name} todavía no puede combatir.`);
     if (seenUid.has(sp.uid)) throw new Error('Ejemplar repetido en el equipo.');
     const base = sd.speciesOf(id).baseSpecies;
@@ -700,6 +701,7 @@ function sanitizeMembers(user, members) {
   return members.map((m) => {
     const id = Number(m && m.id);
     const sp = specimen.find(user, { id, uid: m && m.uid });
+    specimen.assertFree(sp, BY_ID.get(id).name);
     let formId = 0;
     if (m.mega) {
       formId = Number(m.mega);
@@ -740,6 +742,7 @@ function boxForBuilder(user) {
     if (!sd.canBattle(id)) continue;
     const forms = Object.keys(megas).map(Number).map((fid) => mega.BY_FORM.get(fid)).filter((f) => f && f.species === id && (() => { try { return !!sd.megaSetup(f.formId); } catch { return false; } })()).map((f) => f.formId);
     for (const m of arr) {
+      if (m.away) continue; // de expedición o en el criadero
       sd.ensureSd(id, m);
       out.push({ id, uid: m.uid, nick: m.nick, level: m.level, gender: m.gender, shiny: m.shiny, friendship: m.friendship, nature: m.nature, ability: m.sdAbility, moves: m.sdMoves, megas: forms, iv: (m.ivs || []).reduce((a, x) => a + x, 0) });
     }

@@ -17,6 +17,8 @@ const specimen = require('./specimen');
 const locked = require('./locked');
 const candy = require('./candy');
 const bond = require('./bond');
+const expedition = require('./expedition');
+const daycare = require('./daycare');
 const slots = require('./games/slots');
 const roulette = require('./games/roulette');
 const voltorb = require('./games/voltorb');
@@ -155,6 +157,8 @@ const STATIC = {
   heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },
   daily: { base: BAL.DAILY_BASE, step: BAL.DAILY_STEP, max: BAL.DAILY_MAX_STREAK },
   mega: mega.STATIC,
+  expedition: expedition.STATIC,
+  daycare: daycare.STATIC,
   quiz: quiz.STATIC,
 };
 // Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).
@@ -573,6 +577,15 @@ io.on('connection', (socket) => {
   on('garden:water', bond.water);
   on('garden:harvest', bond.harvest);
   on('pc:feed', bond.feed);
+  on('exp:list', expedition.view, { push: false });
+  on('exp:send', expedition.send);
+  on('exp:claim', expedition.claim);
+  on('care:view', daycare.view, { push: false });
+  on('care:check', daycare.check, { push: false });
+  on('care:deposit', daycare.deposit);
+  on('care:withdraw', daycare.withdraw);
+  on('care:collect', daycare.collect);
+  on('care:hatch', daycare.hatch);
   on('mega:state', (u) => mega.full(u), { push: false });
   on('mega:checkin', mega.checkin);
   on('mega:claim', mega.claim);

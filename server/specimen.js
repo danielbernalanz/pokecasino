@@ -82,7 +82,7 @@ function sync(u, id) {
     while (arr.length < want) { arr.push(make(id, need > 0)); need--; }
   }
   while (arr.length > want) {
-    const rank = (m) => (m.drop ? -10 : 0) + (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
+    const rank = (m) => (m.drop ? -10 : 0) + (m.away ? 20 : 0) + (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
     let worst = 0;
     for (let i = 1; i < arr.length; i++) {
       const d = rank(arr[i]) - rank(arr[worst]);
@@ -137,7 +137,7 @@ function boxView(u) {
   syncAll(u);
   const mons = [];
   for (const [id, arr] of Object.entries(u.mons)) {
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, up: NATURE_BY_NAME.get(m.nature).up, down: NATURE_BY_NAME.get(m.nature).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: m.ability, moves: m.moves, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) });
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, up: NATURE_BY_NAME.get(m.nature).up, down: NATURE_BY_NAME.get(m.nature).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: m.ability, moves: m.moves, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) });
   }
   db.save();
   return { mons };
@@ -165,9 +165,23 @@ function fav(u, p) {
   return { fav: m.fav };
 }
 
+// Ejemplares ocupados (expedición, criadero): `m.away = 'exp:<id>' | 'care'`. No se liberan, transfieren, venden,
+// regalan, intercambian, evolucionan ni combaten mientras estén fuera.
+const AWAY_MSG = 'está fuera (expedición o criadero): espera a que vuelva.';
+function assertFree(m, name) { if (m && m.away) throw new Error(`${name || 'Ese Pokémon'} ${AWAY_MSG}`); }
+// Cuántos ejemplares de la especie están ocupados (en total y variocolor).
+function busyCount(u, id) {
+  const arr = u.mons && u.mons[id];
+  if (!arr) return { total: 0, shiny: 0 };
+  let total = 0; let shiny = 0;
+  for (const m of arr) if (m.away) { total++; if (m.shiny) shiny++; }
+  return { total, shiny };
+}
+
 function release(u, p) {
   const gacha = require('./gacha');
   const m = find(u, p);
+  assertFree(m, BY_ID.get(Number(p.id)).name);
   const id = Number(p.id);
   const c = u.collection[id];
   const sBefore = c.s || 0;
@@ -182,4 +196,4 @@ function release(u, p) {
   return res;
 }
 
-module.exports = { NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, ivTotal, boxView, find, nick, fav, release };
+module.exports = { NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };
