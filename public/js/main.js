@@ -182,7 +182,8 @@ $('#mute-btn').addEventListener('click', () => { toggleMute(); paintMute(); });
 paintMute();
 $('#menu-btn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
 $('#user-btn').addEventListener('click', () => {
-  const muteBtn = h('button', { class: 'btn', onclick: () => { const m = toggleMute(); paintMute(); muteBtn.textContent = m ? '🔇 Sonido apagado' : '🔊 Sonido encendido'; } }, isMuted() ? '🔇 Sonido apagado' : '🔊 Sonido encendido');
+  const muteTxt = () => (isMuted() ? 'Sonido apagado (Jigglypuff duerme)' : 'Sonido encendido');
+  const muteBtn = h('button', { class: 'btn', onclick: () => { toggleMute(); paintMute(); muteBtn.replaceChildren(monImg(MON.jigglypuff, 'jp-mini'), muteTxt()); } }, monImg(MON.jigglypuff, 'jp-mini'), muteTxt());
   const animLabel = () => (animPref() ? '🎞️ Animaciones de Pokémon: sí' : '🎞️ Animaciones de Pokémon: no');
   const animBtn = h('button', { class: 'btn', title: 'Sprites animados en combates, Caja PC, Pokédex y compañero. Apágalas para ahorrar datos. (Se desactivan solas con «reducir movimiento».)', onclick: () => { setAnimPref(!animPref()); animBtn.textContent = animLabel(); toast(animPref() ? 'Animaciones activadas (se aplican al abrir cada pantalla).' : 'Animaciones desactivadas: se usarán imágenes estáticas.', 'info'); } }, animLabel());
   const theme = window.PCTheme;
@@ -278,6 +279,7 @@ function connect() {
     S.jackpot = res.jackpot; $('#jackpot').textContent = fmt(res.jackpot);
     S.race = res.race; S.raceBets = res.raceBets;
     S.duels = res.duels; S.duelHistory = res.duelHistory;
+    S.battle = res.battle || null; bus.emit('battle:active', S.battle);
     S.crash = res.crash; S.poker = res.poker; S.events = res.events; S.mega = res.mega;
     bus.emit('mega', res.mega);
     bus.emit('events', res.events);

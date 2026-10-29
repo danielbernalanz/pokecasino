@@ -1630,3 +1630,4 @@ button.mk-ocard { cursor: pointer; }
 @media (max-width: 900px) { .wobb { bottom: calc(var(--tabbar-h, 62px) + 12px + env(safe-area-inset-bottom)); } }
 .boot { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; z-index: 5; }
 .boot img { width: 96px; height: 96px; image-rendering: pixelated; }
+.btn img.jp-mini { width: 30px; height: 30px; margin: -8px 0; }
