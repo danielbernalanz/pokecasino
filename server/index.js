@@ -265,7 +265,10 @@ function giftPoke(user, { to, id, shiny }) {
   const t = db.userByName(to);
   if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
   if (t.npc) throw new Error('Los comerciantes NPC no aceptan regalos.');
+  const rare = ['L', 'M'].includes((dex.BY_ID.get(Number(id)) || {}).rarity);
+  require('./transfer').pokeInCheck(t, rare);
   const p = gacha.takePoke(user, id, !!shiny);
+  require('./transfer').notePokeIn(t, rare);
   gacha.grant(t, p.id, !!shiny);
   hub.track(t, 'gift_recv');
   db.save();
