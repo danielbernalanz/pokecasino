@@ -39,6 +39,7 @@ const holdem = require('./games/holdem');
 const npc = require('./npc');
 const BAL = require('./balance');
 const daily = require('./daily');
+const explore = require('./explore');
 const mega = require('./mega');
 const news = require('./news');
 const clientIpLib = require('./clientip');
@@ -515,6 +516,7 @@ io.on('connection', (socket) => {
   }), { push: false });
   on('news:seen', (u, p) => { const r = news.markSeen(u, p); db.save(); return r; }, { push: false });
   on('daily:claim', claimDaily);
+  on('explore:visit', explore.visit);
   on('center:heal', heal);
   on('slots:spin', slots.spin);
   on('roulette:spin', roulette.spin);
