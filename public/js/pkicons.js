@@ -110,7 +110,14 @@ function convertText(node) {
   if (!v) return;
   RE.lastIndex = 0;
   if (!RE.test(v) || skipped(node)) return;
-  node.replaceWith(...emo(v));
+  const parts = emo(v);
+  // Solo texto: algunos símbolos se sustituyen por otro parecido (↩️ → ↩). Si no cambia nada no se toca el nodo:
+  // reescribirlo dispararía otra vez el observador y la página entraría en un bucle infinito.
+  if (parts.length === 1 && typeof parts[0] === 'string') {
+    if (parts[0] !== v) node.nodeValue = parts[0];
+    return;
+  }
+  node.replaceWith(...parts);
 }
 
 function scan(root) {
