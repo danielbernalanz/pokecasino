@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.10.29-g",
+    "date": "2026-10-29",
+    "title": "Historial del Mercado y más protección",
+    "items": [
+      "📜 Mercado → Completadas: ahora guarda tus últimas 150 operaciones, aunque el mercado se mueva mucho.",
+      "🛡️ Las monedas de la Enfermera Joy no se pueden regalar ni usar para pagar de más en el Mercado durante 24 h, y cada jugador puede recibir hasta 10 Pokémon regalados al día (2 legendarios o míticos)."
+    ]
+  },
+  {
     "version": "2026.10.29-f",
     "date": "2026-10-29",
     "title": "Criadero: huevos y bebés Pokémon",

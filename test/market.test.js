@@ -236,3 +236,13 @@ test('mercado: orderId llena solo esa orden aunque haya otras más baratas', () 
   assert.strictEqual(market.state().orders.find((o) => o.id === o2.id).qty, 1);
   assert.throws(() => market.buy(b, { kind: 'item', itemId: 'lucky-egg', qty: 1, price: 500, orderId: 999999 }), /No hay ofertas/);
 });
+
+test('mercado: cada jugador guarda su propio historial de operaciones', () => {
+  const s = user('hist-vend', { collection: { 251: { n: 3, s: 0 } } });
+  const b = user('hist-comp', { coins: 50000 });
+  market.sell(s, { kind: 'poke', pokeId: 251, qty: 1, price: 20000 });
+  market.buy(b, { kind: 'poke', pokeId: 251, qty: 1, price: 20000, instant: true });
+  assert.strictEqual(s.tradeLog.length, 1);
+  assert.strictEqual(b.tradeLog[0].seller, 'hist-vend');
+  assert.strictEqual(require('../server/hub').privateUser(b).trades.length, 1);
+});

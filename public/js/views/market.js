@@ -841,7 +841,11 @@ export default {
         const day = new Date(); day.setHours(0, 0, 0, 0);
         const since = st.range === 'today' ? day.getTime() : st.range ? Date.now() - Number(st.range) * 86400000 : 0;
         const me = S.me.username;
-        const tr = state.trades.filter((t) => t.at >= since
+        // Mis operaciones: el historial propio (hasta 150) más las recientes del mercado, sin repetir.
+        const mine = st.side ? (S.me.trades || []) : [];
+        const seen = new Set(mine.map((t) => `${t.at}|${t.ref}|${t.seller}|${t.buyer}`));
+        const pool = [...state.trades.filter((t) => !seen.has(`${t.at}|${t.ref}|${t.seller}|${t.buyer}`)), ...mine].sort((x, y) => y.at - x.at);
+        const tr = pool.filter((t) => t.at >= since
           && (st.side !== 'mine' || t.buyer === me || t.seller === me)
           && (st.side !== 'buy' || t.buyer === me) && (st.side !== 'sell' || t.seller === me)
           && matchQ(parseRef(t.ref), q));

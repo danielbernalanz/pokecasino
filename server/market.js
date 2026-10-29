@@ -16,6 +16,7 @@ const EXPIRE_MS = 14 * DAY_MS;
 const DURATIONS = [1, 3, 7, 14]; // días que puede durar una orden (por defecto 14)
 const MAX_ORDERS = 30;
 const MAX_PRICE = 10_000_000;
+const MY_TRADES = 150; // operaciones que guarda cada jugador en su historial
 const MAX_QTY = { poke: 20, item: 999, dust: 1_000_000 };
 const M = () => db.data.market;
 // Comerciantes NPC (carga diferida: npc.js usa este módulo).
@@ -112,6 +113,7 @@ function record(a, qty, price, seller, buyer, npcFlags = {}) {
   if (!t.npc && (qty * price >= 10000 || (a.kind === 'poke' && (a.shiny || ['L', 'M'].includes(BY_ID.get(a.pokeId).rarity))))) {
     hub.feed('market', `🏪 ${buyer} compró ${describe(a, qty)} a ${seller} por ${(qty * price).toLocaleString('es')} monedas`, a.kind === 'poke' ? { pokeId: a.pokeId, shiny: a.shiny } : {});
   }
+  return t;
 }
 
 // Paga al vendedor (menos impuesto) y avisa a ambas partes.
@@ -124,7 +126,13 @@ function settle(a, qty, price, seller, buyer) {
   seller.stats.sold = (seller.stats.sold || 0) + qty;
   buyer.stats.bought = (buyer.stats.bought || 0) + qty;
   const dust = giveGoods(buyer, a, qty);
-  record(a, qty, price, seller.username, buyer.username, { sellerNpc: seller.npc, buyerNpc: buyer.npc });
+  const t = record(a, qty, price, seller.username, buyer.username, { sellerNpc: seller.npc, buyerNpc: buyer.npc });
+  // Historial propio de cada jugador (el del mercado solo guarda las últimas operaciones de todos).
+  for (const u of [seller, buyer]) {
+    if (u.npc) continue;
+    (u.tradeLog ||= []).push(t);
+    if (u.tradeLog.length > MY_TRADES) u.tradeLog.splice(0, u.tradeLog.length - MY_TRADES);
+  }
   npc().note(seller, buyer, a, qty, price);
   hub.track(buyer, 'market_buy');
   hub.track(seller, 'market_sell');
