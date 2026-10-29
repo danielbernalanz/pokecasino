@@ -1609,3 +1609,15 @@ button.mk-ocard { cursor: pointer; }
 
 .main.view-mega { background: #0d1530 repeating-linear-gradient(135deg, #ffffff08 0 22px, transparent 22px 44px); }
 .mega-banner { color: #eaf0ff; }
+
+/* Cabecera compacta en pantallas estrechas */
+@media (max-width: 420px) {
+  .topbar { gap: 2px; padding-left: 6px; padding-right: 6px; }
+  .pill { padding: 0 7px; font-size: 13px; gap: 4px; }
+  .pill.coins .meow { width: 28px; height: 28px; margin: -7px -3px -7px -6px; }
+  .wallet { gap: 3px; }
+  .pill.dust { display: none; }
+  .logo-ball { width: 22px; height: 22px; }
+  .user-btn { padding-right: 4px; }
+  .pc-detail-left .detail-art { max-height: 130px; }
+}
