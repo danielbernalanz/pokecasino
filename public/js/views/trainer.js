@@ -96,7 +96,7 @@ export default {
         h('div', { class: 'set-mons' }, lockedIds.map((id) => h('span', { class: 'set-mon owned locked', title: S.dexById.get(id).name },
           h('img', { class: 'pixel', src: sprite(id), alt: S.dexById.get(id).name }))))) : null;
 
-      body.replaceChildren(card, lockedBox,
+      body.replaceChildren(card, lockedBox || '',
         h('h2', { class: 'section-title' }, `Medallas de Kanto (${got}/8)`), perks, badges,
         h('h2', { class: 'section-title' }, 'Aspecto'),
         h('div', { class: 'cards3' }, slotBox('frame', '🖼️ Marco de avatar'), slotBox('cardback', '🂠 Dorso de carta'), slotBox('title', '🏷️ Título'), eggBox),

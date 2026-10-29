@@ -699,7 +699,7 @@ img.mk-big { transform: scale(1.3); }
   .hero-buddy { width: 130px; height: 130px; }
 }
 @media (max-width: 640px) {
-  .toasts { top: 64px; bottom: auto; left: 16px; right: 16px; width: auto; }
+  .toasts { bottom: calc(var(--tabbar-h, 62px) + 10px + env(safe-area-inset-bottom)); }
   .logo-text, .jackpot-pill, .pill.lvl, #uname { display: none; }
   .wallet { margin-left: auto; }
   .topbar { gap: 4px; padding: 0 8px; }
@@ -1616,8 +1616,17 @@ button.mk-ocard { cursor: pointer; }
   .pill { padding: 0 7px; font-size: 13px; gap: 4px; }
   .pill.coins .meow { width: 28px; height: 28px; margin: -7px -3px -7px -6px; }
   .wallet { gap: 3px; }
-  .pill.dust { display: none; }
+  .wallet .pill.dust { display: none; }
   .logo-ball { width: 22px; height: 22px; }
   .user-btn { padding-right: 4px; }
   .pc-detail-left .detail-art { max-height: 130px; }
 }
+
+/* Pikachu celebra, Wobbuffet consuela */
+.fx-cel-icon .pika-cheer { width: clamp(110px, 34vw, 170px); height: auto; image-rendering: pixelated; animation: hop .5s steps(4) infinite; }
+.wobb { position: fixed; left: 12px; bottom: 18px; z-index: 95; display: flex; align-items: center; gap: 8px; max-width: min(340px, calc(100% - 24px)); padding: 8px 12px 8px 6px; background: var(--panel); color: var(--text); border: 3px solid var(--ink); border-radius: 12px; box-shadow: inset 0 0 0 2px var(--panel-in), var(--card-sh); font-weight: 700; font-size: 13px; animation: slideup .3s; transition: opacity .4s; }
+.wobb img { width: 56px; height: 56px; flex: none; }
+.wobb.out { opacity: 0; }
+@media (max-width: 900px) { .wobb { bottom: calc(var(--tabbar-h, 62px) + 12px + env(safe-area-inset-bottom)); } }
+.boot { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; z-index: 5; }
+.boot img { width: 96px; height: 96px; image-rendering: pixelated; }

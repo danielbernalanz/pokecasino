@@ -1,5 +1,5 @@
 import { animPref, setAnimPref } from './anim.js';
-import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg, monImg, MON } from './core.js';
+import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg, monImg, MON, loader } from './core.js';
 import { celebrate, coinRain, burstAt, vibrate } from './fx.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
 import lobby from './views/lobby.js';
@@ -125,6 +125,8 @@ function animateCoins(to) {
   void pill.offsetWidth;
   if (to !== from) pill.classList.add(to > from ? 'up' : 'down');
   // ¡Día de Pago! Meowth hace saltar chispas cuando suben las monedas.
+  // Pérdida grande y sostenida: Wobbuffet te consuela.
+  if (from - to >= 2000 && to < from * 0.6) setTimeout(() => { if (S.me && S.me.coins < from * 0.6) wobbuffetSays('¡Wobbu…! Ánimo, entrenador: mañana será otro día.'); }, 3200);
   if (to > from && from > 0) { const sp = h('span', { class: 'sparkle', 'aria-hidden': 'true' }, '✨'); pill.append(sp); setTimeout(() => sp.remove(), 1000); }
 }
 bus.on('me', (me) => {
@@ -349,6 +351,14 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'goto' && e.data.link) location.hash = e.data.link; });
 }
 
+function wobbuffetSays(text) {
+  document.querySelector('.wobb')?.remove();
+  const el = h('div', { class: 'wobb', role: 'status' }, monImg(MON.wobbuffet), h('span', {}, text));
+  document.body.append(el);
+  setTimeout(() => el.classList.add('out'), 4200);
+  setTimeout(() => el.remove(), 4700);
+}
+
 // ---------- Gengar asoma de noche (22:00–07:00, hora local) ----------
 function nightPeek() {
   const night = () => { const hr = new Date().getHours(); return hr >= 22 || hr < 7; };
@@ -374,5 +384,11 @@ function nightPeek() {
   S.megaByStone = new Map(S.data.mega.forms.map((f) => [f.stone, f]));
   try { S.token = localStorage.getItem('token'); } catch { /* nada */ }
   if (S.data.openRegistration) $('#auth-sub').textContent = '¡Crea tu entrenador y empieza a jugar!';
-  if (S.token) connect(); else showAuth();
+  if (S.token) {
+    // Slowpoke tarda un poco en cargar…
+    const boot = h('div', { class: 'boot' }, monImg(MON.slowpoke), loader('Cargando…'));
+    document.body.append(boot);
+    const stop = setInterval(() => { if (!$('#app').classList.contains('hidden') || !$('#auth').classList.contains('hidden')) { boot.remove(); clearInterval(stop); } }, 200);
+    connect();
+  } else showAuth();
 })();

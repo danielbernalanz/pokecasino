@@ -2,7 +2,7 @@
 // cuenta ascendente y la pantalla de celebración para los grandes momentos.
 // Todo usa transform/opacity (fluido en móvil), limita el número de partículas y respeta
 // prefers-reduced-motion y el botón de silencio (el sonido lo gestiona sfx() de core.js).
-import { h, $, fmt, sfx } from './core.js';
+import { h, $, fmt, sfx, sprite } from './core.js';
 
 export const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const vibrate = (p) => { try { if (!reduced() && navigator.vibrate) navigator.vibrate(p); } catch { /* sin vibración */ } };
@@ -239,7 +239,9 @@ export function winFx(paid, bet, { el, jackpot = false, title = '¡GRAN PREMIO!'
     shake(undefined, 400);
     vibrate([40, 30, 70]);
   } else {
-    celebrate('jackpot', { title, icon, amount: paid, subtitle: jackpot ? '¡Bote!' : ratio ? `×${fmt(ratio)} tu apuesta` : '' });
+    // ¡Pikachu lo celebra contigo!
+    const pika = h('img', { class: 'pixel pika-cheer', src: sprite(25), alt: '' });
+    celebrate('jackpot', { title, icon: pika, amount: paid, subtitle: jackpot ? '¡Bote!' : ratio ? `×${fmt(ratio)} tu apuesta` : '' });
   }
   return tier;
 }

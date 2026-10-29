@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, itemImg, confirmRisk, TYPE_ES } from '../core.js';
+import { S, h, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, itemImg, confirmRisk, TYPE_ES, monImg, MON, say } from '../core.js';
 import { openDetail } from './pokedex.js';
 import { pickPokemon } from '../picker.js';
 import { openItem } from './market.js';
@@ -182,7 +182,7 @@ export default {
     function render() {
       body.replaceChildren(tab === 'items' ? itemsTab() : tab === 'bag' ? bagTab() : tab === 'craft' ? craftTab() : tab === 'recycle' ? recycleTab() : exchangeTab());
     }
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎒 Tienda y Mochila'), h('div', { class: 'pill dust' }, '✦ ', h('b', {}, fmt(S.me.dust)))), tabs, body);
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎒 Tienda y Mochila'), h('div', { class: 'pill dust' }, '✦ ', h('b', {}, fmt(S.me.dust)))), say({ mon: MON.kecleon, who: 'Kecleon', text: '¡Bienvenido! Mira sin miedo… aunque no me veas.', cls: 'compact' }), tabs, body);
     renderTabs();
     render();
     this.off = bus.on('me', () => { if (!document.activeElement || document.activeElement.tagName !== 'INPUT') render(); });

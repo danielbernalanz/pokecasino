@@ -155,7 +155,7 @@ export default {
     root.append(
       h('div', { class: 'page-head home-head' }, h('h1', {}, `¡Hola, ${me.username}!`), buddyArt),
       oakSay(),
-      h('div', { class: 'stack' }, backupReminder(), megaBanner(), eventsCard()),
+      h('div', { class: 'stack' }, backupReminder(), megaBanner(), S.events && S.events.active.length ? eventsCard() : ''),
       h('div', { class: 'home-grid' },
         h('div', { class: 'card home-card' }, h('h3', {}, h('img', { class: 'pixel', src: item('amulet-coin'), alt: '' }), 'Regalo diario'),
           days, h('div', { class: 'home-actions' }, dailyBtn)),
@@ -173,6 +173,7 @@ export default {
         h('span', { class: 'hub-desc' }, SEC_DESC[sec.id])))),
       h('details', { class: 'more-box' }, h('summary', {}, 'Ver más'),
         h('div', { class: 'more-body' },
+          S.events && !S.events.active.length ? eventsCard() : '',
           canInstall() && (() => { try { return !localStorage.getItem('installHidden'); } catch { return true; } })() ? h('div', { class: 'card install-card' },
             h('img', { src: '/icons/icon-192.png', alt: '' }),
             h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio, como una app.')),
