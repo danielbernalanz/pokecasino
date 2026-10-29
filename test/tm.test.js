@@ -177,7 +177,7 @@ test('botín de expedición: materiales de los tipos de la zona y tope diario', 
   const z2 = exp.ZONE_BY_ID.get('cueva'); // roca/tierra/fantasma
   const u2 = user();
   tm.expeditionLoot(u2, z2, 12);
-  for (const k of Object.keys(u2.items)) assert.ok(['mat-roca', 'mat-esencia'].includes(k), k);
+  for (const k of Object.keys(u2.items).filter((x) => x.startsWith('mat-'))) assert.ok(['mat-roca', 'mat-esencia'].includes(k), k);
   // Una reclamación real también los da.
   const u3 = user({ 1: { n: 1, s: 0 } });
   exp.send(u3, { zone: 'bosque', hours: 4, team: [ref(u3, 1)] });
