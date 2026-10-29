@@ -71,7 +71,7 @@ export function reveal(results, { bonus = [], again = () => false, againLabel = 
       if (tapWaiter) { const f = tapWaiter; tapWaiter = null; f(); } else if (phase === 'pack') hurry = true; else skip = true;
     };
     ov.addEventListener('click', (e) => { if (!e.target.closest('button')) tap(); });
-    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); tap(); } };
+    const onKey = (e) => { if (e.target && e.target.closest && e.target.closest('input, textarea, [contenteditable="true"]')) return; if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); tap(); } };
     document.addEventListener('keydown', onKey);
     document.body.append(ov);
     document.body.classList.add('gx-open');

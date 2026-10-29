@@ -32,6 +32,7 @@ function validate(bet) {
 
 function spin(user, { bets }) {
   if (!Array.isArray(bets) || bets.length === 0 || bets.length > 25) throw new Error('Apuestas no válidas.');
+  if (!bets.every((b) => b && typeof b === 'object')) throw new Error('Apuestas no válidas.');
   bets = bets.map((b) => ({ kind: b.kind, value: b.value, amount: Number(b.amount) }));
   if (!bets.every(validate)) throw new Error('Apuesta desconocida.');
   const total = bets.reduce((s, b) => s + b.amount, 0);

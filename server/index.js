@@ -689,6 +689,9 @@ async function shutdown() {
   console.log('  💾 Datos guardados y liberados.');
   process.exit(0);
 }
+// Un error inesperado en un temporizador (una ronda, un combate…) no debe tumbar el casino entero: se registra y sigue.
+process.on('uncaughtException', (e) => console.error('Error no capturado:', e));
+process.on('unhandledRejection', (e) => console.error('Promesa rechazada sin capturar:', e));
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 

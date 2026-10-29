@@ -164,3 +164,8 @@ test('Video Póker: una mano a medias se puede retomar (vp:state) y terminar', (
   videopoker.draw(u, { hold: [true, true, true, true, true] });
   assert.deepStrictEqual(videopoker.state(u), { hand: null }, 'terminada la mano ya no hay nada abierto');
 });
+
+test('ruleta: una lista de apuestas con huecos se rechaza con un mensaje claro', () => {
+  const roulette = require('../server/games/roulette');
+  assert.throws(() => roulette.spin({ coins: 1000 }, { bets: [null] }), /Apuestas no válidas/);
+});

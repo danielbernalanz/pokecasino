@@ -91,5 +91,6 @@ function showNewsPopup(fresh) {
       h('button', { class: 'btn primary big', onclick: () => { markSeen(); popup.close(); } }, '¡Entendido!'),
       h('a', { class: 'news-all', href: '#/news', onclick: () => popup.close() }, more > 0 ? `Ver todas (+${more} más)` : 'Ver todas')));
   popup = modal(body, { title: '🆕 ¡Novedades en el PokéCasino!', wide: true });
+  markSeen(); // ya se han mostrado: aunque se cierre con ✕ no vuelve a salir al reconectar
   popup.el.classList.add('news-modal');
 }

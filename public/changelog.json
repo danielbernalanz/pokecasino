@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.10.29-q",
+    "date": "2026-10-29",
+    "title": "Arreglos",
+    "items": [
+      "🔒 Seguridad: un registro con un nombre de usuario raro ya no puede dañar la base de datos.",
+      "🃏 Video Póker: si recargas a mitad de mano, la retomas donde la dejaste.",
+      "🛠️ Más arreglos: el aviso de Novedades no vuelve a salir al reconectar, la barra espaciadora funciona en el chat durante las celebraciones, la cabecera ya no se sale en móviles pequeños y la lluvia de monedas al cobrar en el Mercado vuelve a salir."
+    ]
+  },
+  {
     "version": "2026.10.29-p",
     "date": "2026-10-29",
     "title": "Tiempo de juego",

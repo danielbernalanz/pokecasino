@@ -186,7 +186,7 @@ function show(level, { title = '', subtitle = '', icon = '🏆', amount = 0, ms 
       resolve();
     };
     const tap = () => { if (performance.now() - t0 > 350) close(); };
-    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); tap(); } };
+    const onKey = (e) => { if (e.target && e.target.closest && e.target.closest('input, textarea, [contenteditable="true"]')) return; if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); tap(); } };
     ov.addEventListener('click', tap);
     document.addEventListener('keydown', onKey);
     document.body.append(ov);
