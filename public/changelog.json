@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.10.29-m",
+    "date": "2026-10-29",
+    "title": "Megaevolución más clara",
+    "items": [
+      "💠 En los combates, «Megaevolucionar» es ahora un botón grande: al activarlo se ilumina y dice «¡Charizard megaevolucionará este turno!»; luego eliges el movimiento.",
+      "🛠️ En Mis equipos, el botón «Llevar Mega» dice qué forma llevará (Mega-Charizard X ✓) y, si hay varias, cambia entre ellas al tocarlo.",
+      "⚔️ Duelos rápidos: interruptor «Megaevolucionar en el combate: SÍ/NO» bien visible.",
+      "🔧 Arreglado: en los combates entre jugadores, pulsar «Cambiar» dejaba la página colgada."
+    ]
+  },
+  {
     "version": "2026.10.29-l",
     "date": "2026-10-29",
     "title": "Movimientos huevo y Tutor",

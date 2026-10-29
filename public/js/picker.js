@@ -29,8 +29,16 @@ export function pickPokemon({ title = 'Elige un Pokémon', vs, mega = false } = 
     const search = h('input', { placeholder: 'Buscar…', class: 'grow' });
     const grid = h('div', { class: 'pick-grid' });
     const anyMega = mega && owned.some((p) => megasFor(p.id).length);
-    const megaChk = h('input', { type: 'checkbox' });
-    const megaRow = anyMega ? h('label', { class: 'row gap mega-toggle' }, megaChk, h('b', {}, '💠 Megaevolucionar en el combate'), h('span', { class: 'muted small' }, 'Pelea con las estadísticas y tipos de la Mega.')) : null;
+    // Interruptor grande: al activarlo, los Pokémon con Mega desbloqueada aparecen en su forma Mega.
+    const megaChk = { checked: false };
+    const megaLbl = h('b', {}, 'Megaevolucionar en el combate: NO');
+    const megaRow = anyMega ? h('button', { class: 'mega-btn', type: 'button', 'aria-pressed': 'false', onclick: () => {
+      megaChk.checked = !megaChk.checked;
+      megaRow.classList.toggle('on', megaChk.checked);
+      megaRow.setAttribute('aria-pressed', String(megaChk.checked));
+      megaLbl.textContent = `Megaevolucionar en el combate: ${megaChk.checked ? 'SÍ' : 'NO'}`;
+      render();
+    } }, h('span', { class: 'mega-btn-ico' }, '💠'), h('span', { class: 'mega-btn-t' }, megaLbl, h('small', {}, 'Con SÍ, elige la forma Mega: pelea con sus estadísticas y tipos'))) : null;
     const render = () => {
       const q = search.value.trim().toLowerCase();
       grid.replaceChildren(...owned.filter((p) => !q || p.name.toLowerCase().includes(q) || p.types.some((t) => TYPE_ES[t].toLowerCase().includes(q)))
@@ -51,7 +59,7 @@ export function pickPokemon({ title = 'Elige un Pokémon', vs, mega = false } = 
         }));
     };
     search.addEventListener('input', render);
-    megaChk.addEventListener('change', render);
+
     render();
     const m = modal(h('div', { class: 'stack' }, search, megaRow, grid), { title, wide: true });
   });

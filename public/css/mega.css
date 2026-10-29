@@ -214,3 +214,25 @@
   .mg-chip.mult.hot, .mg-chip.picks, .mg-combo.hot .mg-combo-bar, .mg-bote-n, .mg-machine.anticipate, .mg-reel.tense, .mg-pip.next, .mg-ms.ready, .mg-dlg-mega, .mg-evo,
   .me-rays, .me-mon, .me-halo, .me-helix, .me-orb, .me-sym.show { animation: none !important; }
 }
+
+/* Botón / interruptor de Megaevolución (combates, equipos y duelos): grande, con la piedra y su estado claro. */
+.mega-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer; padding: 8px 12px;
+  border: 3px solid #1f2a44; border-radius: 12px; background: linear-gradient(135deg, #e9e3ff, #d6f3ff); color: #1f2a44;
+  box-shadow: 0 3px 0 #1f2a44; font: inherit; }
+.mega-btn:hover { filter: brightness(1.04); }
+.mega-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #1f2a44; }
+.mega-btn .mega-btn-ico { font-size: 1.6em; line-height: 1; flex: 0 0 auto; }
+.mega-btn .mega-btn-ico img.pk-emo { width: 32px; height: 32px; }
+.mega-btn .mega-btn-t { display: flex; flex-direction: column; min-width: 0; }
+.mega-btn .mega-btn-t small { opacity: .75; font-size: .78em; }
+.mega-btn.on { background: linear-gradient(135deg, #ff7ad9, #7d5cff 55%, #2fd1ff); color: #fff; border-color: #2a1460;
+  box-shadow: 0 0 0 3px #ffe36e, 0 3px 0 #2a1460; animation: megaPulse 1.4s ease-in-out infinite; }
+.mega-btn.on .mega-btn-t small { opacity: .9; }
+.mega-btn.small { width: auto; padding: 4px 8px; gap: 6px; border-width: 2px; box-shadow: 0 2px 0 #1f2a44; }
+.mega-btn.small .mega-btn-ico { font-size: 1.2em; }
+.mega-btn.small .mega-btn-ico img.pk-emo { width: 22px; height: 22px; }
+.mega-btn.small .mega-btn-t b { font-size: .85em; }
+.mega-btn.small .mega-btn-t small { font-size: .7em; }
+@keyframes megaPulse { 50% { box-shadow: 0 0 0 5px #ffe36eaa, 0 3px 0 #2a1460; } }
+@media (prefers-reduced-motion: reduce) { .mega-btn.on { animation: none; } }
+.bt2-act > .mega-btn { margin-bottom: 8px; }

@@ -269,11 +269,15 @@ export default {
               h('div', {}, h('b', {}, sp.nick || d.name), sp.shiny ? ' ✨' : '', sp.gender ? h('span', { class: sp.gender === 'M' ? 'gm' : 'gf' }, sp.gender === 'M' ? ' ♂' : ' ♀') : '', h('span', { class: 'muted small' }, ` Nv${sp.level}`), h('span', { class: 'types' }, ' ', d.types.map(typeBadge))),
               h('div', { class: 'small muted' }, `${abilityEs(sp.ability)}${sp.item ? ' · 🎒 ' + heldName(sp.item) : ''} · ${sp.moves.map(moveName).join(', ')}${sp.pending ? ' · 🆕 movimientos por decidir' : ''}`)),
             h('div', { class: 'tm-btns' },
-              sp.megas.length ? h('button', { class: 'btn small' + (m.mega ? ' active' : ''), type: 'button', title: form ? form.name : 'Megaevolución', onclick: () => {
-                if (m.mega) m.mega = 0;
-                else { e.members.forEach((x) => { x.mega = 0; }); m.mega = sp.megas[0]; }
-                drawRows();
-              } }, m.mega ? `💠 ${form ? form.name : ''}` : '💠') : null,
+              // Megaevolución: sin Mega → primera forma → segunda (Charizard X/Y…) → sin Mega. Solo una por equipo.
+              sp.megas.length ? h('button', { class: 'mega-btn small' + (m.mega ? ' on' : ''), type: 'button', 'aria-pressed': String(!!m.mega),
+                title: m.mega ? 'Toca para cambiar de forma o quitar la Mega' : 'Llevará su megapiedra y podrá megaevolucionar en el combate (una por equipo)', onclick: () => {
+                  const k = sp.megas.indexOf(m.mega);
+                  const next = k < 0 ? sp.megas[0] : sp.megas[k + 1] || 0;
+                  e.members.forEach((x) => { x.mega = 0; });
+                  m.mega = next;
+                  drawRows();
+                } }, h('span', { class: 'mega-btn-ico' }, '💠'), h('span', { class: 'mega-btn-t' }, h('b', {}, m.mega ? `${form ? form.name : 'Mega'} ✓` : 'Llevar Mega'), h('small', {}, m.mega ? (sp.megas.length > 1 ? 'Toca: otra forma / quitar' : 'Toca para quitar') : 'Megaevoluciona en combate'))) : null,
               h('button', { class: 'btn small', type: 'button', onclick: () => editMoves(sp, () => { drawRows(); drawPc(); }) }, '⚙️ Movs.'),
               h('button', { class: 'btn small', type: 'button', disabled: i === 0, 'aria-label': 'Subir', onclick: () => { [e.members[i - 1], e.members[i]] = [e.members[i], e.members[i - 1]]; drawRows(); } }, '▲'),
               h('button', { class: 'btn small', type: 'button', disabled: i === e.members.length - 1, 'aria-label': 'Bajar', onclick: () => { [e.members[i + 1], e.members[i]] = [e.members[i], e.members[i + 1]]; drawRows(); } }, '▼'),

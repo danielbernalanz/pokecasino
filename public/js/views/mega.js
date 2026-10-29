@@ -414,7 +414,7 @@ export default {
         const r = await act('mega:craft', { stone: f.stone }, e.target);
         if (r) { sfx('megaboom'); vibrate([60, 40, 120]); flash('#7df9ff', 500); burst(document.querySelector('.fx-layer') || document.body, ...at, '#7df9ff', 40, { spread: 300, stars: 0.8 }); toast(`¡Fabricaste ${f.stoneName}!`, 'success'); m.close(); await load(); stoneDialog(f); }
       } }, `Fabricar (${T.cfg.craftCost} 💠)`);
-      const useBtn = h('button', { class: 'btn gold big', disabled: !have || unlocked || !owns, onclick: async (e) => { m.close(); await useStone(f, e.target); } }, unlocked ? 'Ya desbloqueada' : !owns ? `Necesitas a ${base.name}` : `Usar ${f.stoneName}`);
+      const useBtn = h('button', { class: 'btn gold big', disabled: !have || unlocked || !owns, onclick: async (e) => { m.close(); await useStone(f, e.target); } }, unlocked ? `✓ ${f.name} ya desbloqueada` : !owns ? `Necesitas a ${base.name}` : `💠 Usar ${f.stoneName}: desbloquear ${f.name}`);
       c.append(h('div', { class: 'stack' }, craftBtn, useBtn, have ? h('a', { class: 'btn small', href: '#/market', onclick: () => { S.marketQuery = f.stoneName; m.close(); } }, 'Vender en el Mercado') : h('a', { class: 'btn small', href: '#/market', onclick: () => { S.marketQuery = f.stoneName; m.close(); } }, 'Buscar en el Mercado')));
     }
 
@@ -460,12 +460,12 @@ export default {
         return h('div', { class: 'mg-form' + (on ? ' on' : '') },
           h('img', { src: art(f.formId, false), alt: f.name, loading: 'lazy' }),
           h('b', {}, f.name), h('div', { class: 'row gap' }, f.types.map(typeBadge)),
-          on ? h('button', { class: 'btn', onclick: async (e) => { if (await act('buddy:mega', { formId: null }, e.target)) { toast('Tu compañero vuelve a su forma normal', 'info'); load(); } } }, 'Volver a la forma normal')
-            : isBuddy ? h('button', { class: 'btn primary mg-evo', onclick: (e) => evolve(f, e) }, '⚡ MEGAEVOLUCIONAR')
+          on ? h('button', { class: 'btn', onclick: async (e) => { if (await act('buddy:mega', { formId: null }, e.target)) { toast('Tu compañero vuelve a su forma normal', 'info'); load(); } } }, `↩ Volver a ${S.dexById.get(f.species).name} normal`)
+            : isBuddy ? h('button', { class: 'btn primary mg-evo', onclick: (e) => evolve(f, e) }, `💠 Megaevolucionar a mi compañero`)
               : h('button', { class: 'btn', disabled: !owned, onclick: async (e) => {
                 if (!(await act('buddy:set', { id: f.species, shiny: false }, e.target))) return;
                 await evolve(f, e);
-              } }, owned ? 'Hacer compañero y megaevolucionar' : 'Te falta el Pokémon'));
+              } }, owned ? `💠 Hacer compañero a ${S.dexById.get(f.species).name} y megaevolucionar` : `Te falta ${S.dexById.get(f.species).name}`));
       };
       return h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('h3', {}, '🧬 Tu compañero'),

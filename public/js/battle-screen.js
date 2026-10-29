@@ -677,7 +677,17 @@ export class BattleScreen {
       const me = actives[s];
       if (!act || !me || stateOfCondition(me.p.condition).fnt) { picks[s] = 'pass'; return step(s + 1); }
       const name = me.p.ident.replace(/^p\d: /, '');
-      const mega = h('input', { type: 'checkbox', id: 'mgchk' });
+      // Interruptor de Megaevolución: un botón grande que cambia de estado (antes era una casilla pequeña).
+      const mega = { checked: false };
+      const megaBtn = h('button', { class: 'mega-btn', type: 'button', 'aria-pressed': 'false', onclick: () => {
+        mega.checked = !mega.checked;
+        megaBtn.classList.toggle('on', mega.checked);
+        megaBtn.setAttribute('aria-pressed', String(mega.checked));
+        megaLbl.textContent = mega.checked ? `¡${name} megaevolucionará este turno!` : `Megaevolucionar a ${name}`;
+        megaSub.textContent = mega.checked ? 'Ahora elige el movimiento · toca para cancelar' : 'Actívalo y luego elige un movimiento';
+      } });
+      const megaLbl = h('b', {});
+      const megaSub = h('small', {});
       const canMega = !!act.canMegaEvo && !megaUsed;
       const head = h('div', { class: 'bt2-ask' }, h('b', {}, `¿Qué hará ${name}?`), req.active.length > 1 ? h('span', { class: 'muted small' }, ` (Pokémon ${s + 1} de ${req.active.length})`) : null);
       const moves = h('div', { class: 'mv-grid' }, act.moves.map((mv, mi) => {
@@ -697,11 +707,11 @@ export class BattleScreen {
       const bench = mine.map((p, i) => ({ p, i })).filter((x) => !x.p.active && !stateOfCondition(x.p.condition).fnt && !taken.has(x.i));
       const trapped = act.trapped || act.maybeTrapped;
       const row = h('div', { class: 'bt2-row' },
-        canMega ? h('label', { class: 'mg' }, mega, h('span', {}, '💠 Megaevolucionar')) : null,
         h('button', { class: 'btn', type: 'button', disabled: !bench.length || trapped, title: trapped ? 'No puede cambiar: está atrapado' : '', onclick: () => this.askSwitch(me.p, bench, (i) => { taken.add(i); picks[s] = `switch ${i + 1}`; step(s + 1); }, () => step(s)) }, '🔄 Cambiar'),
         s > 0 ? h('button', { class: 'btn', type: 'button', onclick: () => { picks.length = s - 1; step(s - 1); } }, '↩ Atrás') : null,
         this.forfeitButton());
-      this.menu.replaceChildren(h('div', { class: 'bt2-act' }, head, moves, row));
+      if (canMega) { megaLbl.textContent = `Megaevolucionar a ${name}`; megaSub.textContent = 'Actívalo y luego elige un movimiento'; megaBtn.append(h('span', { class: 'mega-btn-ico' }, '💠'), h('span', { class: 'mega-btn-t' }, megaLbl, megaSub)); }
+      this.menu.replaceChildren(h('div', { class: 'bt2-act' }, head, canMega ? megaBtn : '', moves, row));
     };
     step(0);
   }
