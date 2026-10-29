@@ -25,6 +25,7 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
   (`test/balance.test.js`, `test/npc.test.js`, `test/candy.test.js`, `test/progression.test.js`).
 - Criadero: la tarifa supera lo que vale el bebé (`test/daycare.test.js`).
 - Puntos de Batalla: solo en combates, 30/día (CPU) + 20/día (PvP con mínimo de turnos y 3 combates/rival); intransferibles y sin conversión a monedas; los PNJ no compran lo que se paga con PB (`test/bp.test.js`).
+- Fragmentos del Tutor: 3/día desde expediciones; los PNJ no los comercian (`test/tutor.test.js`).
 - Máquina MT: fabricar cuesta monedas (`tm_craft`) y materiales; los PNJ no compran MT ni materiales y su tope teórico sería ≤ 25 % del coste (`test/tm.test.js`). Botín de materiales: 12/día en expediciones y 15/día en combates; MT de premio: 1/día por vía (`tm.js`).
 - Desafío Pokémon: multiplicadores ajustados a la precisión reciente del jugador, preguntas que no se repiten
   y tope de ganancia neta diaria de 25 × su apuesta máxima (`test/quiz.test.js`).

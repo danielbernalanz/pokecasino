@@ -133,6 +133,12 @@ function inheritsHa(mother, babyId, roll = rand()) {
   return !!(mother && mother.ha && require('./moves').abilitiesOf(babyId).hidden && roll < HA_INHERIT);
 }
 
+// Movimientos huevo del bebé que cualquiera de los dos padres tiene aprendidos (regla de la 6.ª generación en adelante).
+function inheritedEggMoves(babyId, parents) {
+  const mv = require('./moves');
+  return mv.eggMoves(babyId).filter((x) => parents.some((p) => Array.isArray(p.learned) && p.learned.includes(x))).slice(0, 4);
+}
+
 // Genera el huevo (la herencia queda decidida al recogerlo: los padres pueden retirarse después).
 function makeEgg(u, pair) {
   const ma = lookup(u, pair.a);
@@ -147,7 +153,7 @@ function makeEgg(u, pair) {
   const now = Date.now();
   return {
     id: crypto.randomBytes(4).toString('hex'), species: baby.id, need: needFor(baby.rarity), steps: 0, born: now, hatchAt: now + FALLBACK_MS,
-    ivs, nature: rand() < NATURE_INHERIT ? pick(parents).nature : null, shiny: rand() < shinyP, ha: inheritsHa(motherOf(ma, mb, pair.a.id, pair.b.id), baby.id),
+    ivs, nature: rand() < NATURE_INHERIT ? pick(parents).nature : null, shiny: rand() < shinyP, ha: inheritsHa(motherOf(ma, mb, pair.a.id, pair.b.id), baby.id), moves: inheritedEggMoves(baby.id, [ma, mb]),
   };
 }
 
@@ -201,6 +207,7 @@ function hatch(u, p) {
     const ab = require('./abilities');
     ab.resolve(id, baby); // fija la versión de habilidades antes de marcar la oculta
     if (egg.ha) { baby.ha = true; ab.resolve(id, baby); } // habilidad oculta heredada
+    for (const mvId of egg.moves || []) { try { require('./moves').teach(id, baby, mvId); } catch { /* ya lo conocía */ } } // movimientos huevo
   }
   require('./candy').addCandy(u, id, BABY_CANDY);
   care.eggs.splice(i, 1);
@@ -227,7 +234,7 @@ function view(u) {
 const STATIC = { hours: [HOURS_MIXED, HOURS_SAME], maxEggs: MAX_EGGS, pair2Level: PAIR2_LEVEL, wagerPerStep: WAGER_PER_STEP, feeMin: FEE_MIN, fees: Object.fromEntries(Object.keys(RARITY).map((r) => [r, feeFor(r)])), need: NEED_STEPS, fallbackH: FALLBACK_MS / HOUR, ditto: DITTO };
 
 module.exports = {
-  HA_INHERIT, motherOf, inheritsHa,
+  HA_INHERIT, motherOf, inheritsHa, inheritedEggMoves,
   STATIC, DITTO, HOURS_MIXED, HOURS_SAME, MAX_EGGS, PAIR2_LEVEL, WAGER_PER_STEP, FALLBACK_MS, NEED_STEPS, INHERIT_IVS, NATURE_INHERIT, SHINY_BASE, SHINY_PARENT, BABY_CANDY, FEE_MIN, FEE_MARGIN,
   feeFor, expectedResale, resaleCap, needFor, baseOf, check: (u, p) => preview(u, p), checkPair: check, maxPairs, view, deposit, withdraw, collect, hatch, onBet,
 };

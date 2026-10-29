@@ -10,6 +10,7 @@ const prefs = { format: 'singles', level: 'fair', team: NO_TEAM, wager: 0 };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('btprefs') || '{}')); } catch { /* sin almacenamiento */ }
 const savePrefs = () => { try { localStorage.setItem('btprefs', JSON.stringify(prefs)); } catch { /* sin almacenamiento */ } };
 
+const heldName = (id) => (S.data.items['hi-' + id] || Object.values(S.data.berries).find((b) => b.hold === id) || { name: id }).name;
 const dexOf = (id) => S.dexById.get(id) || { name: '#' + id, types: [] };
 const sig = (n) => '★'.repeat(n) + '☆'.repeat(Math.max(0, 6 - n));
 
@@ -266,7 +267,7 @@ export default {
             h('img', { class: 'pixel', src: sprite(sp.id, sp.shiny), alt: '' }),
             h('div', { class: 'grow tm-info' },
               h('div', {}, h('b', {}, sp.nick || d.name), sp.shiny ? ' ✨' : '', sp.gender ? h('span', { class: sp.gender === 'M' ? 'gm' : 'gf' }, sp.gender === 'M' ? ' ♂' : ' ♀') : '', h('span', { class: 'muted small' }, ` Nv${sp.level}`), h('span', { class: 'types' }, ' ', d.types.map(typeBadge))),
-              h('div', { class: 'small muted' }, `${abilityEs(sp.ability)} · ${sp.moves.map(moveName).join(', ')}${sp.pending ? ' · 🆕 movimientos por decidir' : ''}`)),
+              h('div', { class: 'small muted' }, `${abilityEs(sp.ability)}${sp.item ? ' · 🎒 ' + heldName(sp.item) : ''} · ${sp.moves.map(moveName).join(', ')}${sp.pending ? ' · 🆕 movimientos por decidir' : ''}`)),
             h('div', { class: 'tm-btns' },
               sp.megas.length ? h('button', { class: 'btn small' + (m.mega ? ' active' : ''), type: 'button', title: form ? form.name : 'Megaevolución', onclick: () => {
                 if (m.mega) m.mega = 0;

@@ -53,6 +53,7 @@ export function movesPage(m, onChange) {
       h('button', { class: 'btn primary small', type: 'button', onclick: () => learnPrompt(m, onChange) }, 'Decidir')) : null,
     h('div', { class: 'mv-cur one' }, eq.map((id) => moveRow(id))),
     h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', type: 'button', onclick: () => swapDialog(m, onChange) }, '🔁 Cambiar movimientos'),
+      h('button', { class: 'btn', type: 'button', onclick: () => tutorDialog(m, onChange) }, '🎓 Tutor'),
       h('button', { class: 'btn', type: 'button', onclick: async () => { const { pcTmDialog } = await import('./tm-ui.js'); pcTmDialog(m, onChange); } }, '💿 Usar MT'),
       h('span', { class: 'small muted' }, `${m.learned.length} aprendidos · se cambian libremente fuera de combate.`)));
 }
@@ -81,4 +82,22 @@ export async function learnPrompt(m, onChange) {
       h('button', { class: 'btn', type: 'button', onclick: (ev) => done('', ev.currentTarget) }, 'No aprender (se guarda para luego)')), { title: '🆕 Nuevo movimiento' });
   };
   next();
+}
+
+/** Tutor de movimientos: movimientos de tutor a cambio de Fragmentos de expedición. */
+export async function tutorDialog(m, onChange) {
+  await loadNames();
+  const r = await act('tutor:list', { id: m.id, uid: m.uid });
+  if (!r) return;
+  const have = (c) => S.me.items[c] || 0;
+  const box = modal(h('div', { class: 'stack' },
+    h('p', { class: 'small muted' }, 'El Tutor enseña estos movimientos por 4 Fragmentos del color de su tipo (Rojo, Azul, Amarillo o Verde). Los fragmentos caen, de uno en uno, en las Expediciones largas (máx. 3 al día).'),
+    r.moves.length ? r.moves.map((x) => h('div', { class: 'tm-row-use' }, h('div', { class: 'grow' }, moveRow(x.move)),
+      h('button', { class: 'btn primary', type: 'button', disabled: x.known || have(x.color) < x.cost, onclick: async (ev) => {
+        const res = await act('tutor:learn', { id: m.id, uid: m.uid, move: x.move }, ev.currentTarget);
+        if (!res) return;
+        sfx('win'); box.close(); m.eq = res.eq; m.learned = res.learned;
+        toast(`¡${nameOf(m)} aprendió ${moveEs(x.move)}!`, 'success');
+        if (res.how !== 'equipped') await swapDialog(m, onChange); else if (onChange) onChange();
+      } }, x.known ? 'Ya lo sabe' : `${x.cost} × ${(S.data.items[x.color] || {}).name || x.color} (tienes ${have(x.color)})`))) : [h('p', { class: 'muted' }, 'Este Pokémon no aprende nada del Tutor.')]), { title: '🎓 Tutor de movimientos', wide: true });
 }

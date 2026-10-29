@@ -77,6 +77,8 @@ for (const t of tmdata.TMS) {
 }
 // Tienda de Combate (Puntos de Batalla): objetos equipables, mentas, Cápsula y Parche de Habilidad (ver bpdata.js y bp.js).
 Object.assign(ITEMS, require('./bpdata').buildItems());
+// Fragmentos del Tutor de movimientos (ver tutor.js): botín raro de Expediciones, comerciables entre jugadores.
+for (const [id, sh] of Object.entries(require('./tutor').SHARDS)) ITEMS[id] = { name: sh.name, sprite: sh.sprite, price: null, shard: true, desc: 'Se gasta en el Tutor de movimientos (Caja PC → Movimientos). Cae, poco a poco, en las Expediciones largas.' };
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
 
@@ -172,6 +174,8 @@ function use(user, { itemId, pokeId }) {
     throw new Error('Una MT se usa desde la Máquina MT o desde los Movimientos de un Pokémon (Caja PC).');
   } else if (ITEMS[itemId] && (ITEMS[itemId].held || ITEMS[itemId].mint || ITEMS[itemId].capsule || ITEMS[itemId].patch)) {
     throw new Error('Este objeto se usa desde la Caja PC → Datos → Objeto y habilidad de un Pokémon.');
+  } else if (ITEMS[itemId] && ITEMS[itemId].shard) {
+    throw new Error('Los fragmentos se gastan en el Tutor de movimientos (Caja PC → Movimientos).');
   } else if (ITEMS[itemId] && ITEMS[itemId].material) {
     throw new Error('Los materiales se gastan fabricando MT en la Máquina MT.');
   } else {

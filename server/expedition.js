@@ -167,7 +167,7 @@ function claim(u, p) {
       out.item = it;
     }
     const loot = require('./tm').expeditionLoot(u, zone, H); // materiales de MT (según los tipos de la zona) y, a veces, una MT
-    out.mats = loot.mats; out.tm = loot.tm;
+    out.mats = loot.mats; out.tm = loot.tm; out.shards = require('./tutor').expeditionLoot(u, zone, H);
     const coins = Math.max(0, Math.min(Math.round(H * COIN_PER_HOUR * (1 + MATCH_BONUS * matched / n)), COIN_DAY_CAP - d.coins));
     if (coins) { u.coins += coins; d.coins += coins; hub.ledger(u, coins, 'expedition', zone.name); out.coins = coins; }
   }

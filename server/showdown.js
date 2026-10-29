@@ -757,7 +757,7 @@ function boxForBuilder(user) {
     for (const m of arr) {
       if (m.away) continue; // de expedición o en el criadero
       sd.ensureSd(id, m);
-      out.push({ id, uid: m.uid, nick: m.nick, level: m.level, gender: m.gender, shiny: m.shiny, friendship: m.friendship, nature: m.nature, ability: m.sdAbility, moves: m.sdMoves, learned: m.learned.length, pending: m.pending.length, megas: forms, iv: (m.ivs || []).reduce((a, x) => a + x, 0) });
+      out.push({ id, uid: m.uid, nick: m.nick, level: m.level, gender: m.gender, shiny: m.shiny, friendship: m.friendship, nature: m.nature, ability: m.sdAbility, item: m.item || null, moves: m.sdMoves, learned: m.learned.length, pending: m.pending.length, megas: forms, iv: (m.ivs || []).reduce((a, x) => a + x, 0) });
     }
   }
   db.save();

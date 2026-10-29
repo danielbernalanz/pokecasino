@@ -28,7 +28,7 @@ export default {
     }
 
     function itemsTab() {
-      return h('div', { class: 'shop-grid wide' }, Object.entries(S.data.items).filter(([id, it]) => !S.data.cosmetics[id] && !it.tm && !it.material && !it.bp).map(([id, it]) => {
+      return h('div', { class: 'shop-grid wide' }, Object.entries(S.data.items).filter(([id, it]) => !S.data.cosmetics[id] && !it.tm && !it.material && !it.bp && !it.shard).map(([id, it]) => {
         const qty = h('input', { type: 'number', min: 1, max: 99, value: 1, class: 'qty' });
         return h('div', { class: 'shop-item item-card' },
           itemImg(id, 'big'),
@@ -58,6 +58,7 @@ export default {
           const useBtn = id === 'ticket'
             ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
             : it.tm ? h('button', { class: 'btn primary', onclick: () => useTmDialog(id) }, 'Enseñar')
+              : it.shard ? h('a', { class: 'btn', href: '#/pc' }, 'Tutor (Caja PC)')
               : it.bp ? h('a', { class: 'btn', href: '#/pc' }, 'Usar en la Caja PC')
               : it.material ? h('button', { class: 'btn', onclick: () => { tab = 'tm'; renderTabs(); render(); } }, 'Máquina MT')
             : cos ? h('button', { class: 'btn' + (equipped ? ' active' : ''), disabled: equipped, onclick: async (e) => { if (await act('item:use', { itemId: id }, e.target)) { sfx('click'); toast(`${it.name} equipado`, 'success'); } } }, equipped ? 'Equipado' : 'Equipar')

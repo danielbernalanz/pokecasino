@@ -577,3 +577,8 @@ Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + reg
 * Los objetos de PB son objetos normales (comerciables entre jugadores), pero los PNJ ni los compran ni los venden (`inFocus`), así que no hay bucle con monedas del casino. Equipar uno quita 1 de la mochila (o del almacén de bayas); quitarlo lo devuelve.
 * **Habilidades:** normal (casilla 0/1) u oculta (`ha`). Ya no se eligen gratis: la Cápsula alterna entre las dos normales y el Parche da la oculta (irreversible, como en los juegos). Criadero: si la madre (el padre no Ditto) tiene la oculta, el bebé la hereda el **60 %** (si su especie tiene una).
 * **Combate:** un objeto por Pokémon; Cláusula de objetos solo en PvP. La CPU (fuerza ≥ 3) también lleva objetos suaves sin repetir. Bayas del Huerto = Baya Aranja (Aranja), Zidra (Zidra), Ziuela, Atania y Zanama, equipables y con la misma función que en los juegos.
+
+### Fase 4 · Movimientos huevo y Tutor (server/tutor.js · test/tutor.test.js)
+* **Huevo:** al recoger el huevo, el bebé hereda los movimientos huevo de su especie que **cualquiera de los dos padres tenga aprendidos** (hasta 4); al eclosionar se aprenden (y se equipan si hay hueco). No cuesta nada extra.
+* **Tutor de movimientos:** enseña los movimientos de tutor de la especie por **4 Fragmentos** del color del tipo del movimiento (Rojo: fuego/lucha/roca/tierra · Azul: agua/hielo/volador/dragón · Amarillo: eléctrico/psíquico/normal/hada · Verde: el resto). Sin monedas.
+* **Fragmentos:** solo en Expediciones de 4/8/12 h (35 % / 60 % / 100 %, 1/1/2 unidades), **tope 3 al día** (≈ un movimiento cada 1–2 días). Comerciables entre jugadores, nunca con PNJ (`inFocus`, test).
