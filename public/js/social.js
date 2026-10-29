@@ -1,5 +1,5 @@
 // Chat, actividad en vivo y jugadores conectados.
-import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg, notify, toast, confirmRisk } from './core.js';
+import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg, notify, toast, confirmRisk, fmtPlay } from './core.js';
 
 // ---------- Emotes: «:pikachu:» se pinta con el sprite del Pokémon ----------
 const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -100,7 +100,8 @@ export async function showPlayer(username) {
         h('p', { class: 'muted' }, `Nivel ${p.level} · Desde ${new Date(p.createdAt).toLocaleDateString('es-ES')}`),
         h('div', { class: 'stat-row' },
           stat('Pokédex', `${p.dex}/${S.data.dex.length}`), stat('Variocolor', p.shinies), stat('Tiradas', fmt(p.stats.pulls)),
-          stat('Duelos', `${p.stats.duelsWon}V / ${p.stats.duelsLost}D`), stat('Mayor premio', fmt(p.stats.biggestWin))))),
+          stat('Duelos', `${p.stats.duelsWon}V / ${p.stats.duelsLost}D`), stat('Mayor premio', fmt(p.stats.biggestWin)),
+          stat('Tiempo de juego', p.playMs === null ? '🔒 Privado' : fmtPlay(p.playMs))))),
     canTalk ? h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => { mm.close(); replyTo(p.username); } }, '✉️ Mensaje privado')) : null,
     canTalk ? giftCoins : null,
     canTalk ? h('p', { class: 'muted small' }, 'Para regalar o retar con un Pokémon usa la Pokédex o los Duelos.') : null,

@@ -96,6 +96,15 @@ export const RARITY_ORDER = ['M', 'L', 'E', 'R', 'U', 'C'];
 export const rarityName = (r) => S.data.rarity[r].name;
 
 // ---- Socket con promesas ----
+// Tiempo de juego legible: «45 min», «3 h 05 min», «2 d 4 h».
+export function fmtPlay(ms) {
+  const m = Math.floor((ms || 0) / 60000);
+  if (m < 60) return `${m} min`;
+  const hrs = Math.floor(m / 60);
+  if (hrs < 48) return `${hrs} h ${String(m % 60).padStart(2, '0')} min`;
+  return `${Math.floor(hrs / 24)} d ${hrs % 24} h`;
+}
+
 export function emit(ev, payload = {}) {
   return new Promise((resolve, reject) => {
     if (!S.socket || !S.socket.connected) return reject(new Error('Sin conexión con el servidor.'));

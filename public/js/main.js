@@ -289,7 +289,7 @@ function connect() {
     bus.emit('mega', res.mega);
     bus.emit('events', res.events);
     bus.emit('race', res.race);
-    if (!booted) { booted = true; buildNav(); buildTabbar($('#tabbar')); setMe(S.me); route(); nightPeek(); }
+    if (!booted) { booted = true; buildNav(); buildTabbar($('#tabbar')); setMe(S.me); route(); nightPeek(); startPlayClock(); }
     initNews(res).then(updateNewsDots).catch(() => {});
   });
   socket.on('me', setMe);
@@ -399,3 +399,17 @@ function nightPeek() {
     connect();
   } else showAuth();
 })();
+
+// Tiempo de juego: un latido por minuto mientras la pestaña está a la vista y el jugador ha hecho algo hace poco.
+function startPlayClock() {
+  let lastInput = Date.now();
+  const mark = () => { lastInput = Date.now(); };
+  for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(ev, mark, { passive: true, capture: true });
+  const tick = () => {
+    if (document.visibilityState !== 'visible' || Date.now() - lastInput > 5 * 60 * 1000 || !S.me) return;
+    // Sin pasar por emit(): su respuesta trae «me» y redibujaría la pantalla cada minuto.
+    if (S.socket && S.socket.connected) S.socket.emit('play:beat', {}, (r) => { if (r && r.ok && S.me) S.me.playMs = r.playMs; });
+  };
+  tick();
+  setInterval(tick, 60 * 1000);
+}

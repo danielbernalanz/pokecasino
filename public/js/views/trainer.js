@@ -1,5 +1,5 @@
 import { historyCard } from './history.js';
-import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, playingCard } from '../core.js';
+import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, playingCard, fmtPlay } from '../core.js';
 import { openEgg } from '../rewards.js';
 
 // Cuántos anuncios hay en el Mercado de un Pokémon (para animar a comprar la pieza que falta).
@@ -45,6 +45,13 @@ export default {
           h('div', { class: 'row gap' }, playingCard(null, { back: me.equip.cardback, cls: 'small' }), playingCard(null, { back: me.equip.cardback, cls: 'small' }),
             h('span', { class: 'muted small' }, 'Así ven tus cartas en el póker')),
           h('div', { class: 'small' }, `Límite de apuesta: `, h('b', {}, fmt(me.maxBet)), got < 8 ? h('span', { class: 'muted' }, ` → ${fmt(S.data.maxBetByBadges[got + 1])} con la próxima medalla`) : null),
+          // Tiempo de juego, con interruptor público/privado.
+          h('div', { class: 'small row gap wrap' }, '⏱️ Tiempo de juego: ', h('b', {}, fmtPlay(me.playMs)),
+            h('button', { class: 'btn small', type: 'button', title: 'Decide si los demás pueden ver tu tiempo de juego en tu ficha y en el ranking', onclick: async (e) => {
+              const btn = e.currentTarget; // (después del await ya no existe currentTarget)
+              const r = await act('play:privacy', { public: !me.playPublic }, btn);
+              if (r) { me.playPublic = r.playPublic; btn.textContent = r.playPublic ? '🌐 Público' : '🔒 Privado'; toast(r.playPublic ? 'Tu tiempo de juego es público' : 'Tu tiempo de juego es privado', 'info'); }
+            } }, me.playPublic ? '🌐 Público' : '🔒 Privado')),
           h('div', { class: 'small' }, `Bonus de colecciones: `, h('b', { class: 'good' }, `+${(pr.setBonus * 100).toFixed(0)} %`), h('span', { class: 'muted' }, ` en cada ganancia neta · hoy has cobrado ${fmt(me.bonusPaid)} de bonus (tope ${fmt(me.bonusCap)}, ligado a lo que apuestas)`))));
 
       // --- Medallas ---

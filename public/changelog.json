@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.10.29-p",
+    "date": "2026-10-29",
+    "title": "Tiempo de juego",
+    "items": [
+      "⏱️ Ahora se cuenta tu tiempo de juego (solo mientras tienes el casino a la vista y estás jugando). Lo ves en Mi Entrenador.",
+      "🌐/🔒 Tú decides si es público o privado con el botón junto a tu tiempo: si es público aparece en tu ficha y en el nuevo ranking «Tiempo de juego»."
+    ]
+  },
+  {
     "version": "2026.10.29-o",
     "date": "2026-10-29",
     "title": "Revisión general de errores",

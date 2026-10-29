@@ -207,6 +207,8 @@ function leaderboard() {
     badges: top((u) => (u.progress ? u.progress.badges.length * 1000 + u.progress.sets.length : 0)),
     biggestWin: top((u) => u.stats.biggestWin),
     duels: top((u) => u.stats.duelsWon),
+    // Solo quien lo tiene público entra en el ranking de tiempo de juego.
+    playtime: top((u) => (require('./playtime').isPublic(u) ? u.playMs || 0 : -1)).filter((x) => x.value > 0),
   };
 }
 
@@ -218,6 +220,8 @@ function viewPlayer(_user, { username }) {
       ...hub.publicUser(u), createdAt: u.createdAt, collection: u.collection,
       progress: { badges: u.progress.badges, sets: u.progress.sets },
       stats: { pulls: u.stats.pulls, duelsWon: u.stats.duelsWon, duelsLost: u.stats.duelsLost, biggestWin: u.stats.biggestWin },
+      // Tiempo de juego: null si el jugador lo tiene en privado (salvo para él mismo).
+      playMs: require('./playtime').isPublic(u) || u.id === _user.id ? u.playMs || 0 : null,
     },
   };
 }
@@ -650,6 +654,14 @@ io.on('connection', (socket) => {
   on('chat:send', chat, { push: false });
   on('leaderboard', leaderboard, { push: false });
   on('player:view', viewPlayer, { push: false });
+  // Latido del tiempo de juego: fuera del limitador de acciones (no debe quitar sitio a las jugadas); el propio
+  // playtime.beat ignora los latidos con menos de 20 s de separación.
+  socket.on('play:beat', (_p, ack) => {
+    const u = ready && db.userById(uid);
+    const r = u ? require('./playtime').beat(u) : null;
+    if (typeof ack === 'function') ack(r ? { ok: true, ...r } : { ok: false });
+  });
+  on('play:privacy', (u, p) => require('./playtime').privacy(u, p || {}));
   for (const [k, fn] of Object.entries(admin)) on('admin:' + k, fn);
 
   socket.on('disconnect', () => {
