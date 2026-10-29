@@ -7,7 +7,7 @@ const VERSION = 'v15';
 const APP = 'pokecasino-app-' + VERSION;
 const SPRITES = 'pokecasino-sprites';
 const SPRITE_LIMIT = 1500;
-const SHELL = ['/', '/index.html', '/css/style.css', '/css/fx.css', '/css/mega.css', '/css/quiz.css', '/css/news.css', '/css/pc.css', '/css/bond.css', '/css/afk.css', '/css/anim.css', '/css/battle.css', '/js/main.js', '/js/core.js', '/js/theme.js', '/js/nav.js', '/fonts/jersey-10-latin-400-normal.woff2', '/fonts/nunito-latin-wght-normal.woff2', '/offline.html', '/icons/icon-192.png'];
+const SHELL = ['/', '/index.html', '/css/style.css', '/css/fx.css', '/css/mega.css', '/css/quiz.css', '/css/news.css', '/css/pc.css', '/css/bond.css', '/css/afk.css', '/css/anim.css', '/css/battle.css', '/js/main.js', '/js/core.js', '/js/pkicons.js', '/js/theme.js', '/js/nav.js', '/fonts/jersey-10-latin-400-normal.woff2', '/fonts/nunito-latin-wght-normal.woff2', '/offline.html', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

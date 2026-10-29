@@ -1,3 +1,4 @@
+import { installEmoji } from './pkicons.js';
 import { animPref, setAnimPref } from './anim.js';
 import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg, monImg, MON, loader } from './core.js';
 import { celebrate, coinRain, burstAt, vibrate } from './fx.js';
@@ -33,6 +34,8 @@ import news from './views/news.js';
 import { initNews, openPublicNews } from './news.js';
 import hubs, { notFound } from './views/hubs.js';
 import { buildSidebar, buildTabbar, markNav, refreshNew, markVisited, resetVisited } from './nav.js';
+
+installEmoji(); // emojis genéricos → iconos de Pokémon (pkicons.js)
 
 duels.title = 'Duelos rápidos'; // los duelos de siempre (1 Pokémon a ciegas) pasan a llamarse así junto a los nuevos Combates
 const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, criadero, shop, megaView, market, ranking, admin, ...hubs];

@@ -1,4 +1,5 @@
 // Utilidades compartidas del cliente.
+import { plain } from './pkicons.js';
 export const S = { me: null, data: null, dexById: new Map(), online: [], jackpot: 0, race: null, duels: [], token: null, socket: null };
 
 // ---- Bus de eventos ----
@@ -27,11 +28,13 @@ export function h(tag, attrs = {}, ...children) {
     if (k === 'class') el.className = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else el.setAttribute(k, v === true ? '' : v);
+    else el.setAttribute(k, v === true ? '' : (k === 'title' || k === 'placeholder' || k === 'aria-label') && typeof v === 'string' ? plain(v) : v);
   }
+  // Los emojis del texto se convierten en iconos de Pokémon (pkicons.js); donde no caben imágenes se quitan.
+  const noImg = tag === 'option' || tag === 'textarea' || tag === 'title';
   for (const c of children.flat()) {
     if (c === null || c === undefined || c === false) continue;
-    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    el.append(c instanceof Node ? c : document.createTextNode(noImg ? plain(c) : String(c)));
   }
   return el;
 }

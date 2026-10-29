@@ -1631,3 +1631,12 @@ button.mk-ocard { cursor: pointer; }
 .boot { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; z-index: 5; }
 .boot img { width: 96px; height: 96px; image-rendering: pixelated; }
 .btn img.jp-mini { width: 30px; height: 30px; margin: -8px 0; }
+
+/* ---- Iconos de Pokémon en lugar de emojis (pkicons.js) ---- */
+img.pk-emo { display: inline-block; width: 1.25em; height: 1.25em; object-fit: contain; vertical-align: -0.3em; image-rendering: pixelated; -webkit-user-drag: none; }
+img.pk-emo.mon { width: 1.8em; height: 1.8em; vertical-align: -0.55em; margin: -0.4em 0; }
+.say-av img.pk-emo { width: 100%; height: 100%; vertical-align: baseline; }
+.say-av.emoji img.pk-emo.item { transform: scale(1.1); }
+.nav-ico img.pk-emo, .tab-ico img.pk-emo { width: 26px; height: 26px; vertical-align: middle; margin: 0; }
+h1 img.pk-emo, h2 img.pk-emo { width: 1.4em; height: 1.4em; }
+h1 img.pk-emo.mon, h2 img.pk-emo.mon { width: 1.9em; height: 1.9em; vertical-align: -0.5em; }

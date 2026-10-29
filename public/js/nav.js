@@ -9,7 +9,7 @@ export const META = {
   blackjack: { t: 'Blackjack', d: 'Planta cara a Snorlax', art: 143, tone: 'g', ico: '🃏' },
   videopoker: { t: 'Video Póker', d: 'Jacks or Better', art: 65, tone: 'g', ico: '🂡' },
   baccarat: { t: 'Baccarat', d: 'Punto o Banca con Mr. Mime', art: 122, tone: 'g', ico: '🎴' },
-  plinko: { t: 'Plinko', d: 'Suelta Poké Balls entre los clavos', art: 113, tone: 'r', ico: '🔻' },
+  plinko: { t: 'Plinko', d: 'Suelta Poké Balls entre los clavos', art: 113, tone: 'r', ico: '🎯' },
   mines: { t: 'Minas Geodude', d: 'Trozos Estrella sin despertar a Geodude', art: 74, tone: 'r', ico: '💣' },
   voltorb: { t: 'Voltorb Flip', d: 'El clásico de la Esquina de Juegos', art: 100, tone: 'r', ico: '⚡' },
   poker: { t: "Texas Hold'em", d: 'Póker con tus amigos en directo', art: 94, tone: 'b', ico: '♠️' },
