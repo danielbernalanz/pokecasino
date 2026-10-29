@@ -25,6 +25,7 @@ function parseRef(ref) {
   return { kind: 'dust', ref: 'dust' };
 }
 const isCos = (a) => a.kind === 'item' && S.data.cosmetics[a.itemId];
+const isTm = (a) => a.kind === 'item' && (S.data.items[a.itemId].tm || S.data.items[a.itemId].material);
 function nameOf(a) {
   if (a.kind === 'poke') return S.dexById.get(a.pokeId).name + (a.shiny ? ' ✨' : '');
   if (a.kind === 'item') return itemName(a.itemId);
@@ -649,12 +650,13 @@ export default {
         h('div', { class: 'mkf-empty-ico' }, '🔍'), h('p', { class: 'muted' }, emptyMsg),
         fb.active() ? h('button', { class: 'btn small', onclick: fb.reset }, 'Limpiar filtros') : '')]));
     }
-    const catOf = (a) => (a.kind === 'poke' ? 'poke' : a.kind === 'dust' ? 'dust' : isCos(a) ? 'cosmetic' : 'item');
-    const CATS = [['', 'Todo'], ['poke', 'Pokémon'], ['item', 'Objetos'], ['cosmetic', 'Cosméticos'], ['dust', 'Polvo estelar']];
+    const catOf = (a) => (a.kind === 'poke' ? 'poke' : a.kind === 'dust' ? 'dust' : isCos(a) ? 'cosmetic' : isTm(a) ? 'tm' : 'item');
+    const CATS = [['', 'Todo'], ['poke', 'Pokémon'], ['item', 'Objetos'], ['tm', 'MT y materiales'], ['cosmetic', 'Cosméticos'], ['dust', 'Polvo estelar']];
     const SUBS = {
       poke: () => [['', 'Todos los tipos'], ...S.data.types.map((t) => [t, TYPE_ES[t]])],
       cosmetic: () => [['', 'Todos'], ['frame', 'Marco'], ['cardback', 'Dorso'], ['title', 'Título']],
       item: () => [['', 'Todos'], ['consumable', 'Consumibles'], ['special', 'Especiales']],
+      tm: () => [['', 'Todos'], ['tm', 'MT'], ['material', 'Materiales']],
     };
     const RARS = [['', 'Todos'], ...[...RARITY_ORDER].reverse().map((r) => [r, `${r} · ${rarityName(r)}`])];
     const ENCH = [['', 'Todos'], ['normal', 'Normal'], ['shiny', 'Variocolor ✨']];
@@ -665,6 +667,7 @@ export default {
         if (st.cat === 'poke') { if (!S.dexById.get(a.pokeId).types.includes(st.sub)) return false; }
         else if (st.cat === 'cosmetic') { if (S.data.items[a.itemId].slot !== st.sub) return false; }
         else if (st.cat === 'item') { if ((S.data.items[a.itemId].price != null) !== (st.sub === 'consumable')) return false; }
+        else if (st.cat === 'tm') { if (!S.data.items[a.itemId][st.sub]) return false; }
       }
       if (st.rar && rarityOf(a) !== st.rar) return false;
       if (st.ench === 'shiny' && !a.shiny) return false;

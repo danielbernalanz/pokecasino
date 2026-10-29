@@ -363,7 +363,7 @@ function participants(b, side) {
 function cpuReward(b, user, side) {
   const t = b.trainer;
   const d = dayWins(user);
-  const out = { coins: 0, candy: [], friend: 0, capped: false, winsLeft: 0 };
+  const out = { coins: 0, candy: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null };
   if (d.wins >= trainers.WINS_PER_DAY) { out.capped = true; return out; }
   d.wins++;
   out.winsLeft = trainers.WINS_PER_DAY - d.wins;
@@ -381,6 +381,9 @@ function cpuReward(b, user, side) {
   }
   hub.addXp(user, 15, { flat: true });
   hub.track(user, 'battle_win');
+  // Materiales de MT de los tipos de los rivales derrotados y, contra líderes y campeón, a veces una MT.
+  const loot = require('./tm').battleLoot(user, t, b.sides[1].roster.map((r) => r.id));
+  out.mats = loot.mats; out.tm = loot.tm;
   return out;
 }
 

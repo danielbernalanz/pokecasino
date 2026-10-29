@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.10.29-j",
+    "date": "2026-10-29",
+    "title": "Máquina MT",
+    "items": [
+      "💿 Nueva pestaña «Máquina MT» en la Tienda: fabrica las 229 MT de Escarlata/Púrpura con monedas y materiales. Filtra por tipo, precio o «compatible con…» un Pokémon.",
+      "🧩 Los materiales (Escama, Pluma, Garra, Polvo de Hada, Hoja, Chispa, Ascua, Roca y Esencia) caen en las Expediciones y al ganar combates según los tipos. Algunas MT salen como premio raro.",
+      "📀 Enseña una MT desde la Mochila, la Máquina o los Movimientos de un Pokémon (solo si es compatible; se gasta al usarla). Se pueden comprar y vender en el Mercado."
+    ]
+  },
+  {
     "version": "2026.10.29-i",
     "date": "2026-10-29",
     "title": "Movimientos como en los juegos",

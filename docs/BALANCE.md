@@ -544,3 +544,29 @@ Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + reg
 * Datos de `server/learnsets.json` (`scripts/gen-learnsets.js`, Showdown generación 9 y, para especies ausentes de Escarlata/Púrpura, la última con datos). La Caja PC no carga el simulador.
 * En «Nivel 50 (justo)» las estadísticas se normalizan a 50, pero los movimientos son los realmente aprendidos (como el VGC). Los entrenadores básicos de la CPU (fuerza 1) llevan movimientos por nivel acordes al equipo del jugador.
 * No crea monedas ni valor: aprender, olvidar y cambiar movimientos es gratis.
+
+### Fase 2 · Máquina MT (server/tmdata.js, tm.js · test/tm.test.js)
+* **MT = las 229 de Escarlata/Púrpura** con su número oficial (`MT001…MT229`, PokeAPI `machines.csv`, grupo de versiones 25). Son objetos `tm-<movimiento>` de la mochila (consumibles, un solo uso), se comercian en el Mercado como cualquier objeto y **no se compran con monedas en tienda**: se fabrican en la pestaña «Máquina MT» de la Tienda.
+* **Compatibilidad:** la especie (o cualquiera de sus preevoluciones) tiene el código `M` de ese movimiento en el learnset de Showdown (gen. 9; para especies ausentes de Escarlata/Púrpura, la última generación con datos). Usarla gasta la MT y añade el movimiento a `learned` (y lo equipa si hay hueco). Si ya lo conoce o no es compatible, no se gasta.
+* **Coste de fabricar (monedas + materiales del tipo del movimiento):**
+
+| Nivel | Criterio | Monedas | Materiales | Nº de MT |
+|---|---|---|---|---|
+| Básica | estado normal o potencia < 60 | 500 | 3 | 76 |
+| Buena | estado «premium» (Danza Espada, Protección, Trampa Rocas…) o potencia 60–89 | 1.500 | 4 | 98 |
+| Fuerte | potencia 90–119 | 4.000 | 6 | 27 |
+| Élite | potencia ≥ 120 | 6.000 | 7 | 21 |
+| Suprema | Terremoto, Psíquico, Rayo, Lanzallamas, Surf, Bola Sombra, Rayo Hielo | 8.000 | 8 | 7 |
+
+* **Materiales (9 familias, 18 tipos):** Escama (agua/hielo/dragón), Pluma (volador/normal), Garra (lucha/siniestro), Polvo de Hada (hada/psíquico), Hoja (planta/bicho), Chispa (eléctrico/acero), Ascua (fuego), Fragmento de Roca (roca/tierra) y Esencia Espectral (fantasma/veneno). No se compran: caen del botín.
+* **Fuentes (con tope diario por jugador):**
+
+| Fuente | Qué da | Tope diario |
+|---|---|---|
+| Expedición (por reclamación) | 1 / 2 / 4 / 6 materiales (1 / 4 / 8 / 12 h) de los tipos de la zona | 12 materiales |
+| Expedición de 8 / 12 h | 4 % / 8 % de una MT al azar de los tipos de la zona (hasta nivel «Fuerte») | 1 MT |
+| Victoria CPU | 1–3 materiales (según fuerza del rival) de los tipos de los Pokémon rivales | 15 materiales (dentro de las 10 victorias/día) |
+| Victoria CPU contra líder / campeón | 20 % / 35 % de una MT de su tipo (hasta «Fuerte» / «Élite») | 1 MT |
+
+* **Sin bucles de monedas:** fabricar es un sumidero (`tm_craft`). Los PNJ **no compran ni venden MT ni materiales** (`inFocus` los excluye) y, aunque algún día se activaran, su tope de compra es ≤ 25 % del coste en monedas (`npc.bounds`, con test sobre las 229). Entre jugadores el Mercado es suma cero menos comisión e impuesto. Los materiales no tienen valor en monedas.
+* Valor máximo diario de botín (referencia): ≤ 27 materiales y ≤ 2 MT por jugador y día.

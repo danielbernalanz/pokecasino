@@ -534,6 +534,8 @@ export class BattleScreen {
           h('span', { class: 'rw' }, `🪙 +${r.coins}`),
           r.candy.length ? h('span', { class: 'rw' }, `🍬 +2 de ${r.candy.slice(0, 3).join(', ')}${r.candy.length > 3 ? '…' : ''}`) : null,
           r.friend ? h('span', { class: 'rw' }, `💗 +${r.friend} amistad`) : null,
+          ...Object.entries(r.mats || {}).map(([id, q]) => h('span', { class: 'rw' }, `🧩 +${q} ${(S.data.items[id] || {}).name || id}`)),
+          r.tm ? h('span', { class: 'rw' }, `💿 ¡${(S.data.items[r.tm] || {}).name || r.tm}!`) : null,
           h('span', { class: 'rw muted' }, `Premios de hoy: te quedan ${r.winsLeft}`)));
       }
     }

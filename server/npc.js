@@ -78,6 +78,9 @@ function bounds(a) {
   if (it.price) { const cap = Math.max(1, Math.floor(it.price * SHOP_BID)); return { cap, floor: Math.max(it.price, 2 * cap) }; } // nunca por debajo de la tienda
   if (NOSHOP[a.itemId]) return NOSHOP[a.itemId];
   if (it.megaStone) return MEGASTONE; // inerte: los NPC no las comercian (ver inFocus)
+  // MT y materiales: inertes (los NPC no los comercian). Si algún día se activaran, comprarían a ≤ 25 % del coste en monedas de fabricarla.
+  if (it.tm) { const cap = Math.max(1, Math.floor(it.craft[0] * 0.25)); return { cap, floor: Math.max(it.craft[0], 2 * cap) }; }
+  if (it.material) return { cap: 20, floor: 60 };
   if (it.cosmetic && COSMETIC[it.rarity]) return COSMETIC[it.rarity];
   return null;
 }
@@ -283,7 +286,7 @@ function inFocus(p, a) {
   if (a.kind === 'poke') return a.shiny ? f.shiny : f.poke.includes(BY_ID.get(a.pokeId).rarity);
   if (a.kind === 'dust') return f.dust;
   const it = items.ITEMS[a.itemId];
-  if (it.megaStone || it.event) return false; // objetos del evento: solo entre jugadores
+  if (it.megaStone || it.event || it.tm || it.material) return false; // evento, MT y materiales: solo entre jugadores
   if (it.cosmetic) return f.cosmetics;
   if (it.price) return f.items === 'shop';
   return f.items === 'noshop';
@@ -686,7 +689,7 @@ function start() {
 }
 
 module.exports = {
-  state: N, start, ensure, run, act, restock, isNpc, isNpcName, treasury, bounds, maxBid, reference, bidPrice, askPrice, eligible,
+  state: N, start, ensure, run, act, restock, isNpc, isNpcName, treasury, bounds, inFocus, maxBid, reference, bidPrice, askPrice, eligible,
   cap, whyBlocked, note, sellLimit, NPCS, MIN_LEVEL, MIN_AGE, SELL_UNITS, BUY_UNITS, POKE_FLOOR, LOW_FUNDS, SPEND_DAILY,
   // encargos y ofertas flash
   ENC, FLASH, BONUS, BONUS_VALUE, FEED_DAILY, flashEligible, flashFloor, encArticles, bonusValue, newEncargo, newFlash, claim, special, sweepSpecial, publicState, npcFeed, dayPlan,

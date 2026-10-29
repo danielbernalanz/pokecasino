@@ -4,6 +4,8 @@ const db = require('./db');
 const hub = require('./hub');
 const { BY_ID } = require('./pokedex');
 const MEGA_FORMS = require('./megadata.json');
+const tmdata = require('./tmdata');
+const ES = require('./sd-es.json');
 
 const ITEMS = {
   ticket: { name: 'Ticket Gacha', sprite: 'pass', price: 150, desc: 'Una tirada en cualquier banner.' },
@@ -61,6 +63,13 @@ for (const f of MEGA_FORMS) {
     name: f.stoneName, sprite: f.stone.replace(/^stone-/, ''), price: null, megaStone: f.formId, species: f.species,
     desc: `Úsala teniendo ${BY_ID.get(f.species).name} para desbloquear ${f.name}. Solo se consigue en el evento «Megaevolución» o en el Mercado.`,
   };
+}
+// Materiales de MT y las 229 MT de Escarlata/Púrpura (ver tmdata.js y tm.js): se fabrican en la Máquina MT, se consumen al usarlas
+// y se comercian en el Mercado entre jugadores (los PNJ no las compran: sin precio de tienda ni valor en monedas).
+for (const [id, m] of Object.entries(tmdata.MATERIALS)) ITEMS[id] = { name: m.name, sprite: m.sprite, price: null, material: true, types: m.types, desc: m.desc };
+for (const t of tmdata.TMS) {
+  ITEMS[t.id] = { name: t.name, sprite: 'tm-' + t.type, price: null, tm: t.move, num: t.num, type: t.type, tier: t.tier, craft: [t.coins, { [t.mat]: t.matN }],
+    desc: `Enseña ${ES.moves[t.move]} a un Pokémon compatible. De un solo uso: se fabrica en la Máquina MT (Tienda) o cae como premio.` };
 }
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
@@ -153,6 +162,10 @@ function use(user, { itemId, pokeId }) {
     return require('./mega').useStone(user, itemId);
   } else if (COSMETICS[itemId]) {
     return equip(user, { slot: COSMETICS[itemId].slot, id: itemId });
+  } else if (ITEMS[itemId] && ITEMS[itemId].tm) {
+    throw new Error('Una MT se usa desde la Máquina MT o desde los Movimientos de un Pokémon (Caja PC).');
+  } else if (ITEMS[itemId] && ITEMS[itemId].material) {
+    throw new Error('Los materiales se gastan fabricando MT en la Máquina MT.');
   } else {
     throw new Error('Ese objeto se usa desde el Gacha.');
   }

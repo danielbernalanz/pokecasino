@@ -121,7 +121,7 @@ function claim(u, p) {
   const H = e.hours;
   const d = dayOf(u);
   const candy = require('./candy');
-  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0 };
+  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null };
   // Participantes que siguen existiendo (si una especie se bloqueó, simplemente no cuenta).
   const live = e.team.map((t) => ({ t, m: lookup(u, t) })).filter((x) => x.m);
   const n = live.length;
@@ -166,6 +166,8 @@ function claim(u, p) {
       d.rare++;
       out.item = it;
     }
+    const loot = require('./tm').expeditionLoot(u, zone, H); // materiales de MT (según los tipos de la zona) y, a veces, una MT
+    out.mats = loot.mats; out.tm = loot.tm;
     const coins = Math.max(0, Math.min(Math.round(H * COIN_PER_HOUR * (1 + MATCH_BONUS * matched / n)), COIN_DAY_CAP - d.coins));
     if (coins) { u.coins += coins; d.coins += coins; hub.ledger(u, coins, 'expedition', zone.name); out.coins = coins; }
   }

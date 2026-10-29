@@ -53,6 +53,7 @@ export function movesPage(m, onChange) {
       h('button', { class: 'btn primary small', type: 'button', onclick: () => learnPrompt(m, onChange) }, 'Decidir')) : null,
     h('div', { class: 'mv-cur one' }, eq.map((id) => moveRow(id))),
     h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', type: 'button', onclick: () => swapDialog(m, onChange) }, '🔁 Cambiar movimientos'),
+      h('button', { class: 'btn', type: 'button', onclick: async () => { const { pcTmDialog } = await import('./tm-ui.js'); pcTmDialog(m, onChange); } }, '💿 Usar MT'),
       h('span', { class: 'small muted' }, `${m.learned.length} aprendidos · se cambian libremente fuera de combate.`)));
 }
 
