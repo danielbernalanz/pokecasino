@@ -62,5 +62,13 @@ export default {
         h('div', { class: 'felt' }, cardsBox, msg, h('div', { class: 'row gap wrap center' }, bet.el, mainBtn)),
         h('div', { class: 'card' }, h('h3', {}, 'Premios (× apuesta)'), h('table', { class: 'paytbl' }, h('tbody', {}, rows)))));
     render();
+    // Mano a medias (recarga o cambio de pantalla): se retoma donde se dejó.
+    emit('vp:state').then((r) => {
+      if (!r.hand || !root.isConnected || phase !== 'idle') return;
+      hand = r.hand; holds = [false, false, false, false, false]; phase = 'hold'; stake = r.bet; dealHint = r.hint || null;
+      mainBtn.textContent = 'CAMBIAR';
+      msg.textContent = r.hint ? `Ya tienes: ${r.hint}` : 'Elige qué cartas guardar.';
+      render(r.hint);
+    }).catch(() => {});
   },
 };

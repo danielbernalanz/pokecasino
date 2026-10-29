@@ -149,7 +149,7 @@ export default {
     root.append(loader('Despertando a la Criadora…'));
     try { apply(await emit('care:view')); } catch (e) { toast(e.message, 'error'); } finally { root.querySelector('.loader')?.remove(); }
     tick = setInterval(() => {
-      if (!slots.isConnected) return;
+      if (!slots.isConnected) { clearInterval(tick); return; } // la pantalla ya no está: no se queda un temporizador huérfano
       let change = false;
       for (const l of live) {
         if (l.pr) {

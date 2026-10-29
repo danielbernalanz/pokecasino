@@ -53,4 +53,11 @@ function draw(user, { hold }) {
   return { hand: g.hand, result: name, mult, paid };
 }
 
-module.exports = { deal, draw, classify, PAYTABLE };
+// Mano a medias (tras recargar o cambiar de pantalla): la apuesta ya está pagada, así que se puede retomar.
+function state(user) {
+  const g = user.games.vpoker;
+  if (!g || g.done) return { hand: null };
+  return { hand: g.hand, hint: classify(g.hand), bet: g.bet };
+}
+
+module.exports = { deal, draw, state, classify, PAYTABLE };

@@ -165,7 +165,7 @@ export default {
       h('p', { class: 'small muted' }, 'Las bayas no se compran ni se venden. Reciclar da 1 ✦ por baya (hasta 20 ✦ al día): es mejor dárselas a tus Pokémon.'));
     try { apply(await emit('garden:view')); } catch (e) { toast(e.message, 'error'); return; }
     tick = setInterval(() => {
-      if (!grid.isConnected) return;
+      if (!grid.isConnected) { clearInterval(tick); return; } // la pantalla ya no está: no se queda un temporizador huérfano
       let ready = false;
       for (const l of live) {
         const left = l.p.readyAt - nowMs();

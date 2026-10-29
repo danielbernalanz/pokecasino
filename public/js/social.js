@@ -83,6 +83,7 @@ export async function showPlayer(username) {
   const owned = Object.entries(p.collection).map(([id, c]) => ({ ...S.dexById.get(Number(id)), ...c }))
     .filter((x) => x.id).sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.id - b.id);
   const isMe = S.me && p.username === S.me.username;
+  const canTalk = !isMe && !p.npc; // los comerciantes NPC no leen mensajes ni aceptan regalos
   const giftCoins = h('form', { class: 'row gap', onsubmit: async (e) => {
     e.preventDefault();
     const amount = Number(e.target.amount.value);
@@ -100,9 +101,9 @@ export async function showPlayer(username) {
         h('div', { class: 'stat-row' },
           stat('Pokédex', `${p.dex}/${S.data.dex.length}`), stat('Variocolor', p.shinies), stat('Tiradas', fmt(p.stats.pulls)),
           stat('Duelos', `${p.stats.duelsWon}V / ${p.stats.duelsLost}D`), stat('Mayor premio', fmt(p.stats.biggestWin))))),
-    !isMe ? h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => { mm.close(); replyTo(p.username); } }, '✉️ Mensaje privado')) : null,
-    !isMe ? giftCoins : null,
-    !isMe ? h('p', { class: 'muted small' }, 'Para regalar o retar con un Pokémon usa la Pokédex o los Duelos.') : null,
+    canTalk ? h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => { mm.close(); replyTo(p.username); } }, '✉️ Mensaje privado')) : null,
+    canTalk ? giftCoins : null,
+    canTalk ? h('p', { class: 'muted small' }, 'Para regalar o retar con un Pokémon usa la Pokédex o los Duelos.') : null,
     h('div', { class: 'mini-grid' }, owned.map((x) => h('div', { class: `mini-card r-${x.rarity}`, title: `${x.name} · ${rarityName(x.rarity)}` },
       h('img', { class: 'pixel', src: sprite(x.id, x.s > 0), alt: x.name, loading: 'lazy' }),
       h('span', { class: 'stars' }, '★'.repeat(Math.min(5, x.n))))))

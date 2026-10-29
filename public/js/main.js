@@ -108,7 +108,7 @@ function toastFx(t) {
     import('./fx.js').then(({ burst, layer }) => burst(layer(), window.innerWidth / 2, 60, '#7df9ff', 22, { spread: 170, stars: 0.8 }));
     return true;
   }
-  if ((t.kind === t.kind === 'market') && coinsIn(text) && !/Compraste/.test(text)) { sfx('win'); coinRain(coinsIn(text), { from: [window.innerWidth / 2, window.innerHeight * 0.4] }); return true; }
+  if (t.kind === 'market' && coinsIn(text) && !/Compraste/.test(text)) { sfx('win'); coinRain(coinsIn(text), { from: [window.innerWidth / 2, window.innerHeight * 0.4] }); return true; }
   return false;
 }
 

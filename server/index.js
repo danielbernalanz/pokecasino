@@ -621,6 +621,7 @@ io.on('connection', (socket) => {
   on('bj:state', (u) => blackjack.view(u), { push: false });
   on('bj:deal', blackjack.deal);
   on('bj:act', blackjack.act);
+  on('vp:state', videopoker.state, { push: false });
   on('vp:deal', videopoker.deal);
   on('vp:draw', videopoker.draw);
   on('baccarat:play', baccarat.play);

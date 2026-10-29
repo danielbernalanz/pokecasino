@@ -151,7 +151,7 @@ export default {
     root.append(loader('Preparando las mochilas…'));
     try { apply(await emit('exp:list')); } catch (e) { toast(e.message, 'error'); } finally { root.querySelector('.loader')?.remove(); }
     tick = setInterval(() => {
-      if (!running.isConnected) return;
+      if (!running.isConnected) { clearInterval(tick); return; } // la pantalla ya no está: no se queda un temporizador huérfano
       let ready = false;
       for (const l of live) {
         const left = l.e.end - now();

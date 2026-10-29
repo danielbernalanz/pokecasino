@@ -1617,6 +1617,11 @@ button.mk-ocard { cursor: pointer; }
   .pill.coins .meow { width: 28px; height: 28px; margin: -7px -3px -7px -6px; }
   .wallet { gap: 3px; }
   .wallet .pill.dust { display: none; }
+  /* Con el chip del evento Mega (y una cifra grande de monedas) la cabecera no cabía: se ahorra el Meowth y algo de hueco. */
+  .wallet:has(.mega-pill:not(.hidden)) .pill.coins .meow { display: none; }
+  .wallet:has(.mega-pill:not(.hidden)) .pill { padding-left: 6px; padding-right: 6px; }
+  .topbar .icon-btn { min-width: 34px; }
+  @media (max-width: 380px) { .wallet:has(.mega-pill:not(.hidden)) .pill { font-size: 12px; } .wallet:has(.mega-pill:not(.hidden)) .pill.coins .coin-ico { display: none; } .user-btn { padding-left: 4px; } }
   .logo-ball { width: 22px; height: 22px; }
   .user-btn { padding-right: 4px; }
   .pc-detail-left .detail-art { max-height: 130px; }

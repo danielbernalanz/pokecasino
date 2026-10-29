@@ -149,3 +149,18 @@ test('filtro de red: privadas sí, públicas no', () => {
   assert.ok(!isAllowed('8.8.8.8'));
   assert.ok(!isAllowed('2001:4860:4860::8888'));
 });
+
+test('Video Póker: una mano a medias se puede retomar (vp:state) y terminar', () => {
+  const videopoker = require('../server/games/videopoker');
+  const db = require('../server/db');
+  const u = { id: 'id-vpstate', username: 'vpstate', coins: 5000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: {}, stats: { pulls: 0, wagered: 0, won: 0, biggestWin: 0 }, daily: {}, voltorb: { level: 1 }, xp: 0, level: 1, progress: { tutorial: 0, badges: [], sets: [], titles: [], counters: {} } };
+  db.addUser(u);
+  assert.deepStrictEqual(videopoker.state(u), { hand: null }, 'sin mano abierta no hay nada que retomar');
+  const dealt = videopoker.deal(u, { bet: 100 });
+  const st = videopoker.state(u);
+  assert.deepStrictEqual(st.hand, dealt.hand);
+  assert.strictEqual(st.bet, 100);
+  assert.throws(() => videopoker.deal(u, { bet: 100 }), /Termina la mano/);
+  videopoker.draw(u, { hold: [true, true, true, true, true] });
+  assert.deepStrictEqual(videopoker.state(u), { hand: null }, 'terminada la mano ya no hay nada abierto');
+});

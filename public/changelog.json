@@ -1,5 +1,18 @@
 [
   {
+    "version": "2026.10.29-o",
+    "date": "2026-10-29",
+    "title": "Revisión general de errores",
+    "items": [
+      "🔧 Arreglado: en el Video Póker, si salías de la pantalla o recargabas a mitad de mano te quedabas bloqueado con «Termina la mano actual». Ahora la mano se retoma donde la dejaste.",
+      "📱 Arreglado: con el evento Mega activo y muchas monedas, la cabecera del móvil se salía de la pantalla.",
+      "🪙 Arreglado: al cobrar una venta del Mercado o un encargo no saltaba la lluvia de monedas.",
+      "💬 Las fichas de los comerciantes NPC ya no ofrecen «Mensaje privado» ni «Regalar monedas» (no los aceptan).",
+      "🧩 Arreglado: en la ventana «Nuevo movimiento» las filas de movimientos se cortaban por la derecha en ordenador.",
+      "⏱️ Póker, Huerto, Criadero y Expediciones ya no dejan temporizadores sueltos si cambias de pantalla mientras cargan."
+    ]
+  },
+  {
     "version": "2026.10.29-n",
     "date": "2026-10-29",
     "title": "Combates en una sola pantalla",

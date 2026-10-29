@@ -14,6 +14,7 @@ export default {
     let tick = null;
     let wasMyTurn = false;
     let wonNo = null;
+    let gone = false; // al salir de la pantalla, las respuestas tardías ya no pintan ni arrancan temporizadores
 
     const mySeat = () => (t ? t.seats.findIndex((s) => s && s.username === S.me.username) : -1);
 
@@ -44,6 +45,7 @@ export default {
     }
 
     function render(table) {
+      if (gone) return;
       t = table;
       const hd = t.hand;
       if (hd && hd.no !== lastNo) { lastNo = hd.no; if (!hole || hole.no !== hd.no) hole = null; sfx('flip'); }
@@ -166,7 +168,7 @@ export default {
     ];
     renderLobby(S.poker);
     watch(currentTable || (S.poker && S.poker[0] && S.poker[0].id) || 'pallet');
-    this.stop = () => clearInterval(tick);
+    this.stop = () => { gone = true; clearInterval(tick); };
   },
   unmount() { this.offs.forEach((f) => f()); this.stop(); },
 };

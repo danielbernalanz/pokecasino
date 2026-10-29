@@ -100,7 +100,7 @@
 .mvrow.static { cursor: default; }
 .mv-tag { margin-left: 6px; font-size: 10px; background: #0005; border-radius: 6px; padding: 1px 5px; text-transform: uppercase; }
 .mv-cur.one { grid-template-columns: 1fr; }
-@media (min-width: 900px) { .mv-cur.one { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 900px) { .modal.wide .mv-cur.one { grid-template-columns: 1fr 1fr; } }
 .mv-cur.one .mvrow, .mv-list .mvrow { min-width: 0; }
 
 /* Máquina MT */
