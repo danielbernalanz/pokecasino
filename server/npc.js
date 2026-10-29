@@ -81,6 +81,8 @@ function bounds(a) {
   // MT y materiales: inertes (los NPC no los comercian). Si algún día se activaran, comprarían a ≤ 25 % del coste en monedas de fabricarla.
   if (it.tm) { const cap = Math.max(1, Math.floor(it.craft[0] * 0.25)); return { cap, floor: Math.max(it.craft[0], 2 * cap) }; }
   if (it.material) return { cap: 20, floor: 60 };
+  // Objetos de la Tienda de Combate (se pagan con PB, no con monedas): inertes; el tope teórico sería muy bajo.
+  if (it.bp) { const cap = Math.max(1, Math.floor(it.bp / 2)); return { cap, floor: Math.max(4 * it.bp, 2 * cap) }; }
   if (it.cosmetic && COSMETIC[it.rarity]) return COSMETIC[it.rarity];
   return null;
 }
@@ -286,7 +288,7 @@ function inFocus(p, a) {
   if (a.kind === 'poke') return a.shiny ? f.shiny : f.poke.includes(BY_ID.get(a.pokeId).rarity);
   if (a.kind === 'dust') return f.dust;
   const it = items.ITEMS[a.itemId];
-  if (it.megaStone || it.event || it.tm || it.material) return false; // evento, MT y materiales: solo entre jugadores
+  if (it.megaStone || it.event || it.tm || it.material || it.bp) return false; // evento, MT, materiales y Tienda de Combate: solo entre jugadores
   if (it.cosmetic) return f.cosmetics;
   if (it.price) return f.items === 'shop';
   return f.items === 'noshop';

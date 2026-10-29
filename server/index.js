@@ -563,6 +563,10 @@ io.on('connection', (socket) => {
   on('pc:box', (u) => ({ ...specimen.boxView(u), ...candy.boxExtra(u) }), { push: false });
   on('pc:nick', specimen.nick);
   on('pc:moves', require('./moves').setEquipped);
+  on('bp:state', (u) => require('./bp').state(u), { push: false });
+  on('bp:buy', require('./bp').buy);
+  on('pc:item', require('./bp').hold);
+  on('pc:use', require('./bp').useOn);
   on('tm:craft', require('./tm').craft);
   on('tm:use', require('./tm').useTm);
   on('tm:targets', require('./tm').targets, { push: false });

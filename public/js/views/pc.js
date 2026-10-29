@@ -3,6 +3,7 @@ import { S, h, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarity
 import { evolveAnim, wonderReveal } from './pc-fx.js';
 import { heartsEl, friendLabel, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
 import { movesPage, learnPrompt } from './moves-ui.js';
+import { gearPage } from './bp-ui.js';
 import { loadNames } from '../battle-screen.js';
 
 const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
@@ -170,10 +171,11 @@ function openMon(uid, openPage = 'info') {
       h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Base'), h('th', {}, 'IV'), h('th', {}, 'Nv. 50'))),
       h('tbody', {}, rows))),
     moves: () => movesPage(m, async () => { await load(); modalRef.close(); openMon(uid, 'moves'); render && render(); }),
+    gear: () => { const box2 = h('div', {}); gearPage(m, async () => { await load(); modalRef.close(); openMon(uid, 'gear'); render && render(); }).then((el) => box2.append(el)); return box2; },
     bond: () => friendPanel(),
     menu: () => (box.rules ? candyPanel() : h('p', { class: 'muted' }, 'Sin datos de la caja.')),
   };
-  const PAGE_NAMES = [['info', 'Info'], ['stats', 'Estadísticas'], ['moves', 'Movimientos'], ['bond', 'Vínculo'], ['menu', 'Menú']];
+  const PAGE_NAMES = [['info', 'Info'], ['stats', 'Estadísticas'], ['moves', 'Movimientos'], ['gear', 'Objeto'], ['bond', 'Vínculo'], ['menu', 'Menú']];
   const body = h('div', { class: 'pc-page' });
   const tabs = h('div', { class: 'tabs pc-tabs' });
   const show = (k) => {

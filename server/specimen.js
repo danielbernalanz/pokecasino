@@ -8,6 +8,7 @@ const { BY_ID } = require('./pokedex');
 const { rand, randInt, pick } = require('./rng');
 const { MOVES } = require('./games/battle');
 const movesMod = require('./moves');
+const abilities = require('./abilities');
 
 // [nombre, +stat, −stat] sobre el orden hp, atk, def, spa, spd, spe (índices 1..5; null = neutra).
 const NATURES = [
@@ -121,6 +122,8 @@ function bestFor(u, id, shiny) {
   return arr.filter((m) => m.shiny === !!shiny).sort((a, b) => ivTotal(b) - ivTotal(a))[0] || null;
 }
 
+// Naturaleza efectiva: la de la menta (si tiene) o la original, que sigue figurando (como en Espada/Escudo).
+const natureOf = (m) => m.mint || m.nature;
 function natureMult(natureName, i) {
   const n = NATURE_BY_NAME.get(natureName);
   if (!n) return 1;
@@ -132,7 +135,7 @@ function computeStats(id, m, level = 50) {
   const b = BY_ID.get(id).stats;
   return b.map((base, i) => {
     const core = Math.floor(((2 * base + m.ivs[i]) * level) / 100);
-    return i === 0 ? core + level + 10 : Math.floor((core + 5) * natureMult(m.nature, i));
+    return i === 0 ? core + level + 10 : Math.floor((core + 5) * natureMult(natureOf(m), i));
   });
 }
 
@@ -140,8 +143,8 @@ function boxView(u) {
   syncAll(u);
   const mons = [];
   for (const [id, arr] of Object.entries(u.mons)) {
-    for (const m of arr) movesMod.ensure(Number(id), m);
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, up: NATURE_BY_NAME.get(m.nature).up, down: NATURE_BY_NAME.get(m.nature).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: m.ability, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) });
+    for (const m of arr) { movesMod.ensure(Number(id), m); abilities.resolve(Number(id), m); }
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) });
   }
   db.save();
   return { mons };
@@ -200,4 +203,4 @@ function release(u, p) {
   return res;
 }
 
-module.exports = { NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };
+module.exports = { NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };

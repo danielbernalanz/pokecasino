@@ -5,6 +5,7 @@ import { openItem } from './market.js';
 import { openEgg, useFx } from '../rewards.js';
 import { burstAt, coinRain, centerOf } from '../fx.js';
 import { machineTab, useTmDialog } from './tm-ui.js';
+import { bpTab } from './bp-ui.js';
 
 let tab = 'items';
 
@@ -22,12 +23,12 @@ export default {
     const tabs = h('div', { class: 'tabs' });
 
     function renderTabs() {
-      tabs.replaceChildren(...[['items', '🏬 Tienda Poké'], ['bag', '🎒 Mochila'], ['craft', '✦ Fabricar'], ['tm', '💿 Máquina MT'], ['exchange', '💱 Cambio'], ['recycle', '♻️ Reciclaje']].map(([k, l]) =>
+      tabs.replaceChildren(...[['items', '🏬 Tienda Poké'], ['bag', '🎒 Mochila'], ['craft', '✦ Fabricar'], ['tm', '💿 Máquina MT'], ['bp', '🎖️ Tienda de Combate'], ['exchange', '💱 Cambio'], ['recycle', '♻️ Reciclaje']].map(([k, l]) =>
         h('button', { class: 'tab' + (tab === k ? ' active' : ''), onclick: () => { tab = k; renderTabs(); render(); } }, l)));
     }
 
     function itemsTab() {
-      return h('div', { class: 'shop-grid wide' }, Object.entries(S.data.items).filter(([id, it]) => !S.data.cosmetics[id] && !it.tm && !it.material).map(([id, it]) => {
+      return h('div', { class: 'shop-grid wide' }, Object.entries(S.data.items).filter(([id, it]) => !S.data.cosmetics[id] && !it.tm && !it.material && !it.bp).map(([id, it]) => {
         const qty = h('input', { type: 'number', min: 1, max: 99, value: 1, class: 'qty' });
         return h('div', { class: 'shop-item item-card' },
           itemImg(id, 'big'),
@@ -57,6 +58,7 @@ export default {
           const useBtn = id === 'ticket'
             ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
             : it.tm ? h('button', { class: 'btn primary', onclick: () => useTmDialog(id) }, 'Enseñar')
+              : it.bp ? h('a', { class: 'btn', href: '#/pc' }, 'Usar en la Caja PC')
               : it.material ? h('button', { class: 'btn', onclick: () => { tab = 'tm'; renderTabs(); render(); } }, 'Máquina MT')
             : cos ? h('button', { class: 'btn' + (equipped ? ' active' : ''), disabled: equipped, onclick: async (e) => { if (await act('item:use', { itemId: id }, e.target)) { sfx('click'); toast(`${it.name} equipado`, 'success'); } } }, equipped ? 'Equipado' : 'Equipar')
             : h('button', { class: 'btn primary', onclick: async (e) => {
@@ -183,7 +185,7 @@ export default {
     }
 
     function render() {
-      body.replaceChildren(tab === 'items' ? itemsTab() : tab === 'bag' ? bagTab() : tab === 'craft' ? craftTab() : tab === 'tm' ? machineTab() : tab === 'recycle' ? recycleTab() : exchangeTab());
+      body.replaceChildren(tab === 'items' ? itemsTab() : tab === 'bag' ? bagTab() : tab === 'craft' ? craftTab() : tab === 'tm' ? machineTab() : tab === 'bp' ? bpTab() : tab === 'recycle' ? recycleTab() : exchangeTab());
     }
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎒 Tienda y Mochila'), h('div', { class: 'pill dust' }, '✦ ', h('b', {}, fmt(S.me.dust)))), say({ mon: MON.kecleon, who: 'Kecleon', text: '¡Bienvenido! Mira sin miedo… aunque no me veas.', cls: 'compact' }), tabs, body);
     renderTabs();

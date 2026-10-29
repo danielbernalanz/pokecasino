@@ -30,6 +30,7 @@ const SHINY_PARENT = 1 / 64; // «Método Masuda» simplificado: algún padre va
 const BABY_CANDY = 3;
 const FEE_MIN = 200;
 const FEE_MARGIN = 1.2;
+const HA_INHERIT = 0.6; // como en los juegos: si la madre (el padre no Ditto) tiene habilidad oculta, el bebé la hereda el 60 % de las veces
 const SHINY_SELL_MULT = 3; // un variocolor se libera/vende por 3 × (ver npc.bounds)
 
 const maxPairs = (u) => (u.level >= PAIR2_LEVEL ? PAIRS + 1 : PAIRS);
@@ -119,6 +120,19 @@ function withdraw(u, p) {
   return view(u);
 }
 
+// «Madre» de la pareja: el que no es Ditto; si ninguno lo es, la hembra (o la primera plaza).
+function motherOf(ma, mb, ida, idb) {
+  if (ida === DITTO) return mb;
+  if (idb === DITTO) return ma;
+  if (ma.gender === 'F' && mb.gender !== 'F') return ma;
+  if (mb.gender === 'F' && ma.gender !== 'F') return mb;
+  return ma;
+}
+// ¿Hereda el bebé la habilidad oculta? Solo si la madre la tiene y la especie del bebé tiene una.
+function inheritsHa(mother, babyId, roll = rand()) {
+  return !!(mother && mother.ha && require('./moves').abilitiesOf(babyId).hidden && roll < HA_INHERIT);
+}
+
 // Genera el huevo (la herencia queda decidida al recogerlo: los padres pueden retirarse después).
 function makeEgg(u, pair) {
   const ma = lookup(u, pair.a);
@@ -133,7 +147,7 @@ function makeEgg(u, pair) {
   const now = Date.now();
   return {
     id: crypto.randomBytes(4).toString('hex'), species: baby.id, need: needFor(baby.rarity), steps: 0, born: now, hatchAt: now + FALLBACK_MS,
-    ivs, nature: rand() < NATURE_INHERIT ? pick(parents).nature : null, shiny: rand() < shinyP,
+    ivs, nature: rand() < NATURE_INHERIT ? pick(parents).nature : null, shiny: rand() < shinyP, ha: inheritsHa(motherOf(ma, mb, pair.a.id, pair.b.id), baby.id),
   };
 }
 
@@ -184,6 +198,9 @@ function hatch(u, p) {
   if (baby) {
     for (const [k, v] of Object.entries(egg.ivs)) baby.ivs[Number(k)] = v;
     if (egg.nature) baby.nature = egg.nature;
+    const ab = require('./abilities');
+    ab.resolve(id, baby); // fija la versión de habilidades antes de marcar la oculta
+    if (egg.ha) { baby.ha = true; ab.resolve(id, baby); } // habilidad oculta heredada
   }
   require('./candy').addCandy(u, id, BABY_CANDY);
   care.eggs.splice(i, 1);
@@ -210,6 +227,7 @@ function view(u) {
 const STATIC = { hours: [HOURS_MIXED, HOURS_SAME], maxEggs: MAX_EGGS, pair2Level: PAIR2_LEVEL, wagerPerStep: WAGER_PER_STEP, feeMin: FEE_MIN, fees: Object.fromEntries(Object.keys(RARITY).map((r) => [r, feeFor(r)])), need: NEED_STEPS, fallbackH: FALLBACK_MS / HOUR, ditto: DITTO };
 
 module.exports = {
+  HA_INHERIT, motherOf, inheritsHa,
   STATIC, DITTO, HOURS_MIXED, HOURS_SAME, MAX_EGGS, PAIR2_LEVEL, WAGER_PER_STEP, FALLBACK_MS, NEED_STEPS, INHERIT_IVS, NATURE_INHERIT, SHINY_BASE, SHINY_PARENT, BABY_CANDY, FEE_MIN, FEE_MARGIN,
   feeFor, expectedResale, resaleCap, needFor, baseOf, check: (u, p) => preview(u, p), checkPair: check, maxPairs, view, deposit, withdraw, collect, hatch, onBet,
 };

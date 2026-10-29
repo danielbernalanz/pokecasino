@@ -23,11 +23,15 @@ const ITEMS = {
 const BERRIES = {
   'berry-aranja': { name: 'Baya Aranja', sprite: 'oran-berry', grow: 4, friend: 5 },
   'berry-zidra': { name: 'Baya Zidra', sprite: 'sitrus-berry', grow: 8, friend: 10 },
-  'berry-frambu': { name: 'Baya Frambu', sprite: 'razz-berry', grow: 6, friend: 10 },
-  'berry-latano': { name: 'Baya Latano', sprite: 'nanab-berry', grow: 10, friend: 15 },
-  'berry-pinia': { name: 'Baya Pinia', sprite: 'pinap-berry', grow: 12, friend: 20 },
+  'berry-frambu': { name: 'Baya Ziuela', sprite: 'lum-berry', grow: 6, friend: 10 },
+  'berry-latano': { name: 'Baya Atania', sprite: 'chesto-berry', grow: 10, friend: 15 },
+  'berry-pinia': { name: 'Baya Zanama', sprite: 'leppa-berry', grow: 12, friend: 20 },
 };
-for (const b of Object.values(BERRIES)) b.desc = `Dásela a un Pokémon en la Caja PC: +${b.friend} de amistad. También es la semilla del Huerto (tarda ${b.grow} h en dar 2-4 bayas).`;
+const BERRY_HOLD = require('./bpdata').BERRY_HOLD;
+for (const [id, b] of Object.entries(BERRIES)) {
+  b.hold = BERRY_HOLD[id]; // objeto de Showdown equivalente: también se lleva en combate
+  b.desc = `Dásela a un Pokémon en la Caja PC: +${b.friend} de amistad. También es la semilla del Huerto (tarda ${b.grow} h en dar 2-4 bayas). Se puede llevar en combate: ${require('./bpdata').BERRY_DESC[b.hold]}`;
+}
 
 // Cosméticos: solo salen de Huevos Misteriosos. Se equipan, los ven los demás y se comercian.
 const COSMETICS = {
@@ -71,6 +75,8 @@ for (const t of tmdata.TMS) {
   ITEMS[t.id] = { name: t.name, sprite: 'tm-' + t.type, price: null, tm: t.move, num: t.num, type: t.type, tier: t.tier, craft: [t.coins, { [t.mat]: t.matN }],
     desc: `Enseña ${ES.moves[t.move]} a un Pokémon compatible. De un solo uso: se fabrica en la Máquina MT (Tienda) o cae como premio.` };
 }
+// Tienda de Combate (Puntos de Batalla): objetos equipables, mentas, Cápsula y Parche de Habilidad (ver bpdata.js y bp.js).
+Object.assign(ITEMS, require('./bpdata').buildItems());
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
 
@@ -164,6 +170,8 @@ function use(user, { itemId, pokeId }) {
     return equip(user, { slot: COSMETICS[itemId].slot, id: itemId });
   } else if (ITEMS[itemId] && ITEMS[itemId].tm) {
     throw new Error('Una MT se usa desde la Máquina MT o desde los Movimientos de un Pokémon (Caja PC).');
+  } else if (ITEMS[itemId] && (ITEMS[itemId].held || ITEMS[itemId].mint || ITEMS[itemId].capsule || ITEMS[itemId].patch)) {
+    throw new Error('Este objeto se usa desde la Caja PC → Datos → Objeto y habilidad de un Pokémon.');
   } else if (ITEMS[itemId] && ITEMS[itemId].material) {
     throw new Error('Los materiales se gastan fabricando MT en la Máquina MT.');
   } else {

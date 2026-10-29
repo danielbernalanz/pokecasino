@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.10.29-k",
+    "date": "2026-10-29",
+    "title": "Puntos de Batalla y objetos de combate",
+    "items": [
+      "🎖️ Nuevos Puntos de Batalla (PB): se ganan combatiendo (CPU y jugadores) y se gastan en la pestaña «Tienda de Combate» de la Tienda.",
+      "🎒 Objetos para llevar en combate (Restos, Vidasfera, Cintas Elección…), mentas que cambian el efecto de la naturaleza, Cápsula y Parche de Habilidad. Se equipan en Caja PC → Datos → Objeto.",
+      "🍓 Las bayas del Huerto ahora son bayas de verdad (Aranja, Zidra, Ziuela, Atania, Zanama) y se pueden llevar en combate.",
+      "🥚 En el Criadero, la habilidad oculta de la madre se hereda el 60 % de las veces. La habilidad ya no se elige gratis."
+    ]
+  },
+  {
     "version": "2026.10.29-j",
     "date": "2026-10-29",
     "title": "Máquina MT",

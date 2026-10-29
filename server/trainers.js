@@ -56,6 +56,16 @@ function candidatePool(t) {
   return { themed: themed.length >= 6 ? themed : pool, all: pool };
 }
 
+// Objetos que puede llevar la CPU (solo los que la IA maneja bien: nada de «Elección» ni de «Chaleco»), uno distinto por Pokémon.
+const CPU_ITEMS = { 3: ['leftovers', 'focussash', 'expertbelt', 'scopelens', 'oranberry'], 4: ['leftovers', 'lifeorb', 'focussash', 'rockyhelmet', 'expertbelt', 'sitrusberry'], 5: ['leftovers', 'lifeorb', 'focussash', 'rockyhelmet', 'weaknesspolicy', 'sitrusberry', 'lumberry'], 6: ['leftovers', 'lifeorb', 'focussash', 'rockyhelmet', 'weaknesspolicy', 'sitrusberry', 'lumberry'] };
+function pickItem(seen, tier) {
+  const list = (CPU_ITEMS[tier] || []).filter((x) => !seen.has(x));
+  if (!list.length || Math.random() < 0.25) return null;
+  const it = pick(list);
+  seen.add(it);
+  return it;
+}
+
 /**
  * Equipo del rival: `n` Pokémon (sigue al tamaño del equipo del jugador).
  * @param {object} t entrenador
@@ -79,6 +89,7 @@ function buildTeam(t, n, { level = 'fair', avgLevel = 50, doubles = false } = {}
   for (const p of shuffle(themed)) { if (chosen.length >= n) break; add(p); }
   for (const p of shuffle(all)) { if (chosen.length >= n) break; add(p); }
   const usedNames = new Set();
+  const heldSeen = new Set();
   const sets = [];
   const roster = [];
   const [lo, hi] = IV_RANGE[t.tier];
@@ -93,6 +104,7 @@ function buildTeam(t, n, { level = 'fair', avgLevel = 50, doubles = false } = {}
     m.mv = 2; m.learned = require('./moves').reachable(p.id, mvLevel).map((x) => x.move); m.pending = [];
     m.sdMoves = t.tier >= 2 ? sd.defaultMoves(p.id, doubles) : require('./moves').equipAt(p.id, mvLevel);
     sd.ensureSd(p.id, m);
+    if (t.tier >= 3) { const it = pickItem(heldSeen, t.tier); if (it) m.item = it; } // la CPU también lleva objetos (sin repetir)
     const { set, roster: r } = sd.toSet(p.id, m, { level: 'real', usedNames, doubles });
     sets.push(set);
     roster.push(r);

@@ -256,7 +256,7 @@ function publicUser(u) {
 
 function privateUser(u) {
   return {
-    id: u.id, username: u.username, isAdmin: u.isAdmin, coins: u.coins, dust: u.dust,
+    id: u.id, username: u.username, isAdmin: u.isAdmin, coins: u.coins, dust: u.dust, bp: Math.max(0, Math.floor(u.bp || 0)),
     xp: u.xp, level: u.level, xpCur: xpForLevel(u.level), xpNext: xpForLevel(u.level + 1),
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy, candy: u.candy || {}, trades: u.tradeLog || [],
     buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,

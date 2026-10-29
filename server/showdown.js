@@ -45,7 +45,8 @@ function validChoice(choice) {
 }
 
 // ---- Equipo del jugador ----
-function resolveTeam(user, members, { format, level }) {
+// `itemClause` (solo PvP): no se pueden llevar dos Pokémon con el mismo objeto.
+function resolveTeam(user, members, { format, level, itemClause = false }) {
   const F = FORMATS[format];
   if (!F) throw new Error('Formato no válido.');
   if (!LEVELS.has(level)) throw new Error('Regla de nivel no válida.');
@@ -57,6 +58,7 @@ function resolveTeam(user, members, { format, level }) {
   const seenUid = new Set();
   const seenSp = new Set();
   const usedNames = new Set();
+  const seenItem = new Set();
   const sets = [];
   const roster = [];
   let megas = 0;
@@ -79,6 +81,10 @@ function resolveTeam(user, members, { format, level }) {
       if (++megas > 1) throw new Error('Solo una megaevolución por equipo.');
     }
     const { set, roster: r } = sd.toSet(id, sp, { level, mega: formId, doubles: F.doubles, usedNames });
+    if (itemClause && set.item) {
+      if (seenItem.has(set.item)) throw new Error('Cláusula de objetos: no puedes llevar dos Pokémon con el mismo objeto.');
+      seenItem.add(set.item);
+    }
     sets.push(set);
     roster.push(r);
   }
@@ -363,7 +369,7 @@ function participants(b, side) {
 function cpuReward(b, user, side) {
   const t = b.trainer;
   const d = dayWins(user);
-  const out = { coins: 0, candy: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null };
+  const out = { coins: 0, candy: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null, bp: 0 };
   if (d.wins >= trainers.WINS_PER_DAY) { out.capped = true; return out; }
   d.wins++;
   out.winsLeft = trainers.WINS_PER_DAY - d.wins;
@@ -384,6 +390,7 @@ function cpuReward(b, user, side) {
   // Materiales de MT de los tipos de los rivales derrotados y, contra líderes y campeón, a veces una MT.
   const loot = require('./tm').battleLoot(user, t, b.sides[1].roster.map((r) => r.id));
   out.mats = loot.mats; out.tm = loot.tm;
+  out.bp = require('./bp').cpuWin(user, t.tier); // Puntos de Batalla (tope diario en bp.js)
   return out;
 }
 
@@ -413,6 +420,7 @@ function settle(b) {
   const players = b.sides.map((s) => db.userById(s.userId));
   b.sides.forEach((s, i) => db.escrowDel(escKey(b, i)));
   let prize = 0;
+  const bpGain = [0, 0];
   const tie = b.winner === null || b.winner === undefined;
   if (tie) {
     players.forEach((u) => refundOne(u, b.wager));
@@ -423,6 +431,8 @@ function settle(b) {
       prize = Math.floor(b.wager * 2 * (1 - (require('./events').has('duels') ? 0 : RAKE)));
       hub.pay(winner, prize, b.wager, 'duel', { noBonus: true });
     }
+    // Puntos de Batalla: 3 al ganar y 1 al perder (con tope diario, mínimo de turnos y límite por rival).
+    if (winner && loser) { bpGain[b.winner] = require('./bp').pvp(winner, true, loser.id, b.turn); bpGain[1 - b.winner] = require('./bp').pvp(loser, false, winner.id, b.turn); }
     if (winner) { winner.stats.duelsWon++; hub.track(winner, 'duel_win'); hub.addXp(winner, 50, { flat: true }); }
     if (loser) { loser.stats.duelsLost++; hub.addXp(loser, 20, { flat: true }); }
     const bond = require('./bond');
@@ -438,7 +448,7 @@ function settle(b) {
     hub.pushMe(u);
   });
   db.save();
-  b.sides.forEach((s, i) => hub.emitUser(s.userId, 'battle:end', { id: b.id, winner: tie ? 'tie' : b.winner === i ? 'you' : 'foe', prize: b.winner === i ? prize : 0, wager: b.wager, forfeited: b.forfeited ? b.forfeited.side === i : false }));
+  b.sides.forEach((s, i) => hub.emitUser(s.userId, 'battle:end', { id: b.id, winner: tie ? 'tie' : b.winner === i ? 'you' : 'foe', prize: b.winner === i ? prize : 0, bp: bpGain[i], wager: b.wager, forfeited: b.forfeited ? b.forfeited.side === i : false }));
   if (!tie) {
     const w = players[b.winner]; const l = players[1 - b.winner];
     if (w && l) hub.feed('duel', `⚔️ ${w.username} venció a ${l.username} en un combate ${FORMATS[b.format].label.toLowerCase()}${b.wager ? ` y ganó ${prize.toLocaleString('es')} monedas` : ''}`);
@@ -491,7 +501,7 @@ const pushList = () => hub.broadcast('battle:list', listPublic());
 function challenge(user, { format, level = 'fair', wager, target, team }) {
   checkFree(user);
   if ([...challenges.values()].filter((c) => c.creatorId === user.id).length >= 2) throw new Error('Máximo 2 retos abiertos.');
-  resolveTeam(user, team, { format, level }); // valida
+  resolveTeam(user, team, { format, level, itemClause: true }); // valida
   wager = Number(wager) || 0;
   if (target) {
     const t = db.userByName(String(target));
@@ -531,9 +541,9 @@ function accept(user, { id, team }) {
   const creator = db.userById(c.creatorId);
   if (!creator || byUser.has(creator.id)) throw new Error('El retador está en otro combate ahora mismo.');
   checkCapacity();
-  const mine = resolveTeam(user, team, { format: c.format, level: c.level });
+  const mine = resolveTeam(user, team, { format: c.format, level: c.level, itemClause: true });
   let theirs;
-  try { theirs = resolveTeam(creator, c.members, { format: c.format, level: c.level }); } catch (e) {
+  try { theirs = resolveTeam(creator, c.members, { format: c.format, level: c.level, itemClause: true }); } catch (e) {
     dropChallenge(c); pushList();
     throw new Error('El equipo del retador ya no es válido; el reto se ha cancelado.');
   }

@@ -14,7 +14,7 @@ const MOVES = {
 const ivF = (iv) => 1 + ((iv ?? 15.5) / 31 - 0.5) * 0.10;
 function specimenFactors(id, sp) {
   if (!sp || !Array.isArray(sp.ivs)) return { hp: 1, atk: 1, def: 1, spe: 1 };
-  const nm = (i) => require('../specimen').natureMult(sp.nature, i);
+  const nm = (i) => require('../specimen').natureMult(require('../specimen').natureOf(sp), i);
   const st = BY_ID.get(id).stats;
   const ai = st[1] >= st[3] ? 1 : 3; // el ataque que cuenta es el mejor de los dos
   return {

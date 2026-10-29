@@ -535,10 +535,12 @@ export class BattleScreen {
           r.candy.length ? h('span', { class: 'rw' }, `🍬 +2 de ${r.candy.slice(0, 3).join(', ')}${r.candy.length > 3 ? '…' : ''}`) : null,
           r.friend ? h('span', { class: 'rw' }, `💗 +${r.friend} amistad`) : null,
           ...Object.entries(r.mats || {}).map(([id, q]) => h('span', { class: 'rw' }, `🧩 +${q} ${(S.data.items[id] || {}).name || id}`)),
+          r.bp ? h('span', { class: 'rw' }, `🎖️ +${r.bp} PB`) : null,
           r.tm ? h('span', { class: 'rw' }, `💿 ¡${(S.data.items[r.tm] || {}).name || r.tm}!`) : null,
           h('span', { class: 'rw muted' }, `Premios de hoy: te quedan ${r.winsLeft}`)));
       }
     }
+    if (i.bp) parts.push(h('p', {}, `🎖️ +${i.bp} PB (Puntos de Batalla)`));
     if (i.wager) {
       parts.push(h('p', {}, you ? `Has ganado ${(i.prize || 0).toLocaleString('es-ES')} monedas (apuesta ${i.wager.toLocaleString('es-ES')} cada uno, comisión del 5 %).` : tie ? 'Empate: se te devuelve la apuesta.' : `Has perdido ${i.wager.toLocaleString('es-ES')} monedas.`));
     }

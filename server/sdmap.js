@@ -122,14 +122,8 @@ const allAbilitiesOf = (id) => {
 // Rellena (sin romper nada) `sdAbility` y los movimientos (`learned`/`sdMoves`, ver moves.js) del ejemplar. Determinista por uid.
 function ensureSd(id, m) {
   id = Number(id);
-  if (m.sdFor !== id) {
-    const keepAbility = m.sdAbility && allAbilitiesOf(id).some((a) => a.id === m.sdAbility);
-    if (!keepAbility) {
-      const ab = abilitiesOf(id);
-      m.sdAbility = ab[hashOf(m.uid) % ab.length];
-    }
-    m.sdFor = id;
-  }
+  require('./abilities').resolve(id, m); // habilidad normal u oculta del ejemplar (sin elecciones libres)
+  m.sdFor = id;
   movesMod.ensure(id, m);
   return m;
 }
@@ -137,11 +131,7 @@ function ensureSd(id, m) {
 // Valida lo que manda el cliente al cambiar habilidad / movimientos equipados (solo entre los aprendidos).
 function validateSd(id, m, { ability, moves }) {
   const out = {};
-  if (ability !== undefined) {
-    const a = toID(ability);
-    if (!allAbilitiesOf(id).some((x) => x.id === a)) throw new Error('Esa habilidad no es de esta especie.');
-    out.sdAbility = a;
-  }
+  if (ability !== undefined && toID(ability) !== m.sdAbility) throw new Error('La habilidad se cambia con la Cápsula Habilidad o el Parche Habilidad (Tienda de Combate).');
   if (moves !== undefined) {
     if (!Array.isArray(moves) || moves.length < 1 || moves.length > 4) throw new Error('Elige de 1 a 4 movimientos.');
     const seen = new Set();
@@ -194,7 +184,7 @@ function toSet(id, m, { level = 'fair', mega = 0, doubles = false, usedNames = n
   const lvl = level === 'real' ? Math.max(1, Math.min(100, Math.floor(m.level) || 5)) : 50;
   let gender = m.gender === 'F' ? 'F' : m.gender === 'M' ? 'M' : '';
   if (sp.gender) gender = sp.gender === 'N' ? '' : sp.gender; // especies de sexo fijo o sin sexo
-  let item = '';
+  let item = require('./bp').holdable(m.item) ? m.item : ''; // objeto equipado (solo los de la Tienda de Combate y las bayas)
   let megaForm = 0;
   let moves = m.sdMoves.slice(0, 4);
   if (mega) {
@@ -205,7 +195,7 @@ function toSet(id, m, { level = 'fair', mega = 0, doubles = false, usedNames = n
     if (ms.move && !moves.includes(ms.move)) moves = [...moves.slice(0, 3), ms.move];
   }
   const set = {
-    name, species: sp.name, item, ability: m.sdAbility, moves, nature: NATURE_EN[m.nature] || 'Serious',
+    name, species: sp.name, item, ability: m.sdAbility, moves, nature: NATURE_EN[m.mint || m.nature] || 'Serious',
     gender, evs, ivs, level: lvl, shiny: !!m.shiny, happiness: Math.max(0, Math.min(255, Number.isFinite(m.friendship) ? m.friendship : 70)),
     pokeball: 'pokeball',
   };

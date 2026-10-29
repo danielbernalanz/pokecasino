@@ -72,7 +72,9 @@ for (const a of Dex.abilities.all()) {
 }
 // Megapiedras: nombre español de nuestros datos (siempre al día con el resto del casino).
 for (const f of require('../server/megadata.json')) out.items[toID(f.stone.replace(/^stone-/, ''))] = f.stoneName;
-const itemsWanted = ['leftovers', 'lifeorb', 'choicescarf', 'choiceband', 'choicespecs', 'sitrusberry', 'focussash'];
+// Objetos de la Tienda de Combate (server/bp.js) y bayas del Huerto que se pueden llevar en combate.
+const itemsWanted = ['leftovers', 'lifeorb', 'choicescarf', 'choiceband', 'choicespecs', 'sitrusberry', 'focussash', 'assaultvest', 'rockyhelmet', 'blacksludge', 'whiteherb', 'mentalherb',
+  'weaknesspolicy', 'expertbelt', 'scopelens', 'eviolite', 'heavydutyboots', 'oranberry', 'lumberry', 'chestoberry', 'leppaberry'];
 for (const id of itemsWanted) if (itemEs[id]) out.items[id] = itemEs[id];
 
 fs.writeFileSync(path.join(__dirname, '..', 'server', 'sd-es.json'), JSON.stringify(out));
