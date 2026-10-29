@@ -11,6 +11,7 @@
 //    (perezoso, sin romper campos antiguos); `sdFor` guarda la especie para recalcular si evoluciona.
 const crypto = require('crypto');
 const { BY_ID } = require('./pokedex');
+const movesMod = require('./moves');
 
 let PS = null;
 const ps = () => (PS ||= require('pokemon-showdown'));
@@ -51,25 +52,6 @@ function moveInfo(id) {
   m = mv && mv.exists && !mv.isNonstandard && !mv.isZ && !mv.isMax ? mv : null;
   MOVE_INFO.set(id, m);
   return m;
-}
-
-const LEARN = new Map();
-// Movimientos que puede aprender la especie (y sus preevoluciones / forma base), solo los de la generación actual.
-function learnable(id) {
-  id = Number(id);
-  if (LEARN.has(id)) return LEARN.get(id);
-  const { Dex } = ps();
-  const out = new Set();
-  let sp = speciesOf(id);
-  for (let guard = 0; sp && guard < 6; guard++) {
-    const ls = Dex.species.getLearnsetData(sp.id);
-    if (ls && ls.learnset) for (const m of Object.keys(ls.learnset)) if (moveInfo(m)) out.add(m);
-    sp = sp.prevo ? Dex.species.get(sp.prevo) : null;
-  }
-  if (!out.size) out.add('tackle');
-  const list = [...out].sort();
-  LEARN.set(id, list);
-  return list;
 }
 
 function moveScore(mv, sp, atkSide) {
@@ -123,7 +105,7 @@ function defaultMoves(id, doubles = false) {
     const set = entry.sets[0];
     pool = (set.movepool || []).map(toID).filter((m) => moveInfo(m));
   }
-  if (pool.length < 4) pool = [...new Set([...pool, ...learnable(id)])];
+  if (pool.length < 4) pool = [...new Set([...pool, ...movesMod.reachable(id, 100).map((x) => x.move).filter((x) => moveInfo(x))])];
   return pickFromPool(sp, pool);
 }
 
@@ -137,30 +119,23 @@ const allAbilitiesOf = (id) => {
   return Object.entries(a).filter(([k]) => k !== 'S').map(([k, v]) => ({ id: toID(v), name: v, hidden: k === 'H' }));
 };
 
-// Rellena (sin romper nada) `sdAbility` y `sdMoves` del ejemplar. Determinista por uid.
+// Rellena (sin romper nada) `sdAbility` y los movimientos (`learned`/`sdMoves`, ver moves.js) del ejemplar. Determinista por uid.
 function ensureSd(id, m) {
   id = Number(id);
   if (m.sdFor !== id) {
     const keepAbility = m.sdAbility && allAbilitiesOf(id).some((a) => a.id === m.sdAbility);
-    const legal = new Set(learnable(id));
-    const kept = (Array.isArray(m.sdMoves) ? m.sdMoves : []).filter((x) => legal.has(x));
     if (!keepAbility) {
       const ab = abilitiesOf(id);
       m.sdAbility = ab[hashOf(m.uid) % ab.length];
     }
-    if (!kept.length || kept.length < (m.sdMoves || []).length) {
-      const base = defaultMoves(id);
-      const out = [...kept];
-      for (const x of base) if (out.length < 4 && !out.includes(x)) out.push(x);
-      m.sdMoves = out;
-    }
     m.sdFor = id;
   }
+  movesMod.ensure(id, m);
   return m;
 }
 
-// Valida lo que manda el cliente al cambiar habilidad / movimientos.
-function validateSd(id, { ability, moves }) {
+// Valida lo que manda el cliente al cambiar habilidad / movimientos equipados (solo entre los aprendidos).
+function validateSd(id, m, { ability, moves }) {
   const out = {};
   if (ability !== undefined) {
     const a = toID(ability);
@@ -169,11 +144,10 @@ function validateSd(id, { ability, moves }) {
   }
   if (moves !== undefined) {
     if (!Array.isArray(moves) || moves.length < 1 || moves.length > 4) throw new Error('Elige de 1 a 4 movimientos.');
-    const legal = new Set(learnable(id));
     const seen = new Set();
     out.sdMoves = moves.map((x) => {
       const mv = toID(x);
-      if (!legal.has(mv)) throw new Error('Esa especie no puede aprender uno de esos movimientos.');
+      if (!(m.learned || []).includes(mv)) throw new Error('Ese Pokémon aún no ha aprendido uno de esos movimientos.');
       if (seen.has(mv)) throw new Error('Movimiento repetido.');
       seen.add(mv);
       return mv;
@@ -254,6 +228,6 @@ function moveCard(id) {
 }
 
 module.exports = {
-  ps, toID, NATURE_EN, EV_ALL, canBattle, speciesOf, learnable, moveInfo, moveCard, defaultMoves, ensureSd, validateSd,
+  ps, toID, NATURE_EN, EV_ALL, canBattle, speciesOf, moveInfo, moveCard, defaultMoves, ensureSd, validateSd,
   abilitiesOf, allAbilitiesOf, megaItemOf, megaSetup, toSet, pack, speciesNumByName, pickFromPool, STAT,
 };

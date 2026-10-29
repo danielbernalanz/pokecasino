@@ -93,3 +93,12 @@
 .pc-menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; padding-top: 6px; border-top: 3px dotted var(--line); }
 @media (max-width: 900px) { .pc-layout { grid-template-columns: minmax(0, 1fr); } .pc-side { position: static; } .pc-sel { flex-direction: row; flex-wrap: wrap; justify-content: center; } }
 @media (max-width: 560px) { .pc-grid.pc-slots { gap: 4px; padding: 6px; } .pc-tabs .tab { font-size: 11.5px; padding-inline: 4px; } }
+
+/* Movimientos (aprender, cambiar) */
+.pc-slot .sl-new { position: absolute; bottom: 0; left: 1px; font-size: 10px; line-height: 1; }
+.pc-learn-note { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--panel2); border: 2px solid var(--gold, #f5c518); border-radius: 10px; padding: 8px 10px; font-weight: 800; }
+.mvrow.static { cursor: default; }
+.mv-tag { margin-left: 6px; font-size: 10px; background: #0005; border-radius: 6px; padding: 1px 5px; text-transform: uppercase; }
+.mv-cur.one { grid-template-columns: 1fr; }
+@media (min-width: 900px) { .mv-cur.one { grid-template-columns: 1fr 1fr; } }
+.mv-cur.one .mvrow, .mv-list .mvrow { min-width: 0; }

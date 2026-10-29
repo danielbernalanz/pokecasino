@@ -6,6 +6,7 @@ const db = require('./db');
 const hub = require('./hub');
 const gacha = require('./gacha');
 const specimen = require('./specimen');
+const moves = require('./moves');
 const items = require('./items');
 const { DEX, BY_ID, RARITY } = require('./pokedex');
 const { weighted } = require('./rng');
@@ -148,9 +149,11 @@ function levelUp(u, p) {
   let cost = 0;
   for (let i = 0; i < n; i++) cost += levelCost(m.level + i);
   takeCandy(u, id, cost);
+  const from = m.level;
   m.level += n;
+  const mv = moves.onLevel(id, m, from, m.level);
   db.save();
-  return { level: m.level, cost };
+  return { level: m.level, cost, learned: mv.auto, pending: mv.pending };
 }
 
 // ---- Evolucionar ----
@@ -177,6 +180,7 @@ function evolve(u, p) {
   if (first) (u.evoReg ||= {})[to] = 1; // una sola vez por especie y cuenta (aunque luego vendas la copia)
   // Sale el ejemplar concreto de la especie origen (si es la primera vez, la especie origen conserva su entrada y
   // `sync` le crea un ejemplar nuevo de nivel 5)…
+  moves.ensure(id, m); // si aún no estaba migrado, con los movimientos de la especie de origen
   const arr = specimen.sync(u, id);
   arr.splice(arr.indexOf(m), 1);
   if (!first) c.n--;
@@ -191,12 +195,13 @@ function evolve(u, p) {
   m.moves = specimen.movesFor(target);
   m.ability = specimen.ABILITIES[target.types[0]] || specimen.GENERIC_ABILITY;
   if (specimen.isFixed(target)) m.gender = null;
+  const learnt = moves.onEvolve(to, m); // sus movimientos propios (y los «al evolucionar»)
   if (u.buddy && u.buddy.id === id && u.buddy.uid === m.uid) u.buddy = { id: to, shiny: m.shiny, uid: m.uid };
   specimen.sync(u, id);
   specimen.sync(u, to);
   if (target.rarity === 'L' || target.rarity === 'M') hub.feed('evolve', `🌟 ${u.username} hizo evolucionar a ${BY_ID.get(id).name} en ${target.name}`, { pokeId: to, shiny: m.shiny });
   db.save();
-  return { from: id, to, uid: m.uid, name: target.name, cost };
+  return { from: id, to, uid: m.uid, name: target.name, cost, learned: learnt.auto, pending: learnt.pending };
 }
 
 // ---- Entrenar IVs ----

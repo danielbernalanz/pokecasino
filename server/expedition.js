@@ -139,6 +139,7 @@ function claim(u, p) {
     const lv = Math.max(0, Math.min(Math.floor(H / LEVEL_EVERY), LEVEL_DAY_CAP - xd.n, MAX_LEVEL - m.level));
     m.level += lv;
     xd.n += lv;
+    if (lv) require('./moves').onLevel(t.id, m, from, m.level);
     const fr = bond.addFriend(m, FRIEND_PER_HOUR * H, 'exp');
     out.friend += fr;
     out.members.push({ id: t.id, uid: t.uid, from, to: m.level, friend: fr, match: hit, candy: c });

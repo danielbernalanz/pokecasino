@@ -7,6 +7,7 @@ const db = require('./db');
 const { BY_ID } = require('./pokedex');
 const { rand, randInt, pick } = require('./rng');
 const { MOVES } = require('./games/battle');
+const movesMod = require('./moves');
 
 // [nombre, +stat, −stat] sobre el orden hp, atk, def, spa, spd, spe (índices 1..5; null = neutra).
 const NATURES = [
@@ -53,11 +54,13 @@ function movesFor(p) {
 
 function make(id, shiny = false) {
   const p = BY_ID.get(id);
-  return {
+  const m = {
     uid: makeUid(), nature: pick(NATURES).name, ivs: Array.from({ length: 6 }, () => randInt(0, 31)), level: 5, exp: 0, friendship: 70,
     gender: isFixed(p) ? null : (rand() < 0.5 ? 'M' : 'F'), ability: ABILITIES[p.types[0]] || GENERIC_ABILITY, moves: movesFor(p),
     nick: '', fav: false, shiny: !!shiny, at: Date.now(),
   };
+  movesMod.ensure(id, m); // movimientos por nivel (aprendidos y equipados)
+  return m;
 }
 
 function sanitizeNick(s) {
@@ -137,7 +140,8 @@ function boxView(u) {
   syncAll(u);
   const mons = [];
   for (const [id, arr] of Object.entries(u.mons)) {
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, up: NATURE_BY_NAME.get(m.nature).up, down: NATURE_BY_NAME.get(m.nature).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: m.ability, moves: m.moves, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) });
+    for (const m of arr) movesMod.ensure(Number(id), m);
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, up: NATURE_BY_NAME.get(m.nature).up, down: NATURE_BY_NAME.get(m.nature).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: m.ability, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) });
   }
   db.save();
   return { mons };

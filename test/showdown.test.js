@@ -71,8 +71,8 @@ test('ejemplar → conjunto de Showdown: naturaleza, IVs, nivel, habilidad y mov
     const real = [sp.abilities[0], sp.abilities[1]].filter(Boolean).map(sd.toID);
     assert.ok(real.includes(m.sdAbility), `${sp.name}: ${m.sdAbility}`);
     assert.ok(m.sdMoves.length >= 1 && m.sdMoves.length <= 4, `${sp.name} movimientos`);
-    const learn = new Set(sd.learnable(id));
-    for (const mv of m.sdMoves) { assert.ok(Dex.moves.get(mv).exists); assert.ok(learn.has(mv), `${sp.name} no aprende ${mv}`); }
+    const learn = new Set(require('../server/moves').levelMoves(id).map((x) => x.move));
+    for (const mv of m.sdMoves) { assert.ok(Dex.moves.get(mv).exists); assert.ok(learn.has(mv), `${sp.name} no aprende ${mv}`); assert.ok(m.learned.includes(mv)); }
   }
   // Determinista por uid: la misma habilidad siempre.
   const a = { uid: 'abc12345', ivs: [] }, b = { uid: 'abc12345', ivs: [] };
@@ -88,12 +88,14 @@ test('ejemplar → conjunto de Showdown: naturaleza, IVs, nivel, habilidad y mov
   sd.ensureSd(133, ev);
   sd.ensureSd(134, ev);
   assert.ok(sd.allAbilitiesOf(134).some((x) => x.id === ev.sdAbility));
-  // Cambiar movimientos: se validan contra el learnset.
-  assert.deepStrictEqual(sd.validateSd(25, { moves: ['thunderbolt', 'surf'] }).sdMoves, ['thunderbolt', 'surf']);
-  assert.throws(() => sd.validateSd(25, { moves: ['hydrocannon'] }));
-  assert.throws(() => sd.validateSd(25, { moves: ['thunderbolt', 'thunderbolt'] }));
-  assert.throws(() => sd.validateSd(25, { moves: ['a', 'b', 'c', 'd', 'e'] }));
-  assert.throws(() => sd.validateSd(25, { ability: 'wonderguard' }));
+  // Cambiar movimientos: solo entre los aprendidos.
+  const pk = specimen.make(25);
+  pk.learned.push('thunderbolt', 'surf');
+  assert.deepStrictEqual(sd.validateSd(25, pk, { moves: ['thunderbolt', 'surf'] }).sdMoves, ['thunderbolt', 'surf']);
+  assert.throws(() => sd.validateSd(25, pk, { moves: ['hydrocannon'] }));
+  assert.throws(() => sd.validateSd(25, pk, { moves: ['thunderbolt', 'thunderbolt'] }));
+  assert.throws(() => sd.validateSd(25, pk, { moves: ['a', 'b', 'c', 'd', 'e'] }));
+  assert.throws(() => sd.validateSd(25, pk, { ability: 'wonderguard' }));
   // Todos los Pokémon del casino se pueden mapear.
   assert.ok(DEX.every((p) => sd.canBattle(p.id)), 'hay especies sin equivalente en Showdown');
 });

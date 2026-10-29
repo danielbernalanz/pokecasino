@@ -534,3 +534,13 @@ Petición del dueño: «completar la Pokédex y maxear un Pokémon no debe costa
 
 ### Combates y redespliegues
 Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + registro de entradas); al arrancar se reconstruye reescribiendo las entradas en un simulador nuevo (sin que la IA ni los temporizadores actúen sobre peticiones antiguas) y el turno de los humanos recibe 60 s extra. Los depósitos de PvP (`escrow btl:*`) no se devuelven en el arranque mientras exista el combate guardado; si el registro está dañado o es de otra versión del simulador, se devuelven desde el propio depósito. Abandono: 15 min sin elegir = derrota (en PvP el rival cobra el bote).
+
+## Movimientos como en los juegos: por nivel, MT, Puntos de Batalla, objetos, habilidades… (server/moves.js · test/moves.test.js)
+
+### Fase 1 · Movimientos por nivel
+* Cada ejemplar tiene `learned` (todos los movimientos que ha aprendido) y `sdMoves` (hasta 4 equipados, los que lleva a combate), más `pending` (movimientos nuevos por decidir) y `mv: 2` (versión del formato).
+* **Migración B (perezosa, una vez por ejemplar):** aprendidos = movimientos por nivel de su especie con nivel ≤ su nivel (los de «al evolucionar» cuentan como nivel 1); equipados = los 4 últimos, como un Pokémon salvaje de los juegos. Los movimientos libres antiguos se descartan. Los equipos guardados solo guardan ejemplares, así que siempre salen con movimientos legales.
+* **Subir de nivel / evolucionar** (caramelos, expediciones, evolución): los movimientos nuevos se equipan solos si hay hueco; si no, quedan pendientes y el cliente pregunta «¿cuál olvida?». «No aprender» lo deja en `learned` (se equipa luego gratis, como el Recordador de Escarlata/Púrpura). La evolución conserva todo lo aprendido.
+* Datos de `server/learnsets.json` (`scripts/gen-learnsets.js`, Showdown generación 9 y, para especies ausentes de Escarlata/Púrpura, la última con datos). La Caja PC no carga el simulador.
+* En «Nivel 50 (justo)» las estadísticas se normalizan a 50, pero los movimientos son los realmente aprendidos (como el VGC). Los entrenadores básicos de la CPU (fuerza 1) llevan movimientos por nivel acordes al equipo del jugador.
+* No crea monedas ni valor: aprender, olvidar y cambiar movimientos es gratis.

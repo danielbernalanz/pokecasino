@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.10.29-i",
+    "date": "2026-10-29",
+    "title": "Movimientos como en los juegos",
+    "items": [
+      "📖 Cada Pokémon aprende movimientos según su nivel: al subir de nivel o evolucionar puede querer aprender uno nuevo y tú decides cuál olvida (o «No aprender»).",
+      "🔁 En Caja PC → Datos → Movimientos puedes cambiar los 4 movimientos entre todos los que ya ha aprendido, cuando quieras y gratis.",
+      "⚔️ En los combates a «Nivel 50 (justo)» las estadísticas se igualan, pero cada uno usa los movimientos que de verdad ha aprendido.",
+      "♻️ Los Pokémon que ya tenías se han ajustado a los movimientos que les tocan por su nivel actual."
+    ]
+  },
+  {
     "version": "2026.10.29-g",
     "date": "2026-10-29",
     "title": "Historial del Mercado y más protección",

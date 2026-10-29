@@ -88,8 +88,11 @@ function buildTeam(t, n, { level = 'fair', avgLevel = 50, doubles = false } = {}
       uid: crypto.randomBytes(4).toString('hex'), nature: pick(require('./specimen').NATURES).name,
       ivs: Array.from({ length: 6 }, () => randInt(lo, hi)), level: lvl, friendship: 70 + (t.tier >= 5 ? 150 : 40), gender: Math.random() < 0.5 ? 'M' : 'F', shiny: false,
     };
+    // Los de la Liga básica llevan los movimientos por nivel que tocan al nivel del equipo del jugador; los fuertes, conjuntos de Showdown.
+    const mvLevel = Math.max(5, Math.min(100, Math.round(avgLevel + LEVEL_DELTA[t.tier])));
+    m.mv = 2; m.learned = require('./moves').reachable(p.id, mvLevel).map((x) => x.move); m.pending = [];
+    m.sdMoves = t.tier >= 2 ? sd.defaultMoves(p.id, doubles) : require('./moves').equipAt(p.id, mvLevel);
     sd.ensureSd(p.id, m);
-    if (t.tier >= 2) m.sdMoves = sd.defaultMoves(p.id, doubles); // conjuntos de Showdown
     const { set, roster: r } = sd.toSet(p.id, m, { level: 'real', usedNames, doubles });
     sets.push(set);
     roster.push(r);

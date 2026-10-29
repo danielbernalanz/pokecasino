@@ -2,6 +2,8 @@ import { aniImg } from '../anim.js';
 import { S, h, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, hpBar, emptyState, loader, MON } from '../core.js';
 import { evolveAnim, wonderReveal } from './pc-fx.js';
 import { heartsEl, friendLabel, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
+import { movesPage, learnPrompt } from './moves-ui.js';
+import { loadNames } from '../battle-screen.js';
 
 const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
 
@@ -52,7 +54,7 @@ export function openInPc(id) { filter = { ...filter, q: '', species: Number(id) 
 
 function load() {
   if (loading) return loading;
-  loading = emit('pc:box').then((r) => { mons = r.mons; box = { candy: r.candy || {}, train: r.train || {}, wonderLeft: r.wonderLeft, rules: r.rules }; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
+  loading = Promise.all([emit('pc:box'), loadNames()]).then(([r]) => { mons = r.mons; box = { candy: r.candy || {}, train: r.train || {}, wonderLeft: r.wonderLeft, rules: r.rules }; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
   return loading;
 }
 
@@ -92,6 +94,7 @@ function openMon(uid, openPage = 'info') {
         await evolveAnim(m.id, t.id, m.shiny);
         toast(`¡Tu ${label(m)} evolucionó a ${t.name}!`, 'success');
         await load(); render && render();
+        if (r.pending && r.pending.length) openMon(uid);
       } }, 'Evolucionar'));
   };
   function candyPanel() {
@@ -166,7 +169,7 @@ function openMon(uid, openPage = 'info') {
     stats: () => h('div', { class: 'pc-table-wrap' }, h('table', { class: 'pc-stats' },
       h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Base'), h('th', {}, 'IV'), h('th', {}, 'Nv. 50'))),
       h('tbody', {}, rows))),
-    moves: () => h('ul', { class: 'pc-moves' }, m.moves.map((mv) => h('li', {}, mv))),
+    moves: () => movesPage(m, async () => { await load(); modalRef.close(); openMon(uid, 'moves'); render && render(); }),
     bond: () => friendPanel(),
     menu: () => (box.rules ? candyPanel() : h('p', { class: 'muted' }, 'Sin datos de la caja.')),
   };
@@ -195,6 +198,8 @@ function openMon(uid, openPage = 'info') {
             text: `${label(m)} es ${[m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ')}. Solo recibes ${dust} ✦ de polvo y no se puede deshacer.` }))) return;
           if (await act('pc:release', { id: m.id, uid }, e.target)) { sfx('shiny'); toast(`Liberaste a ${label(m)}: +${dust} ✦`, 'success'); await load(); modalRef.close(); render && render(); } } }, 'Liberar'))
     )), { title: 'Datos', wide: true });
+  // Movimientos nuevos por decidir (subida de nivel, evolución…): se preguntan al abrir la ficha.
+  if (m.pending && m.pending.length && openPage !== 'moves') learnPrompt(m, async () => { await load(); modalRef.close(); openMon(uid, openPage); render && render(); });
 }
 
 // Cajas de 30 huecos (6×5) con fondo propio, como en los juegos.
@@ -285,6 +290,7 @@ export default {
           m.shiny ? h('span', { class: 'sl-shiny' }, '✨') : null,
           m.fav ? h('span', { class: 'sl-fav' }, '★') : null,
           m.buddy ? h('span', { class: 'sl-buddy' }, '🤝') : null,
+          m.pending && m.pending.length ? h('span', { class: 'sl-new', title: 'Quiere aprender un movimiento' }, '🆕') : null,
           m.away ? h('span', { class: 'sl-away', title: awayText(m) }, awayIcon(m)) : null,
           h('span', { class: 'sr-only' }, `${label(m)} Nv. ${m.level}${m.away ? ' · ' + awayText(m) : ''}`));
       };

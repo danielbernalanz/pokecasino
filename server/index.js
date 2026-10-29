@@ -562,6 +562,8 @@ io.on('connection', (socket) => {
   on('buddy:set', setBuddy);
   on('pc:box', (u) => ({ ...specimen.boxView(u), ...candy.boxExtra(u) }), { push: false });
   on('pc:nick', specimen.nick);
+  on('pc:moves', require('./moves').setEquipped);
+  on('pc:learn', require('./moves').learn);
   on('pc:fav', specimen.fav);
   on('pc:release', specimen.release);
   on('pc:transfer', candy.transfer);
