@@ -663,6 +663,7 @@ db.init().then(() => {
   race.start();
   crash.start();
   mega.start();
+  showdown.restoreAll().catch((e) => console.error('Combates: no se pudieron restaurar', e)); // reconstruye los combates en curso al redesplegar
   console.log('  ✅ Casino abierto');
   if (!Object.keys(db.data.users).length) console.log('  👑 El primer jugador que se registre será administrador.');
 }).catch((e) => { console.error('No se pudo arrancar:', e); process.exit(1); });

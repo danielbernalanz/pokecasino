@@ -33,6 +33,8 @@ function withMons(ids) {
 }
 const members = (u, ids) => ids.map((id) => ({ id, uid: u.mons[id][0].uid }));
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(fn, ms = 8000) { const t0 = Date.now(); while (!fn()) { if (Date.now() - t0 > ms) throw new Error('waitFor: tiempo agotado'); await wait(10); } }
+const asking = (side) => !!(side.req && !side.req.wait && !side.chosen);
 
 test('el simulador no se carga hasta que hace falta', () => {
   // (otros archivos de prueba no comparten proceso con este)
@@ -307,4 +309,135 @@ test('turnos: tiempo agotado elige por defecto y 3 seguidos pierden el combate',
   const res = await b.done;
   assert.strictEqual(res.winner, 1);
   assert.ok(u.btHist[0].won === false);
+});
+
+// ---------- Reinicio del servidor a mitad de combate ----------
+const { Brain } = require('../server/sdai');
+function restart() {
+  sdw.refundAll(); // lo que hace el apagado: guarda los combates
+  sdw._dropMemory();
+  db.data.sdBattles = JSON.parse(JSON.stringify(db.data.sdBattles || {})); // como si se leyera de disco
+  db.refundEscrow(); // el arranque NO debe devolver los depósitos de combates guardados
+  return sdw.restoreAll();
+}
+// Juega por un jugador con una IA hasta que acaba el combate.
+async function autoplay(b, sides, users) {
+  const brains = sides.map((i) => { const br = new Brain('p' + (i + 1), { doubles: b.format === 'doubles' }); br.feed(b.sides[i].log); return { i, br, seen: b.sides[i].log.length }; });
+  const t0 = Date.now();
+  while (!b.finished && Date.now() - t0 < 30000) {
+    for (const x of brains) {
+      const side = b.sides[x.i];
+      if (side.log.length > x.seen) { x.br.feed(side.log.slice(x.seen)); x.seen = side.log.length; }
+      if (side.req && !side.req.wait && !side.chosen && !b.over) {
+        try { sdw.choose(users[x.i], { id: b.id, choice: x.br.decide(side.req) || 'default' }); } catch { /* ya elegido */ }
+      }
+    }
+    await wait(15);
+  }
+  return b.done;
+}
+const reqKey = (r) => JSON.stringify(r.side.pokemon.map((p) => [p.ident, p.condition, p.active])) + JSON.stringify((r.active || []).map((a) => a.moves.map((m) => [m.id, m.pp])));
+
+test('reinicio: un combate CPU se reconstruye igual (mismo turno y PS) y termina', async () => {
+  const ids = [25, 6, 9];
+  const u = withMons(ids);
+  const v = sdw.startCpu(u, { trainer: 'hugo', format: 'singles', level: 'fair', team: members(u, ids) });
+  const b = sdw.battles.get(v.battle.id);
+  await waitFor(() => asking(b.sides[0]));
+  sdw.choose(u, { id: b.id, choice: 'team 123' });
+  await waitFor(() => asking(b.sides[0]) && b.sides[0].req.active);
+  sdw.choose(u, { id: b.id, choice: 'move 1' });
+  await waitFor(() => asking(b.sides[0]) && (b.turn >= 2 || b.sides[0].req.forceSwitch));
+  await wait(50);
+  const before = { key: reqKey(b.sides[0].req), turn: b.turn, logs: b.sides[0].log.length, foe: reqKey(b.sides[1].req) };
+  assert.ok(before.turn >= 1, 'ha empezado el combate');
+  assert.ok(db.data.sdBattles[b.id], 'guardado');
+  const n = await restart();
+  assert.strictEqual(n, 1);
+  const b2 = sdw.battles.get(v.battle.id);
+  assert.ok(b2 && b2 !== b);
+  assert.strictEqual(b2.turn, before.turn);
+  assert.strictEqual(reqKey(b2.sides[0].req), before.key, 'misma petición y mismos PS');
+  assert.strictEqual(reqKey(b2.sides[1].req), before.foe);
+  assert.strictEqual(b2.sides[0].log.length, before.logs);
+  assert.strictEqual(b2.sides[0].chosen, false);
+  assert.ok(b2.sides[0].deadline - Date.now() > sdw.TURN_MS, 'margen extra para el temporizador');
+  assert.strictEqual(sdw.resume(u).battle.id, b.id);
+  assert.strictEqual(sdw.activeFor ? 1 : 1, 1);
+  const res = await autoplay(b2, [0], [u]);
+  assert.ok(!res.aborted);
+  assert.ok(!db.data.sdBattles[b.id], 'se borra al terminar');
+  assert.strictEqual(sdw.battles.size, 0);
+});
+
+test('reinicio: PvP con apuesta se restaura, se paga una sola vez y el depósito sobrevive', async () => {
+  const ids = [25, 6, 9];
+  const a = withMons(ids), b = withMons(ids);
+  const t = (u) => members(u, ids);
+  const c0 = [a.coins, b.coins];
+  const c = sdw.challenge(a, { format: 'singles', level: 'fair', wager: 400, team: t(a) });
+  const acc = sdw.accept(b, { id: c.challenge, team: t(b) });
+  const bat = sdw.battles.get(acc.battle.id);
+  await waitFor(() => asking(bat.sides[0]) && asking(bat.sides[1]));
+  sdw.choose(a, { id: bat.id, choice: 'team 123' });
+  sdw.choose(b, { id: bat.id, choice: 'team 123' });
+  await waitFor(() => asking(bat.sides[0]) && asking(bat.sides[1]) && bat.sides[0].req.active);
+  sdw.choose(a, { id: bat.id, choice: 'move 1' }); // b aún no ha elegido
+  await wait(60);
+  const turn = bat.turn;
+  const keyB = reqKey(bat.sides[1].req);
+  const coinsMid = [a.coins, b.coins];
+  assert.strictEqual(await restart(), 1);
+  assert.deepStrictEqual([a.coins, b.coins], coinsMid, 'el arranque no devuelve el depósito');
+  assert.strictEqual(Object.values(db.data.escrow).filter((e) => [a.id, b.id].includes(e.userId)).length, 2);
+  const b2 = sdw.battles.get(bat.id);
+  assert.strictEqual(b2.turn, turn);
+  assert.strictEqual(b2.sides[0].chosen, true, 'la elección de a se conserva');
+  assert.strictEqual(b2.sides[1].chosen, false);
+  assert.strictEqual(reqKey(b2.sides[1].req), keyB);
+  const res = await autoplay(b2, [0, 1], [a, b]);
+  assert.ok(!res.aborted && (res.winner === 0 || res.winner === 1));
+  await wait(50);
+  const lvl = (u) => (u.hist.log || []).filter((e) => e.r === 'level').reduce((s, e) => s + e.d, 0);
+  assert.strictEqual(a.coins + b.coins - lvl(a) - lvl(b), c0[0] + c0[1] - 800 + 760, 'bote pagado exactamente una vez (menos 5 %)');
+  assert.strictEqual(Object.values(db.data.escrow).filter((e) => [a.id, b.id].includes(e.userId)).length, 0);
+  assert.ok(!db.data.sdBattles[bat.id]);
+  assert.strictEqual(await restart(), 0, 'nada que restaurar después');
+});
+
+test('reinicio: un registro dañado o de otra versión del simulador devuelve las apuestas', async () => {
+  const ids = [25, 6, 9];
+  for (const breakIt of [(s) => { s.seed = 'x'; }, (s) => { s.v = '0.0.1'; }, (s) => { s.sides[1].userId = 'nadie'; }]) {
+    const a = withMons(ids), b = withMons(ids);
+    const c0 = [a.coins, b.coins];
+    const c = sdw.challenge(a, { format: 'singles', level: 'fair', wager: 300, team: members(a, ids) });
+    const bat = sdw.battles.get(sdw.accept(b, { id: c.challenge, team: members(b, ids) }).battle.id);
+    await wait(100);
+    sdw.refundAll(); sdw._dropMemory();
+    db.data.sdBattles = JSON.parse(JSON.stringify(db.data.sdBattles));
+    breakIt(db.data.sdBattles[bat.id]);
+    await sdw.restoreAll();
+    assert.ok(!db.data.sdBattles[bat.id]);
+    assert.strictEqual(sdw.battles.size, 0);
+    const back = (u) => (u.coins - ((u.hist.log || []).filter((e) => e.r === 'level').reduce((s, e) => s + e.d, 0)));
+    assert.strictEqual(back(a), c0[0]);
+    assert.strictEqual(Object.values(db.data.escrow).filter((e) => [a.id, b.id].includes(e.userId)).length, 0);
+    assert.strictEqual(back(b), c0[1], 'b recupera lo suyo');
+  }
+});
+
+test('abandono: 15 minutos sin elegir pierden el combate (PvP: el rival cobra)', async () => {
+  const ids = [25, 6, 9];
+  const a = withMons(ids), b = withMons(ids);
+  const c = sdw.challenge(a, { format: 'singles', level: 'fair', wager: 200, team: members(a, ids) });
+  const bat = sdw.battles.get(sdw.accept(b, { id: c.challenge, team: members(b, ids) }).battle.id);
+  await wait(200);
+  assert.strictEqual(bat.expire(), false);
+  sdw.choose(b, { id: bat.id, choice: 'team 123' });
+  bat.sides[0].askedAt = Date.now() - sdw.ABANDON_MS - 1000;
+  assert.strictEqual(bat.expire(), true);
+  const res = await bat.done;
+  assert.strictEqual(res.winner, 1);
+  assert.ok(!db.data.sdBattles[bat.id]);
+  assert.strictEqual(sdw.battles.size, 0);
 });

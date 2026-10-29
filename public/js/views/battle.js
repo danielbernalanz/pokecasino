@@ -22,6 +22,19 @@ bus.on('battle:start', (p) => {
   }
 });
 
+// Aviso «Tienes un combate en curso» (tras recargar la página o un reinicio del casino) con enlace para volver.
+let banner = null;
+const hideBanner = () => { if (banner) { banner.remove(); banner = null; } };
+bus.on('battle:active', (id) => {
+  if (!id || S.view === 'combates') { hideBanner(); return; }
+  if (banner) return;
+  banner = h('div', { class: 'bt-banner', role: 'status' }, h('span', {}, '⚔️ Tienes un combate en curso'),
+    h('a', { class: 'btn small gold', href: '#/combates', onclick: hideBanner }, 'Volver al combate'));
+  document.body.append(banner);
+});
+bus.on('battle:end', hideBanner);
+window.addEventListener('hashchange', () => { if (location.hash.startsWith('#/combates')) hideBanner(); });
+
 export default {
   id: 'combates', title: 'Combates', icon: '⚔️',
   mount(root) {
@@ -407,9 +420,13 @@ export default {
     const onStart = (p) => { if (p && p.battle) openBattle(p.battle); };
     const onList = (l) => { ctx.challenges = l; if (ctx.state) ctx.state.challenges = l; if (ctx.tab === 'pvp' && ctx.drawOpen && !inBattle()) ctx.drawOpen(); };
     ctx.offs.push(bus.on('battle:event', onEvent), bus.on('battle:end', onEnd), bus.on('battle:start', onStart), bus.on('battle:list', onList));
-    const onConnect = () => { if (ctx.screen || ctx.wasIn) resync(); };
-    if (S.socket) S.socket.on('connect', onConnect);
-    ctx.offs.push(() => { if (S.socket) S.socket.off('connect', onConnect); });
+    const onConnect = () => { if (ctx.screen) { ctx.screen.setOffline(false); resync(); } };
+    const onDisconnect = () => { if (ctx.screen && !ctx.screen.over) ctx.screen.setOffline(true); };
+    if (S.socket) { S.socket.on('connect', onConnect); S.socket.on('disconnect', onDisconnect); }
+    ctx.offs.push(() => { if (S.socket) { S.socket.off('connect', onConnect); S.socket.off('disconnect', onDisconnect); } });
+    // La página se recargó o el casino se actualizó: el servidor avisa de que hay un combate en curso.
+    ctx.offs.push(bus.on('battle:active', (id) => { if (id && !ctx.screen) resync(); }));
+    hideBanner();
 
     drawTabs();
     (async () => {

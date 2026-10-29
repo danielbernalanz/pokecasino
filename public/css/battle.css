@@ -259,3 +259,6 @@
   .bf-banner { font-size: 22px; }
   .tr-grid { grid-template-columns: 1fr; }
 }
+
+.bt-banner { position: fixed; left: 50%; transform: translateX(-50%); top: 64px; z-index: 60; display: flex; align-items: center; gap: 10px; background: var(--panel, #241f3b); color: var(--text); border: 3px solid var(--gold, #ffcb05); border-radius: 14px; padding: 8px 12px; font-weight: 800; box-shadow: 0 6px 18px #0006; max-width: calc(100vw - 24px); }
+.bt2.offline .bf { filter: grayscale(.5) brightness(.8); }

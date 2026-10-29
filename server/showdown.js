@@ -27,6 +27,10 @@ const FORMATS = {
   doubles: { id: 'gen9doublescustomgame', doubles: true, cap: 4, min: 2, label: 'Dobles' },
 };
 const LEVELS = new Set(['fair', 'real']);
+const RESTORE_GRACE_MS = 60 * 1000;
+const ABANDON_MS = 15 * 60 * 1000;
+let SIM_VERSION = null;
+try { SIM_VERSION = require('pokemon-showdown/package.json').version; } catch { SIM_VERSION = 'desconocida'; }
 
 const battles = new Map(); // id → Battle
 const byUser = new Map(); // userId → Battle
@@ -82,8 +86,13 @@ function resolveTeam(user, members, { format, level }) {
 
 // ---- Combate ----
 class Battle {
-  constructor({ mode, format, level, sides, wager = 0, trainer = null }) {
-    this.id = crypto.randomUUID().slice(0, 8);
+  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null }) {
+    this.id = id || crypto.randomUUID().slice(0, 8);
+    // Semilla explícita: el simulador es determinista con ella y el registro de entradas, así que un combate se puede reconstruir.
+    this.seed = seed || [0, 1, 2, 3].map(() => crypto.randomInt(1, 0x10000));
+    this.inputLog = [];
+    this.replaying = false;
+    this.createdAt = createdAt || Date.now();
     this.mode = mode; // 'cpu' | 'pvp' | 'sim'
     this.format = format;
     this.level = level;
@@ -91,7 +100,7 @@ class Battle {
     this.trainer = trainer;
     this.sides = sides.map((s, i) => ({
       n: i, id: 'p' + (i + 1), userId: s.user ? s.user.id : null, name: s.name, sets: s.sets, roster: s.roster,
-      brain: s.brain || null, req: null, chosen: false, deadline: 0, timer: null, timeouts: 0, log: [], seen: new Set(), human: !!s.user,
+      brain: s.brain || null, req: null, chosen: false, deadline: 0, timer: null, timeouts: 0, log: [], seen: new Set(), human: !!s.user, askedAt: Date.now(),
     }));
     this.pickN = Math.min(FORMATS[format].cap, ...this.sides.map((s) => s.sets.length));
     this.turn = 0;
@@ -101,23 +110,67 @@ class Battle {
     this.done = new Promise((resolve) => { this.resolveDone = resolve; });
   }
 
-  start() {
+  // `replay`: reconstruye un combate guardado. Se vuelven a escribir todas las entradas y se ignora lo que el simulador
+  // responde (ni la IA ni los temporizadores actúan sobre peticiones antiguas) hasta que todo se ha asentado.
+  start(replay = null) {
     const { BattleStream, getPlayerStreams } = sd.ps();
     const streams = (this.streams = getPlayerStreams(new BattleStream()));
     const maxLen = Math.max(...this.sides.map((s) => s.sets.length));
     const rules = ['Species Clause', 'Terastal Clause'];
     if (this.pickN < maxLen) rules.push(`Picked Team Size = ${this.pickN}`);
     const fid = `${FORMATS[this.format].id}@@@${rules.join(',')}`;
-    const cmds = [`>start ${JSON.stringify({ formatid: fid })}`];
+    const cmds = [`>start ${JSON.stringify({ formatid: fid, seed: this.seed })}`];
     for (const s of this.sides) cmds.push(`>player ${s.id} ${JSON.stringify({ name: s.name, team: sd.pack(s.sets) })}`);
+    if (replay) { this.replaying = true; this.inputLog = []; }
     for (const s of this.sides) {
       if (s.brain) s.brain.pickN = this.pickN;
       (async () => {
         try { for await (const chunk of streams[s.id]) this.onChunk(s, chunk); } catch (e) { this.crash(e); }
       })();
     }
+    if (replay) {
+      for (const c of [...cmds, ...replay]) { this.inputLog.push(c); streams.omniscient.write(c); }
+      return this;
+    }
+    this.inputLog.push(...cmds);
     streams.omniscient.write(cmds.join('\n'));
+    this.persist();
     return this;
+  }
+
+  // Espera a que el simulador termine de responder a lo reescrito (sin trozos nuevos durante unos instantes).
+  async settle() {
+    let last = -1, calm = 0;
+    for (let i = 0; i < 400 && calm < 4; i++) {
+      await new Promise((r) => setTimeout(r, 5));
+      if (this.chunks === last) calm++; else { calm = 0; last = this.chunks; }
+    }
+  }
+
+  snapshot() {
+    return {
+      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null,
+      seed: this.seed, createdAt: this.createdAt, savedAt: Date.now(), input: this.inputLog.slice(1 + this.sides.length), turn: this.turn,
+      sides: this.sides.map((s) => ({ userId: s.userId, name: s.name, sets: s.sets, roster: s.roster, human: s.human, chosen: s.chosen, timeouts: s.timeouts, askedAt: s.askedAt })),
+    };
+  }
+  persist() {
+    if (this.mode === 'sim' || this.finished || this.noPersist) return;
+    (db.data.sdBattles ||= {})[this.id] = this.snapshot();
+    db.save();
+  }
+  unpersist() {
+    if (this.noPersist) return;
+    if (db.data.sdBattles && db.data.sdBattles[this.id]) { delete db.data.sdBattles[this.id]; db.save(); }
+  }
+
+  // Abandono: un humano con petición pendiente sin elegir durante 15 min pierde (PvP: el rival se lleva el bote).
+  expire(now = Date.now()) {
+    if (this.over || this.replaying) return false;
+    for (const s of this.humans()) {
+      if (s.req && !s.req.wait && !s.chosen && now - s.askedAt > ABANDON_MS) { this.forfeit(s, 'por abandono'); return true; }
+    }
+    return false;
   }
 
   humans() { return this.sides.filter((s) => s.human); }
@@ -125,6 +178,7 @@ class Battle {
 
   onChunk(side, chunk) {
     if (this.over && this.finished) return;
+    this.chunks = (this.chunks || 0) + 1;
     const out = [];
     const errs = [];
     let req = null;
@@ -143,15 +197,22 @@ class Battle {
     }
     if (out.length) { side.log.push(...out); if (side.log.length > 3000) side.log.splice(0, side.log.length - 3000); }
     if (side.brain && out.length) side.brain.feed(out);
+    if (this.replaying) {
+      if (req) { side.req = req; side.chosen = !!req.wait; }
+      return;
+    }
     if (req) {
       side.req = req;
       side.chosen = !!req.wait;
       side.errs = 0;
+      side.askedAt = Date.now();
       if (!req.wait && side.human) { side.deadline = Date.now() + TURN_MS; this.arm(side); } else if (side.timer) { clearTimeout(side.timer); side.timer = null; }
     }
+    if (req) this.persist();
     if (errs.length && side.human) {
       side.chosen = false;
       if (side.req && !side.req.wait) this.arm(side);
+      this.persist();
     }
     if (side.human && (out.length || errs.length || req)) {
       this.emitTo(side, 'battle:event', { id: this.id, lines: [...out, ...errs], request: req || undefined, deadline: req && !req.wait ? side.deadline : undefined, wait: req ? !!req.wait : undefined });
@@ -172,7 +233,11 @@ class Battle {
 
   write(side, choice) {
     if (this.finished) return;
-    try { this.streams[side.id].write(choice); } catch (e) { this.crash(e); }
+    try {
+      this.inputLog.push(side.id === 'omniscient' ? choice : `>${side.id} ${choice}`);
+      this.streams[side.id].write(choice);
+      this.persist();
+    } catch (e) { this.crash(e); }
   }
 
   // ---- Temporizador de turno (solo humanos) ----
@@ -233,6 +298,7 @@ class Battle {
     this.finished = true;
     let result;
     try { result = settle(this); } catch (e) { console.error('Combate: error al liquidar', e); result = { error: true }; }
+    this.unpersist();
     this.teardown();
     this.resolveDone({ winner: this.winner, turns: this.turn, result });
   }
@@ -245,6 +311,7 @@ class Battle {
     this.finished = true;
     try { refundBattle(this); } catch (e2) { console.error(e2); }
     for (const s of this.humans()) this.emitTo(s, 'battle:end', { id: this.id, aborted: true, text: 'El combate se ha interrumpido por un error. Si había apuesta, se te ha devuelto.' });
+    this.unpersist();
     this.teardown();
     this.resolveDone({ winner: null, turns: this.turn, aborted: true });
   }
@@ -484,13 +551,106 @@ setInterval(() => {
   let changed = false;
   for (const c of challenges.values()) if (now - c.createdAt > CHALLENGE_MS) { dropChallenge(c); changed = true; }
   if (changed) pushList();
-  for (const b of battles.values()) if (now - b.startedAt > MAX_AGE_MS) b.crash(new Error('Combate demasiado largo'));
+  for (const b of battles.values()) { if (now - b.startedAt > MAX_AGE_MS && b.mode === 'sim') b.crash(new Error('Combate demasiado largo')); else b.expire(now); }
 }, 30000).unref();
 
+// Apagado (redespliegue): los retos abiertos se devuelven, pero los combates en curso se GUARDAN (inputLog + semilla) y
+// se reconstruyen al arrancar. Sus depósitos siguen en `escrow` (ver db.refundEscrow).
 function refundAll() {
   for (const c of [...challenges.values()]) dropChallenge(c);
-  for (const b of [...battles.values()]) b.crash(new Error('Apagado del servidor'));
+  for (const b of [...battles.values()]) {
+    if (b.mode === 'sim') { b.crash(new Error('Apagado del servidor')); continue; }
+    for (const sd2 of b.sides) if (sd2.timer) { clearTimeout(sd2.timer); sd2.timer = null; }
+    b.persist();
+    b.noPersist = true; // nada más debe tocar lo guardado
+  }
 }
+
+// ---- Restauración tras un reinicio ----
+let restoring = false;
+let restoreP = null;
+
+function abortSnapshot(snap, why) {
+  console.error(`Combate ${snap.id}: no se puede restaurar (${why}); se devuelven las apuestas.`);
+  snap.sides.forEach((s, i) => {
+    if (snap.mode === 'pvp') {
+      // El depósito (escrow) manda: aunque el registro esté dañado, cada uno recupera lo que dejó.
+      const key = `btl:${snap.id}:${i}`;
+      const e = db.data.escrow[key];
+      db.escrowDel(key);
+      refundOne(db.userById(e ? e.userId : s.userId), e ? e.amount : snap.wager);
+    }
+    if (s.userId) hub.emitUser(s.userId, 'battle:end', { id: snap.id, aborted: true, text: 'Tu combate no se pudo recuperar tras la actualización del casino.' + (snap.wager ? ' Se te ha devuelto la apuesta.' : '') });
+  });
+  if (db.data.sdBattles) delete db.data.sdBattles[snap.id];
+  db.save();
+}
+
+async function restoreOne(snap) {
+  if (snap.v !== SIM_VERSION) throw new Error('versión del simulador distinta');
+  if (!FORMATS[snap.format] || !Array.isArray(snap.input) || !Array.isArray(snap.seed) || !Array.isArray(snap.sides) || snap.sides.length !== 2) throw new Error('datos dañados');
+  const doubles = FORMATS[snap.format].doubles;
+  const trainer = snap.trainer ? trainers.BY_TRAINER.get(snap.trainer) : null;
+  if (snap.mode === 'cpu' && !trainer) throw new Error('entrenador desconocido');
+  const sides = snap.sides.map((s, i) => {
+    const user = s.human ? db.userById(s.userId) : null;
+    if (s.human && !user) throw new Error('jugador desaparecido');
+    return { user, name: s.name, sets: s.sets, roster: s.roster, brain: s.human ? null : new Brain('p' + (i + 1), { doubles }) };
+  });
+  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
+  b.startedAt = snap.createdAt;
+  battles.set(b.id, b);
+  for (const s of b.sides) if (s.userId) byUser.set(s.userId, b);
+  try {
+    b.start(snap.input);
+    await b.settle();
+    if (b.finished) return;
+    b.replaying = false;
+    if (!b.over && !b.sides.some((s) => s.req)) throw new Error('el simulador no respondió');
+    b.sides.forEach((s, i) => {
+      const o = snap.sides[i];
+      s.timeouts = o.timeouts || 0;
+      s.askedAt = o.askedAt || Date.now();
+      if (o.chosen && s.req && !s.req.wait) s.chosen = true;
+    });
+    b.turn = Math.max(b.turn, snap.turn || 0);
+  } catch (e) {
+    battles.delete(b.id);
+    for (const s of b.sides) if (s.userId && byUser.get(s.userId) === b) byUser.delete(s.userId);
+    b.finished = true;
+    try { b.streams.omniscient.writeEnd(); } catch { /* ya cerrado */ }
+    throw e;
+  }
+  if (b.over) { b.finish(); return; }
+  if (b.expire()) return;
+  for (const s of b.sides) {
+    if (!s.req || s.req.wait || s.chosen) continue;
+    if (s.human) { s.deadline = Date.now() + TURN_MS + RESTORE_GRACE_MS; b.arm(s); } else {
+      const choice = s.brain.decide(s.req) || 'default';
+      b.write(s, choice);
+    }
+  }
+  b.persist();
+}
+
+function restoreAll() {
+  if (restoring) return restoreP;
+  const snaps = Object.values(db.data.sdBattles || {}).filter((x) => !battles.has(x.id));
+  if (!snaps.length) return Promise.resolve(0);
+  restoring = true;
+  restoreP = (async () => {
+    let n = 0;
+    try {
+      for (const snap of snaps) {
+        try { await restoreOne(snap); n++; } catch (e) { abortSnapshot(snap, e.message || String(e)); }
+      }
+    } finally { restoring = false; }
+    if (n) console.log(`  ⚔️  ${n} combate(s) restaurado(s) tras el reinicio`);
+    return n;
+  })();
+  return restoreP;
+}
+const afterRestore = (fn) => (u, p) => (restoring ? restoreP.then(() => fn(u, p)) : fn(u, p));
 
 // ---- Acciones desde el cliente ----
 function sideOf(user, id) {
@@ -514,7 +674,12 @@ function resume(user) {
   const b = byUser.get(user.id);
   return { battle: b ? b.view(b.sides.find((s) => s.userId === user.id)) : null };
 }
-const activeFor = (user) => { const b = byUser.get(user.id); return b ? b.id : null; };
+const activeFor = (user) => {
+  const b = byUser.get(user.id);
+  if (b) return b.id;
+  const snap = Object.values(db.data.sdBattles || {}).find((x) => x.sides.some((s) => s.userId === user.id));
+  return snap ? snap.id : null;
+};
 
 function historyOf(user) {
   const d = dayWins(user);
@@ -620,8 +785,19 @@ function runAiBattle({ format = 'singles', teamA, teamB, level = 'fair', timeout
   return b.done.then((r) => { clearTimeout(to); return { ...r, log: b.sides[0].log }; });
 }
 
+// Solo para pruebas: olvida todo lo que hay en memoria (como un reinicio del proceso) sin tocar lo guardado.
+function _dropMemory() {
+  for (const b of battles.values()) {
+    for (const sd2 of b.sides) if (sd2.timer) { clearTimeout(sd2.timer); sd2.timer = null; }
+    b.finished = true;
+    b.over = true;
+    try { b.streams.omniscient.writeEnd(); } catch { /* ya cerrado */ }
+  }
+  battles.clear(); byUser.clear(); challenges.clear();
+}
+
 module.exports = {
-  MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu, challenge, cancel, accept, choose,
-  forfeit: forfeitAction, resume, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
-  listPublic, refundAll, runAiBattle, battles, challenges, dayWins,
+  MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu: afterRestore(startCpu), challenge: afterRestore(challenge), cancel, accept: afterRestore(accept), choose: afterRestore(choose),
+  forfeit: afterRestore(forfeitAction), resume: afterRestore(resume), restoreAll, ABANDON_MS, RESTORE_GRACE_MS, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
+  listPublic, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
 };

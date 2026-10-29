@@ -117,6 +117,13 @@ export class BattleScreen {
     this.slots[key] = { key, own, el, wrap, hb, nm, gd, lv, st, fill, num, bst, img: null, mon: null, hp: null, boosts: {}, status: '' };
   }
 
+  // Sin conexión con el servidor (p. ej. el casino se está actualizando): el combate sigue guardado y se retoma solo.
+  setOffline(on) {
+    this.offline = on;
+    this.root.classList.toggle('offline', on);
+    if (on) this.menu.replaceChildren(h('div', { class: 'bt2-wait' }, h('span', { class: 'dots' }, ''), 'Reconectando al combate…'));
+  }
+
   // ---------- Utilidades ----------
   sleep(ms) { return this.skip || this.dead ? Promise.resolve() : sleepRaw(ms / this.speed); }
   toggleSpeed() {
@@ -545,7 +552,7 @@ export class BattleScreen {
 
   // ---------- Menú de acciones ----------
   renderMenu() {
-    if (this.dead || this.replay) return;
+    if (this.dead || this.replay || this.offline) return;
     const req = this.req;
     if (this.over) return;
     if (!req) { this.menu.replaceChildren(h('div', { class: 'bt2-wait' }, 'Esperando…')); return; }

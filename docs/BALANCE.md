@@ -496,3 +496,6 @@ Petición del dueño: «completar la Pokédex y maxear un Pokémon no debe costa
 * Cinco partidas simuladas con el código real del gacha (`rollRarity`, `rollPokemon`, `grant`, `evoCost`): tira, evoluciona por primera vez lo que puede, usa el Milagroso, transfiere sobrantes y fabrica lo más barato. Media: núcleo ≈ 33 días (límite del test 38), completa ≈ 97 (límite 115), ≥ 90 % de la Pokédex al día 35.
 * Maxear por rareza: modelo de recursos por día (polvo con el 60 % de tiradas repetidas, solo caramelos comodín, IV medios 93, amistad con las bayas al 70 % del tope). Resultados en la tabla de arriba.
 * El sesgo no cambia las rarezas ni los destacados; la evolución gratuita es única.
+
+### Combates y redespliegues
+Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + registro de entradas); al arrancar se reconstruye reescribiendo las entradas en un simulador nuevo (sin que la IA ni los temporizadores actúen sobre peticiones antiguas) y el turno de los humanos recibe 60 s extra. Los depósitos de PvP (`escrow btl:*`) no se devuelven en el arranque mientras exista el combate guardado; si el registro está dañado o es de otra versión del simulador, se devuelven desde el propio depósito. Abandono: 15 min sin elegir = derrota (en PvP el rival cobra el bote).
