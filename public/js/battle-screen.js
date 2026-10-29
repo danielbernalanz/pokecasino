@@ -94,7 +94,37 @@ export class BattleScreen {
     if (typeof ResizeObserver !== 'undefined') {
       this.ro = new ResizeObserver(() => this.refit());
       this.ro.observe(this.fieldEl);
+      // Todo el combate cabe en la pantalla sin desplazarse: el campo se encoge según lo que ocupen el texto y el menú.
+      this.fitRo = new ResizeObserver(() => this.queueFit());
+      for (const el of [this.bar, this.textBox, this.menu]) this.fitRo.observe(el);
     }
+    this.onResize = () => this.queueFit();
+    window.addEventListener('resize', this.onResize);
+    this.queueFit();
+  }
+
+  queueFit() {
+    if (this.fitRaf || this.dead) return;
+    this.fitRaf = requestAnimationFrame(() => { this.fitRaf = 0; this.fitLayout(); });
+  }
+  fitLayout() {
+    const root = this.root;
+    if (this.dead || !root.isConnected) { if (!this.dead) setTimeout(() => this.queueFit(), 100); return; }
+    const view = root.closest('#view');
+    const cs = view ? getComputedStyle(view) : null;
+    const top = view ? root.getBoundingClientRect().top - view.getBoundingClientRect().top + view.scrollTop : root.getBoundingClientRect().top + window.scrollY;
+    const avail = (view ? view.clientHeight - parseFloat(cs.paddingBottom || 0) : window.innerHeight) - top - 4;
+    // Dos columnas (campo | texto y menú) cuando la zona es más ancha que alta: escritorio y móvil en horizontal.
+    // Solo depende del tamaño de la zona, así que no cambia de un modo a otro al redibujar el menú.
+    const wide = root.parentElement.clientWidth >= 600 && root.parentElement.clientWidth >= avail;
+    root.classList.toggle('bt2-wide', wide);
+    const gap = parseFloat(getComputedStyle(root).rowGap || 8) || 8;
+    const ratio = this.doubles ? 5 / 4 : 3 / 2;
+    const fieldH = wide ? avail - this.bar.offsetHeight - gap : avail - this.bar.offsetHeight - this.textBox.offsetHeight - this.menu.offsetHeight - 3 * gap;
+    const maxW = wide ? root.clientWidth * 0.6 : root.clientWidth;
+    const w = Math.max(200, Math.min(maxW, Math.floor(Math.max(130, fieldH) * ratio)));
+    const px = !wide && w >= maxW - 1 ? '' : `${w}px`; // en dos columnas la anchura siempre es explícita (la columna es «auto»)
+    if (this.fieldEl.style.width !== px) this.fieldEl.style.width = px;
   }
 
   makeSlot(key) {
@@ -135,6 +165,8 @@ export class BattleScreen {
     this.dead = true;
     clearInterval(this.clock);
     if (this.ro) this.ro.disconnect();
+    if (this.fitRo) this.fitRo.disconnect();
+    if (this.onResize) window.removeEventListener('resize', this.onResize);
   }
   slotOf(key) { return key ? this.slots[key] : null; }
 
@@ -561,7 +593,10 @@ export class BattleScreen {
     if (this.over) return;
     if (!req) { this.menu.replaceChildren(h('div', { class: 'bt2-wait' }, 'Esperando…')); return; }
     if (req.wait || this.reqChosen) {
-      this.menu.replaceChildren(h('div', { class: 'bt2-wait' }, h('span', { class: 'dots' }, ''), this.reqChosen ? 'Esperando al rival…' : 'Esperando al rival…',
+      // Contra otro jugador se puede cancelar la elección mientras el rival no haya elegido.
+      const canUndo = this.reqChosen && !req.wait && this.view.mode === 'pvp';
+      this.menu.replaceChildren(h('div', { class: 'bt2-wait' }, h('span', { class: 'dots' }, ''), 'Esperando al rival…',
+        canUndo ? h('button', { class: 'btn', type: 'button', onclick: (e) => this.undo(e.currentTarget) }, '↩ Cancelar elección') : '',
         this.forfeitButton()));
       return;
     }
@@ -578,6 +613,18 @@ export class BattleScreen {
     const m = modal(h('div', { class: 'stack' }, h('p', {}, '¿Seguro que quieres rendirte? Contará como derrota (y perderás la apuesta si la hay).'),
       h('div', { class: 'row gap' }, h('button', { class: 'btn', type: 'button', onclick: () => m.close() }, 'Seguir luchando'),
         h('button', { class: 'btn danger', type: 'button', onclick: async () => { m.close(); try { await emit('battle:forfeit', { id: this.view.id }); } catch (err) { toast(err.message, 'error'); } } }, 'Rendirme'))), { title: 'Rendirse' });
+  }
+
+  async undo(btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const r = await emit('battle:undo', { id: this.view.id });
+      // Si el turno ya se había resuelto, la petición nueva llega por el canal normal.
+      if (r && r.request) { this.reqChosen = false; this.renderMenu(); }
+    } catch (e) {
+      toast(/elección que cancelar/.test(e.message) ? 'El rival ya ha elegido: el turno está en marcha.' : e.message, 'error');
+      if (btn) btn.disabled = false;
+    }
   }
 
   async send(choice) {
@@ -702,7 +749,9 @@ export class BattleScreen {
         } },
         h('span', { class: 'mv-n' }, moveEs(mv.id) || mv.move),
         h('span', { class: 'mv-m' }, h('span', { class: 'mv-ty' }, TYPE_ES[meta.type] || meta.type), h('span', { class: 'mv-c', title: CAT[meta.cat][0] }, CAT[meta.cat][1]), meta.bp ? h('span', {}, `${meta.bp}`) : null),
-        h('span', { class: 'mv-pp' }, `PP ${mv.pp}/${mv.maxpp}`));
+        h('span', { class: 'mv-pp' }, `PP ${mv.pp}/${mv.maxpp}`),
+        // Como en los juegos, Pulso Cura y compañía curan a su OBJETIVO: en individual, al rival.
+        HEALS_TARGET.has(mv.id) ? h('span', { class: 'mv-warn' }, this.doubles ? '💚 Cura al objetivo (elige a tu aliado)' : '⚠ Cura al objetivo: ¡al rival!') : '');
       }));
       const bench = mine.map((p, i) => ({ p, i })).filter((x) => !x.p.active && !stateOfCondition(x.p.condition).fnt && !taken.has(x.i));
       const trapped = act.trapped || act.maybeTrapped;
@@ -741,6 +790,8 @@ export class BattleScreen {
       h('div', { class: 'row gap' }, h('button', { class: 'btn', type: 'button', onclick: back }, '↩ Atrás'))));
   }
 }
+
+const HEALS_TARGET = new Set(['healpulse', 'floralhealing', 'purify']);
 
 function translateError(t) {
   if (/not your turn|Can't do anything|already/i.test(t)) return 'ya has elegido o no es tu turno.';

@@ -548,6 +548,7 @@ io.on('connection', (socket) => {
   on('battle:cancel', showdown.cancel);
   on('battle:choose', showdown.choose, { push: false });
   on('battle:forfeit', showdown.forfeit, { push: false });
+  on('battle:undo', showdown.undo, { push: false });
   on('battle:resume', showdown.resume, { push: false });
   on('battle:history', showdown.historyOf, { push: false });
   on('battle:replay', showdown.replay, { push: false });

@@ -443,3 +443,31 @@ test('abandono: 15 minutos sin elegir pierden el combate (PvP: el rival cobra)',
   assert.ok(!db.data.sdBattles[bat.id]);
   assert.strictEqual(sdw.battles.size, 0);
 });
+
+test('PvP: se puede cancelar la elección mientras el rival no ha elegido', async () => {
+  const ids = [25, 6, 9];
+  const a = withMons(ids), b = withMons(ids);
+  const c = sdw.challenge(a, { format: 'singles', level: 'fair', wager: 0, team: members(a, ids) });
+  const acc = sdw.accept(b, { id: c.challenge, team: members(b, ids) });
+  const bat = sdw.battles.get(acc.battle.id);
+  const [A, B] = bat.sides;
+  // Vista previa de equipos y primer turno.
+  await waitFor(() => asking(A) && asking(B));
+  sdw.choose(a, { id: bat.id, choice: 'team 123' });
+  sdw.choose(b, { id: bat.id, choice: 'team 123' });
+  await waitFor(() => asking(A) && asking(B) && A.req.active);
+  const turn = bat.turn;
+  sdw.choose(a, { id: bat.id, choice: 'move 1' });
+  assert.ok(A.chosen);
+  assert.throws(() => sdw.undo(b, { id: bat.id }), /cancelar/, 'el rival no ha elegido nada');
+  const r = await sdw.undo(a, { id: bat.id });
+  assert.ok(r.request && r.request.active, 'vuelve a poder elegir');
+  assert.ok(!A.chosen);
+  sdw.choose(a, { id: bat.id, choice: 'switch 2' });
+  sdw.choose(b, { id: bat.id, choice: 'move 1' });
+  await waitFor(() => bat.turn > turn);
+  assert.ok(A.log.some((l) => /^\|switch\|p1a: /.test(l) && A.log.indexOf(l) > 0), 'se hizo el cambio elegido tras cancelar');
+  assert.ok(bat.inputLog.includes('>p1 undo'), 'queda en el registro para reconstruir el combate');
+  sdw.forfeit(a, { id: bat.id });
+  await bat.done;
+});

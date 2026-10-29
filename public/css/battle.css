@@ -262,3 +262,33 @@
 
 .bt-banner { position: fixed; left: 50%; transform: translateX(-50%); top: 64px; z-index: 60; display: flex; align-items: center; gap: 10px; background: var(--panel, #241f3b); color: var(--text); border: 3px solid var(--gold, #ffcb05); border-radius: 14px; padding: 8px 12px; font-weight: 800; box-shadow: 0 6px 18px #0006; max-width: calc(100vw - 24px); }
 .bt2.offline .bf { filter: grayscale(.5) brightness(.8); }
+.bt2 .mv .mv-warn { font-size: 11px; font-weight: 800; background: #fff3; border-radius: 6px; padding: 1px 6px; }
+
+/* Todo el combate en una pantalla: el campo se centra cuando el JS lo encoge para que quepan el texto y el menú. */
+.bt2 > .bf { margin: 0 auto; max-width: 100%; }
+.bt2 .mv { min-height: 56px; }
+/* Pantallas anchas (escritorio y móvil en horizontal): campo a la izquierda, texto y menú a la derecha. */
+.bt2.bt2-wide { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; gap: 8px; max-width: 1200px; align-items: start; }
+.bt2-wide > .bt2-bar { grid-column: 1 / -1; }
+.bt2-wide > .bf { grid-column: 1; grid-row: 2 / span 2; align-self: start; margin: 0; }
+.bt2-wide > .bt2-text { grid-column: 2; grid-row: 2; min-height: 0; padding: 6px 28px 6px 10px; }
+.bt2-wide > .bt2-text .bt2-say { font-size: 16px; }
+.bt2-wide > .bt2-menu { grid-column: 2; grid-row: 3; min-height: 0; padding: 6px; }
+.bt2-wide .mv { min-height: 48px; padding: 5px 8px; }
+@media (max-height: 560px) { .bt2-wide > .bt2-text .bt2-say { font-size: 14px; } .bt2-wide .mv { min-height: 42px; padding: 4px 8px; } }
+.bt2-wide .mv-pp { position: static; align-self: flex-end; margin-top: -2px; }
+/* Móvil en horizontal (poca altura): menú compacto para que no haga falta desplazarse. */
+@media (max-height: 560px) {
+  .bt2-wide { gap: 4px 6px; }
+  .bt2-wide > .bt2-bar { padding: 2px 8px; }
+  .bt2-wide .bt2-ask { display: none; }
+  .bt2-wide > .bt2-text { padding: 4px 24px 4px 8px; border-width: 3px; }
+  .bt2-wide > .bt2-text .bt2-say { font-size: 13px; line-height: 1.25; }
+  .bt2-wide .mega-btn { padding: 3px 8px; margin-bottom: 4px; }
+  .bt2-wide .mega-btn small { display: none; }
+  .bt2-wide .mv-grid { gap: 4px; }
+  .bt2-wide .mv { min-height: 36px; padding: 3px 7px; font-size: 12px; box-shadow: 0 2px 0 #0007; }
+  .bt2-wide .mv-m { display: none; }
+  .bt2-wide .bt2-row { margin-top: 4px; }
+  .bt2-wide .bt2-row .btn { padding: 3px 10px; min-height: 0; }
+}

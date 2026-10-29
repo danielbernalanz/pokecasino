@@ -3,7 +3,7 @@
 // - Sprites de PokeAPI: primero la caché (no cambian) para cargar mucho más rápido.
 // - GIF animados de Showdown (play.pokemonshowdown.com): no se guardan aquí (respuestas opacas, pesan más); los cachea el navegador.
 // - Nunca se guarda nada de /api, del socket ni de changelog.json (las novedades siempre frescas).
-const VERSION = 'v22';
+const VERSION = 'v23';
 const APP = 'pokecasino-app-' + VERSION;
 const SPRITES = 'pokecasino-sprites';
 const SPRITE_LIMIT = 1500;

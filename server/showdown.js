@@ -276,6 +276,20 @@ class Battle {
     this.write(side, choice);
   }
 
+  // Cancelar la elección mientras el rival no haya elegido (como el «Cancelar» de Showdown). Si el turno ya se ha
+  // resuelto, el simulador no hace nada y llega la petición del turno siguiente.
+  undo(side) {
+    if (this.over) throw new Error('El combate ya ha terminado.');
+    if (!side.chosen || !side.req || side.req.wait) throw new Error('No hay ninguna elección que cancelar.');
+    const req = side.req;
+    side.chosen = false;
+    this.write(side, 'undo');
+    if (side.req === req && !this.over) {
+      if (side.human && side.deadline) this.arm(side);
+      this.persist();
+    }
+  }
+
   forfeit(side, why = '') {
     if (this.over) return;
     this.write({ id: 'omniscient' }, `>forcelose ${side.id}`);
@@ -679,6 +693,11 @@ function choose(user, { id, choice }) {
   b.choose(side, choice);
   return {};
 }
+function undo(user, { id }) {
+  const { b, side } = sideOf(user, id);
+  b.undo(side);
+  return { request: side.chosen ? null : side.req, deadline: side.deadline || 0 };
+}
 function forfeitAction(user, { id }) {
   const { b, side } = sideOf(user, id);
   b.forfeit(side);
@@ -814,6 +833,7 @@ function _dropMemory() {
 }
 
 module.exports = {
+  undo: afterRestore(undo),
   MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu: afterRestore(startCpu), challenge: afterRestore(challenge), cancel, accept: afterRestore(accept), choose: afterRestore(choose),
   forfeit: afterRestore(forfeitAction), resume: afterRestore(resume), restoreAll, ABANDON_MS, RESTORE_GRACE_MS, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
   listPublic, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,

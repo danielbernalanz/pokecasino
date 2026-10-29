@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.10.29-n",
+    "date": "2026-10-29",
+    "title": "Combates en una sola pantalla",
+    "items": [
+      "🖥️ La pantalla de combate cabe entera sin desplazarte: en ordenador y con el móvil en horizontal, el campo va a la izquierda y el texto y los ataques a la derecha; en vertical, el campo se ajusta al espacio.",
+      "↩️ Contra otro jugador puedes «Cancelar elección» mientras el rival no haya elegido.",
+      "💚 Pulso Cura, Cura Floral y Purificación avisan de que curan a su objetivo: en combates individuales, al rival (como en los juegos)."
+    ]
+  },
+  {
     "version": "2026.10.29-m",
     "date": "2026-10-29",
     "title": "Megaevolución más clara",
