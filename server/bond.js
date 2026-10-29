@@ -12,8 +12,8 @@ const { randInt, pick, weighted } = require('./rng');
 const FRIEND_MAX = 255;
 const LOVE_MIN = 220; // «Te adora»: +3 % a todas las estadísticas en duelos y evolución por amistad
 const LOVE_BONUS = 0.03;
-const CAP = { buddy: 20, feed: 60, duel: 15, battle: 10 }; // por ejemplar y día (duel = 5 victorias × 3; battle = 5 victorias de combate × 2)
-const BET_STEP = 1000; // monedas apostadas por +1 de amistad del compañero
+const CAP = { buddy: 30, feed: 100, duel: 15, battle: 10 }; // por ejemplar y día (duel = 5 victorias × 3; battle = 5 victorias de combate × 2)
+const BET_STEP = 500; // monedas apostadas por +1 de amistad del compañero
 const DUEL_WIN = 3;
 const BERRY_CAP = 999;
 

@@ -229,7 +229,10 @@ test('los duelos no dan XP al crear ni cancelar retos y la XP fija tiene tope di
 // ---------- Bucles de monedas ----------
 test('bucle crear → liberar: fabricar una especie cuesta mucho más polvo que el que devuelve liberarla', () => {
   for (const [r, def] of Object.entries(dex.RARITY)) {
-    assert.ok(def.craft >= 10 * def.dust, `${r}: ${def.craft} vs ${def.dust}`);
+    // Progresión casual: fabricar cuesta ≥ 2,3 duplicados de su rareza (antes ≥ 10). El polvo se cambia a DUST_RATE monedas y un PNJ
+    // paga como mucho DUST_RATE por ✦ del duplicado: fabricar y vender/liberar siempre pierde (≥ 57 % de polvo).
+    assert.ok(def.craft >= 2.3 * def.dust, `${r}: ${def.craft} vs ${def.dust}`);
+    assert.ok(npc.maxBid(r) < def.craft * gacha.DUST_RATE * 0.5, `${r}: vender una fabricada a un PNJ devuelve < 50 % de su coste en monedas`);
   }
 });
 
@@ -273,6 +276,20 @@ test('bucle gacha → liberar/vender a PNJ: una tirada devuelve como mucho ≈66
   for (const r of Object.keys(dex.RARITY)) assert.ok(npc.maxBid(r) <= dex.RARITY[r].dust * gacha.DUST_RATE);
 });
 
+test('bucle caramelos → evolución → liberar: ni siquiera con todos los caramelos de una tirada sale a cuenta', () => {
+  const candy = require('../server/candy');
+  const dustPerPull = Object.entries(gacha.RATES).reduce((s, [r, p]) => s + p * dex.RARITY[r].dust, 0);
+  const shinyExtra = 1 + 3 * gacha.SHINY_RATE * 4;
+  const gifts = Object.entries(gacha.X10_GIFTS).reduce((s, [it, p]) => s + p * npc.bounds({ kind: 'item', itemId: it }).cap, 0) / 10;
+  // Caramelos por tirada en el peor caso: todo repetido y transferido, más los de la tirada (especie nueva: el máximo).
+  const candyPerPull = candy.PULL_NEW_CANDY + candy.WILD_PULL
+    + Object.entries(gacha.RATES).reduce((s, [r, p]) => s + p * (candy.TRANSFER_CANDY[r] + candy.WILD_TRANSFER[r]), 0);
+  const back = (dustPerPull * shinyExtra + candyPerPull * candy.EVO_GAIN_PER_CANDY) * gacha.DUST_RATE + gifts;
+  assert.ok(back < 0.95 * gacha.COST[1], `${back.toFixed(1)} de ${gacha.COST[1]} (caramelos/tirada ${candyPerPull.toFixed(1)})`);
+  // Los caramelos no tienen precio: ni la tienda, ni los PNJ, ni el Mercado los comercian.
+  assert.ok(!items.ITEMS.candy && !items.ITEMS['wild-candy']);
+});
+
 test('bucle Huevo Misterioso → cosméticos: abrirlo vale menos que comprarlo a un PNJ', () => {
   const W = items.EGG_WEIGHTS || { C: 40, U: 30, R: 18, E: 9, L: 3 };
   const total = Object.values(W).reduce((a, b) => a + b, 0);
@@ -299,7 +316,7 @@ test('Joy: como mucho 6.000 monedas al día (y solo si te quedas sin nada cada v
   assert.ok(healer.AMOUNT <= 1000);
 });
 
-test('ingresos diarios de un jugador casual: ≈3.300 monedas, y una legendaria concreta cuesta ≥ 2 semanas', () => {
+test('ingresos diarios de un jugador casual: ≈3.300 monedas, y una legendaria concreta cuesta ≥ 1 semana', () => {
   const val = (rw) => (rw.coins || 0) + Object.entries(rw.items || {}).reduce((s, [id, n]) => s + n * ({ ticket: 150, 'mystery-egg': 150, 'rare-candy': 450 }[id] || 0), 0);
   const missions = progress.DAILY.reduce((s, m) => s + val(m.reward), 0) / progress.DAILY.length;
   const income = BAL.dailyReward(7) + 150 /* ticket */ + 150 /* tirada gratis */ + 3 * missions + val({ coins: 250, items: { 'mystery-egg': 1 } });
@@ -307,7 +324,7 @@ test('ingresos diarios de un jugador casual: ≈3.300 monedas, y una legendaria 
   // Legendaria concreta con 3 destacadas: 1 / (P(L) × 50 % / 3) tiradas.
   const pulls = 1 / (gacha.RATES.L * 0.5 / 3);
   const days = (pulls * gacha.COST[1]) / income;
-  assert.ok(days >= 14 && days <= 35, `${days.toFixed(1)} días`);
+  assert.ok(days >= 7 && days <= 35, `${days.toFixed(1)} días`);
   // El valor de lo que dan las 8 medallas y el campeonato es una vez en la vida: < 1 mes de ingresos.
   const badges = progress.BADGE_COINS * 36 + progress.CHAMPION_COINS;
   assert.ok(badges < 32 * income, `${badges}`);

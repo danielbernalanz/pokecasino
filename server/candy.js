@@ -12,23 +12,33 @@ const { weighted } = require('./rng');
 
 // Caramelos que da transferir un ejemplar al Profesor Oak (además del polvo de liberar).
 const TRANSFER_CANDY = { C: 3, U: 4, R: 6, E: 10, L: 20, M: 25 };
-const PULL_CANDY = 1; // por tirada de gacha
-const PULL_NEW_CANDY = 3; // si la especie es nueva
+const PULL_CANDY = 2; // por tirada de gacha (de la familia del Pokémon obtenido)
+const PULL_NEW_CANDY = 5; // si la especie es nueva
+// Progresión casual: además hay «caramelos comodín» (WILD): sirven para cualquier familia (primero se gastan los de la
+// familia y luego los comodín). Los da cada tirada y cada ejemplar transferido. Sin valor en monedas ni polvo.
+const WILD = '*';
+const WILD_PULL = 5;
+const WILD_TRANSFER = { C: 2, U: 3, R: 4, E: 6, L: 12, M: 15 };
 const CANDY_CAP = 99999;
 
 const MIN_LEVEL = 5;
 const MAX_LEVEL = 100;
-const levelCost = (level) => Math.ceil(level / 10); // de `level` a `level + 1`
+const LEVEL_DIV = 50;
+const levelCost = (level) => Math.ceil(level / LEVEL_DIV); // de `level` a `level + 1`: 5 → 100 = 144 caramelos
 
-// Evolución: coste base por fase de destino y nivel mínimo. Si la evolución sube la rareza, el coste crece para que el
-// polvo extra al liberar el resultado nunca supere 1,5 por caramelo (transferir da ≥ 1,67 de polvo por caramelo).
-const EVO = { 2: { cost: 25, level: 16 }, 3: { cost: 100, level: 36 } };
-const EVO_GAIN_PER_CANDY = 1.5;
+// Evolución: coste base por fase de destino. Sin nivel mínimo (casual). Si la evolución sube la rareza, el coste de una
+// evolución «repetida» (el destino ya está en la colección y se puede liberar) crece para que el polvo extra al liberar
+// el resultado nunca supere 0,5 por caramelo (transferir da ≥ 1,67 de polvo por caramelo).
+// La PRIMERA evolución a una especie que aún no tienes («registro de Pokédex») cuesta solo el coste base y no gasta la
+// copia de origen: el ejemplar evoluciona y la especie origen conserva su entrada. Esa copia nueva es la última de su
+// especie (no se puede liberar ni vender), así que no crea valor en polvo ni monedas.
+const EVO = { 2: { cost: 8, level: 0 }, 3: { cost: 18, level: 0 } };
+const EVO_GAIN_PER_CANDY = 0.5;
 const FIXED_MULT = 4; // legendarios y míticos: ×4
 
-const TRAIN_COST = 2;
-const TRAIN_DAILY = 10;
-const WONDER_DAILY = 3;
+const TRAIN_COST = 1;
+const TRAIN_DAILY = 60;
+const WONDER_DAILY = 5;
 const RECYCLE_RATE = 0.4; // del precio de tienda
 const RECYCLE_DAILY_DUST = 300;
 
@@ -37,7 +47,10 @@ const chainOf = (id) => BY_ID.get(id).chain;
 const FAMILY_NAME = new Map();
 for (const p of DEX) if (!p.evolvesFrom && !FAMILY_NAME.has(p.chain)) FAMILY_NAME.set(p.chain, p.name);
 const familyName = (id) => FAMILY_NAME.get(chainOf(id)) || BY_ID.get(id).name;
-const candyOf = (u, id) => (u.candy && u.candy[chainOf(id)]) || 0;
+const familyOf = (u, id) => (u.candy && u.candy[chainOf(id)]) || 0;
+const wildOf = (u) => (u.candy && u.candy[WILD]) || 0;
+// Caramelos disponibles para un Pokémon: los de su familia más los comodín.
+const candyOf = (u, id) => familyOf(u, id) + wildOf(u);
 
 function addCandy(u, id, n) {
   if (!(n > 0)) return 0;
@@ -46,16 +59,23 @@ function addCandy(u, id, n) {
   u.candy[k] = Math.min(CANDY_CAP, (u.candy[k] || 0) + n);
   return n;
 }
+function addWild(u, n) {
+  if (!(n > 0)) return 0;
+  u.candy ||= {};
+  u.candy[WILD] = Math.min(CANDY_CAP, (u.candy[WILD] || 0) + n);
+  return n;
+}
 function takeCandy(u, id, n) {
   if (candyOf(u, id) < n) throw new Error(`Necesitas ${n} caramelos de ${familyName(id)} (tienes ${candyOf(u, id)}).`);
   const k = chainOf(id);
-  u.candy[k] -= n;
-  if (!u.candy[k]) delete u.candy[k];
+  const fam = Math.min(n, familyOf(u, id));
+  if (fam) { u.candy[k] -= fam; if (!u.candy[k]) delete u.candy[k]; }
+  if (n > fam) { u.candy[WILD] -= n - fam; if (!u.candy[WILD]) delete u.candy[WILD]; }
 }
 
-// Se llama desde el gacha por cada Pokémon obtenido.
+// Se llama desde el gacha por cada Pokémon obtenido. Devuelve el total de caramelos (familia + comodín).
 function onPull(u, id, isNew) {
-  return addCandy(u, id, isNew ? PULL_NEW_CANDY : PULL_CANDY);
+  return addCandy(u, id, isNew ? PULL_NEW_CANDY : PULL_CANDY) + addWild(u, WILD_PULL);
 }
 
 function day(u) {
@@ -68,11 +88,12 @@ function day(u) {
 const evolutionsOf = (id) => DEX.filter((p) => p.evolvesFrom === id);
 // `friend`: evolución por amistad (≥ 220): sin nivel mínimo y con la mitad del coste base. El suelo por subida de
 // rareza se mantiene, así que el polvo ganado por caramelo nunca supera 1,5 (sin arbitraje).
-function evoCost(fromId, toId, friend = false) {
+// `first`: primera evolución a esa especie (sin suelo por subida de rareza: la copia resultante no se puede liberar).
+function evoCost(fromId, toId, friend = false, first = false) {
   const from = BY_ID.get(fromId);
   const to = BY_ID.get(toId);
   const base = EVO[to.stage >= 3 ? 3 : 2];
-  const gain = Math.max(0, RARITY[to.rarity].dust - RARITY[from.rarity].dust);
+  const gain = first ? 0 : Math.max(0, RARITY[to.rarity].dust - RARITY[from.rarity].dust);
   let cost = Math.max(friend ? Math.ceil(base.cost / 2) : base.cost, Math.ceil(gain / EVO_GAIN_PER_CANDY));
   if (to.rarity === 'L' || to.rarity === 'M') cost *= FIXED_MULT;
   return { cost, level: friend ? 0 : base.level };
@@ -84,7 +105,7 @@ function transfer(u, p) {
   const id = Number(p.id);
   const rarity = BY_ID.get(id).rarity;
   const res = specimen.release(u, p);
-  const candy = addCandy(u, id, TRANSFER_CANDY[rarity]);
+  const candy = addCandy(u, id, TRANSFER_CANDY[rarity]) + addWild(u, WILD_TRANSFER[rarity]);
   db.save();
   return { ...res, candy, name: m.nick || BY_ID.get(id).name };
 }
@@ -110,7 +131,8 @@ function transferBulk(u, p) {
   let res;
   try { res = gacha.release(u, { id, count: list.length }); } catch (e) { for (const m of list) delete m.drop; throw e; }
   for (const x of specimen.sync(u, id)) delete x.drop;
-  const candy = addCandy(u, id, TRANSFER_CANDY[BY_ID.get(id).rarity] * list.length);
+  const rar = BY_ID.get(id).rarity;
+  const candy = addCandy(u, id, TRANSFER_CANDY[rar] * list.length) + addWild(u, WILD_TRANSFER[rar] * list.length);
   db.save();
   return { ...res, candy, count: list.length };
 }
@@ -132,6 +154,8 @@ function levelUp(u, p) {
 }
 
 // ---- Evolucionar ----
+// Primera evolución a una especie: no la tienes y nunca la has registrado así (si vendes la copia, la próxima vez ya no es «primera»).
+const isFirstEvo = (u, to) => !(u.collection[to] && u.collection[to].n > 0) && !(u.evoReg && u.evoReg[to]);
 function evolve(u, p) {
   const m = specimen.find(u, p);
   const id = Number(p.id);
@@ -141,17 +165,20 @@ function evolve(u, p) {
   const bond = require('./bond');
   const friend = bond.isFriendEvo(id, to) && bond.loves(bond.friendOf(m));
   if (!friend && bond.isFriendEvo(id, to) && bond.FRIEND_ONLY.has(to)) throw new Error(`${target.name} solo evoluciona con mucha amistad (≥ ${bond.LOVE_MIN}).`);
-  const { cost, level } = evoCost(id, to, friend);
+  const tc = u.collection[to];
+  const first = isFirstEvo(u, to); // la especie destino aún no está en la colección: se registra sin gastar la copia de origen
+  const { cost, level } = evoCost(id, to, friend, first);
   if (m.level < level) throw new Error(`Necesita nivel ${level} (ahora ${m.level}).`);
   const c = u.collection[id];
-  if (gacha.spareCopies(c) < 1) throw new Error(`Necesitas otra copia de ${BY_ID.get(id).name} para conservar su entrada en la Pokédex.`);
-  const tc = u.collection[to];
+  if (!first && gacha.spareCopies(c) < 1) throw new Error(`Necesitas otra copia de ${BY_ID.get(id).name}: ya tienes ${target.name} y evolucionar gasta una copia.`);
   if (tc && tc.n >= 5) throw new Error(`Ya tienes 5 estrellas de ${target.name}.`);
   takeCandy(u, id, cost);
-  // Sale el ejemplar concreto de la especie origen…
+  if (first) (u.evoReg ||= {})[to] = 1; // una sola vez por especie y cuenta (aunque luego vendas la copia)
+  // Sale el ejemplar concreto de la especie origen (si es la primera vez, la especie origen conserva su entrada y
+  // `sync` le crea un ejemplar nuevo de nivel 5)…
   const arr = specimen.sync(u, id);
   arr.splice(arr.indexOf(m), 1);
-  c.n--;
+  if (!first) c.n--;
   if (m.shiny) c.s = Math.max(0, (c.s || 0) - 1);
   if (c.s > gacha.realCopies(c)) c.s = gacha.realCopies(c);
   // …y entra, con sus datos, en la especie destino.
@@ -212,7 +239,8 @@ function wonder(u, p) {
   if (d.wonder >= WONDER_DAILY) throw new Error(`Solo ${WONDER_DAILY} intercambios milagrosos al día.`);
   const pool = wonderPool(u, src.rarity).filter((x) => x.id !== id);
   if (!pool.length) throw new Error('No hay nada que recibir a cambio ahora mismo.');
-  const got = weighted(pool, (x) => (src.rarity === 'L' ? 1 : gacha.stageWeight(x)));
+  // Las especies que ya tienes pesan menos (igual que en el gacha): el Milagroso sirve para completar la Pokédex.
+  const got = weighted(pool, (x) => (src.rarity === 'L' ? 1 : gacha.stageWeight(x)) * (u.collection[x.id] && u.collection[x.id].n > 0 ? gacha.TUNING.dupKeep : 1));
   // Sale el ejemplar entregado y entra una copia nueva y aleatoria.
   const arr = specimen.sync(u, id);
   arr.splice(arr.indexOf(m), 1);
@@ -261,17 +289,22 @@ function boxExtra(u) {
   const d = day(u);
   const train = {};
   for (const arr of Object.values(u.mons || {})) for (const m of arr) if (m.train) train[m.uid] = trainLeft(m);
+  // Para el cliente cada familia muestra sus caramelos más los comodín (es lo que se puede gastar en ella).
+  const candyView = {};
+  const wild = wildOf(u);
+  for (const [k, v] of Object.entries(u.candy || {})) if (k !== WILD) candyView[k] = v;
+  if (wild) for (const k of FAMILY_NAME.keys()) candyView[k] = (candyView[k] || 0) + wild;
   return {
-    candy: u.candy || {}, train, wonderLeft: WONDER_DAILY - d.wonder, recycleLeft: RECYCLE_DAILY_DUST - d.recycle,
-    rules: { transfer: TRANSFER_CANDY, trainCost: TRAIN_COST, trainDaily: TRAIN_DAILY, wonderDaily: WONDER_DAILY, maxLevel: MAX_LEVEL, recycleDaily: RECYCLE_DAILY_DUST, recycle: Object.fromEntries(recycleList()),
-      evo: Object.fromEntries(DEX.filter((x) => x.evolvesFrom).map((x) => [x.id, evoCost(x.evolvesFrom, x.id)])),
-      evoFriend: Object.fromEntries([...require('./bond').FRIEND_EVO].map(([to, from]) => [to, evoCost(from, to, true)])), loveMin: require('./bond').LOVE_MIN,
+    candy: candyView, wild, train, wonderLeft: WONDER_DAILY - d.wonder, recycleLeft: RECYCLE_DAILY_DUST - d.recycle,
+    rules: { transfer: Object.fromEntries(Object.keys(TRANSFER_CANDY).map((r) => [r, TRANSFER_CANDY[r] + WILD_TRANSFER[r]])), evoFirst: DEX.filter((x) => x.evolvesFrom && isFirstEvo(u, x.id)).map((x) => x.id), levelDiv: LEVEL_DIV, feedCap: require('./bond').CAP.feed, betStep: require('./bond').BET_STEP, trainCost: TRAIN_COST, trainDaily: TRAIN_DAILY, wonderDaily: WONDER_DAILY, maxLevel: MAX_LEVEL, recycleDaily: RECYCLE_DAILY_DUST, recycle: Object.fromEntries(recycleList()),
+      evo: Object.fromEntries(DEX.filter((x) => x.evolvesFrom).map((x) => [x.id, evoCost(x.evolvesFrom, x.id, false, isFirstEvo(u, x.id))])),
+      evoFriend: Object.fromEntries([...require('./bond').FRIEND_EVO].map(([to, from]) => [to, evoCost(from, to, true, isFirstEvo(u, to))])), loveMin: require('./bond').LOVE_MIN,
       friendOnly: [...require('./bond').FRIEND_ONLY] },
   };
 }
 
 module.exports = {
-  TRANSFER_CANDY, PULL_CANDY, PULL_NEW_CANDY, MIN_LEVEL, MAX_LEVEL, EVO, EVO_GAIN_PER_CANDY, TRAIN_COST, TRAIN_DAILY, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST, RECYCLE_BERRY_DAILY, RECYCLE_BERRY_DUST,
-  levelCost, evoCost, evolutionsOf, candyOf, addCandy, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
+  TRANSFER_CANDY, WILD, WILD_PULL, WILD_TRANSFER, LEVEL_DIV, PULL_CANDY, PULL_NEW_CANDY, MIN_LEVEL, MAX_LEVEL, EVO, EVO_GAIN_PER_CANDY, TRAIN_COST, TRAIN_DAILY, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST, RECYCLE_BERRY_DAILY, RECYCLE_BERRY_DUST,
+  levelCost, evoCost, isFirstEvo, evolutionsOf, candyOf, familyOf, wildOf, addCandy, addWild, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
   transfer, transferBulk, levelUp, evolve, train, wonder, recycle,
 };

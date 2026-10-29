@@ -445,3 +445,54 @@ Combates reales con el simulador oficial de Pokémon Showdown (individuales y do
 | Zero-sum | Un combate PvP no crea monedas: `suma antes = suma después + comisión`, con test. |
 | Simultáneos | Máximo 8 combates a la vez (`SD_MAX_BATTLES`): el simulador pesa ~130 MB de RSS cuando se usa y la instancia gratuita tiene 512 MB. El simulador se carga solo al empezar el primer combate. |
 | Turnos | 60 s por turno; al agotarse se elige «default»; 3 tiempos agotados seguidos = derrota por inactividad. |
+
+## Progresión casual: completar la Pokédex y maxear un Pokémon sin cientos de horas (server/gacha.js, candy.js, bond.js, pokedex.js · test/progression.test.js)
+
+Petición del dueño: «completar la Pokédex y maxear un Pokémon no debe costar cientos de horas; el casino es casual, pero sin abusar de las mecánicas para sacar una ventaja considerable». Se mantienen los topes diarios de monedas y todos los invariantes anti-faucet; lo que cambia es **cuánto cuesta cada cosa en tiempo**.
+
+**Jugador de referencia.** ≈ 1 hora al día. Ingresos = recompensa diaria (racha 7) + Ticket + tirada gratis + 3 misiones + bonus de misiones ≈ 3.300 monedas; menos lo que se pierde jugando una hora (≈ 15.000 apostadas × ventaja × 70 %) y a 135 monedas por tirada de un ×10: **22 tiradas al día** (`test/progression.test.js` lo calcula con las constantes).
+
+**Objetivos** (1 h/día: «días» = «horas»):
+
+| | Antes | Después | Objetivo |
+|---|---|---|---|
+| Pokédex núcleo (C/U/R/E = 931 especies) | ≈ 280-360 días | **≈ 33 días** | ≤ 5 semanas |
+| Pokédex completa (1.025, con 94 L y M) | ≈ 400-470 días | **≈ 97 días** | cola larga de legendarios, ≤ ≈15 semanas |
+| Especies al día 35 | ≈ 600 | **≈ 957** | ≥ 90 % |
+| Maxear Común / Poco común | > 20 días (límite de 10 entrenamientos al día) | **≈ 2 días** | 1-2 h |
+| Maxear Rara / Épica | > 20 días / > 100 | **≈ 2 / ≈ 4,5 días** | 3-5 h |
+| Maxear Legendaria / Mítica | > 100 días / > 200 | **≈ 7,5 / ≈ 15 días** | 8-12 h |
+
+«Maxear» = 5★ (5 copias, como siempre; ahora fabricar una copia es barato) + Nv. 100 + los 6 IV a 31 + amistad 255. El tiempo es el del recurso más lento: polvo para las copias, caramelos para nivel e IV (media de 93 IV por entrenar), tope diario de entrenamientos y amistad.
+
+### Palancas y cambios
+
+| Palanca | Antes → después | Por qué |
+|---|---|---|
+| **Sesgo de Pokédex** (`gacha.TUNING.dupKeep`) | – → 0,08 | Dentro de la rareza ya sorteada, una especie que ya tienes solo se acepta con probabilidad 0,08 (muestreo por rechazo: su peso ×0,08). No cambia las rarezas, el EV de la tirada, ni el 50 % de los destacados (se aplica dentro de cada rama). Sin pity: cada tirada sigue siendo aleatoria, solo que repetir es raro. El Intercambio Milagroso pesa igual |
+| Pesos por fase | 0,25 / 0,06 → 0,12 / 0,03 | Las evoluciones son baratas, así que se tiran aún menos las formas finales |
+| Probabilidad L / M | 1,75 % / 0,25 % → 2,5 % / 0,5 % (C 49,6 → 48,6 %) | Sin esto los 94 L y M son una cola de ≈ 1 año. El polvo de L y M baja a la par, así que el EV de una tirada no sube |
+| Polvo por duplicado L / M | 250 / 500 → 170 / 320 | Compensa lo anterior: Σ prob × polvo ≈ 20,4 (antes 20,1) |
+| Fabricar (polvo) C/U/R/E/L/M | 60/150/400/1.200/4.000/8.000 → **15/36/90/240/400/800** | 3 duplicados de su rareza (2,3-2,5 en L y M) en vez de 10-16. Sigue sin salir a cuenta: ver invariantes |
+| **Primera evolución a una especie nueva** | exigía copia sobrante, Nv. 16/36 y 25/100 caramelos (más suelo por rareza) → **8 / 18 caramelos, sin nivel, sin gastar la copia de origen** | Sin esto, 484 especies evolucionadas necesitarían ≈ 1.600 copias en total (más que las tiradas del mes). Solo se da **una vez por especie y cuenta** (`u.evoReg`, aunque vendas la copia) y la copia resultante es la última de su especie (no se libera ni se vende por la regla de conservar una). Las evoluciones repetidas siguen gastando copia de origen y llevan suelo ⌈ganancia de polvo / 0,5⌉ |
+| **Caramelos comodín** (`u.candy['*']`) | – → +5 por tirada y +2…+15 por ejemplar transferido (C 2 · U 3 · R 4 · E 6 · L 12 · M 15) | Valen para cualquier familia (se gastan después de los de la familia). Sin ellos, la mayoría de las familias nunca reúnen caramelos para evolucionar o subir su Pokémon favorito. El cliente ve «familia + comodín» en cada familia |
+| Caramelos de familia | tirada 1 (+3 nueva) → 2 (+5 nueva) | |
+| Subir nivel | ⌈N/10⌉ → ⌈N/50⌉ por nivel | Nv. 5 → 100: 536 → **144** caramelos (5 → 50: 141 → 45) |
+| Entrenar IV | 2 caramelos, 10 al día → **1 caramelo, 60 al día** | Antes llevaba ≥ 10 días solo por el tope diario |
+| Intercambio Milagroso | 3 → 5 al día | Cada uno es casi siempre una especie nueva |
+| Amistad | compañero +1 por 1.000 apostadas (tope 20) → **por 500 (tope 30)**; bayas tope 60 → **100** al día | De 70 a 255 en ≈ 2 días |
+
+### Invariantes (ninguno se ha eliminado; los umbrales cambiados están en `test/balance.test.js`)
+
+* **Polvo y monedas.** Cambiar polvo sigue pagando 4 monedas y un PNJ compra a como mucho 4 monedas por ✦ del duplicado (`npc.maxBid`). Una tirada con todo repetido devuelve ≈ 103 de 150 monedas (≈ 69 %, test `bucle gacha → liberar/vender`, límite 0,7). Fabricar una especie y venderla a un PNJ devuelve < 50 % de su coste en monedas (nuevo en `bucle crear → liberar`; el factor 10 pasa a 2,3).
+* **Caramelos → evolución → liberar** (nuevo test): con el máximo de caramelos por tirada (≈ 17,7 en el peor caso) y ≤ 0,5 ✦ por caramelo en evoluciones repetidas, el peor caso total es ≈ 139 de 150 monedas (< 95 %). Los caramelos no se pueden vender, comprar ni comerciar.
+* **Evolución gratuita no imprime copias**: una vez por especie y cuenta; la copia nueva es la única de su especie. `test/progression.test.js` lo comprueba (liberar falla; vender la copia y repetir exige copia sobrante).
+* Los PNJ, el Mercado y los topes diarios de monedas (recompensa diaria, misiones, hallazgos 200/día, Liga 800/día…) no se han tocado; el Intercambio Milagroso y el sesgo no crean valor (misma rareza). Los Caramelos Raros siguen ligados.
+* Fabricar barato baja el precio de mercado de los Pokémon entre jugadores (no crea monedas: el polvo viene de duplicados); el suelo de los PNJ no cambia.
+
+### Cómo se mide (`test/progression.test.js`, < 10 s)
+
+* Ingresos y tiradas/día desde las constantes (22).
+* Cinco partidas simuladas con el código real del gacha (`rollRarity`, `rollPokemon`, `grant`, `evoCost`): tira, evoluciona por primera vez lo que puede, usa el Milagroso, transfiere sobrantes y fabrica lo más barato. Media: núcleo ≈ 33 días (límite del test 38), completa ≈ 97 (límite 115), ≥ 90 % de la Pokédex al día 35.
+* Maxear por rareza: modelo de recursos por día (polvo con el 60 % de tiradas repetidas, solo caramelos comodín, IV medios 93, amistad con las bayas al 70 % del tope). Resultados en la tabla de arriba.
+* El sesgo no cambia las rarezas ni los destacados; la evolución gratuita es única.

@@ -224,13 +224,16 @@ for (const p of [...DEX].sort((a, b) => a.stage - b.stage)) {
 const BY_RARITY = {};
 for (const p of DEX) (BY_RARITY[p.rarity] ||= []).push(p);
 
+// `dust`: polvo que da un duplicado. `craft`: polvo para fabricar la especie (o su estrella siguiente).
+// Progresión casual (docs/BALANCE.md): fabricar cuesta 3 duplicados de su rareza (2,4-2,5 en L y M), no 10-16 como antes.
+// Nunca sale a cuenta: el polvo se cambia a 4 monedas y un PNJ paga como mucho 4 monedas por ✦ del duplicado.
 const RARITY = {
-  C: { name: 'Común', dust: 5, craft: 60, bst: 320, bonus: 0.01 },
-  U: { name: 'Poco común', dust: 12, craft: 150, bst: 400, bonus: 0.02 },
-  R: { name: 'Rara', dust: 30, craft: 400, bst: 470, bonus: 0.03 },
-  E: { name: 'Épica', dust: 80, craft: 1200, bst: 540, bonus: 0.05 },
-  L: { name: 'Legendaria', dust: 250, craft: 4000, bst: 600, bonus: 0.08 },
-  M: { name: 'Mítica', dust: 500, craft: 8000, bst: 620, bonus: 0.10 },
+  C: { name: 'Común', dust: 5, craft: 15, bst: 320, bonus: 0.01 },
+  U: { name: 'Poco común', dust: 12, craft: 36, bst: 400, bonus: 0.02 },
+  R: { name: 'Rara', dust: 30, craft: 90, bst: 470, bonus: 0.03 },
+  E: { name: 'Épica', dust: 80, craft: 240, bst: 540, bonus: 0.05 },
+  L: { name: 'Legendaria', dust: 170, craft: 400, bst: 600, bonus: 0.08 },
+  M: { name: 'Mítica', dust: 320, craft: 800, bst: 620, bonus: 0.10 },
 };
 
 const TYPES = ['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground',

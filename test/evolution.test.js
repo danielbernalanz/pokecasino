@@ -47,10 +47,10 @@ test('la rareza no baja a lo largo de una cadena evolutiva (evolución ≥ preev
   }
 });
 
-test('los pesos por fase: 1 / 1 / 0,25 / 0,06 y los legendarios no se tocan', () => {
-  assert.deepStrictEqual(gacha.STAGE_WEIGHT, { 0: 1, 1: 1, 2: 0.25, 3: 0.06 });
-  assert.strictEqual(gacha.stageWeight(byName('Venusaur')), 0.06);
-  assert.strictEqual(gacha.stageWeight(byName('Ivysaur')), 0.25);
+test('los pesos por fase: 1 / 1 / 0,12 / 0,03 y los legendarios no se tocan', () => {
+  assert.deepStrictEqual(gacha.STAGE_WEIGHT, { 0: 1, 1: 1, 2: 0.12, 3: 0.03 });
+  assert.strictEqual(gacha.stageWeight(byName('Venusaur')), 0.03);
+  assert.strictEqual(gacha.stageWeight(byName('Ivysaur')), 0.12);
   assert.strictEqual(gacha.stageWeight(byName('Bulbasaur')), 1);
   assert.strictEqual(gacha.stageWeight(byName('Pichu')), 1);
   // Solgaleo es fase 3 de su cadena, pero legendario: peso 1.

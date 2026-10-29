@@ -11,9 +11,10 @@ const SHINY_RATE = 1 / 64;
 // Regalos de un ×10 (probabilidad por sobre). Una Master Ball vale ≈17.000 monedas de tiradas (una destacada de un banner: 1 / (1,75 % × 50 %) = 114 tiradas): con 0,5 % el
 // regalo devuelve ≈6 % de lo gastado en ×10, no el ≈60 % que devolvía con el 5 % anterior.
 const X10_GIFTS = { 'master-ball': 0.005, 'shiny-charm': 0.05, 'mystery-egg': 0.2 };
-// Probabilidades por tirada (sin pity). Una legendaria o mítica cada 50 tiradas (7.500 monedas) y una concreta
-// de un banner con 3 destacadas cada ≈343 (51.000 monedas ≈ 3-4 semanas de ingresos de un jugador casual).
-const RATES = { C: 0.496, U: 0.283, R: 0.15, E: 0.051, L: 0.0175, M: 0.0025 };
+// Probabilidades por tirada (sin pity). Una legendaria o mítica cada ≈33 tiradas (4.500 monedas) y una concreta
+// de un banner con 3 destacadas cada ≈240 (36.000 monedas ≈ 11 días de ingresos de un jugador casual).
+// (Progresión casual: antes L 1,75 % + M 0,25 %; el polvo de L y M baja a la par, así que el valor esperado de una tirada no sube.)
+const RATES = { C: 0.486, U: 0.283, R: 0.15, E: 0.051, L: 0.025, M: 0.005 };
 
 const BANNERS = [
   {
@@ -109,7 +110,8 @@ function rollRarity(banner, { minRare = false } = {}) {
 
 // Dentro de una rareza, las formas evolucionadas salen mucho menos que las básicas: la evolución
 // (por caramelos, en una fase posterior) tiene que tener sentido. Legendarios y míticos no evolucionan.
-const STAGE_WEIGHT = { 0: 1, 1: 1, 2: 0.25, 3: 0.06 };
+// (Progresión casual: antes 0,25 / 0,06. Las evoluciones son baratas, así que las tiradas favorecen aún más a las formas base.)
+const STAGE_WEIGHT = { 0: 1, 1: 1, 2: 0.12, 3: 0.03 };
 const stageWeight = (p) => (p.rarity === 'L' || p.rarity === 'M' ? 1 : STAGE_WEIGHT[p.stage] ?? 1);
 const weightCache = new WeakMap(); // lista → pesos acumulados
 function pickByStage(list) {
@@ -126,18 +128,29 @@ function pickByStage(list) {
   return list[lo];
 }
 
-function rollPokemon(rarity, banner, { masterBall = false } = {}) {
+// Sesgo «Pokédex» (modo casual): dentro de la rareza ya sorteada, una especie que el jugador ya tiene solo se acepta con
+// probabilidad DUP_KEEP (muestreo por rechazo = su peso se multiplica por DUP_KEEP). No toca la rareza (ni el valor
+// esperado de la tirada, ni los destacados 50/50): solo reparte mejor las especies dentro de cada rareza.
+const TUNING = { dupKeep: 0.08 };
+const DUP_TRIES = 40;
+function draw(owned, pickFn) {
+  let p = pickFn();
+  for (let i = 0; owned && i < DUP_TRIES && owned(p.id) && rand() >= TUNING.dupKeep; i++) p = pickFn();
+  return p;
+}
+
+function rollPokemon(rarity, banner, { masterBall = false, owned = null } = {}) {
   const all = BY_RARITY[rarity];
   if (rarity === 'L' && banner.featuredL.length) {
     // 50 % destacado; con Master Ball, destacado seguro.
     const featured = masterBall || rand() < 0.5;
     const pool = all.filter((x) => banner.featuredL.includes(x.id) === featured);
-    return pickByStage(pool.length ? pool : all);
+    return draw(owned, () => pickByStage(pool.length ? pool : all));
   }
   if (rarity === 'E' && banner.featuredE.length && rand() < 0.5) {
-    return BY_ID.get(pick(banner.featuredE));
+    return draw(owned, () => BY_ID.get(pick(banner.featuredE)));
   }
-  return pickByStage(all);
+  return draw(owned, () => pickByStage(all));
 }
 
 // Añade un Pokémon a la colección. Más allá de 5 copias se convierte en polvo estelar.
@@ -196,7 +209,7 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
       const minRare = count === 10 && i === 9 && !results.some((r) => RANK[r.rarity] >= 2);
       rarity = rollRarity(banner, { minRare });
     }
-    const poke = rollPokemon(rarity, banner, { masterBall });
+    const poke = rollPokemon(rarity, banner, { masterBall, owned: (id) => !!(user.collection[id] && user.collection[id].n > 0) });
     const charm = user.buffs.shinyCharges > 0;
     if (charm) user.buffs.shinyCharges--;
     const shiny = rand() < SHINY_RATE * (charm ? 4 : 1) * (require('./events').has('shiny') ? 2 : 1);
@@ -287,4 +300,4 @@ function takePoke(user, id, shiny) {
   return p;
 }
 
-module.exports = { X10_GIFTS, realCopies, spareCopies, STAGE_WEIGHT, stageWeight, pull, takePoke, craft, exchangeDust, release, grant, activeBanners, bannersInfo, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon };
+module.exports = { X10_GIFTS, realCopies, spareCopies, STAGE_WEIGHT, stageWeight, pull, takePoke, craft, exchangeDust, release, grant, activeBanners, bannersInfo, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon, TUNING };

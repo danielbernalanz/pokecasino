@@ -38,20 +38,20 @@ function clock(t0 = Date.now()) {
 }
 const H = 3600 * 1000;
 
-test('amistad: el compañero sube +1 por cada 1.000 apostadas, tope +20/día', () => {
+test('amistad: el compañero sube +1 por cada 500 apostadas, tope +30/día', () => {
   const u = withBuddy(25);
   const m = u.mons[25][0];
   assert.strictEqual(m.friendship, 70);
-  bond.onBet(u, 999, 'slots');
+  bond.onBet(u, 499, 'slots');
   assert.strictEqual(m.friendship, 70);
   bond.onBet(u, 1, 'slots');
   assert.strictEqual(m.friendship, 71);
   bond.onBet(u, 3500, 'slots');
-  assert.strictEqual(m.friendship, 74);
+  assert.strictEqual(m.friendship, 78);
   bond.onBet(u, 100000, 'slots');
-  assert.strictEqual(m.friendship, 90, 'tope diario +20');
+  assert.strictEqual(m.friendship, 100, 'tope diario +30');
   bond.onBet(u, 50000, 'slots');
-  assert.strictEqual(m.friendship, 90);
+  assert.strictEqual(m.friendship, 100);
   // Los duelos y las cuentas sin compañero no cuentan.
   const v = withBuddy(25);
   bond.onBet(v, 5000, 'duel');
@@ -64,7 +64,7 @@ test('amistad: el compañero sube +1 por cada 1.000 apostadas, tope +20/día', (
 test('amistad: takeBet engancha el gancho (O(1)) y solo toca al compañero', () => {
   const u = withBuddy(25, 3);
   hub.takeBet(u, 2000, 'slots');
-  assert.strictEqual(u.mons[25][0].friendship, 72);
+  assert.strictEqual(u.mons[25][0].friendship, 74);
   assert.strictEqual(u.mons[25][1].friendship, 70);
 });
 
@@ -96,18 +96,19 @@ test('amistad: nunca pasa de 255 y se etiqueta/corazones', () => {
   assert.deepStrictEqual([70, 100, 160, 220].map(bond.stageName), ['Indiferente', 'Amistoso', 'Muy amistoso', 'Te adora']);
 });
 
-test('bayas: +5…+20 según la baya, tope +60/día por ejemplar y se gasta una baya', () => {
+test('bayas: +5…+20 según la baya, tope +100/día por ejemplar y se gasta una baya', () => {
   const u = user({ collection: { 25: { n: 2, s: 0 } }, berries: { 'berry-aranja': 2, 'berry-pinia': 10 } });
   sp.syncAll(u);
   const [a, b] = u.mons[25];
   assert.strictEqual(bond.feed(u, { id: 25, uid: a.uid, berry: 'berry-aranja' }).gain, 5);
   for (let i = 0; i < 2; i++) assert.strictEqual(bond.feed(u, { id: 25, uid: a.uid, berry: 'berry-pinia' }).gain, 20);
   assert.strictEqual(a.friendship, 115);
+  for (let i = 0; i < 2; i++) assert.strictEqual(bond.feed(u, { id: 25, uid: a.uid, berry: 'berry-pinia' }).gain, 20);
   const last = bond.feed(u, { id: 25, uid: a.uid, berry: 'berry-pinia' });
   assert.strictEqual(last.gain, 15, 'solo cabe lo que queda del tope');
   assert.strictEqual(last.left, 0);
   assert.throws(() => bond.feed(u, { id: 25, uid: a.uid, berry: 'berry-pinia' }), /de sobra/);
-  assert.strictEqual(u.berries['berry-pinia'], 7);
+  assert.strictEqual(u.berries['berry-pinia'], 5);
   assert.strictEqual(bond.feed(u, { id: 25, uid: b.uid, berry: 'berry-pinia' }).gain, 20, 'el tope es por ejemplar');
   assert.throws(() => bond.feed(u, { id: 25, uid: b.uid, berry: 'berry-zidra' }), /No tienes/);
   assert.throws(() => bond.feed(u, { id: 25, uid: b.uid, berry: 'nada' }), /no existe/);
@@ -152,8 +153,8 @@ test('evolución por amistad: la tabla coincide con la Pokédex', () => {
 test('evolución por amistad: sin nivel mínimo y con la mitad de caramelos', () => {
   const from = DEX.find((p) => p.name === 'Pichu').id;
   const to = DEX.find((p) => p.name === 'Pikachu').id;
-  const normal = candy.evoCost(from, to);
-  const friend = candy.evoCost(from, to, true);
+  const normal = candy.evoCost(from, to, false, true); // primera evolución (la normal a repetición lleva el suelo anti-arbitraje)
+  const friend = candy.evoCost(from, to, true, true);
   assert.strictEqual(friend.level, 0);
   assert.ok(friend.cost < normal.cost);
   assert.ok(friend.cost >= Math.ceil(normal.cost / 2));
@@ -169,10 +170,10 @@ test('evolución por amistad: sin nivel mínimo y con la mitad de caramelos', ()
   sp.syncAll(u);
   const m = u.mons[from][0];
   u.candy = { [BY_ID.get(from).chain]: friend.cost };
-  // Con amistad baja pide el nivel normal.
-  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /nivel/);
+  // Con amistad baja cuesta el coste normal (el doble) y no alcanza.
+  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /caramelos/);
   m.friendship = 219;
-  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /nivel/);
+  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /caramelos/);
   m.friendship = 220;
   const r = candy.evolve(u, { id: from, uid: m.uid, to });
   assert.strictEqual(r.cost, friend.cost);
@@ -194,7 +195,6 @@ test('Eevee: Espeon y Umbreon solo con amistad ≥ 220; el resto de evoluciones,
   a.friendship = 220;
   a.level = 5;
   assert.strictEqual(candy.evolve(u, { id: eevee, uid: a.uid, to: espeon }).to, espeon);
-  b.level = 20;
   assert.strictEqual(candy.evolve(u, { id: eevee, uid: b.uid, to: vaporeon }).to, vaporeon);
 });
 
