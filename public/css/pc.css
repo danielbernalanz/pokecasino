@@ -114,6 +114,8 @@
 .tm-card .item-img.big { width: 48px; height: 48px; flex: 0 0 auto; }
 .tm-cost { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
 .tm-btns2 { flex: 0 0 auto; }
-.tm-row-use { display: flex; align-items: center; gap: 10px; }
+.tm-row-use { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tm-row-use > .grow { flex: 1 1 220px; min-width: 0; }
+.tm-row-use > .btn { flex: 0 0 auto; margin-left: auto; }
 .tm-targets .pick.known { opacity: .55; }
 @media (max-width: 520px) { .tm-grid, .tm-targets { grid-template-columns: 1fr; } .tm-card { flex-wrap: wrap; } .tm-btns2 { flex-direction: row; width: 100%; } .tm-btns2 .btn { flex: 1; } }
