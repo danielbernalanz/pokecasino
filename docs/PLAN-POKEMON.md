@@ -1,5 +1,7 @@
 # Plan: lo que queda por implementar
 
+> **Estado (29-10-2026): todo el plan está hecho y publicado** (A1–A6, B1–B7 y C). Queda A7 (probar sonido y vibración en un móvil real). Ver docs/BALANCE.md y docs/ANTIABUSO.md.
+
 Cada bloque lo implementa un agente con un encargo cerrado. Antes de desplegar en Render se revisa: tests, batería de navegador en escritorio y móvil, y comprobación de que no se crean monedas de la nada.
 
 ## A. Remates de lo ya publicado (corto, primero)
