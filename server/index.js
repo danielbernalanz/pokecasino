@@ -64,7 +64,7 @@ app.use((req, res, next) => {
       "default-src 'self'",
       "img-src 'self' data: https://raw.githubusercontent.com https://play.pokemonshowdown.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src https://fonts.gstatic.com",
+      "font-src 'self'",
       "connect-src 'self' ws: wss: https://raw.githubusercontent.com",
       "manifest-src 'self'",
       "worker-src 'self'",

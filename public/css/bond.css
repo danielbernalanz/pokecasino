@@ -18,7 +18,7 @@
 .bd-find-wait { display: block; }
 
 .bd-plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.bd-plot { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0; }
+.bd-plot { background: var(--panel); border: 2px solid var(--ink); border-radius: 14px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0; }
 .bd-plot.ready { border-color: var(--gold); box-shadow: 0 0 14px #ffcb0544; }
 .bd-plot .btn { width: 100%; min-height: 44px; }
 .bd-soil { width: 76px; height: 64px; border-radius: 12px; background: radial-gradient(ellipse at 50% 80%, #6b4a2b, #4a3220); display: flex; align-items: center; justify-content: center; }
@@ -32,14 +32,14 @@
 .bd-plot.empty { border-style: dashed; }
 
 .bd-bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin-bottom: 12px; }
-.bd-chip { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.bd-chip { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; min-width: 0; }
 .bd-chip.none { opacity: 0.55; }
 .bd-chip .grow { min-width: 0; flex: 1; }
 .bd-n { font-size: 16px; }
 .bd-mini { min-height: 40px; min-width: 40px; padding: 4px 8px; }
 
 .bd-pick { display: grid; gap: 8px; }
-.bd-pick-item { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 10px; align-items: center; text-align: left; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; color: var(--text); padding: 8px 10px; min-height: 52px; cursor: pointer; }
+.bd-pick-item { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 10px; align-items: center; text-align: left; background: var(--panel2); border: 2px solid var(--ink); border-radius: 12px; color: var(--text); padding: 8px 10px; min-height: 52px; cursor: pointer; }
 .bd-pick-item img { grid-row: span 2; width: 36px; height: 36px; }
 
 .bd-pop { position: fixed; z-index: 90; width: 32px; height: 32px; pointer-events: none; animation: bd-rise 1.2s ease-out forwards; }

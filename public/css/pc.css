@@ -2,7 +2,7 @@
 .pc-grid { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
 .pc-card { min-width: 0; gap: 2px; }
 .pc-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pc-fav { position: absolute; top: 4px; right: 6px; color: var(--gold); font-size: 16px; }
+.pc-fav { position: absolute; top: 4px; right: 6px; color: var(--gold-ink); font-size: 16px; }
 .filters .pc-check { flex: 0 0 auto; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; font-weight: 700; min-height: 40px; }
 .filters .pc-check input { width: 20px; min-width: 0; height: 20px; padding: 0; flex: 0 0 auto; }
 .pc-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 800; }
@@ -30,7 +30,7 @@
 }
 
 /* B2: caramelos, evolución, entrenamiento, intercambio */
-.pc-box { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--panel); display: grid; gap: 8px; min-width: 0; }
+.pc-box { border: 2px solid var(--ink); border-radius: 12px; padding: 10px; background: var(--panel); display: grid; gap: 8px; min-width: 0; }
 .pc-box h4 { margin: 0; font-size: 14px; }
 .pc-candy { font-weight: 800; color: #ffb3d9; }
 .pc-evo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -49,8 +49,8 @@
 .pcfx-b.shown { opacity: 1; }
 .pcfx-card { position: relative; width: min(64vw, 240px); aspect-ratio: 3 / 4; transform-style: preserve-3d; transition: transform .7s; perspective: 800px; }
 .pcfx-card.flip { transform: rotateY(180deg); }
-.pcfx-face { position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 2px solid var(--line); background: var(--panel); }
-.pcfx-back { font-size: 72px; font-weight: 900; color: var(--gold); background: linear-gradient(135deg, #3b3466, #1c1830); }
+.pcfx-face { position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 2px solid var(--ink); background: var(--panel); }
+.pcfx-back { font-size: 72px; font-weight: 900; color: var(--gold-ink); background: linear-gradient(135deg, #3b3466, #1c1830); }
 .pcfx-front { transform: rotateY(180deg); }
 .pcfx-front img { width: 80%; max-height: 55%; object-fit: contain; }
 @media (prefers-reduced-motion: reduce) { .pcfx-card, .pcfx-img { transition: none; } }

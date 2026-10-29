@@ -1,5 +1,5 @@
 import { animPref, setAnimPref } from './anim.js';
-import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg } from './core.js';
+import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg, monImg, MON } from './core.js';
 import { celebrate, coinRain, burstAt, vibrate } from './fx.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
 import lobby from './views/lobby.js';
@@ -8,6 +8,7 @@ import roulette from './views/roulette.js';
 import voltorb from './views/voltorb.js';
 import race from './views/race.js';
 import duels from './views/duels.js';
+import battle from './views/battle.js';
 import gacha from './views/gacha.js';
 import pokedex from './views/pokedex.js';
 import pc from './views/pc.js';
@@ -28,9 +29,11 @@ import trainer from './views/trainer.js';
 import megaView from './views/mega.js';
 import news from './views/news.js';
 import { initNews, openPublicNews } from './news.js';
+import hubs, { notFound } from './views/hubs.js';
+import { buildSidebar, buildTabbar, markNav, refreshNew, markVisited, resetVisited } from './nav.js';
 
-const VIEWS = [lobby, news, trainer, poker, crash, race, duels, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, shop, megaView, market, ranking, admin];
-const SECTIONS = { poker: 'Multijugador', blackjack: 'Mesas', slots: 'Máquinas', quiz: 'Desafíos', gacha: 'Colección', market: 'Comunidad' };
+duels.title = 'Duelos rápidos'; // los duelos de siempre (1 Pokémon a ciegas) pasan a llamarse así junto a los nuevos Combates
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, shop, megaView, market, ranking, admin, ...hubs];
 
 // ---------- Autenticación ----------
 let mode = 'login';
@@ -121,6 +124,8 @@ function animateCoins(to) {
   pill.classList.remove('up', 'down');
   void pill.offsetWidth;
   if (to !== from) pill.classList.add(to > from ? 'up' : 'down');
+  // ¡Día de Pago! Meowth hace saltar chispas cuando suben las monedas.
+  if (to > from && from > 0) { const sp = h('span', { class: 'sparkle', 'aria-hidden': 'true' }, '✨'); pill.append(sp); setTimeout(() => sp.remove(), 1000); }
 }
 bus.on('me', (me) => {
   animateCoins(me.coins);
@@ -163,23 +168,35 @@ function floatMega(text, el) {
 }
 bus.on('mega', () => updateMegaPill());
 
-$('#mute-btn').addEventListener('click', () => { $('#mute-btn').textContent = toggleMute() ? '🔇' : '🔊'; });
-$('#mute-btn').textContent = isMuted() ? '🔇' : '🔊';
+// Jigglypuff es el botón de sonido: dormida (con «z») cuando está apagado.
+function paintMute() {
+  const b = $('#mute-btn');
+  b.classList.toggle('is-muted', isMuted());
+  b.title = isMuted() ? 'Sonido apagado' : 'Sonido encendido';
+  b.setAttribute('aria-label', b.title);
+  b.replaceChildren(monImg(MON.jigglypuff, 'jp'), h('span', { class: 'jp-z', 'aria-hidden': 'true' }, 'z'));
+}
+$('#mute-btn').addEventListener('click', () => { toggleMute(); paintMute(); });
+paintMute();
 $('#menu-btn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
 $('#user-btn').addEventListener('click', () => {
-  const muteBtn = h('button', { class: 'btn', onclick: () => { const m = toggleMute(); $('#mute-btn').textContent = m ? '🔇' : '🔊'; muteBtn.textContent = m ? '🔇 Sonido apagado' : '🔊 Sonido encendido'; } }, isMuted() ? '🔇 Sonido apagado' : '🔊 Sonido encendido');
+  const muteBtn = h('button', { class: 'btn', onclick: () => { const m = toggleMute(); paintMute(); muteBtn.textContent = m ? '🔇 Sonido apagado' : '🔊 Sonido encendido'; } }, isMuted() ? '🔇 Sonido apagado' : '🔊 Sonido encendido');
   const animLabel = () => (animPref() ? '🎞️ Animaciones de Pokémon: sí' : '🎞️ Animaciones de Pokémon: no');
   const animBtn = h('button', { class: 'btn', title: 'Sprites animados en combates, Caja PC, Pokédex y compañero. Apágalas para ahorrar datos. (Se desactivan solas con «reducir movimiento».)', onclick: () => { setAnimPref(!animPref()); animBtn.textContent = animLabel(); toast(animPref() ? 'Animaciones activadas (se aplican al abrir cada pantalla).' : 'Animaciones desactivadas: se usarán imágenes estáticas.', 'info'); } }, animLabel());
+  const theme = window.PCTheme;
+  const themeLabel = () => (theme && theme.get() === 'night' ? '☀️ Modo día' : '🌙 Modo noche');
+  const themeBtn = h('button', { class: 'btn', title: 'Cambia entre el tema claro y el «Modo noche». Por defecto sigue a tu dispositivo.', onclick: () => { if (!theme) return; theme.set(theme.get() === 'night' ? 'day' : 'night'); themeBtn.textContent = themeLabel(); } }, themeLabel());
   const nLabel = () => notifyEnabled() ? '🔔 Avisos activados' : '🔕 Activar avisos';
   const notifyBtn = h('button', { class: 'btn', title: 'Notificación cuando te toca en el póker, te escriben por privado o te mencionan, aunque no estés mirando', onclick: async () => { await toggleNotify(); notifyBtn.textContent = nLabel(); } }, nLabel());
   const menu = h('div', { class: 'stack' },
     h('button', { class: 'btn', onclick: () => { close(); showPlayer(S.me.username); } }, '👤 Ver mi ficha'),
     h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/trainer'; } }, '🏅 Mi Entrenador'),
-    h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/pokedex'; } }, '📕 Mi Pokédex'),
+    themeBtn,
     muteBtn,
     animBtn,
     notifyBtn,
     h('button', { class: 'btn', title: 'Vuelve a mostrar los avisos de acciones arriesgadas que marcaste como «no volver a avisar»', onclick: () => { const n = resetWarnings(); close(); toast(n ? `Avisos restablecidos (${n}): volverás a verlos.` : 'Todos los avisos ya estaban activos.', 'success'); } }, '⚠️ Restablecer avisos'),
+    h('button', { class: 'btn', title: 'Vuelve a marcar como «¡Nuevo!» los apartados que aún no has visitado en este dispositivo', onclick: () => { resetVisited(); close(); toast('Los apartados vuelven a salir como «¡Nuevo!».', 'info'); } }, '✨ Volver a ver los «¡Nuevo!»'),
     canInstall() ? h('button', { class: 'btn', onclick: () => { close(); installApp(); } }, '📲 Instalar app') : '',
     h('button', { class: 'btn danger', onclick: logout }, '🚪 Cerrar sesión'));
   const wrap = h('div', { class: 'popover', onclick: (e) => e.stopPropagation() }, menu);
@@ -189,68 +206,33 @@ $('#user-btn').addEventListener('click', () => {
 });
 
 // ---------- Navegación ----------
-// Punto rojo en «Novedades» (menú lateral y pestaña Más) mientras haya algo sin ver.
+// Cinco secciones (Inicio, Casino, Pokémon, Mercado, Entrenador): barra lateral en escritorio y barra inferior en móvil (ver nav.js).
+// Punto rojo en «Entrenador» y «Novedades» mientras haya algo sin ver.
 let newsFresh = false;
 function updateNewsDots() {
-  document.querySelectorAll('[data-view=news], [data-tab=more]').forEach((el) => el.classList.toggle('has-news', newsFresh));
+  document.querySelectorAll('[data-view=news], [data-tab=entrenador], .nav-sec[data-sec=entrenador]').forEach((el) => el.classList.toggle('has-news', newsFresh));
 }
 bus.on('news', (fresh) => { newsFresh = fresh.length > 0; updateNewsDots(); });
-function buildNav() {
-  const nav = $('#sidebar');
-  nav.replaceChildren();
-  for (const v of VIEWS) {
-    if (SECTIONS[v.id]) nav.append(h('div', { class: 'nav-section' }, SECTIONS[v.id]));
-    nav.append(h('a', { href: '#/' + v.id, class: 'nav-link' + (v.id === 'admin' ? ' hidden' : ''), 'data-view': v.id },
-      h('span', { class: 'nav-ico' }, v.icon), h('span', {}, v.title)));
-  }
-}
+bus.on('visited', () => refreshNew());
+function buildNav() { buildSidebar($('#sidebar')); updateNewsDots(); markNav(S.view); }
+let navTimer = 0;
+// El evento Mega o la cuenta de anfitrión añaden o quitan entradas.
+bus.on('mega', () => { clearTimeout(navTimer); navTimer = setTimeout(() => { if (booted) buildNav(); }, 300); });
 
-// ---------- Barra inferior (móvil) ----------
-const GAME_IDS = ['poker', 'crash', 'race', 'duels', 'blackjack', 'videopoker', 'baccarat', 'roulette', 'slots', 'plinko', 'mines', 'voltorb', 'quiz'];
-const TABS = [
-  { id: 'lobby', icon: '🏠', label: 'Inicio' },
-  { id: 'games', icon: '🎰', label: 'Juegos', match: GAME_IDS },
-  { id: 'gacha', icon: '🎁', label: 'Gacha' },
-  { id: 'market', icon: '🏪', label: 'Mercado' },
-  { id: 'more', icon: '☰', label: 'Más', match: ['news', 'trainer', 'pokedex', 'pc', 'huerto', 'shop', 'mega', 'ranking', 'admin'] },
-];
-function gamesSheet() {
-  const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => GAME_IDS.includes(v.id)).map((v) =>
-    h('a', { class: 'gs-item' + (current && current.id === v.id ? ' active' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title)))), { title: 'Juegos' });
-}
-function moreSheet() {
-  const ids = ['news', 'trainer', 'mega', 'pokedex', 'pc', 'huerto', 'shop', 'ranking', 'duels'].concat(S.me && S.me.isAdmin ? ['admin'] : []);
-  const m = modal(h('div', { class: 'games-sheet' }, VIEWS.filter((v) => ids.includes(v.id)).map((v) =>
-    h('a', { class: 'gs-item' + (v.id === 'news' && newsFresh ? ' has-news' : ''), href: '#/' + v.id, onclick: () => m.close() }, h('span', { class: 'gs-ico' }, v.icon), h('span', {}, v.title))),
-  h('button', { class: 'gs-item', onclick: () => { m.close(); document.body.classList.add('social-open'); $('#chat-dot').classList.add('hidden'); } }, h('span', { class: 'gs-ico' }, '💬'), h('span', {}, 'Chat y conectados')),
-  canInstall() ? h('button', { class: 'gs-item', onclick: () => { m.close(); installApp(); } }, h('span', { class: 'gs-ico' }, '📲'), h('span', {}, 'Instalar app')) : ''), { title: 'Más' });
-}
-function buildTabbar() {
-  const bar = $('#tabbar');
-  bar.classList.remove('hidden');
-  bar.replaceChildren(...TABS.map((t) => h('button', { class: 'tab-btn', 'data-tab': t.id, onclick: () => {
-    document.body.classList.remove('social-open', 'nav-open');
-    if (t.id === 'games') gamesSheet();
-    else if (t.id === 'more') moreSheet();
-    else location.hash = '#/' + t.id;
-  } }, h('span', { class: 'tab-ico' }, t.icon), h('span', { class: 'tab-lbl' }, t.label))));
-}
-function markTab(id) {
-  document.querySelectorAll('.tab-btn').forEach((b) => {
-    const t = TABS.find((x) => x.id === b.dataset.tab);
-    b.classList.toggle('active', t.id === id || (t.match || []).includes(id));
-  });
+// Primera visita a una pantalla: el servidor regala 50 monedas (una vez por apartado).
+function exploreReward(id) {
+  emit('explore:visit', { section: id }).then((r) => { if (r && r.reward) { sfx('win'); toast(`¡Nuevo apartado descubierto! +${r.reward} monedas`, 'success'); } }).catch(() => {});
 }
 
 let current = null;
 function route() {
   const id = (location.hash.match(/^#\/(\w+)/) || [])[1] || 'lobby';
-  const view = VIEWS.find((v) => v.id === id) || lobby;
+  const view = VIEWS.find((v) => v.id === id) || (id === 'lobby' ? lobby : notFound);
   if (current && current.unmount) current.unmount();
   current = view;
   S.view = view.id;
-  document.querySelectorAll('.nav-link').forEach((a) => a.classList.toggle('active', a.dataset.view === view.id));
-  markTab(view.id);
+  markNav(view.id);
+  if (markVisited(view.id)) exploreReward(view.id);
   document.body.classList.remove('social-open');
   document.body.classList.remove('nav-open');
   const root = $('#view');
@@ -298,7 +280,7 @@ function connect() {
     bus.emit('mega', res.mega);
     bus.emit('events', res.events);
     bus.emit('race', res.race);
-    if (!booted) { booted = true; buildNav(); buildTabbar(); setMe(S.me); route(); }
+    if (!booted) { booted = true; buildNav(); buildTabbar($('#tabbar')); setMe(S.me); route(); nightPeek(); }
     initNews(res).then(updateNewsDots).catch(() => {});
   });
   socket.on('me', setMe);
@@ -318,6 +300,7 @@ function connect() {
   socket.on('race:state', (r) => { if (S.race && r.round !== S.race.round) S.raceBets = []; S.race = r; bus.emit('race', r); });
   socket.on('race:payout', (p) => bus.emit('race:payout', p));
   socket.on('duel:list', (l) => { S.duels = l; bus.emit('duels', l); });
+  for (const ev of ['battle:start', 'battle:event', 'battle:end', 'battle:list']) socket.on(ev, (p) => bus.emit(ev, p));
   socket.on('duel:result', (r) => {
     S.duelHistory = [r, ...(S.duelHistory || [])].slice(0, 20);
     bus.emit('duel:result', r);
@@ -364,6 +347,18 @@ export async function installApp() {
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'goto' && e.data.link) location.hash = e.data.link; });
+}
+
+// ---------- Gengar asoma de noche (22:00–07:00, hora local) ----------
+function nightPeek() {
+  const night = () => { const hr = new Date().getHours(); return hr >= 22 || hr < 7; };
+  let el = null;
+  const tick = () => {
+    if (night() && !el) { el = h('div', { class: 'gengar-peek', 'aria-hidden': 'true' }, monImg(MON.gengar)); document.body.append(el); }
+    else if (!night() && el) { el.remove(); el = null; }
+  };
+  tick();
+  setInterval(tick, 600000);
 }
 
 // ---------- Arranque ----------

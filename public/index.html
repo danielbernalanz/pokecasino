@@ -4,16 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>PokéCasino</title>
-  <meta name="theme-color" content="#14111f">
+  <meta name="theme-color" content="#e3350d">
+  <script src="/js/theme.js"></script>
   <link rel="icon" type="image/png" href="/icons/favicon-64.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="PokéCasino">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="/fonts/nunito-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/jersey-10-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/fx.css">
   <link rel="stylesheet" href="/css/mega.css">
@@ -22,6 +23,7 @@
   <link rel="stylesheet" href="/css/pc.css">
   <link rel="stylesheet" href="/css/bond.css">
   <link rel="stylesheet" href="/css/anim.css">
+  <link rel="stylesheet" href="/css/battle.css">
 </head>
 <body>
   <!-- Pantalla de acceso -->
@@ -52,12 +54,12 @@
       <a class="logo" href="#/lobby"><span class="logo-ball"></span><span class="logo-text">Poké<b>Casino</b></span></a>
       <div class="jackpot-pill" title="Bote progresivo de Pika-Slots">BOTE <b id="jackpot">0</b></div>
       <div class="wallet">
-        <span class="pill coins" title="Monedas"><span class="coin-ico"></span><b id="coins">0</b></span>
+        <span class="pill coins" title="Monedas"><img class="pixel meow" alt="" width="34" height="34" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png"><span class="coin-ico"></span><b id="coins">0</b></span>
         <a class="pill mega-pill hidden" id="mega-pill" href="#/mega" title="Megafragmentos (evento Megaevolución)">💠 <b id="mega-frags">0</b><i id="mega-mult"></i></a>
         <span class="pill dust" title="Polvo estelar">✦ <b id="dust">0</b></span>
         <span class="pill lvl" title="Nivel de entrenador">Nv <b id="level">1</b><i class="xpbar"><i id="xpfill"></i></i></span>
       </div>
-      <button class="icon-btn" id="mute-btn" aria-label="Sonido">🔊</button>
+      <button class="icon-btn" id="mute-btn" aria-label="Sonido"></button>
       <button class="icon-btn" id="social-btn" aria-label="Chat">💬<span class="dot hidden" id="chat-dot"></span></button>
       <button class="user-btn" id="user-btn"><span id="buddy-mini"></span><span id="uname"></span></button>
     </header>

@@ -1,8 +1,10 @@
 import { aniImg } from '../anim.js';
-import { S, h, fmt, act, sfx, toast, art, item, pokeImg, badgeImg, bus } from '../core.js';
+import { S, h, fmt, act, sfx, toast, art, item, badgeImg, bus, hpBar, monImg, MON } from '../core.js';
+import { SECTIONS, sectionNew } from '../nav.js';
 import { canInstall, installApp } from '../main.js';
 import { dailyChest } from '../rewards.js';
 import { buddyFindBlock } from './huerto.js';
+import { oakSay } from '../nav.js';
 
 function rewardText(r) {
   const parts = [];
@@ -12,23 +14,9 @@ function rewardText(r) {
   return parts.join(' + ');
 }
 
-const GAMES = [
-  { id: 'poker', name: "Texas Hold'em", desc: 'Póker No-Limit contra tus amigos, en mesas en directo.', art: 94, ico: 'nugget', tag: 'MULTIJUGADOR' },
-  { id: 'crash', name: 'Crash Rocket', desc: '¡Retírate antes de que el Team Rocket salga volando!', art: 52, ico: 'dire-hit', tag: 'MULTIJUGADOR' },
-  { id: 'race', name: 'Gran Carrera', desc: 'Apuesta con todos en carreras en directo.', art: 78, ico: 'rare-candy', tag: 'MULTIJUGADOR' },
-  { id: 'duels', name: 'Duelos PvP', desc: 'Reta a otros entrenadores con tus Pokémon.', art: 68, ico: 'ultra-ball', tag: 'MULTIJUGADOR' },
-  { id: 'blackjack', name: 'Blackjack', desc: 'Planta cara a Snorlax: 3:2, doblar y dividir.', art: 143, ico: 'big-nugget' },
-  { id: 'videopoker', name: 'Video Póker', desc: 'Jacks or Better, el de mejor RTP.', art: 65, ico: 'pearl' },
-  { id: 'baccarat', name: 'Baccarat', desc: 'Punto o Banca con Mr. Mime de crupier.', art: 122, ico: 'star-piece' },
-  { id: 'roulette', name: 'Ruleta de Tipos', desc: '18 tipos y la temida casilla Poké Ball.', art: 137, ico: 'poke-ball' },
-  { id: 'slots', name: 'Pika-Slots', desc: '5 líneas, Ditto comodín y bote progresivo.', art: 25, ico: 'master-ball' },
-  { id: 'plinko', name: 'Plinko', desc: 'Suelta Poké Balls entre los clavos.', art: 113, ico: 'great-ball' },
-  { id: 'mines', name: 'Minas Geodude', desc: 'Descubre Trozos Estrella sin despertar a Geodude.', art: 74, ico: 'star-piece' },
-  { id: 'quiz', name: 'Desafío Pokémon', desc: '¿Quién es ese Pokémon? y trivia: acierta seguido y retírate a tiempo.', art: 201, ico: 'exp-share', tag: 'NUEVO' },
-  { id: 'voltorb', name: 'Voltorb Flip', desc: 'El clásico de la Esquina de Juegos.', art: 100, ico: 'nugget' },
-  { id: 'gacha', name: 'Poké Gacha', desc: 'Banners legendarios, Master Balls y variocolores.', art: 150, ico: 'great-ball' },
-  { id: 'market', name: 'Mercado', desc: 'Compra y vende Pokémon y objetos.', art: 52, ico: 'amulet-coin' },
-];
+const SEC_TONE = { casino: 'r', pokemon: 'b', mercado: 'y', entrenador: 'g' };
+const SEC_MON = { casino: 52, pokemon: 25, mercado: 352, entrenador: 133 };
+const SEC_DESC = { casino: 'Mesas, máquinas y retos', pokemon: 'Gacha, Caja PC y combates', mercado: 'Compra y vende', entrenador: 'Medallas y ranking' };
 
 // Aviso a los anfitriones: hace tiempo que nadie descarga una copia (se puede cerrar hasta recargar).
 let backupDismissed = false;
@@ -77,7 +65,7 @@ export function eventsCard() {
 }
 
 export default {
-  id: 'lobby', title: 'Vestíbulo', icon: '🏠',
+  id: 'lobby', title: 'Inicio', icon: '🏠',
   mount(root) {
     const me = S.me;
     const today = new Date().toISOString().slice(0, 10);
@@ -99,7 +87,7 @@ export default {
     // Motivo por el que Joy no puede ayudar ahora, con los datos que ya tiene el cliente (el servidor decide al final).
     const hl = S.data.heal;
     const healWhy = () => {
-      if (S.me.coins >= hl.limit) return `Tienes ${fmt(S.me.coins)} monedas: Joy ayuda con menos de ${hl.limit}.`;
+      if (S.me.coins >= hl.limit) return `Joy ayuda cuando tienes menos de ${hl.limit} monedas.`;
       const wait = (S.me.lastHeal || 0) + hl.cooldown - Date.now();
       if (wait > 0) return `Joy ya te ayudó hace poco. Vuelve en ${Math.ceil(wait / 60000)} min.`;
       if (S.me.coins + (S.me.lockedCoins || 0) >= hl.limit) return `Tienes ${fmt(S.me.lockedCoins)} monedas apartadas en pedidos del Mercado o en una mesa/apuesta en curso. Cancela el pedido o levántate de la mesa para recuperarlas.`;
@@ -129,13 +117,13 @@ export default {
 
     const pr = me.progress;
     const tut = pr.tutorial;
-    const route = tut.done
-      ? h('div', { class: 'card route done' }, h('h3', {}, '🎓 Ruta del Entrenador completada'), h('p', { class: 'muted' }, 'Ahora a por las 8 medallas, las colecciones y el Mercado. ¡Suerte, entrenador!'), h('a', { class: 'btn', href: '#/trainer' }, '🏅 Mi Entrenador'))
+    const routeBox = tut.done
+      ? h('div', { class: 'card route done' }, h('h3', {}, '🎓 Ruta del Entrenador completada'), h('p', { class: 'muted' }, 'Ahora a por las 8 medallas, las colecciones y el Mercado.'), h('a', { class: 'btn', href: '#/trainer' }, '🏅 Mi Entrenador'))
       : h('div', { class: 'card route' },
         h('div', { class: 'row between' }, h('h3', {}, `🧭 Ruta del Entrenador · paso ${tut.index + 1}/${tut.total}`), h('span', { class: 'muted small' }, `Premio: ${rewardText(tut.reward)}`)),
         h('div', { class: 'route-steps' }, Array.from({ length: tut.total }, (_, k) => h('i', { class: k < tut.index ? 'done' : k === tut.index ? 'now' : '' }))),
         h('b', { class: 'route-title' }, tut.title), h('p', {}, tut.desc),
-        tut.n > 1 ? h('div', { class: 'pity-bar' }, h('i', { style: { width: (tut.prog / tut.n) * 100 + '%' } })) : null,
+        tut.n > 1 ? hpBar((tut.prog / tut.n) * 100) : null,
         h('a', { class: 'btn primary', href: '#/' + tut.link }, '¡Vamos!'));
     const daily = h('div', { class: 'card' },
       h('h3', {}, '📋 Misiones de hoy'),
@@ -147,50 +135,56 @@ export default {
       h('div', { class: 'row between' }, h('h3', {}, `🏅 Medallas ${pr.badges.filter((b) => b.got).length}/8`), h('span', { class: 'muted small' }, `Apuesta máxima ${fmt(me.maxBet)}`)),
       h('div', { class: 'row gap wrap' }, pr.badges.map((b) => badgeImg(b.n, b.got))),
       (() => { const next = pr.badges.find((b) => !b.got); return next ? h('div', { class: 'small' }, `Siguiente: ${next.name} — ${next.req}`) : h('div', { class: 'small good' }, '👑 Campeón de la Liga'); })());
+    const buddyCard = h('div', { class: 'card' },
+      h('h3', {}, '🤝 Compañero'),
+      me.buddy
+        ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta (hoy te quedan ${fmt(me.bonusLeft)} de bonus: crece con lo que apuestas y llega como mucho a ${fmt(me.bonusCap)} al día).`)
+        : h('p', { class: 'muted' }, 'Elige un compañero en tu Pokédex: aumenta tus ganancias según su rareza y estrellas.'),
+      buddyFindBlock(),
+      h('div', { class: 'row gap wrap' }, h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'), h('a', { class: 'btn', href: '#/huerto' }, '🌱 Huerto')));
 
+    if (this.offEv) this.offEv();
+    const o1 = bus.on('events', () => this.remount(root));
+    const o2 = bus.on('mega', () => this.remount(root));
+    const o3 = bus.on('visited', () => { if (S.view === 'lobby') this.remount(root); });
+    this.offEv = () => { o1(); o2(); o3(); };
+
+    const buddyArt = me.buddy
+      ? aniImg(me.buddy.id, { shiny: me.buddy.shiny, mega: me.buddy.mega || 0, cls: 'home-buddy', alt: S.dexById.get(me.buddy.id)?.name || '', fallback: me.buddy.mega ? art(me.buddy.mega, me.buddy.shiny) : art(me.buddy.id, me.buddy.shiny) })
+      : monImg(MON.meowth, 'home-buddy');
     root.append(
-      h('section', { class: 'hero' },
-        h('div', { class: 'hero-text' },
-          h('h1', {}, `¡Hola, ${me.username}!`),
-          h('p', {}, 'Bienvenido al PokéCasino de Ciudad Azulona. Juega, colecciona y presume de tus variocolores.'),
-          h('div', { class: 'row gap wrap' },
-            h('a', { class: 'btn primary big', href: '#/gacha' }, freeDone ? '🎁 Ir al Gacha' : '🎁 ¡Tirada gratis disponible!'),
-            h('a', { class: 'btn big', href: '#/race' }, '🏁 Carrera en directo'))),
-        h('div', { class: 'hero-mons' }, me.buddy ? aniImg(me.buddy.id, { shiny: me.buddy.shiny, mega: me.buddy.mega || 0, cls: 'hero-buddy float', alt: S.dexById.get(me.buddy.id)?.name || '', fallback: me.buddy.mega ? art(me.buddy.mega, me.buddy.shiny) : art(me.buddy.id, me.buddy.shiny) }) : h('img', { class: 'hero-buddy float', src: art(52), alt: 'Meowth' }))),
-      canInstall() && (() => { try { return !localStorage.getItem('installHidden'); } catch { return true; } })() ? h('div', { class: 'card install-card' },
-        h('img', { src: '/icons/icon-192.png', alt: '' }),
-        h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio a pantalla completa, como una app.')),
-        h('button', { class: 'btn primary', onclick: () => installApp() }, 'Instalar'),
-        h('button', { class: 'icon-btn', 'aria-label': 'Ocultar', onclick: (e) => { try { localStorage.setItem('installHidden', '1'); } catch { /* nada */ } e.target.closest('.install-card').remove(); } }, '✕')) : '',
-      (() => { if (this.offEv) this.offEv(); const o1 = bus.on('events', () => this.remount(root)); const o2 = bus.on('mega', () => this.remount(root)); this.offEv = () => { o1(); o2(); }; return h('div', { class: 'stack' }, backupReminder(), megaBanner(), eventsCard()); })(),
-      h('div', { class: 'cards3 progress-row' }, route, daily, badgeStrip),
-      h('div', { class: 'cards3' },
-        h('div', { class: 'card' },
-          h('h3', {}, '📅 Recompensa diaria'),
-          h('p', { class: 'muted' }, 'Monedas + 1 Ticket Gacha cada día. Cada 7 días seguidos, un Amuleto Iris.'),
-          days, dailyBtn),
-        h('div', { class: 'card' },
-          h('h3', {}, '🏥 Centro Pokémon'),
-          h('p', { class: 'muted' }, `¿Sin fondos? Si tienes menos de ${fmt(hl.limit)} monedas, la enfermera Joy te presta ${fmt(hl.amount)} (una vez cada ${Math.round(hl.cooldown / 3600e3)} h).`),
-          healBtn, healNote),
-        h('div', { class: 'card' },
-          h('h3', {}, '🤝 Compañero'),
-          me.buddy
-            ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta (hoy te quedan ${fmt(me.bonusLeft)} de bonus: crece con lo que apuestas y llega como mucho a ${fmt(me.bonusCap)} al día).`)
-            : h('p', { class: 'muted' }, 'Elige un compañero en tu Pokédex: aumenta tus ganancias según su rareza y estrellas.'),
-          buddyFindBlock(),
-          h('div', { class: 'row gap wrap' }, h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'), h('a', { class: 'btn', href: '#/huerto' }, '🌱 Huerto')))),
-      h('h2', { class: 'section-title' }, `Juegos (${GAMES.length - 2} + Gacha y Mercado)`),
-      h('div', { class: 'game-grid' }, GAMES.map((g) => h('a', { class: 'game-card', href: '#/' + g.id },
-        h('img', { class: 'game-art', src: art(g.art), alt: '', loading: 'lazy' }),
-        h('img', { class: 'pixel game-ico', src: item(g.ico), alt: '' }),
-        g.tag ? h('span', { class: 'game-tag' }, g.tag) : null,
-        h('h3', {}, g.name), h('p', {}, g.desc)))),
-      h('h2', { class: 'section-title' }, 'Tus estadísticas'),
-      h('div', { class: 'stat-row big' },
-        st('Apostado', fmt(me.stats.wagered)), st('Ganado', fmt(me.stats.won)), st('Mayor premio', fmt(me.stats.biggestWin)),
-        st('Tiradas gacha', fmt(me.stats.pulls)), st('Pokédex', `${Object.keys(me.collection).length}/${S.data.dex.length}`),
-        st('Duelos', `${me.stats.duelsWon}V/${me.stats.duelsLost}D`)),
+      h('div', { class: 'page-head home-head' }, h('h1', {}, `¡Hola, ${me.username}!`), buddyArt),
+      oakSay(),
+      h('div', { class: 'stack' }, backupReminder(), megaBanner(), eventsCard()),
+      h('div', { class: 'home-grid' },
+        h('div', { class: 'card home-card' }, h('h3', {}, h('img', { class: 'pixel', src: item('amulet-coin'), alt: '' }), 'Regalo diario'),
+          days, h('div', { class: 'home-actions' }, dailyBtn)),
+        h('div', { class: 'card home-card' }, h('h3', {}, h('img', { class: 'pixel', src: item('great-ball'), alt: '' }), 'Poké Gacha'),
+          h('p', { class: 'muted' }, freeDone ? 'Ya usaste tu tirada gratis de hoy.' : 'Tu tirada gratis de hoy te espera.'),
+          h('div', { class: 'home-actions' }, h('a', { class: 'btn primary', href: '#/gacha' }, freeDone ? '🎁 Ir al Gacha' : '🎁 ¡Tirada gratis disponible!'))),
+        h('div', { class: 'card home-card' }, h('h3', {}, monImg(MON.chansey, 'chansey-joy'), 'Centro Pokémon'),
+          h('p', { class: 'small muted' }, `¿Sin fondos? La enfermera Joy te presta ${fmt(hl.amount)} monedas (una vez cada ${Math.round(hl.cooldown / 3600e3)} h).`),
+          h('div', { class: 'home-actions' }, healBtn), healNote)),
+      h('h2', { class: 'section-title' }, '¿A dónde vamos?'),
+      h('div', { class: 'home-sections' }, SECTIONS.filter((s) => s.id !== 'lobby').map((sec) => h('a', { class: `hub-card tone-${SEC_TONE[sec.id]}`, href: '#/' + sec.id },
+        sectionNew(sec) ? h('span', { class: 'new-badge' }, '¡NUEVO!') : null,
+        h('span', { class: 'hub-art' }, monImg(SEC_MON[sec.id])),
+        h('b', { class: 'hub-name' }, sec.label),
+        h('span', { class: 'hub-desc' }, SEC_DESC[sec.id])))),
+      h('details', { class: 'more-box' }, h('summary', {}, 'Ver más'),
+        h('div', { class: 'more-body' },
+          canInstall() && (() => { try { return !localStorage.getItem('installHidden'); } catch { return true; } })() ? h('div', { class: 'card install-card' },
+            h('img', { src: '/icons/icon-192.png', alt: '' }),
+            h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio, como una app.')),
+            h('button', { class: 'btn primary', onclick: () => installApp() }, 'Instalar'),
+            h('button', { class: 'icon-btn', 'aria-label': 'Ocultar', onclick: (e) => { try { localStorage.setItem('installHidden', '1'); } catch { /* nada */ } e.target.closest('.install-card').remove(); } }, '✕')) : '',
+          h('div', { class: 'cards3' }, routeBox, daily, badgeStrip, buddyCard),
+          h('h2', { class: 'section-title' }, 'Tus estadísticas'),
+          h('div', { class: 'stat-row big' },
+            st('Apostado', fmt(me.stats.wagered)), st('Ganado', fmt(me.stats.won)), st('Mayor premio', fmt(me.stats.biggestWin)),
+            st('Tiradas gacha', fmt(me.stats.pulls)), st('Pokédex', `${Object.keys(me.collection).length}/${S.data.dex.length}`),
+            st('Duelos', `${me.stats.duelsWon}V/${me.stats.duelsLost}D`)))),
+      h('div', { class: 'footprints', 'aria-hidden': 'true' }),
     );
   },
   // Solo se repinta si el jugador sigue en el Vestíbulo (las respuestas pueden llegar tarde).

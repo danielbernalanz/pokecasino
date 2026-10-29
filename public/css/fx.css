@@ -122,9 +122,9 @@
 .risk-box { display: flex; flex-direction: column; gap: 10px; text-align: center; }
 .risk-ico { font-size: 44px; line-height: 1; filter: drop-shadow(0 0 14px #ffcb0599); animation: riskPulse 1.6s ease-in-out infinite; }
 @keyframes riskPulse { 50% { transform: scale(1.08); } }
-.risk-title { font-size: 19px; color: var(--gold); margin: 0; }
+.risk-title { font-size: 19px; color: var(--gold-ink); margin: 0; }
 .risk-text { margin: 0; line-height: 1.5; font-size: 15px; }
-.risk-details { margin: 0; padding: 10px 12px 10px 28px; text-align: left; font-size: 13px; color: var(--muted); background: #0004; border: 1px solid var(--line); border-radius: 10px; }
+.risk-details { margin: 0; padding: 10px 12px 10px 28px; text-align: left; font-size: 13px; color: var(--muted); background: var(--sunk); border: 2px solid var(--ink); border-radius: 10px; }
 .risk-details li { margin: 2px 0; }
 .risk-check { flex-direction: row; align-items: center; gap: 8px; justify-content: center; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 2px; }
 .risk-check input { width: 18px; height: 18px; accent-color: var(--gold); flex: none; padding: 0; }

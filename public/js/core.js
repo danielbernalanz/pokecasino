@@ -15,6 +15,9 @@ export const art = (id, shiny) => `${SPR}/pokemon/other/official-artwork/${shiny
 export const sprite = (id, shiny) => `${SPR}/pokemon/${shiny ? 'shiny/' : ''}${id}.png`;
 export const anim = (id, shiny, back) => `${SPR}/pokemon/other/showdown/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}${id}.gif`;
 export const item = (name) => `${SPR}/items/${name}.png`;
+export const SPR_BADGE = (n) => `${SPR}/badges/${n}.png`;
+// Pokémon de adorno (detallitos de fan service) y objetos del juego.
+export const MON = { chansey: 113, meowth: 52, snorlax: 143, psyduck: 54, slowpoke: 79, kecleon: 352, wobbuffet: 202, pikachu: 25, jigglypuff: 39, gengar: 94, unown: 201, eevee: 133, togepi: 175, oddish: 43 };
 
 // ---- DOM ----
 export function h(tag, attrs = {}, ...children) {
@@ -33,6 +36,32 @@ export function h(tag, attrs = {}, ...children) {
   return el;
 }
 export const $ = (sel, root = document) => root.querySelector(sel);
+
+// ---- Piezas de interfaz «de juego de Pokémon» ----
+// Sprite pequeño de adorno (nunca estorba: sin texto, oculto si no carga).
+export function monImg(id, cls = '', shiny = false) {
+  const el = h('img', { class: 'pixel ' + cls, src: sprite(id, shiny), alt: '', loading: 'lazy', draggable: 'false' });
+  el.addEventListener('error', () => { el.style.visibility = 'hidden'; }, { once: true });
+  return el;
+}
+// Barra de PS: verde, amarilla (<50 %) o roja (<20 %).
+export function hpBar(pct, cls = '') {
+  const p = Math.max(0, Math.min(100, Number(pct) || 0));
+  return h('div', { class: `bar ${cls} ${p < 20 ? 'r' : p < 50 ? 'y' : ''}`.trim(), role: 'progressbar', 'aria-valuenow': Math.round(p), 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('i', { style: { width: p + '%' } }));
+}
+// Caja de texto dicha por un Pokémon (mon) o personaje (emoji): una frase corta y, si hace falta, botones.
+export function say({ who, mon, emoji, text, actions, cls = '' } = {}) {
+  const av = emoji ? h('span', { class: 'say-av emoji', 'aria-hidden': 'true' }, emoji) : h('span', { class: 'say-av' }, mon ? monImg(mon) : null);
+  return h('div', { class: 'say ' + cls }, av,
+    h('div', { class: 'say-box' }, who ? h('span', { class: 'say-who' }, who) : null, h('div', { class: 'say-text' }, text),
+      actions && actions.length ? h('div', { class: 'say-actions' }, actions) : null));
+}
+// Cargando…: Poké Ball giratoria.
+export const loader = (text = 'Cargando…') => h('div', { class: 'loader', role: 'status' }, h('span', { class: 'ball-spin' }), text);
+// Estado vacío: Snorlax dormido (o el Pokémon que se indique) y una frase.
+export function emptyState(text, mon = MON.snorlax, ...extra) {
+  return h('div', { class: 'empty-state' }, h('span', { class: mon === MON.snorlax ? 'zzz' : '' }, monImg(mon)), h('div', {}, text), ...extra);
+}
 
 // Imagen con respaldo: si el sprite animado no existe, usa el estático.
 export function img(src, { cls = '', alt = '', fallback } = {}) {
@@ -86,7 +115,8 @@ export async function act(ev, payload, btn) {
 // ---- Avisos ----
 export function toast(text, kind = 'info', ms = 3800) {
   const box = $('#toasts');
-  const t = h('div', { class: `toast toast-${kind}` }, text);
+  // Los errores los «dice» Psyduck, confundido, en la caja de texto inferior.
+  const t = h('div', { class: `toast toast-${kind}`, role: 'status' }, kind === 'error' ? h('img', { class: 't-ico pixel', src: sprite(MON.psyduck), alt: '' }) : null, h('span', { class: 't-txt' }, text));
   box.append(t);
   setTimeout(() => t.classList.add('out'), ms);
   setTimeout(() => t.remove(), ms + 400);
