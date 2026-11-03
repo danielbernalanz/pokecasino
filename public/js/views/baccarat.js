@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, playingCard, sleep, sprite, confirmBet } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, playingCard, sleep, sprite, confirmBet, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, vibrate } from '../fx.js';
 
 const LABEL = { player: 'Punto', banker: 'Banca', tie: 'Empate' };
@@ -24,6 +24,7 @@ export default {
       const stake = bets.player + bets.banker + bets.tie;
       playBtn.disabled = true;
       if (!(await confirmBet('baccarat', stake))) { playBtn.disabled = false; return; }
+      holdCoins(stake); // el premio se ve al destapar la última carta
       try {
         const r = await emit('baccarat:play', { bets });
         pBox.replaceChildren(); bBox.replaceChildren(); pScore.textContent = '–'; bScore.textContent = '–';
@@ -35,11 +36,12 @@ export default {
           if (k === order.length - 1) { sfx('charge', 0); vibrate(25); await sleep(450); }
           box.append(playingCard(c, { cls: 'deal' })); sfx('flip'); await sleep(380);
         }
+        releaseCoins();
         pScore.textContent = r.ps; bScore.textContent = r.bs;
         msg.replaceChildren(h('b', {}, `Gana ${LABEL[r.winner]} (${r.ps} – ${r.bs}) `), r.paid ? h('b', { class: 'good' }, `+${fmt(r.paid)}`) : h('span', { class: 'muted' }, 'sin premio'));
         sfx(r.paid ? 'win' : 'lose');
         if (r.paid) { burstEl(r.winner === 'banker' ? bBox : pBox, '#ffd54f', 20, { spread: 150 }); winFx(r.paid, stake, { el: msg, icon: '🎴' }); }
-      } catch (e) { toast(e.message, 'error'); }
+      } catch (e) { releaseCoins(); toast(e.message, 'error'); }
       playBtn.disabled = false;
     }
     root.append(

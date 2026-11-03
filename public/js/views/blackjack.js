@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, betInput, playingCard, sprite, confirmBet, confirmRisk } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, betInput, playingCard, sprite, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, flash, floatText, vibrate } from '../fx.js';
 
 const RESULT = { blackjack: '¡Blackjack!', win: 'Ganas', push: 'Empate', lose: 'Pierdes', bust: 'Te pasaste' };
@@ -59,7 +59,8 @@ export default {
     async function deal() {
       shown = 0;
       if (!(await confirmBet('blackjack', bet.value))) return;
-      try { const r = await emit('bj:deal', { bet: bet.value }); sfx('flip'); render(r.game, true); } catch (e) { toast(e.message, 'error'); sfx('error'); }
+      holdCoins(bet.value, 3000);
+      try { const r = await emit('bj:deal', { bet: bet.value }); sfx('flip'); render(r.game, true); setTimeout(releaseCoins, 700); } catch (e) { releaseCoins(); toast(e.message, 'error'); sfx('error'); }
     }
     async function play(action) {
       const hd = cur && !cur.done && cur.hands[cur.active];
@@ -74,7 +75,8 @@ export default {
           danger: action === 'double' ? 'Doblar igualmente' : 'Pedir igualmente', safe: 'Plantarme / volver' }))) return;
         if ((action === 'double' || action === 'split') && !(await confirmBet('blackjack', hd.bet, { what: action === 'double' ? 'doblar con' : 'añadir' }))) return;
       }
-      try { const r = await emit('bj:act', { action }); sfx('flip'); render(r.game, true); } catch (e) { toast(e.message, 'error'); }
+      holdCoins(0, 3000);
+      try { const r = await emit('bj:act', { action }); sfx('flip'); render(r.game, true); setTimeout(releaseCoins, 700); } catch (e) { releaseCoins(); toast(e.message, 'error'); }
     }
 
     root.append(

@@ -134,8 +134,13 @@ function animateCoins(to) {
   if (from - to >= 2000 && to < from * 0.6) setTimeout(() => { if (S.me && S.me.coins < from * 0.6) wobbuffetSays('¡Wobbu…! Ánimo, entrenador: mañana será otro día.'); }, 3200);
   if (to > from && from > 0) { const sp = h('span', { class: 'sparkle', 'aria-hidden': 'true' }, '✨'); pill.append(sp); setTimeout(() => sp.remove(), 1000); }
 }
+// Durante una jugada (holdCoins) solo se descuenta la apuesta; el resultado llega con releaseCoins().
+function showCoinsFor(me) {
+  if (!S.coinHold) animateCoins(me.coins);
+}
+bus.on('coinhold', (stake) => { if (stake) animateCoins(shownCoins - stake); });
 bus.on('me', (me) => {
-  animateCoins(me.coins);
+  showCoinsFor(me);
   $('#dust').textContent = fmt(me.dust);
   $('#level').textContent = me.level;
   $('#xpfill').style.width = Math.min(100, ((me.xp - me.xpCur) / (me.xpNext - me.xpCur)) * 100) + '%';

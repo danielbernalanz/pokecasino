@@ -1,10 +1,10 @@
-import { S, h, fmt, act, sfx, bus, sprite, art, img, animImg, modal, typeBadge, sleep, confirmBet } from '../core.js';
+import { S, h, fmt, act, sfx, bus, sprite, art, img, animImg, modal, typeBadge, sleep, confirmBet, holdCoins, releaseCoins } from '../core.js';
 import { aniImg, animEnabled, TYPE_COLOR } from '../anim.js';
 import { pickPokemon } from '../picker.js';
 import { burstEl, shake, flash, confetti, coinRain, vibrate, floatText, reduced } from '../fx.js';
 
 // Reproduce un combate con animaciones.
-export function playBattle(record) {
+export function playBattle(record, { held = false } = {}) {
   const meIdx = record.players.indexOf(S.me.username);
   const side = meIdx === -1 ? 0 : meIdx; // el lado "propio" se dibuja de espaldas
   const f = record.fighters;
@@ -91,7 +91,7 @@ export function playBattle(record) {
     }
     skipBtn.textContent = 'Cerrar';
     skipBtn.onclick = m.close;
-  })();
+  })().finally(() => { if (held) releaseCoins(); });
 }
 
 const hSpr = (x) => (x.mega ? img(art(x.mega, x.shiny), { cls: 'pixel', alt: '', fallback: art(x.mega, false) }) : h('img', { class: 'pixel', src: sprite(x.id, x.shiny), alt: '' }));
@@ -136,8 +136,9 @@ export default {
               const pick = await pickPokemon({ title: `Elige tu Pokémon a ciegas contra ${d.creator}`, mega: true });
               if (!pick) return;
               if (d.wager && !(await confirmBet('duels', d.wager, { what: 'jugarte en este duelo' }))) return;
+              holdCoins(d.wager || 0, 90000); // el premio del duelo se ve al terminar el combate
               const r = await act('duel:accept', { id: d.id, pokeId: pick.id, shiny: pick.shiny, mega: pick.mega || 0 }, e.target);
-              if (r) playBattle(r.record);
+              if (r) playBattle(r.record, { held: true }); else releaseCoins();
             } }, '¡Aceptar!'));
       }));
     }

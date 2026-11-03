@@ -118,6 +118,26 @@ export function emit(ev, payload = {}) {
 }
 export function setMe(me) { S.me = me; bus.emit('me', me); }
 
+// Saldo de la cabecera durante una jugada: al apostar se descuenta la apuesta y el premio no aparece hasta que
+// termina la animación (el servidor ya lo ha pagado, pero verlo antes estropea la sorpresa). La vista llama a
+// releaseCoins() al acabar; si no lo hiciera, se suelta solo a los pocos segundos.
+// Admite varias jugadas a la vez (bolas de Plinko seguidas): el saldo real se muestra cuando terminan todas.
+export function holdCoins(stake = 0, maxMs = 9000) {
+  const hold = (S.coinHold ||= { count: 0, timer: 0 });
+  hold.count++;
+  clearTimeout(hold.timer);
+  hold.timer = setTimeout(() => { if (S.coinHold) S.coinHold.count = 1; releaseCoins(); }, maxMs);
+  bus.emit('coinhold', Math.max(0, Number(stake) || 0));
+}
+export function releaseCoins() {
+  const hold = S.coinHold;
+  if (!hold) return;
+  if (--hold.count > 0) return;
+  clearTimeout(hold.timer);
+  S.coinHold = null;
+  if (S.me) bus.emit('me', S.me);
+}
+
 // Ejecuta una acción mostrando el error como aviso.
 export async function act(ev, payload, btn) {
   if (btn) btn.disabled = true;

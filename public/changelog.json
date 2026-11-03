@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.11.03-a",
+    "date": "2026-11-03",
+    "title": "Premios a su tiempo y Video Póker más cómodo",
+    "items": [
+      "💰 Al apostar se descuenta la apuesta al momento, pero el premio ya no aparece en tu saldo antes de tiempo: llega cuando termina la animación (tragaperras, ruleta, Plinko, Baccarat, Blackjack, Video Póker y Duelos rápidos).",
+      "🃏 Video Póker: al tocar una carta para guardarla ya no se vuelve a repartir la mano ni se mueve la pantalla."
+    ]
+  },
+  {
     "version": "2026.10.29-q",
     "date": "2026-10-29",
     "title": "Arreglos",

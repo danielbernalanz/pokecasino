@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, betInput, playingCard, confirmBet, confirmRisk } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, betInput, playingCard, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, floatText, flash, vibrate } from '../fx.js';
 
 export default {
@@ -18,7 +18,8 @@ export default {
     function render(win) {
       cardsBox.replaceChildren(...(hand || [null, null, null, null, null]).map((c, i) => h('button', {
         class: 'vp-slot' + (holds[i] ? ' held' : ''), disabled: phase !== 'hold',
-        onclick: () => { holds[i] = !holds[i]; sfx('click'); render(); },
+        // Solo se marca esa carta: volver a dibujar la mano repetía la animación de reparto y movía la pantalla.
+        onclick: (e) => { holds[i] = !holds[i]; sfx('click'); e.currentTarget.classList.toggle('held', holds[i]); },
       }, c ? playingCard(c, { cls: 'deal', delay: i * 80 }) : playingCard(null), h('span', { class: 'hold-tag' }, 'GUARDADA'))));
       rows.forEach((r) => r.classList.toggle('hit', r.dataset.name === win));
     }
@@ -40,6 +41,7 @@ export default {
           text: `Ya tienes «${dealHint}»${pay ? ` (paga ×${pay}, es decir ${fmt(stake * pay)} monedas)` : ''}, pero no has guardado ninguna carta: al cambiar las cinco perderías ese premio.`,
           details: ['Pulsa sobre las cartas para guardarlas antes de cambiar.'], danger: 'Cambiar todas igualmente', safe: 'Volver y guardar' }))) return;
       }
+      holdCoins(0, 2500);
       try {
         const r = await emit('vp:draw', { hold: holds });
         hand = r.hand; phase = 'idle'; mainBtn.textContent = 'REPARTIR';
@@ -47,6 +49,7 @@ export default {
         sfx(r.mult >= 25 ? 'big' : r.paid ? 'win' : 'lose');
         holds = [false, false, false, false, false];
         render(r.result);
+        setTimeout(releaseCoins, 650); // tras dar la vuelta a las cartas
         if (r.paid) {
           // Cada carta de la jugada ganadora destella; los premios altos escalan con el multiplicador.
           [...cardsBox.children].forEach((c, k) => setTimeout(() => burstEl(c, '#ffd54f', 6, { spread: 80, stars: 0.7 }), k * 70));
@@ -54,7 +57,7 @@ export default {
           if (r.mult >= 25) { flash('#ffe08a', 450); vibrate([40, 30, 80]); }
           winFx(r.paid, stake, { el: cardsBox, title: r.mult >= 250 ? '¡ESCALERA REAL!' : '¡GRAN PREMIO!', icon: '🂡' });
         }
-      } catch (e) { toast(e.message, 'error'); }
+      } catch (e) { releaseCoins(); toast(e.message, 'error'); }
     }
     root.append(
       h('div', { class: 'game-head' }, h('h1', {}, '🂡 Video Póker'), h('p', { class: 'muted' }, 'Jacks or Better 9/6: el clásico de máquina con mejor RTP del casino.')),

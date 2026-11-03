@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, betInput, item, confirmBet } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, betInput, item, confirmBet, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstAt, burstEl, glow, vibrate } from '../fx.js';
 
 const RISK = { low: 'Bajo', medium: 'Medio', high: 'Alto' };
@@ -30,7 +30,8 @@ export default {
       const stake = bet.value;
       if (!(await confirmBet('plinko', stake, { what: 'soltar una bola con' }))) return;
       let r;
-      try { r = await emit('plinko:drop', { bet: bet.value, risk }); } catch (e) { toast(e.message, 'error'); sfx('error'); return; }
+      holdCoins(stake); // el premio se ve cuando la bola cae en su casilla
+      try { r = await emit('plinko:drop', { bet: bet.value, risk }); } catch (e) { releaseCoins(); toast(e.message, 'error'); sfx('error'); return; }
       const ball = h('img', { class: 'pixel plinko-ball', src: item('poke-ball'), alt: '' });
       board.append(ball);
       const frames = [{ left: X(0, 0) + '%', top: '0%' }];
@@ -50,6 +51,7 @@ export default {
         raf = requestAnimationFrame(watch);
       });
       anim.onfinish = () => {
+        releaseCoins();
         clearInterval(tick);
         cancelAnimationFrame(raf);
         ball.remove();

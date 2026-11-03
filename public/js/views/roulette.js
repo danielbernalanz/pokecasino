@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, item, TYPE_ES, sleep, confirmBet, confirmRisk } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, item, TYPE_ES, sleep, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, glow, pop, vibrate, reduced } from '../fx.js';
 
 const COLORS = {
@@ -73,7 +73,8 @@ export default {
         danger: 'Girar igualmente' }))) { spinning = false; spinBtn.disabled = false; return; }
       if (!(await confirmBet('roulette', stake))) { spinning = false; spinBtn.disabled = false; return; }
       let res;
-      try { res = await emit('roulette:spin', { bets: list }); } catch (e) { toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; return; }
+      holdCoins(stake); // el premio se ve cuando la bola se para
+      try { res = await emit('roulette:spin', { bets: list }); } catch (e) { releaseCoins(); toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; return; }
       // Gira para que el segmento ganador quede bajo el puntero (arriba).
       const target = 360 - (res.slot * seg + seg / 2);
       rotation += 360 * 5 + ((target - (rotation % 360)) + 360) % 360;
@@ -85,6 +86,7 @@ export default {
       for (let i = 0; i < 12; i++) { sfx('tick'); await sleep(120 + i * 25); }
       await sleep(Math.max(0, 4200 - 12 * 120 - 66 * 25));
       const t = res.type;
+      releaseCoins();
       resultEl.replaceChildren(h('span', { class: 'type t-' + t }, `${res.slot} · ${TYPE_ES[t]}`),
         res.paid ? h('b', { class: 'good' }, ` +${fmt(res.paid)}`) : h('span', { class: 'muted' }, ' sin premio'));
       sfx(res.paid ? 'win' : 'lose');

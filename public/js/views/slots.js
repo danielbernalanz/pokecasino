@@ -1,4 +1,4 @@
-import { S, h, fmt, emit, sfx, toast, bus, item, sprite, betInput, sleep, confirmBet, confirmRisk } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, bus, item, sprite, betInput, sleep, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, glow, vibrate } from '../fx.js';
 
 const ICON = {
@@ -61,7 +61,9 @@ export default {
         }, 70);
       });
       let res;
+      holdCoins(stake); // el premio se ve en el saldo cuando paran los rodillos
       try { res = await emit('slots:spin', { bet: bet.value }); } catch (e) {
+        releaseCoins();
         timers.forEach(clearInterval); reelEls.forEach((r) => r.classList.remove('spinning'));
         toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; auto = false; autoBtn.classList.remove('active'); return;
       }
@@ -100,6 +102,7 @@ export default {
           if (res.paid > 0) burstEl(cell, '#ffd54f', 6, { spread: 70, stars: 0.6 });
         });
       }
+      releaseCoins();
       if (res.paid > 0) winFx(res.paid, stake, { el: winBox, jackpot: res.jackpotWon > 0, title: res.jackpotWon ? '¡BOTE!' : '¡GRAN PREMIO!', icon: res.jackpotWon ? '💥' : '🎰' });
       else if (near) sfx('lose');
       if (res.jackpotWon) {
