@@ -1,11 +1,11 @@
 import { aniImg } from '../anim.js';
-import { S, h, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
+import { S, h, multiSelect, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
 import { useFx } from '../rewards.js';
 import { burstAt, centerOf } from '../fx.js';
 import { openItem } from './market.js';
 import { openInPc } from './pc.js';
 
-let filter = { q: '', show: null, rarity: '', type: '', gen: '' };
+let filter = { q: '', show: null, rarity: [], type: [], gen: [] };
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
 
 const lockedN = () => Object.keys(S.me.locked || {}).length;
@@ -91,6 +91,7 @@ export default {
       const s = h('select', { onchange: (e) => { filter[key] = e.target.value; render(); } }, opts.map(([v, l]) => h('option', { value: v, selected: filter[key] === v }, l)));
       return s;
     };
+    const ms = (key, label, opts, allLabel, plural) => multiSelect({ label, options: opts, value: filter[key], allLabel, plural, onChange: (v) => { filter[key] = v; renderedCount = 0; render(); } }).el;
     function render() {
       if (currentSentinel) { currentSentinel.remove(); currentSentinel = null; }
       const col = S.me.collection;
@@ -110,9 +111,9 @@ export default {
         if (filter.show === 'missing' && c) return false;
         if (filter.show === 'shiny' && !(c && c.s)) return false;
         if (filter.show === 'locked' && !(!c && lockedOf[p.id])) return false;
-        if (filter.rarity && p.rarity !== filter.rarity) return false;
-        if (filter.type && !p.types.includes(filter.type)) return false;
-        if (filter.gen && p.gen !== Number(filter.gen)) return false;
+        if (filter.rarity.length && !filter.rarity.includes(p.rarity)) return false;
+        if (filter.type.length && !p.types.some((t) => filter.type.includes(t))) return false;
+        if (filter.gen.length && !filter.gen.includes(String(p.gen))) return false;
         if (q && !(c ? p.name.toLowerCase().includes(q) : String(p.id).includes(q))) return false;
         return true;
       });
@@ -155,9 +156,9 @@ export default {
       h('div', { class: 'game-head' }, h('h1', {}, '📕 Pokédex'), counter),
       banner,
       h('div', { class: 'filters' }, search, showSel,
-        sel('rarity', [['', 'Cualquier rareza'], ...['M', 'L', 'E', 'R', 'U', 'C'].map((r) => [r, rarityName(r)])]),
-        sel('type', [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])]),
-        sel('gen', [['', 'Todas las regiones'], ...REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`])])),
+        ms('rarity', 'Rareza', ['M', 'L', 'E', 'R', 'U', 'C'].map((r) => [r, rarityName(r)]), 'Todas', 'seleccionadas'),
+        ms('type', 'Tipo', S.data.types.map((t) => [t, TYPE_ES[t]]), 'Todos', 'seleccionados'),
+        ms('gen', 'Región', REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`]), 'Todas', 'seleccionadas')),
       h('div', { class: 'dex-scroll' }, grid)); // la lista (1.025) se desplaza dentro de su panel: la pantalla no
     render();
     this.off = bus.on('me', render);

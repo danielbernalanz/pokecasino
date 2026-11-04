@@ -1,5 +1,5 @@
 // Máquina MT (pestaña de la Tienda) y uso de MT: fabricar con monedas + materiales, enseñar a un Pokémon compatible.
-import { S, h, fmt, act, emit, toast, sfx, modal, sprite, TYPE_ES, itemImg, typeBadge, bus } from '../core.js';
+import { S, h, multiSelect, fmt, act, emit, toast, sfx, modal, sprite, TYPE_ES, itemImg, typeBadge, bus } from '../core.js';
 import { loadNames, moveEs, moveMeta, CAT } from '../battle-screen.js';
 import { pickPokemon } from '../picker.js';
 import { swapDialog } from './moves-ui.js';
@@ -9,7 +9,7 @@ const norm = (x) => String(x).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 const tmItems = () => Object.entries(S.data.items).filter(([, it]) => it.tm).sort((a, b) => a[1].num - b[1].num);
 const matIds = () => Object.entries(S.data.items).filter(([, it]) => it.material).map(([id]) => id);
 const have = (id) => (S.me.items && S.me.items[id]) || 0;
-const filter = { q: '', type: '', tier: '', show: 'all', compat: null, compatName: '' };
+const filter = { q: '', type: [], tier: [], show: 'all', compat: null, compatName: '' };
 
 // Chip «material ×N».
 export const matChip = (id, need) => h('span', { class: 'tm-mat' + (need !== undefined && have(id) < need ? ' lack' : ''), title: S.data.items[id].name },
@@ -94,8 +94,8 @@ export function machineTab() {
   const draw = () => {
     const q = norm(f.q.trim());
     const rows = tmItems().filter(([id, it]) => {
-      if (f.type && it.type !== f.type) return false;
-      if (f.tier && it.tier !== f.tier) return false;
+      if (f.type.length && !f.type.includes(it.type)) return false;
+      if (f.tier.length && !f.tier.includes(it.tier)) return false;
       if (f.show === 'craft' && !can([id, it])) return false;
       if (f.show === 'owned' && !have(id)) return false;
       if (f.compat && !f.compat.has(it.tm)) return false;
@@ -109,6 +109,7 @@ export function machineTab() {
   let timer = null;
   const search = h('input', { type: 'search', placeholder: 'Buscar movimiento o nº de MT…', value: f.q, autocomplete: 'off', oninput: (e) => { f.q = e.target.value; shown = 60; clearTimeout(timer); timer = setTimeout(draw, 150); } });
   const sel = (key, opts) => h('select', { onchange: (e) => { f[key] = e.target.value; shown = 60; draw(); } }, opts.map(([v, l]) => h('option', { value: v, selected: f[key] === v }, l)));
+  const ms = (key, label, opts, allLabel, plural) => multiSelect({ label, options: opts, value: f[key], allLabel, plural, onChange: (v) => { f[key] = v; shown = 60; draw(); } }).el;
   const compatChip = h('span', {});
   const drawCompat = () => compatChip.replaceChildren(f.compat
     ? h('button', { class: 'chip active', type: 'button', onclick: () => { f.compat = null; f.compatName = ''; drawCompat(); draw(); } }, `Compatible con ${f.compatName} ✕`)
@@ -126,8 +127,8 @@ export function machineTab() {
       h('p', { class: 'small muted' }, 'Como en Escarlata/Púrpura: cada MT se fabrica con monedas y materiales de su tipo, se gasta al usarla y también puedes comprarlas y venderlas en el Mercado. Los materiales caen en las Expediciones y al ganar combates; algunas MT son premio raro (Expediciones largas y líderes de gimnasio).'),
       matRow),
     h('div', { class: 'filters' }, search,
-      sel('type', [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])]),
-      sel('tier', [['', 'Cualquier precio'], ...Object.entries(TIER_ES)]),
+      ms('type', 'Tipo', S.data.types.map((t) => [t, TYPE_ES[t]]), 'Todos', 'seleccionados'),
+      ms('tier', 'Precio', Object.entries(TIER_ES), 'Todos', 'seleccionados'),
       sel('show', [['all', 'Todas'], ['craft', 'Puedo fabricarlas'], ['owned', 'Las tengo']]), compatChip),
     count, list);
   ready.catch(() => {});

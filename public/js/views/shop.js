@@ -1,4 +1,4 @@
-import { S, h, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, itemImg, confirmRisk, TYPE_ES, monImg, MON, say } from '../core.js';
+import { S, h, multiSelect, fmt, act, sfx, toast, sprite, rarityName, bus, RARITY_ORDER, itemImg, confirmRisk, TYPE_ES, monImg, MON, say } from '../core.js';
 import { openDetail } from './pokedex.js';
 import { pickPokemon } from '../picker.js';
 import { openItem } from './market.js';
@@ -15,7 +15,7 @@ function timeLeft(until) {
   return ms > 0 ? `${Math.ceil(ms / 60000)} min` : null;
 }
 
-const craftFilter = { q: '', show: 'missing', rarity: '', type: '', gen: '', sort: 'rarity' };
+const craftFilter = { q: '', show: 'missing', rarity: [], type: [], gen: [], sort: 'rarity' };
 
 export default {
   id: 'shop', title: 'Tienda y Mochila', icon: '🎒',
@@ -109,9 +109,9 @@ export default {
           if (f.show === 'missing' && c) return false;
           if (f.show === 'owned' && !c) return false;
           if (f.show === 'affordable' && (S.me.dust < S.data.rarity[p.rarity].craft || (c && c.n >= 5))) return false;
-          if (f.rarity && p.rarity !== f.rarity) return false;
-          if (f.type && !p.types.includes(f.type)) return false;
-          if (f.gen && p.gen !== Number(f.gen)) return false;
+          if (f.rarity.length && !f.rarity.includes(p.rarity)) return false;
+          if (f.type.length && !p.types.some((t) => f.type.includes(t))) return false;
+          if (f.gen.length && !f.gen.includes(String(p.gen))) return false;
           if (q && !(norm(p.name).includes(q) || String(p.id) === q.replace(/^#?0*/, ''))) return false;
           return true;
         }).sort(f.sort === 'id' ? (a, b) => a.id - b.id
@@ -139,14 +139,15 @@ export default {
       const search = h('input', { type: 'search', placeholder: 'Buscar por nombre o número…', value: f.q, autocomplete: 'off',
         oninput: (e) => { f.q = e.target.value; clearTimeout(timer); timer = setTimeout(draw, 150); } });
       const sel = (key, opts) => h('select', { onchange: (e) => { f[key] = e.target.value; draw(); } }, opts.map(([v, l]) => h('option', { value: v, selected: f[key] === v }, l)));
+      const ms = (key, label, opts, allLabel, plural) => multiSelect({ label, options: opts, value: f[key], allLabel, plural, onChange: (v) => { f[key] = v; draw(); } }).el;
       const REG = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
       draw();
       return h('div', { class: 'stack' },
         h('div', { class: 'filters' }, search,
           sel('show', [['missing', 'Me faltan'], ['all', 'Todos'], ['owned', 'Los tengo'], ['affordable', 'Puedo fabricarlos ahora']]),
-          sel('rarity', [['', 'Cualquier rareza'], ...['M', 'L', 'E', 'R', 'U', 'C'].map((x) => [x, rarityName(x)])]),
-          sel('type', [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])]),
-          sel('gen', [['', 'Todas las regiones'], ...REG.map((x, i) => [String(i + 1), x])]),
+          ms('rarity', 'Rareza', ['M', 'L', 'E', 'R', 'U', 'C'].map((x) => [x, rarityName(x)]), 'Todas', 'seleccionadas'),
+          ms('type', 'Tipo', S.data.types.map((t) => [t, TYPE_ES[t]]), 'Todos', 'seleccionados'),
+          ms('gen', 'Región', REG.map((x, i) => [String(i + 1), x]), 'Todas', 'seleccionadas'),
           sel('sort', [['rarity', 'Orden: rareza'], ['cheap', 'Orden: más barato'], ['id', 'Orden: número'], ['name', 'Orden: nombre']])),
         count, list);
     }

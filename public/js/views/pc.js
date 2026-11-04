@@ -1,5 +1,5 @@
 import { aniImg } from '../anim.js';
-import { S, h, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, hpBar, emptyState, loader, MON } from '../core.js';
+import { S, h, multiSelect, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, hpBar, emptyState, loader, MON } from '../core.js';
 import { evolveAnim, wonderReveal } from './pc-fx.js';
 import { heartsEl, friendLabel, friendTier, movePower, petButton, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
 import { movesPage, learnPrompt, swapDialog } from './moves-ui.js';
@@ -11,7 +11,7 @@ const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocid
 let mons = [];
 let box = { candy: {}, train: {}, wonderLeft: 0, rules: null };
 const TRAIN_STATS = [...STAT_NAMES];
-let filter = { q: '', type: '', rarity: '', shiny: false, fav: false, species: 0, sort: 'recent' };
+let filter = { q: '', type: [], rarity: [], shiny: false, fav: false, species: 0, sort: 'recent' };
 let loading = null;
 let render = null;
 
@@ -244,10 +244,11 @@ export default {
     const boxHead = h('div', { class: 'pc-boxhead' });
     const search = h('input', { type: 'search', placeholder: 'Buscar nombre, mote o nº…', value: filter.q, oninput: (e) => { filter.q = e.target.value; boxIdx = 0; render(); } });
     const sel = (key, opts) => h('select', { onchange: (e) => { filter[key] = e.target.value; boxIdx = 0; render(); } }, opts.map(([v, t]) => h('option', { value: v, selected: filter[key] === v }, t)));
+    const ms = (key, label, opts, allLabel, plural) => multiSelect({ label, options: opts, value: filter[key], allLabel, plural, onChange: (v) => { filter[key] = v; boxIdx = 0; render(); } }).el;
     const check = (key, text) => h('label', { class: 'pc-check' }, h('input', { type: 'checkbox', checked: filter[key], onchange: (e) => { filter[key] = e.target.checked; boxIdx = 0; render(); } }), text);
     const filters = h('div', { class: 'filters pc-filters hidden' }, search,
-      sel('type', [['', 'Cualquier tipo'], ...S.data.types.map((t) => [t, TYPE_ES[t]])]),
-      sel('rarity', [['', 'Cualquier rareza'], ...['M', 'L', 'E', 'R', 'U', 'C'].map((r) => [r, rarityName(r)])]),
+      ms('type', 'Tipo', S.data.types.map((t) => [t, TYPE_ES[t]]), 'Todos', 'seleccionados'),
+      ms('rarity', 'Rareza', ['M', 'L', 'E', 'R', 'U', 'C'].map((r) => [r, rarityName(r)]), 'Todas', 'seleccionadas'),
       sel('sort', [['recent', 'Más recientes'], ['number', 'Nº Pokédex'], ['iv', 'IV total'], ['name', 'Nombre']]),
       check('shiny', '✨ Variocolor'), check('fav', '★ Favoritos'));
     const searchBtn = h('button', { class: 'btn', type: 'button', onclick: () => { const o = filters.classList.toggle('hidden'); searchBtn.classList.toggle('active', !o); if (!o) search.focus(); } }, '🔍 Buscar');
@@ -279,8 +280,8 @@ export default {
       list = mons.filter((m) => {
         const p = S.dexById.get(m.id);
         if (filter.species && m.id !== filter.species) return false;
-        if (filter.type && !p.types.includes(filter.type)) return false;
-        if (filter.rarity && p.rarity !== filter.rarity) return false;
+        if (filter.type.length && !p.types.some((t) => filter.type.includes(t))) return false;
+        if (filter.rarity.length && !filter.rarity.includes(p.rarity)) return false;
         if (filter.shiny && !m.shiny) return false;
         if (filter.fav && !m.fav) return false;
         if (q && !(p.name.toLowerCase().includes(q) || m.nick.toLowerCase().includes(q) || String(m.id) === q.replace('#', ''))) return false;

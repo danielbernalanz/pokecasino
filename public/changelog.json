@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.11.04-h",
+    "date": "2026-11-04",
+    "title": "Filtros con selección múltiple",
+    "items": [
+      "🎛️ Ahora puedes elegir varias cosas a la vez en los filtros: varias rarezas, varios tipos, varias regiones… Toca el filtro, marca las casillas que quieras y pulsa «Listo» (o «Todas» para quitar la selección).",
+      "📍 Disponible en el Mercado (categoría, subcategoría, nivel y región), la Pokédex, Fabricar de la Tienda, la Caja PC y la Máquina MT (tipo y precio). Con varios tipos se muestra el Pokémon que tenga cualquiera de ellos."
+    ]
+  },
+  {
     "version": "2026.11.04-g",
     "date": "2026-11-04",
     "title": "Buscar rival en los combates",

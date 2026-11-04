@@ -1,12 +1,12 @@
-import { S, h, fmt, act, art as artwork, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk } from '../core.js';
+import { S, h, multiSelect, fmt, act, art as artwork, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk } from '../core.js';
 
 // Mercado estilo Albion Online: libro de órdenes por artículo (ventas y pedidos de compra).
 let tab = 'browse';
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
 // Filtros por pestaña: se conservan al cambiar de pestaña durante la sesión.
 const DEF = {
-  browse: { q: '', cat: '', sub: '', rar: '', ench: '', gen: '', sets: '', min: '', max: '', side: '', sort: '' },
-  sell: { q: '', cat: '', sub: '', rar: '', ench: '', gen: '', dup: '', bids: '', sort: '' },
+  browse: { q: '', cat: [], sub: [], rar: [], ench: '', gen: [], sets: '', min: '', max: '', side: '', sort: '' },
+  sell: { q: '', cat: [], sub: [], rar: [], ench: '', gen: [], dup: '', bids: '', sort: '' },
   mine: { q: '', sort: '' },
   history: { q: '', side: 'mine', range: '' },
 };
@@ -609,6 +609,7 @@ export default {
         const sync = () => { toggle.textContent = hasMore ? `⚙ Más filtros (${activeN() + sortN()})` : `⚙ Filtros (${activeN()})`; clear.classList.toggle('dim', !activeN() && !st.q && !sortN()); };
         const q = h('input', { type: 'search', class: 'mkf-q', placeholder: ph, 'aria-label': 'Buscar artículo', autocomplete: 'off', oninput: (e) => { st.q = e.target.value; sync(); later(); } });
         q.value = st.q;
+        const msRef = {};
         const lab = (d, c) => h('label', { class: 'mkf-f' }, h('span', {}, d.ph), c);
         const ctrl = (d) => {
           if (d.t === 'sel') {
@@ -616,6 +617,18 @@ export default {
             const s = h('select', { 'aria-label': d.ph, disabled: !!(d.dis && d.dis()), onchange: (e) => { st[d.k] = e.target.value; if (d.onset) d.onset(); sync(); if (d.rebuild) build(); onChange(); } }, opts.map(([v, l]) => h('option', { value: v }, l)));
             s.value = st[d.k];
             return lab(d, s);
+          }
+          if (d.t === 'ms') {
+            const all = typeof d.opts === 'function' ? d.opts() : d.opts;
+            const ms = multiSelect({ label: d.ph, options: all.filter(([v]) => v !== ''), value: st[d.k], showLabel: false, allLabel: d.all || 'Todos', plural: d.plural || 'seleccionados', disabled: !!(d.dis && d.dis()),
+              onChange: (v) => {
+                st[d.k] = v; if (d.onset) d.onset(); sync();
+                // Los controles que dependen de otros (subcategoría) se actualizan en su sitio, sin cerrar el desplegable.
+                for (const x of defs) if (x.t === 'ms' && typeof x.opts === 'function' && msRef[x.k]) msRef[x.k].update({ options: x.opts().filter(([o]) => o !== ''), disabled: !!(x.dis && x.dis()), value: st[x.k] });
+                onChange();
+              } });
+            msRef[d.k] = ms;
+            return lab(d, ms.el);
           }
           if (d.t === 'num') {
             const i = h('input', { type: 'number', min: 0, inputmode: 'numeric', class: 'mkf-num', placeholder: '—', 'aria-label': d.ph, oninput: (e) => { st[d.k] = e.target.value; sync(); later(); } });
@@ -662,29 +675,30 @@ export default {
     const ENCH = [['', 'Todos'], ['normal', 'Normal'], ['shiny', 'Variocolor ✨']];
     function passItem(a, st) {
       if (st.sets && !setsNeeding(a).length) return false;
-      if (st.cat && catOf(a) !== st.cat) return false;
-      if (st.sub) {
-        if (st.cat === 'poke') { if (!S.dexById.get(a.pokeId).types.includes(st.sub)) return false; }
-        else if (st.cat === 'cosmetic') { if (S.data.items[a.itemId].slot !== st.sub) return false; }
-        else if (st.cat === 'item') {
+      if (st.cat.length && !st.cat.includes(catOf(a))) return false;
+      if (st.sub.length && st.cat.length === 1) { // la subcategoría solo aplica con una categoría elegida
+        const subs = st.sub;
+        if (st.cat[0] === 'poke') { if (!S.dexById.get(a.pokeId).types.some((t) => subs.includes(t))) return false; }
+        else if (st.cat[0] === 'cosmetic') { if (!subs.includes(S.data.items[a.itemId].slot)) return false; }
+        else if (st.cat[0] === 'item') {
           const it = S.data.items[a.itemId];
-          if (st.sub === 'mega' ? !it.megaStone : (it.price != null) !== (st.sub === 'consumable')) return false;
+          if (!subs.some((s) => (s === 'mega' ? !!it.megaStone : (it.price != null) === (s === 'consumable')))) return false;
         }
-        else if (st.cat === 'tm') { if (!S.data.items[a.itemId][st.sub]) return false; }
+        else if (st.cat[0] === 'tm') { if (!subs.some((s) => S.data.items[a.itemId][s])) return false; }
       }
-      if (st.rar && rarityOf(a) !== st.rar) return false;
+      if (st.rar.length && !st.rar.includes(rarityOf(a))) return false;
       if (st.ench === 'shiny' && !a.shiny) return false;
       if (st.ench === 'normal' && a.shiny) return false;
-      if (st.gen) { if (a.kind !== 'poke' || S.dexById.get(a.pokeId).gen !== Number(st.gen)) return false; }
+      if (st.gen.length) { if (a.kind !== 'poke' || !st.gen.includes(String(S.dexById.get(a.pokeId).gen))) return false; }
       return true;
     }
     // Filtros comunes de Comprar y Vender (fila principal estilo Albion).
     const albionDefs = (st) => [
-      { k: 'cat', t: 'sel', main: true, ph: 'Categoría', opts: CATS, rebuild: true, onset: () => { st.sub = ''; } },
-      { k: 'sub', t: 'sel', main: true, ph: 'Subcategoría', opts: () => (SUBS[st.cat] ? SUBS[st.cat]() : [['', 'Todas']]), dis: () => !SUBS[st.cat] },
-      { k: 'rar', t: 'sel', main: true, ph: 'Nivel', opts: RARS },
+      { k: 'cat', t: 'ms', main: true, ph: 'Categoría', all: 'Todo', plural: 'seleccionadas', opts: CATS, onset: () => { st.sub = []; } },
+      { k: 'sub', t: 'ms', main: true, ph: 'Subcategoría', all: 'Todas', plural: 'seleccionadas', opts: () => (st.cat.length === 1 && SUBS[st.cat[0]] ? SUBS[st.cat[0]]() : []), dis: () => !(st.cat.length === 1 && SUBS[st.cat[0]]) },
+      { k: 'rar', t: 'ms', main: true, ph: 'Nivel', all: 'Todos', plural: 'seleccionados', opts: RARS },
       { k: 'ench', t: 'sel', main: true, ph: 'Encantamiento', opts: ENCH },
-      { k: 'gen', t: 'sel', main: true, ph: 'Región', opts: [['', 'Todas'], ...REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`])] },
+      { k: 'gen', t: 'ms', main: true, ph: 'Región', all: 'Todas', plural: 'seleccionadas', opts: REGIONS.map((r, i) => [String(i + 1), `${r} (gen. ${i + 1})`]) },
     ];
     const matchQ = (a, q) => !q || norm(nameOf(a)).includes(q);
     const byName = (x, y) => nameOf(x).localeCompare(nameOf(y), 'es');

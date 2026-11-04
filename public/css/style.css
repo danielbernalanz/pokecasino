@@ -1645,3 +1645,21 @@ img.pk-emo.mon { width: 1.8em; height: 1.8em; vertical-align: -0.55em; margin: -
 .nav-ico img.pk-emo, .tab-ico img.pk-emo { width: 26px; height: 26px; vertical-align: middle; margin: 0; }
 h1 img.pk-emo, h2 img.pk-emo { width: 1.4em; height: 1.4em; }
 h1 img.pk-emo.mon, h2 img.pk-emo.mon { width: 1.9em; height: 1.9em; vertical-align: -0.5em; }
+
+/* Selector múltiple de filtros (core.js multiSelect): botón como un select y desplegable flotante */
+.ms-btn { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; min-height: 40px; background: #fff; border: 3px solid var(--ink); color: #26304a; border-radius: 9px; padding: 7px 11px; font: 600 15px var(--body); text-align: left; cursor: pointer; box-shadow: inset 2px 2px 0 #2a2f4522; }
+:root[data-theme=night] .ms-btn { background: #0d1530; color: var(--text); border-color: #060a1a; outline: 1px solid var(--line); outline-offset: -4px; box-shadow: inset 2px 2px 0 #00000066; }
+.ms-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 1px; }
+.ms-btn.on { border-color: var(--gold-ink); }
+.ms-btn:disabled { opacity: .55; cursor: not-allowed; }
+.ms-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-caret { flex: none; font-size: 12px; opacity: .7; }
+.ms-pop { position: fixed; z-index: 2000; display: flex; flex-direction: column; background: var(--panel); color: var(--text); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 6px 0 #0003, 0 10px 24px #0004; overflow: hidden; }
+.ms-list { overflow-y: auto; overscroll-behavior: contain; padding: 4px; flex: 1 1 auto; }
+.ms-opt { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 10px; border-radius: 8px; cursor: pointer; font: 700 14px var(--body); }
+.ms-opt:hover, .ms-opt:has(input:focus-visible) { background: var(--panel2); }
+.ms-opt input { width: 20px; height: 20px; flex: none; padding: 0; }
+.ms-foot { display: flex; gap: 8px; justify-content: space-between; padding: 6px; border-top: 2px solid var(--line); background: var(--panel2); }
+.ms-foot .btn { min-height: 40px; min-width: 80px; }
+.mkf-f .ms-btn { width: 100%; }
+@media (max-width: 700px) { .ms-btn { font-size: 16px; } }

@@ -421,3 +421,93 @@ export function notify(text, { link, vibrate = true } = {}) {
   const opts = { body: text, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: 'pokecasino-' + (link || 'msg'), data: { link: link ? '#/' + link : '' } };
   navigator.serviceWorker?.getRegistration().then((reg) => reg ? reg.showNotification('PokéCasino', opts) : new Notification('PokéCasino', opts)).catch(() => {});
 }
+
+// ---- Selector múltiple (filtros) ----
+// Botón compacto «Rareza: Rara, Épica» que abre un desplegable con casillas. Sin nada marcado = todas.
+// options: [[valor, texto]] (sin la opción «todas»). value: array de valores marcados. onChange(array nuevo).
+// Devuelve { el, set(array), refresh() }: el desplegable flota (position: fixed en <body>), no agranda la barra de filtros.
+export function multiSelect({ label, options: opts0, value = [], onChange = () => {}, allLabel = 'Todas', showLabel = true, plural = 'seleccionadas', disabled = false }) {
+  let options = opts0;
+  let sel = [].concat(value || []).map(String).filter((v) => options.some(([o]) => String(o) === v));
+  let pop = null;
+  const txt = h('span', { class: 'ms-txt' });
+  const btn = h('button', { class: 'ms-btn', type: 'button', 'aria-haspopup': 'true', 'aria-expanded': 'false', 'aria-label': label, disabled });
+  btn.append(txt, h('span', { class: 'ms-caret', 'aria-hidden': 'true' }, '▾'));
+  const paint = () => {
+    const names = options.filter(([v]) => sel.includes(String(v))).map(([, l]) => String(l).replace(/\s*\([^)]*\)$/, ''));
+    const t = !names.length ? allLabel : names.length <= 2 ? names.join(', ') : `${names.length} ${plural}`;
+    txt.textContent = showLabel ? `${label}: ${t}` : t;
+    btn.classList.toggle('on', sel.length > 0);
+  };
+  const commit = (next) => { sel = next; paint(); onChange([...sel]); };
+  const place = () => {
+    if (!pop) return;
+    const r = btn.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = window.innerHeight;
+    const w = Math.min(Math.max(r.width, 220), vw - 16);
+    pop.style.width = w + 'px';
+    pop.style.left = Math.max(8, Math.min(r.left, vw - w - 8)) + 'px';
+    const below = vh - r.bottom - 8;
+    const above = r.top - 8;
+    const want = Math.min(pop.scrollHeight, 320);
+    if (below >= want || below >= above) { pop.style.top = r.bottom + 4 + 'px'; pop.style.bottom = 'auto'; pop.style.maxHeight = Math.max(120, Math.min(320, below - 4)) + 'px'; }
+    else { pop.style.bottom = vh - r.top + 4 + 'px'; pop.style.top = 'auto'; pop.style.maxHeight = Math.max(120, Math.min(320, above - 4)) + 'px'; }
+  };
+  const onDoc = (e) => { if (!btn.isConnected) { close(); return; } if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); };
+  const onScroll = (e) => { if (pop && !pop.contains(e.target)) close(); };
+  function close(focus) {
+    if (!pop) return;
+    pop.remove(); pop = null;
+    btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', onDoc, true);
+    document.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('resize', close);
+    window.removeEventListener('hashchange', close);
+    if (focus) btn.focus();
+  }
+  function open() {
+    const boxes = options.map(([v, l]) => {
+      const cb = h('input', { type: 'checkbox', value: String(v), checked: sel.includes(String(v)) });
+      cb.addEventListener('change', () => commit(options.map(([o]) => String(o)).filter((o) => (o === String(v) ? cb.checked : sel.includes(o)))));
+      return { cb, row: h('label', { class: 'ms-opt' }, cb, h('span', {}, l)) };
+    });
+    const all = h('button', { class: 'btn small', type: 'button', onclick: () => { commit([]); boxes.forEach((b) => { b.cb.checked = false; }); } }, 'Todas');
+    pop = h('div', { class: 'ms-pop', role: 'group', 'aria-label': label },
+      h('div', { class: 'ms-list' }, boxes.map((b) => b.row)),
+      h('div', { class: 'ms-foot' }, all, h('button', { class: 'btn small primary', type: 'button', onclick: () => close(true) }, 'Listo')));
+    pop.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); close(true); return; }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      const cbs = boxes.map((b) => b.cb);
+      const i = cbs.indexOf(document.activeElement);
+      e.preventDefault();
+      cbs[Math.max(0, Math.min(cbs.length - 1, i < 0 ? 0 : i + (e.key === 'ArrowDown' ? 1 : -1)))].focus();
+    });
+    document.body.append(pop);
+    btn.setAttribute('aria-expanded', 'true');
+    place();
+    document.addEventListener('pointerdown', onDoc, true);
+    document.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', close);
+    window.addEventListener('hashchange', close);
+    (boxes.find((b) => b.cb.checked) || boxes[0]).cb.focus({ preventScroll: true });
+  }
+  btn.addEventListener('click', () => (pop ? close() : open()));
+  btn.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pop) { e.stopPropagation(); close(true); } else if (e.key === 'ArrowDown' && !pop) { e.preventDefault(); open(); } });
+  paint();
+  return {
+    el: btn,
+    set(v) { sel = [].concat(v || []).map(String); paint(); },
+    // Cambia las opciones / el bloqueo (p. ej. subcategoría según la categoría) sin rehacer la barra.
+    update({ options: o, disabled: d, value: v } = {}) {
+      if (o) options = o;
+      if (v !== undefined) sel = [].concat(v || []).map(String);
+      sel = sel.filter((x) => options.some(([k]) => String(k) === x));
+      if (d !== undefined) btn.disabled = !!d;
+      paint();
+    },
+  };
+}
+// Normaliza un valor guardado (texto antiguo o array) a array de textos.
+export const asList = (v) => (Array.isArray(v) ? v.map(String) : v === undefined || v === null || v === '' ? [] : [String(v)]);
