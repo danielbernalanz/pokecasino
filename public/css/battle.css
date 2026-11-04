@@ -315,3 +315,7 @@
 /* Descripción del movimiento bajo su ficha (Caja PC, equipos, Tutor…). */
 .mvrow .mvr-desc { grid-column: 1 / -1; font: 600 12px/1.35 Nunito, sans-serif; opacity: .92; white-space: normal; }
 @media (max-width: 700px) { .mvrow > .mvr-desc { display: block; } }
+
+/* Las pestañas de Combates (con la Tienda PB) bajan de línea en vez de salirse de la pantalla */
+.bt-tabs { flex-wrap: wrap; gap: 4px; }
+.bt-tabs .tab { flex: 1 1 auto; }

@@ -51,7 +51,7 @@ export default {
       h('p', { class: 'muted' }, 'Combates por turnos con el simulador de Pokémon Showdown: movimientos reales, habilidades, tipos, Megaevolución… Individuales y dobles, contra entrenadores de la Liga o contra otros jugadores.'));
     root.append(head, tabsEl, content);
 
-    const TABS = [['fight', '🏟️ Combatir'], ['pvp', '🤝 Retos'], ['teams', '🧩 Mis equipos'], ['hist', '📜 Historial'], ['bp', '🎖️ Tienda de Combate']];
+    const TABS = [['fight', '🏟️ Combatir'], ['pvp', '🤝 Retos'], ['teams', '🧩 Mis equipos'], ['hist', '📜 Historial'], ['bp', '🎖️ Tienda PB']];
     const drawTabs = () => tabsEl.replaceChildren(...TABS.map(([id, label]) => h('button', { class: 'tab' + (ctx.tab === id ? ' active' : ''), type: 'button', onclick: () => { ctx.tab = id; drawTabs(); show(); } }, label)));
     const inBattle = () => !!ctx.screen;
 
