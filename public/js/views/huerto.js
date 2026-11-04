@@ -2,14 +2,46 @@
 import { S, h, fmt, act, emit, sfx, toast, item, modal } from '../core.js';
 import { burstEl, reduced } from '../fx.js';
 
-// ---- Utilidades de amistad (mismos umbrales que server/bond.js) ----
+// ---- Utilidades de amistad (mismos umbrales que server/bond.js y affection.js) ----
 export const LOVE_MIN = 220;
 export const hearts = (f) => (f >= LOVE_MIN ? 5 : Math.min(4, Math.floor(f / 50)));
-export const friendLabel = (f) => (f >= LOVE_MIN ? 'Te adora' : f >= 160 ? 'Muy amistoso' : f >= 100 ? 'Amistoso' : 'Indiferente');
+// Niveles: el servidor manda la tabla (S.data.bondTiers); esta es la de reserva.
+const TIERS = [[255, 'Vínculo máximo'], [220, 'Te adora'], [200, 'Compañero fiel'], [150, 'Muy amistoso'], [100, 'Amistoso'], [0, 'Indiferente']];
+export const friendLabel = (f) => (TIERS.find(([min]) => f >= min) || TIERS[5])[1];
+export const friendTier = (f) => {
+  const list = (S.data && S.data.bondTiers) || [];
+  return [...list].reverse().find((t) => f >= t.min) || { min: 0, label: friendLabel(f), survive: 0, evade: 0, cure: 0, crit: 0 };
+};
+// Potencia actual de Retribución / Frustración según la amistad (null si el movimiento no depende de ella).
+export const movePower = (move, f) => (move === 'return' ? Math.floor(f * 10 / 25) || 1 : move === 'frustration' ? Math.floor((255 - f) * 10 / 25) || 1 : null);
+// Corazones que suben desde un elemento (caricias, efectos de afecto).
+export function heartBurst(el, n = 8) {
+  if (!el || reduced()) return;
+  burstEl(el, '#ff7aa8', n, { spread: 70, stars: 0 });
+  const r = el.getBoundingClientRect();
+  for (let i = 0; i < Math.min(4, n); i++) {
+    const d = h('span', { class: 'bd-heartfx', 'aria-hidden': 'true', style: { left: (r.left + r.width / 2 + (i - 1.5) * 18) + 'px', top: (r.top + r.height / 3) + 'px', animationDelay: (i * 120) + 'ms' } }, '💖');
+    document.body.append(d);
+    setTimeout(() => d.remove(), 1500 + i * 120);
+  }
+}
 export function heartsEl(f, cls = '') {
   const n = hearts(f);
   return h('span', { class: `bd-hearts ${f >= LOVE_MIN ? 'love' : ''} ${cls}`, title: `${friendLabel(f)} (${f}/255)`, role: 'img', 'aria-label': `Amistad: ${friendLabel(f)}` },
     Array.from({ length: 5 }, (_, i) => h('i', { class: i < n ? 'on' : '' }, i < n ? '♥' : '♡')));
+}
+
+// Botón «Acariciar»: una vez al día por ejemplar (+2 de amistad). `onDone(r)` recibe la respuesta del servidor.
+export function petButton({ id, uid, name, petted, maxed, ctx = 'pc', onDone }) {
+  return h('button', { class: 'btn bd-pet', type: 'button', disabled: !!petted || !!maxed, title: maxed ? 'Amistad al máximo' : petted ? 'Hoy ya le has hecho mimos' : 'Acariciar: +2 de amistad (una vez al día)', onclick: async (e) => {
+    const btn = e.currentTarget;
+    const r = await act('pc:pet', { id, uid, ctx }, btn);
+    if (!r) return;
+    sfx('shiny');
+    heartBurst(btn);
+    toast(`${name} disfruta de tus mimos: +${r.gain} de amistad`, 'success');
+    if (onDone) onDone(r);
+  } }, petted ? '💖 Ya acariciado hoy' : '🤚 Acariciar');
 }
 
 const berries = () => S.data.berries || {};

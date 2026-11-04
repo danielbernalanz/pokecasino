@@ -53,6 +53,11 @@ const STATUS_CURE = {
   par: '¡{m} se libró de la parálisis!', brn: '¡{m} se curó de las quemaduras!', psn: '¡{m} se curó del envenenamiento!', tox: '¡{m} se curó del envenenamiento!',
   slp: '¡{m} se despertó!', frz: '¡{m} se descongeló!',
 };
+// Efectos de afecto (el Pokémon del jugador, solo contra la CPU).
+const AFFECTION = {
+  survive: '¡{m} aguantó el golpe para no defraudarte!', evade: '¡{m} esquivó el ataque!',
+  cure: '¡{m} se recuperó del estado alterado para que no te preocuparas!', crit: '¡{m} dio en un punto débil con todas sus fuerzas!',
+};
 const CANT = {
   par: '¡{m} está paralizado! ¡No se puede mover!', slp: '{m} está profundamente dormido.', frz: '¡{m} está congelado!', flinch: '¡{m} se amedrentó!',
   recharge: '¡{m} debe recuperarse de su ataque!', taunt: '¡{m} no puede usar ese movimiento tras la provocación!', disable: '¡El movimiento de {m} está anulado!',
@@ -324,6 +329,10 @@ export class Protocol {
         const r = ref(p[2]);
         if (!r) return [];
         const id = toID(String(p[3]).replace(/^(move|ability|item): /, ''));
+        if (id === 'affection') { // efectos de afecto (server/affection.js): solo contra la CPU, nunca en PvP
+          const t = AFFECTION[toID(p[4])];
+          return t ? [{ k: 'effect', kind: 'affection', slot: r.key, msg: this.say(t, r.key) }] : [];
+        }
         if (/^(protect|detect|spikyshield|kingsshield|banefulbunker|obstruct|silktrap|burningbulwark)$/.test(id)) return [{ k: 'msg', slot: r.key, msg: `¡${this.label(r.key, true)} se protegió!` }];
         if (id === 'substitute') return [{ k: 'msg', slot: r.key, msg: `¡El sustituto recibió el daño por ${this.label(r.key, false)}!` }];
         if (id === 'endure') return [{ k: 'msg', slot: r.key, msg: `¡${this.label(r.key, true)} aguantó el golpe!` }];

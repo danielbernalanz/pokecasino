@@ -14,7 +14,11 @@ const { BY_ID } = require('./pokedex');
 const movesMod = require('./moves');
 
 let PS = null;
-const ps = () => (PS ||= require('pokemon-showdown'));
+// Al cargar el simulador se registra la regla «Affection» (efectos de amistad en combates contra la CPU, ver affection.js).
+const ps = () => {
+  if (!PS) { PS = require('pokemon-showdown'); require('./affection').install(PS.Dex); }
+  return PS;
+};
 const toID = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 // Naturalezas: nombre en español → inglés (las 25).
@@ -44,12 +48,14 @@ const speciesOf = (id) => {
 const canBattle = (id) => speciesTable().has(Number(id));
 
 // ---- Movimientos ----
+const BOND_MOVES = new Set(['return', 'frustration']);
 const MOVE_INFO = new Map();
 function moveInfo(id) {
   let m = MOVE_INFO.get(id);
   if (m !== undefined) return m;
   const mv = ps().Dex.moves.get(id);
-  m = mv && mv.exists && !mv.isNonstandard && !mv.isZ && !mv.isMax ? mv : null;
+  // Retribución y Frustración ya no están en la 9.ª generación, pero dependen de la amistad: las admitimos (ver bond.js, BOND_MOVES).
+  m = mv && mv.exists && (!mv.isNonstandard || BOND_MOVES.has(mv.id)) && !mv.isZ && !mv.isMax ? mv : null;
   MOVE_INFO.set(id, m);
   return m;
 }

@@ -93,7 +93,7 @@ function resolveTeam(user, members, { format, level, itemClause = false }) {
 
 // ---- Combate ----
 class Battle {
-  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null }) {
+  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null, affection = false }) {
     this.id = id || crypto.randomUUID().slice(0, 8);
     // Semilla explícita: el simulador es determinista con ella y el registro de entradas, así que un combate se puede reconstruir.
     this.seed = seed || [0, 1, 2, 3].map(() => crypto.randomInt(1, 0x10000));
@@ -105,6 +105,8 @@ class Battle {
     this.level = level;
     this.wager = wager;
     this.trainer = trainer;
+    // Afecto (affection.js): solo combates contra la CPU, nunca PvP. Se guarda en la instantánea para reconstruir igual el combate.
+    this.affection = !!affection && mode !== 'pvp';
     this.sides = sides.map((s, i) => ({
       n: i, id: 'p' + (i + 1), userId: s.user ? s.user.id : null, name: s.name, sets: s.sets, roster: s.roster,
       brain: s.brain || null, req: null, chosen: false, deadline: 0, timer: null, timeouts: 0, log: [], seen: new Set(), human: !!s.user, askedAt: Date.now(),
@@ -125,6 +127,7 @@ class Battle {
     const maxLen = Math.max(...this.sides.map((s) => s.sets.length));
     const rules = ['Species Clause', 'Terastal Clause'];
     if (this.pickN < maxLen) rules.push(`Picked Team Size = ${this.pickN}`);
+    if (this.affection) rules.push('Affection');
     const fid = `${FORMATS[this.format].id}@@@${rules.join(',')}`;
     const cmds = [`>start ${JSON.stringify({ formatid: fid, seed: this.seed })}`];
     for (const s of this.sides) cmds.push(`>player ${s.id} ${JSON.stringify({ name: s.name, team: sd.pack(s.sets) })}`);
@@ -156,7 +159,7 @@ class Battle {
 
   snapshot() {
     return {
-      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null,
+      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, aff: this.affection ? 1 : 0,
       seed: this.seed, createdAt: this.createdAt, savedAt: Date.now(), input: this.inputLog.slice(1 + this.sides.length), turn: this.turn,
       sides: this.sides.map((s) => ({ userId: s.userId, name: s.name, sets: s.sets, roster: s.roster, human: s.human, chosen: s.chosen, timeouts: s.timeouts, askedAt: s.askedAt })),
     };
@@ -496,7 +499,7 @@ function startCpu(user, { trainer: trainerId, format, level = 'fair', team }) {
   const foe = trainers.buildTeam(t, Math.min(FORMATS[format].cap, mine.sets.length), { level, avgLevel: avg, doubles: FORMATS[format].doubles });
   const doubles = FORMATS[format].doubles;
   const b = new Battle({
-    mode: 'cpu', format, level, trainer: t,
+    mode: 'cpu', format, level, trainer: t, affection: true,
     sides: [
       { user, name: user.username, sets: mine.sets, roster: mine.roster },
       { name: `${t.cls} ${t.name}`, sets: foe.sets, roster: foe.roster, brain: new Brain('p2', { doubles }) },
@@ -625,7 +628,7 @@ async function restoreOne(snap) {
     if (s.human && !user) throw new Error('jugador desaparecido');
     return { user, name: s.name, sets: s.sets, roster: s.roster, brain: s.human ? null : new Brain('p' + (i + 1), { doubles }) };
   });
-  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
+  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: !!snap.aff, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
   b.startedAt = snap.createdAt;
   battles.set(b.id, b);
   for (const s of b.sides) if (s.userId) byUser.set(s.userId, b);
@@ -811,10 +814,10 @@ function state(user) {
 }
 
 // ---- Para pruebas: combate completo sin humanos (IA contra IA). ----
-function runAiBattle({ format = 'singles', teamA, teamB, level = 'fair', timeoutMs = 60000 } = {}) {
+function runAiBattle({ format = 'singles', teamA, teamB, level = 'fair', timeoutMs = 60000, affection = false, seed = null } = {}) {
   const doubles = FORMATS[format].doubles;
   const mk = (t, name, side) => ({ name, sets: t.sets, roster: t.roster, brain: new Brain(side, { doubles }) });
-  const b = new Battle({ mode: 'sim', format, level, sides: [mk(teamA, 'IA uno', 'p1'), mk(teamB, 'IA dos', 'p2')] });
+  const b = new Battle({ mode: 'sim', format, level, seed, affection, sides: [mk(teamA, 'IA uno', 'p1'), mk(teamB, 'IA dos', 'p2')] });
   battles.set(b.id, b);
   b.start();
   const to = setTimeout(() => b.crash(new Error('Tiempo agotado en la prueba')), timeoutMs);

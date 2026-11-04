@@ -139,12 +139,13 @@ function computeStats(id, m, level = 50) {
   });
 }
 
+const bond = () => require('./bond'); // carga diferida: bond.js importa este módulo
 function boxView(u) {
   syncAll(u);
   const mons = [];
   for (const [id, arr] of Object.entries(u.mons)) {
     for (const m of arr) { movesMod.ensure(Number(id), m); abilities.resolve(Number(id), m); }
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) });
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: m.gender, ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
   }
   db.save();
   return { mons };

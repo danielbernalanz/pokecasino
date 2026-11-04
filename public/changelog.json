@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026.11.04-e",
+    "date": "2026-11-04",
+    "title": "Ampliar la amistad",
+    "items": [
+      "💖 Más vínculo, más efectos: con 150 o más de amistad tu Pokémon, en los combates contra la CPU, a veces aguanta un golpe con 1 PS, esquiva un ataque, se cura de un estado o da un golpe crítico (hasta un 12-25 % con el vínculo máximo). En PvP no actúa, para que sea justo.",
+      "🏷️ Nuevos niveles de vínculo: Amistoso, Muy amistoso, Compañero fiel, «Te adora» y Vínculo máximo.",
+      "🤚 «Acariciar» a un Pokémon una vez al día da +2 de amistad, y ahora te dice frases según cómo te quiere (en su ficha y en el compañero del inicio).",
+      "⚔️ Retribución y Frustración: potencia según la amistad; se enseñan gratis desde la ficha «Vínculo» (Retribución con 150+, Frustración con 99 o menos).",
+      "🧭 Los Pokémon que te adoran traen un 10 % más de caramelos, bayas y polvo en las expediciones (las monedas no cambian)."
+    ]
+  },
+  {
     "version": "2026.11.04-d",
     "date": "2026-11-04",
     "title": "Juegos más cómodos",

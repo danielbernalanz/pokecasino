@@ -88,6 +88,7 @@ export default {
         say({ mon: zone.hostId, who: zone.host, text: `¡Qué bien lo hemos pasado en ${zone.name}! Mira lo que hemos traído.`, cls: 'compact' }),
         h('div', { class: 'afk-rw-mons' }, rows),
         h('div', { class: 'afk-rw-loot' }, loot),
+        rw.lovers ? h('p', { class: 'small good' }, `💖 ${rw.lovers === 1 ? 'Un Pokémon que te adora ha traído' : rw.lovers + ' Pokémon que te adoran han traído'} un 10 % más de caramelos, bayas y polvo (las monedas no cambian).`) : null,
         h('p', { class: 'small muted' }, 'Los caramelos ya están en tu cuenta y los niveles subidos no gastan caramelos.'));
       const m = modal(body, { title: '🧭 ¡Expedición completada!' });
       if (!reduced()) setTimeout(() => { const c = m.el.querySelector('.afk-rw-loot'); if (c) burstEl(c, '#ffd54f', 24, { spread: 150, stars: 0.6 }); }, 150);

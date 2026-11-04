@@ -153,6 +153,7 @@ const STATIC = {
   racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS, voltorbCap: voltorb.SCORE_CAP,
   items: items.ITEMS, marketFee: market.SETUP_FEE, salesTax: market.SALES_TAX, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
   plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
+  bondTiers: bond.tiersView(), bondMoves: Object.keys(bond.BOND_MOVES),
   cosmetics: items.COSMETICS, berries: items.BERRIES, recycleBerry: { dust: candy.RECYCLE_BERRY_DUST, daily: candy.RECYCLE_BERRY_DAILY },
   heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },
   daily: { base: BAL.DAILY_BASE, step: BAL.DAILY_STEP, max: BAL.DAILY_MAX_STREAK },
@@ -602,6 +603,8 @@ io.on('connection', (socket) => {
   on('garden:water', bond.water);
   on('garden:harvest', bond.harvest);
   on('pc:feed', bond.feed);
+  on('pc:pet', bond.pet);
+  on('pc:bondmove', bond.teachBondMove);
   on('exp:list', expedition.view, { push: false });
   on('exp:send', expedition.send);
   on('exp:claim', expedition.claim);

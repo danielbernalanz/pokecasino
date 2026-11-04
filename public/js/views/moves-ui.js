@@ -1,12 +1,15 @@
 // Movimientos de un ejemplar (Caja PC): los 4 equipados, cambiarlos entre los aprendidos y aprender los nuevos al subir de nivel.
 import { S, h, act, modal, sfx, toast, TYPE_ES } from '../core.js';
 import { loadNames, moveEs, moveMeta, CAT } from '../battle-screen.js';
+import { movePower } from './huerto.js';
 
 const nameOf = (m) => m.nick || (S.dexById.get(m.id) || {}).name || '#' + m.id;
 
 /** Fila de un movimiento: tipo, categoría, potencia, precisión y PP. */
-export function moveRow(id, { sel = false, onclick = null, tag = null } = {}) {
-  const mt = moveMeta(id) || { type: 'normal', cat: 'x', bp: 0, acc: 0, pp: 0 };
+export function moveRow(id, { sel = false, onclick = null, tag = null, friendship = null } = {}) {
+  const mt = { ...(moveMeta(id) || { type: 'normal', cat: 'x', bp: 0, acc: 0, pp: 0 }) };
+  const pw = friendship === null ? null : movePower(id, friendship); // Retribución / Frustración: potencia según la amistad
+  if (pw !== null) mt.bp = pw;
   const attrs = { class: 'mvrow t-' + mt.type + (sel ? ' sel' : '') + (onclick ? '' : ' static'), type: 'button' };
   if (onclick) attrs.onclick = onclick; else attrs.tabindex = -1;
   return h('button', attrs, h('b', {}, moveEs(id), tag ? h('span', { class: 'mv-tag' }, tag) : null), h('span', { class: 'mvr-ty' }, TYPE_ES[mt.type]), h('span', { title: CAT[mt.cat][0] }, CAT[mt.cat][1]),
@@ -23,12 +26,12 @@ export async function swapDialog(m, onChange) {
   const draw = () => {
     cur.replaceChildren(...[0, 1, 2, 3].map((i) => {
       const id = eq[i];
-      return id ? moveRow(id, { sel: true, onclick: () => { if (eq.length < 2) { toast('Necesita al menos un movimiento.', 'error'); return; } eq = eq.filter((x) => x !== id); draw(); } }) : h('div', { class: 'mvrow empty' }, '— hueco libre —');
+      return id ? moveRow(id, { friendship: m.friendship, sel: true, onclick: () => { if (eq.length < 2) { toast('Necesita al menos un movimiento.', 'error'); return; } eq = eq.filter((x) => x !== id); draw(); } }) : h('div', { class: 'mvrow empty' }, '— hueco libre —');
     }));
     const t = filter.value.trim().toLowerCase();
     const rest = m.learned.filter((x) => !eq.includes(x)).filter((x) => !t || moveEs(x).toLowerCase().includes(t) || (TYPE_ES[(moveMeta(x) || {}).type] || '').toLowerCase().includes(t))
       .sort((a, b) => ((moveMeta(b) || {}).bp || 0) - ((moveMeta(a) || {}).bp || 0) || moveEs(a).localeCompare(moveEs(b), 'es'));
-    list.replaceChildren(...(rest.length ? rest.map((x) => moveRow(x, { onclick: () => {
+    list.replaceChildren(...(rest.length ? rest.map((x) => moveRow(x, { friendship: m.friendship, onclick: () => {
       if (eq.length >= 4) { toast('Ya lleva 4 movimientos: quita uno primero.', 'error'); return; }
       eq.push(x); draw();
     } })) : [h('p', { class: 'muted small' }, 'No hay más movimientos aprendidos.')]));
@@ -51,7 +54,7 @@ export function movesPage(m, onChange) {
   return h('div', { class: 'stack' },
     m.pending && m.pending.length ? h('div', { class: 'pc-learn-note' }, `🆕 ¡${nameOf(m)} quiere aprender ${m.pending.length === 1 ? moveEs(m.pending[0]) : m.pending.length + ' movimientos'}!`,
       h('button', { class: 'btn primary small', type: 'button', onclick: () => learnPrompt(m, onChange) }, 'Decidir')) : null,
-    h('div', { class: 'mv-cur one' }, eq.map((id) => moveRow(id))),
+    h('div', { class: 'mv-cur one' }, eq.map((id) => moveRow(id, { friendship: m.friendship }))),
     h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', type: 'button', onclick: () => swapDialog(m, onChange) }, '🔁 Cambiar movimientos'),
       h('button', { class: 'btn', type: 'button', onclick: () => tutorDialog(m, onChange) }, '🎓 Tutor'),
       h('button', { class: 'btn', type: 'button', onclick: async () => { const { pcTmDialog } = await import('./tm-ui.js'); pcTmDialog(m, onChange); } }, '💿 Usar MT'),
@@ -76,9 +79,9 @@ export async function learnPrompt(m, onChange) {
     };
     const box = modal(h('div', { class: 'stack' },
       h('p', {}, `¡${nameOf(m)} quiere aprender `, h('b', {}, moveEs(mv)), m.eq.length >= 4 ? '! Pero ya conoce 4 movimientos. ¿Cuál olvida?' : '!'),
-      moveRow(mv, { tag: 'nuevo' }),
+      moveRow(mv, { tag: 'nuevo', friendship: m.friendship }),
       m.eq.length < 4 ? h('button', { class: 'btn primary', type: 'button', onclick: (ev) => done('', ev.currentTarget, true) }, 'Aprender') : null,
-      h('div', { class: 'mv-cur one' }, m.eq.map((id) => moveRow(id, { onclick: m.eq.length >= 4 ? (ev) => done(id, ev.currentTarget) : null }))),
+      h('div', { class: 'mv-cur one' }, m.eq.map((id) => moveRow(id, { friendship: m.friendship, onclick: m.eq.length >= 4 ? (ev) => done(id, ev.currentTarget) : null }))),
       h('button', { class: 'btn', type: 'button', onclick: (ev) => done('', ev.currentTarget) }, 'No aprender (se guarda para luego)')), { title: '🆕 Nuevo movimiento' });
   };
   next();
@@ -92,7 +95,7 @@ export async function tutorDialog(m, onChange) {
   const have = (c) => S.me.items[c] || 0;
   const box = modal(h('div', { class: 'stack' },
     h('p', { class: 'small muted' }, 'El Tutor enseña estos movimientos por 4 Fragmentos del color de su tipo (Rojo, Azul, Amarillo o Verde). Los fragmentos caen, de uno en uno, en las Expediciones largas (máx. 3 al día).'),
-    r.moves.length ? r.moves.map((x) => h('div', { class: 'tm-row-use' }, h('div', { class: 'grow' }, moveRow(x.move)),
+    r.moves.length ? r.moves.map((x) => h('div', { class: 'tm-row-use' }, h('div', { class: 'grow' }, moveRow(x.move, { friendship: m.friendship })),
       h('button', { class: 'btn primary', type: 'button', disabled: x.known || have(x.color) < x.cost, onclick: async (ev) => {
         const res = await act('tutor:learn', { id: m.id, uid: m.uid, move: x.move }, ev.currentTarget);
         if (!res) return;

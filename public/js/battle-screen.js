@@ -418,6 +418,7 @@ export class BattleScreen {
       if (e.kind === 'miss') { sl.wrap.classList.add('dodge'); setTimeout(() => sl.wrap.classList.remove('dodge'), 450); }
       if (e.kind === 'crit') this.flash();
       if (e.kind === 'super') sfx('boom');
+      if (e.kind === 'affection') { this.float(sl, '💖', 'heart'); sl.wrap.classList.add('loved'); setTimeout(() => sl.wrap.classList.remove('loved'), 900); sfx('shiny'); }
     }
     await this.say(e.msg, 420);
   }

@@ -425,13 +425,34 @@ La única fuente nueva de monedas de toda la fase es el hallazgo del compañero:
 | Mecánica | Números |
 |---|---|
 | Amistad | 0-255 por ejemplar (70 al obtenerlo). Compañero: +1 por cada 1.000 monedas apostadas (tope +20/día; los duelos no cuentan). Bayas: +5/+10/+10/+15/+20 (tope +60/día por ejemplar). Ganar un duelo: +3 (5 victorias al día). Máximo teórico por ejemplar y día: +95 |
-| Efecto | Amistad ≥ 220 («Te adora»): +3 % a PS, ataque, defensa y velocidad en duelos (menos que el +9,5 % del nivel 100). Corazones 0-5 y etiqueta: Indiferente (< 100), Amistoso, Muy amistoso (≥ 160), Te adora |
+| Efecto | Amistad ≥ 220 («Te adora»): +3 % a PS, ataque, defensa y velocidad en duelos (menos que el +9,5 % del nivel 100). Corazones 0-5 y etiqueta: Indiferente (< 100), Amistoso (≥ 100), Muy amistoso (≥ 150), Compañero fiel (≥ 200), Te adora (≥ 220), Vínculo máximo (255); efectos por nivel en «Ampliar la amistad» |
 | Evolución por amistad | 18 evoluciones (Pichu → Pikachu, Cleffa, Igglybuff, Golbat, Chansey, Eevee → Espeon/Umbreon, Togepi, Azurill, Budew, Buneary, Chingling, Riolu, Munchlax, Woobat, Swadloon, Código Cero, Snom). Con amistad ≥ 220: sin nivel mínimo y la mitad del coste base (25 → 13, 100 → 50). Se mantiene el suelo por subida de rareza (≤ 1,5 ✦ de polvo extra por caramelo), así que el argumento de «no hay arbitraje de polvo» de B2 sigue valiendo (`test/bond.test.js` lo comprueba). Espeon y Umbreon solo salen por amistad; el resto admite también la vía normal |
 | Hallazgos del compañero | Uno cada 4 h reales (sin conexión), máximo 3 acumulados (12 h; lleno, el contador se para). Premio: caramelos de su familia 2-5 (60 %), 1-2 bayas (≈ 24-30 %), 10-40 ✦ (≈ 8-12 %, tope 40 ✦ al día) o 1 Ticket Gacha (≈ 2-5 %, máximo 1 al día), más 20-80 monedas **con tope de 200 al día**. La amistad solo mejora los pesos de baya, polvo y ticket |
 | Huerto | 4 parcelas. Planta 1 baya y da 2-4 bayas de la misma clase: Aranja 4 h, Frambu 6 h, Zidra 8 h, Latano 10 h, Pinia 12 h. Regar una vez quita el 25 % del tiempo que falta. Regalo inicial: 3 Bayas Aranja |
 | Bayas | No están en `ITEMS`: no se compran, no entran en el Mercado ni las comercian los NPC. Reciclar da 1 ✦ por baya con un tope de 20 ✦ al día (dentro de los 300 ✦ del reciclaje general), es decir, ≤ 80 monedas al día en el peor caso si se cambia el polvo |
 
 **Coste máximo diario en valor de monedas por jugador (techo teórico):** hallazgos 200 monedas + ticket 150 + polvo 40 ✦ (160 monedas) + bayas recicladas 20 ✦ (80 monedas) ≈ 590 monedas equivalentes, siempre que se abra la app cada 4 h; en la práctica (3 hallazgos si se conecta 2 veces al día, ≈ 150 monedas de media) es mucho menos. Para comparar: la recompensa diaria y las misiones ya dan más, y el tope de bonus del compañero es de 300 + 50 × nivel.
+
+### Ampliar la amistad: niveles, afecto en combate, caricias y frases (server/affection.js, bond.js · test/bond2.test.js)
+
+Inspirado en el «afecto» de las generaciones 6 y 7. **Solo cuenta contra la CPU (Liga de entrenadores) y en los duelos rápidos contra la casa; en PvP no actúa nada de esto** (como en los juegos, donde el afecto no funciona por cable), así que el combate entre jugadores sigue siendo justo. Nada crea monedas.
+
+| Nivel (amistad) | Etiqueta | Efectos |
+|---|---|---|
+| < 100 | Indiferente | Ninguno |
+| ≥ 100 | Amistoso | Ninguno (3-4 corazones) |
+| ≥ 150 | Muy amistoso | Afecto en combates CPU: aguantar un golpe con 1 PS 5 %, esquivar 5 %, curarse de un estado 10 %, crítico 0 % |
+| ≥ 200 | Compañero fiel | Aguantar 10 %, esquivar 8 %, curarse 15 %, crítico 3 % |
+| ≥ 220 | Te adora | Aguantar 15 %, esquivar 10 %, curarse 20 %, crítico 5 % · +3 % a las estadísticas en duelos rápidos · +10 % de caramelos, bayas y polvo en expediciones (monedas no) · evoluciones por amistad |
+| 255 | Vínculo máximo | Aguantar 20 %, esquivar 12 %, curarse 25 %, crítico 8 % (resto como «Te adora») |
+
+* **Cómo se engancha al simulador:** los combates CPU añaden la regla `Affection` al formato (`gen9customgame@@@Species Clause,Terastal Clause,Affection`), registrada en `Dex.data.Rulesets` al cargar el simulador (`affection.js`, `sdmap.ps()`). Showdown la convierte en un pseudo-clima del campo con manejadores `onDamage` (prioridad −50, tras Robustez/Banda Focus), `onTryHit`, `onModifyCritRatio` y `onResidual` (orden 28, tras el daño de quemadura/veneno). Leen `pokemon.happiness` (= amistad del ejemplar) y solo actúan sobre el lado `p1` (el jugador). Todo el azar es `this.randomChance` del simulador, así que el combate sigue reproduciéndose con semilla + registro de entradas: la instantánea guarda `aff: 1` para reconstruir con la misma regla (las instantáneas antiguas, sin `aff`, se reconstruyen sin afecto).
+* **Aguantar:** un golpe directo que lo debilitaría lo deja con 1 PS (máximo una vez por Pokémon y combate). **Esquivar:** solo movimientos del rival que pueden fallar. **Curarse:** estados no volátiles (quemadura, parálisis, veneno, sueño, congelación) al final del turno. **Crítico:** golpe crítico seguro en un movimiento de daño. Mensajes en español en `sd-protocol.js` y un corazón sobre el sprite.
+* **Retribución / Frustración:** potencia `⌊amistad × 10 / 25⌋` y `⌊(255 − amistad) × 10 / 25⌋` (mínimo 1; máx. 102), la fórmula del simulador. No están en el aprendizaje de la 9.ª generación, así que el vínculo las desbloquea gratis una vez por ejemplar desde la ficha «Vínculo»: Retribución con amistad ≥ 150, Frustración con ≤ 99. La Caja PC muestra la potencia actual según la amistad. (Retribución a 255 es un ataque Normal de 102 sin desventajas, como en los juegos; cuesta llegar al máximo con las bayas, la caricia y los topes diarios.)
+* **Acariciar:** una vez al día por ejemplar, +2 de amistad (tope propio `pet`: 2, aparte de bayas 100, compañero 30, duelos 15, combates 10 y expediciones 40). Máximo teórico por ejemplar y día: +97.
+* **Frases del Pokémon:** 12 por nivel (8 comunes, 2 de la ficha y 2 del inicio), fijas por ejemplar, contexto y día (sin parpadeo).
+* **Botín de expediciones:** cada ejemplar que «te adora» aporta +10 % (repartido entre el equipo) a caramelos de su familia, caramelos comodín, bayas y polvo (con redondeo aleatorio para que cuente en cantidades pequeñas; el polvo sigue topado a 20 al día). **Monedas, MT, materiales, fragmentos y objetos raros no cambian.**
+* **Duelos rápidos:** siguen con el +3 % de «Te adora»; no se añadieron efectos de afecto al motor de duelos rápidos (no hay turnos).
 
 ## Fase B6 · Expediciones AFK (server/expedition.js, test/expedition.test.js)
 

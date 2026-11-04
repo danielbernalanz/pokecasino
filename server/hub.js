@@ -262,7 +262,7 @@ function privateUser(u) {
     buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
     bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, lockedCoins: lockedCoins(u), locked: lockedView(u).box, lockedProg: lockedView(u).prog,
-    progress: require('./progress').view(u), mega: require('./mega').privateView(u), buddyFinds: require('./bond').findsView(u), berries: u.berries || {},
+    progress: require('./progress').view(u), mega: require('./mega').privateView(u), buddyFinds: require('./bond').findsView(u), buddyBond: require('./bond').buddyBondView(u), berries: u.berries || {},
   };
 }
 

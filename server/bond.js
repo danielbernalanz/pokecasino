@@ -7,12 +7,15 @@ const items = require('./items');
 const specimen = require('./specimen');
 const { BY_ID } = require('./pokedex');
 const { randInt, pick, weighted } = require('./rng');
+const affection = require('./affection');
 
 // ---- Amistad ----
 const FRIEND_MAX = 255;
 const LOVE_MIN = 220; // «Te adora»: +3 % a todas las estadísticas en duelos y evolución por amistad
 const LOVE_BONUS = 0.03;
-const CAP = { buddy: 30, feed: 100, duel: 15, battle: 10, exp: 40 }; // por ejemplar y día (duel = 5 victorias × 3; battle = 5 victorias de combate × 2)
+const CAP = { buddy: 30, feed: 100, duel: 15, battle: 10, exp: 40, pet: 2 }; // por ejemplar y día (duel = 5 victorias × 3; battle = 5 victorias de combate × 2; pet = una caricia al día)
+const PET_GAIN = 2; // «Acariciar»: una vez al día por ejemplar
+const LOVE_LOOT = 0.1; // «Te adora» en expediciones: +10 % de caramelos, bayas y polvo (nunca monedas)
 const BET_STEP = 500; // monedas apostadas por +1 de amistad del compañero
 const DUEL_WIN = 3;
 const BERRY_CAP = 999;
@@ -30,11 +33,15 @@ const friendOf = (m) => (Number.isFinite(m && m.friendship) ? m.friendship : 70)
 const loves = (friendship) => friendship >= LOVE_MIN;
 const loveFactor = (friendship) => (loves(friendship) ? 1 + LOVE_BONUS : 1);
 const hearts = (f) => (f >= LOVE_MIN ? 5 : Math.min(4, Math.floor(f / 50)));
-const stageName = (f) => (f >= LOVE_MIN ? 'Te adora' : f >= 160 ? 'Muy amistoso' : f >= 100 ? 'Amistoso' : 'Indiferente');
+// Niveles de vínculo y sus efectos (ver docs/BALANCE.md y affection.js): ≥100 Amistoso, ≥150 Muy amistoso, ≥200 Compañero fiel,
+// ≥220 Te adora (+3 % en duelos, +10 % de botín en expediciones, evoluciones por amistad), 255 Vínculo máximo.
+const tierOf = affection.tierOf;
+const stageName = (f) => tierOf(f).label;
+const tiersView = () => affection.TIERS.slice().reverse().map((t) => ({ min: t.min, id: t.id, label: t.label, survive: t.survive, evade: t.evade, cure: t.cure, crit: t.crit }));
 
 function dayCounters(m) {
   const k = hub.dayKey();
-  if (!m.fd || m.fd.day !== k) m.fd = { day: k, buddy: 0, feed: 0, duel: 0, battle: 0, exp: 0 };
+  if (!m.fd || m.fd.day !== k) m.fd = { day: k, buddy: 0, feed: 0, duel: 0, battle: 0, exp: 0, pet: 0 };
   return m.fd;
 }
 // Suma amistad respetando el tope diario de esa fuente y el máximo 255. Devuelve lo que se sumó.
@@ -75,6 +82,88 @@ function onDuelWin(user, uid) {
   }
   return 0;
 }
+
+// ---- Frases del Pokémon ----
+// {n} = mote o especie; {o} = o/a según el sexo. Cada nivel tiene 12 frases: 8 comunes + 2 solo de la ficha del PC + 2 solo del inicio (compañero).
+const PHRASES = {
+  cold: {
+    any: ['{n} mira hacia otro lado.', '{n} parece distraído{o}…', '{n} no te hace ni caso.', '{n} bosteza sin ganas.', '{n} se queda quiet{o}, observándote con desconfianza.', '{n} te echa un vistazo y se vuelve a ir.', 'A {n} le da igual todo esto.', '{n} se rasca la oreja, aburrid{o}.'],
+    pc: ['{n} mira el suelo mientras le miras la ficha.', '{n} prefiere que no lo toques mucho.'],
+    lobby: ['{n} te acompaña, pero va a su aire.', '{n} sigue tus pasos a unos metros de distancia.'],
+  },
+  friendly: {
+    any: ['{n} te mira con curiosidad.', '{n} mueve un poco la cola.', '{n} se acerca para olerte.', '{n} parece tranquil{o}.', '{n} te sigue con la mirada.', '{n} parece cómod{o} a tu lado.', '{n} da un saltito sin motivo.', '{n} te mira esperando algo.'],
+    pc: ['{n} aguanta con paciencia el repaso de su ficha.', '{n} espera a ver qué haces con él.'],
+    lobby: ['{n} se queda a tu lado mientras decides a qué jugar.', '{n} asoma la cabeza para ver qué haces.'],
+  },
+  close: {
+    any: ['{n} te mira con cariño.', '¡{n} se alegra de verte!', '{n} se frota contra ti.', '{n} te da un golpecito amistoso.', '{n} sonríe y se queda a tu lado.', '{n} no se separa de ti.', '{n} mueve la cola con ganas.', '¡{n} parece de buen humor!'],
+    pc: ['{n} se pone de puntillas para que lo veas bien.', '{n} te enseña orgullos{o} lo que ha aprendido.'],
+    lobby: ['{n} te anima a seguir jugando.', '¡{n} está encantad{o} de salir contigo!'],
+  },
+  loyal: {
+    any: ['{n} te mira con mucho cariño.', '¡{n} está contentísim{o} de verte!', '{n} se acurruca contra ti.', '{n} te trae algo que ha encontrado… ¡una piedrecita!', '{n} se coloca delante de ti, como protegiéndote.', '{n} cierra los ojos y disfruta de tu compañía.', '{n} te sigue a todas partes sin dudarlo.', '{n} está deseando acompañarte en el próximo combate.'],
+    pc: ['{n} apoya la cabeza en tu mano.', '{n} confía plenamente en ti.'],
+    lobby: ['{n} te espera ilusionad{o} cada mañana.', '¡{n} saltó de alegría al oír tus pasos!'],
+  },
+  love: {
+    any: ['{n} te mira con todo su cariño.', '¡{n} está felicísim{o} de verte!', '{n} se abraza a ti y no quiere soltarte.', '{n} se emociona y da vueltas a tu alrededor.', '{n} te adora: haría cualquier cosa por ti.', '{n} se queda dormid{o} tranquilamente a tu lado.', '{n} te regala su mejor sonrisa.', '{n} te lame la mano con ternura.'],
+    pc: ['{n} te mira como si fueras lo mejor del mundo.', '{n} se sonroja un poquito cuando lo acaricias.'],
+    lobby: ['{n} da saltitos de felicidad al verte llegar.', '¡{n} no te quita ojo y suspira feliz!'],
+  },
+  max: {
+    any: ['{n} y tú sois inseparables.', '¡{n} brilla de felicidad solo por tenerte cerca!', '{n} te mira con ojos de corazón.', '{n} sabe que siempre estarás ahí, y tú sabes que él también.', '{n} se acurruca contigo: no hay vínculo más fuerte.', '{n} suelta un suspiro de pura felicidad.', '{n} te dedica el canto más dulce que conoce.', '{n} haría lo que fuera por no defraudarte.'],
+    pc: ['{n} te susurra algo que solo tú entiendes.', '{n} y tú os entendéis sin palabras.'],
+    lobby: ['{n} no se separa de ti ni un segundo.', '¡{n} está radiante: sois un equipo perfecto!'],
+  },
+};
+const hashStr = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+// Frase del día (estable: misma por ejemplar, contexto y día, así no parpadea al repintar). ctx = 'pc' | 'lobby'.
+function phraseFor(m, name, ctx = 'pc') {
+  const t = PHRASES[tierOf(friendOf(m)).id];
+  const pool = [...t.any, ...(t[ctx] || [])];
+  const raw = pool[hashStr(`${m.uid || name}|${hub.dayKey()}|${ctx}`) % pool.length];
+  return raw.replace(/\{n\}/g, name).replace(/\{o\}/g, m.gender === 'F' ? 'a' : 'o');
+}
+const petted = (m) => !!(m.fd && m.fd.day === hub.dayKey() && m.fd.pet > 0);
+
+// «Acariciar»: una vez al día por ejemplar, +2 de amistad (tope propio, aparte de los demás).
+function pet(u, p) {
+  const m = specimen.find(u, p);
+  if (friendOf(m) >= FRIEND_MAX) throw new Error('Ya no puede quererte más: amistad al máximo.');
+  const d = dayCounters(m);
+  if (d.pet >= CAP.pet) throw new Error('Hoy ya le has hecho mimos. ¡Vuelve mañana!');
+  const gain = addFriend(m, PET_GAIN, 'pet');
+  db.save();
+  const name = m.nick || BY_ID.get(Number(p.id)).name;
+  return { gain, friendship: m.friendship, stage: stageName(m.friendship), phrase: phraseFor(m, name, p.ctx === 'lobby' ? 'lobby' : 'pc'), petted: true };
+}
+
+// ---- Retribución y Frustración ----
+// Ya no están en la 9.ª generación, así que no salen en los learnsets: el vínculo las desbloquea (gratis, una vez por ejemplar).
+// Retribución con amistad ≥ 150; Frustración con amistad ≤ 99 (¡para Pokémon que apenas te conocen!). Potencia según la amistad.
+const BOND_MOVES = { return: { min: 150, name: 'Retribución' }, frustration: { max: 99, name: 'Frustración' } };
+function teachBondMove(u, p) {
+  const move = require('./moves').toID(p.move);
+  const rule = BOND_MOVES[move];
+  if (!rule) throw new Error('Ese movimiento no depende del vínculo.');
+  const id = Number(p.id);
+  const m = specimen.find(u, { id, uid: p.uid });
+  specimen.assertFree(m, BY_ID.get(id).name);
+  const f = friendOf(m);
+  if (rule.min !== undefined && f < rule.min) throw new Error(`Para aprender ${rule.name} necesita al menos ${rule.min} de amistad (tiene ${f}).`);
+  if (rule.max !== undefined && f > rule.max) throw new Error(`${rule.name} solo la aprenden los Pokémon con ${rule.max} o menos de amistad (tiene ${f}).`);
+  const how = require('./moves').teach(id, m, move);
+  db.save();
+  return { move, how, eq: m.sdMoves, learned: m.learned };
+}
+const bondMovePower = (move, f) => (move === 'return' ? affection.returnPower(f) : move === 'frustration' ? affection.frustrationPower(f) : null);
+
+// ---- Botín de expediciones ----
+// Cada ejemplar que te adora suma un +10 % repartido entre el equipo a caramelos, bayas y polvo. Las monedas NO cambian.
+const lootFactor = (m) => (loves(friendOf(m)) ? 1 + LOVE_LOOT : 1);
+// Redondeo con azar para que +10 % cuente también en cantidades pequeñas (2 × 1,1 = 2,2 → 2 o 3).
+const stochRound = (x, r = Math.random()) => Math.floor(x) + (r < x - Math.floor(x) ? 1 : 0);
 
 // ---- Dar bayas ----
 const berriesOf = (u) => (u.berries ||= {});
@@ -131,7 +220,16 @@ function buddyStatus(u) {
   const m = buddySpecimen(u);
   const f = m ? friendOf(m) : null;
   const left = u.buddy ? { coins: COIN_DAY_CAP - findState(u).coins } : null;
-  return { ...findsView(u), friendship: f, stage: f === null ? null : stageName(f), uid: m ? m.uid : null, left, caps: { coins: COIN_DAY_CAP } };
+  const name = m ? (m.nick || BY_ID.get(u.buddy.id).name) : null;
+  return { ...findsView(u), friendship: f, stage: f === null ? null : stageName(f), uid: m ? m.uid : null, left, caps: { coins: COIN_DAY_CAP }, phrase: m ? phraseFor(m, name, 'lobby') : null, petted: m ? petted(m) : false };
+}
+
+// Para el inicio: el compañero, su nivel de vínculo y su frase del día.
+function buddyBondView(u) {
+  const m = buddySpecimen(u);
+  if (!m) return null;
+  const f = friendOf(m);
+  return { uid: m.uid, friendship: f, stage: stageName(f), phrase: phraseFor(m, m.nick || BY_ID.get(u.buddy.id).name, 'lobby'), petted: petted(m) };
 }
 
 function collect(u) {
@@ -244,6 +342,7 @@ function harvest(u, p) {
 
 module.exports = {
   FRIEND_MAX, LOVE_MIN, LOVE_BONUS, CAP, BET_STEP, DUEL_WIN, FRIEND_EVO, FRIEND_ONLY, FIND_MS, FIND_MAX, COIN_DAY_CAP, DUST_DAY_CAP, TICKET_DAY_CAP, PLOTS, WATER_SPEEDUP, YIELD,
+  PET_GAIN, LOVE_LOOT, PHRASES, BOND_MOVES, tierOf, tiersView, phraseFor, petted, pet, teachBondMove, bondMovePower, lootFactor, stochRound,
   BERRY_CAP, berriesOf, giveBerry, takeBerry, isFriendEvo, friendOf, loves, loveFactor, hearts, stageName, addFriend, dayCounters, buddySpecimen, onBet, onDuelWin, feed,
-  findState, findsView, buddyStatus, collect, gardenOf, gardenView, plant, water, harvest,
+  findState, findsView, buddyStatus, buddyBondView, collect, gardenOf, gardenView, plant, water, harvest,
 };

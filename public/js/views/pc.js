@@ -1,8 +1,8 @@
 import { aniImg } from '../anim.js';
 import { S, h, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, hpBar, emptyState, loader, MON } from '../core.js';
 import { evolveAnim, wonderReveal } from './pc-fx.js';
-import { heartsEl, friendLabel, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
-import { movesPage, learnPrompt } from './moves-ui.js';
+import { heartsEl, friendLabel, friendTier, movePower, petButton, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
+import { movesPage, learnPrompt, swapDialog } from './moves-ui.js';
 import { gearPage } from './bp-ui.js';
 import { loadNames } from '../battle-screen.js';
 
@@ -140,9 +140,32 @@ function openMon(uid, openPage = 'info') {
   function friendPanel() {
     const love = m.friendship >= LOVE_MIN;
     const owned = berryIds().filter((id) => berryCount(id) > 0);
+    const tier = friendTier(m.friendship);
+    const nm = m.nick || p.name;
+    const known = new Set(m.learned || []);
+    const bondMoves = [['return', 'Retribución', m.friendship >= 150, 'necesita 150 o más de amistad'], ['frustration', 'Frustración', m.friendship <= 99, 'solo con 99 o menos de amistad']];
+    const eff = [tier.survive && `aguantar un golpe con 1 PS ${tier.survive} %`, tier.evade && `esquivar ${tier.evade} %`, tier.cure && `curarse de estados ${tier.cure} %`, tier.crit && `golpe crítico ${tier.crit} %`].filter(Boolean);
+    const phrase = h('div', { class: 'bd-phrase' }, `“${m.phrase || ''}”`);
     return h('div', { class: 'pc-box bd-friend' },
+      phrase,
       h('div', { class: 'row gap wrap' }, h('b', {}, 'Amistad: '), heartsEl(m.friendship), h('span', { class: 'small' }, `${friendLabel(m.friendship)} (${m.friendship}/255)`)),
-      love ? h('div', { class: 'small good' }, '💖 Te adora: +3 % a todas sus estadísticas en duelos.') : h('div', { class: 'small muted' }, `A partir de ${LOVE_MIN} te adora: +3 % en duelos y evoluciones por amistad. Sube con bayas, apostando con él de compañero y ganando duelos.`),
+      h('div', { class: 'row gap wrap' }, petButton({ id: m.id, uid, name: nm, petted: m.petted, maxed: m.friendship >= 255, onDone: () => reopen(true) }),
+        h('span', { class: 'small muted' }, 'Una vez al día por Pokémon.')),
+      love ? h('div', { class: 'small good' }, '💖 Te adora: +3 % a todas sus estadísticas en duelos rápidos y +10 % de botín (caramelos, bayas y polvo) en expediciones.') : h('div', { class: 'small muted' }, `A partir de ${LOVE_MIN} te adora: +3 % en duelos, +10 % de botín en expediciones y evoluciones por amistad. Sube con bayas, caricias, apostando con él de compañero y ganando duelos.`),
+      h('div', { class: 'small' }, h('b', {}, 'En combates contra la CPU: '), eff.length ? eff.join(' · ') + '.' : 'a partir de 150 de amistad le salen efectos (aguantar golpes, esquivar, curarse). No actúan en PvP.'),
+      h('div', { class: 'bd-moves' }, h('div', { class: 'small bd-feedlbl' }, '💞 Movimientos del vínculo'),
+        bondMoves.map(([mv, mvName, ok, why]) => h('div', { class: 'row gap wrap bd-bm' },
+          h('span', { class: 'small' }, `${mvName}: potencia actual ${movePower(mv, m.friendship)}`),
+          known.has(mv) ? h('span', { class: 'small muted' }, 'ya la sabe')
+            : h('button', { class: 'btn small', type: 'button', disabled: !ok || !!m.away, title: ok ? '' : why, onclick: async (ev) => {
+              const r = await act('pc:bondmove', { id: m.id, uid, move: mv }, ev.currentTarget);
+              if (!r) return;
+              sfx('win'); toast(`¡${nm} aprendió ${mvName}!`, 'success');
+              if (r.how === 'equipped') { reopen(true); return; }
+              m.eq = r.eq; m.learned = r.learned; // sin hueco libre: a elegir qué lleva equipado
+              await loadNames();
+              swapDialog(m, () => reopen(true));
+            } }, ok ? 'Enseñar' : why)))),
       h('div', { class: 'small bd-feedlbl' }, `🍓 Dar baya (máx. +${ru.feedCap || 100} de amistad al día por Pokémon)`),
       owned.length
         ? h('div', { class: 'bd-feed' }, owned.map((id) => h('button', { class: 'btn bd-feed-btn', disabled: m.friendship >= 255, onclick: async (ev) => {

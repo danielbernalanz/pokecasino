@@ -51,3 +51,12 @@
 
 @media (min-width: 760px) { .bd-plots { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .bd-grow, .bd-bounce, .bd-find-btn, .bd-pop { animation: none; } .bd-pop { display: none; } .bd-bar i { transition: none; } }
+.bd-phrase { font-style: italic; color: var(--text, inherit); padding: 6px 10px; border-left: 3px solid #ff7aa8; background: rgba(255, 122, 168, 0.08); border-radius: 6px; margin-bottom: 6px; }
+.bd-lobby { margin: 6px 0; }
+.bd-lobby .row { align-items: center; }
+.bd-pet { min-height: 40px; }
+.bd-bm { align-items: center; }
+.bd-moves { margin: 6px 0; }
+.bd-heartfx { position: fixed; z-index: 9999; pointer-events: none; font-size: 26px; transform: translate(-50%, 0); animation: bd-up 1.4s ease-out forwards; }
+@keyframes bd-up { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .bd-heartfx { animation: none; display: none; } }

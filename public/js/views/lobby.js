@@ -3,7 +3,7 @@ import { S, h, fmt, act, sfx, toast, art, item, badgeImg, bus, hpBar, monImg, MO
 import { SECTIONS, sectionNew } from '../nav.js';
 import { canInstall, installApp } from '../main.js';
 import { dailyChest } from '../rewards.js';
-import { buddyFindBlock } from './huerto.js';
+import { buddyFindBlock, petButton, heartsEl } from './huerto.js';
 import { oakSay } from '../nav.js';
 
 function rewardText(r) {
@@ -135,11 +135,24 @@ export default {
       h('div', { class: 'row between' }, h('h3', {}, `🏅 Medallas ${pr.badges.filter((b) => b.got).length}/8`), h('span', { class: 'muted small' }, `Apuesta máxima ${fmt(me.maxBet)}`)),
       h('div', { class: 'row gap wrap' }, pr.badges.map((b) => badgeImg(b.n, b.got))),
       (() => { const next = pr.badges.find((b) => !b.got); return next ? h('div', { class: 'small' }, `Siguiente: ${next.name} — ${next.req}`) : h('div', { class: 'small good' }, '👑 Campeón de la Liga'); })());
+    // Frase del día, corazones y «Acariciar» del compañero (se repinta solo, sin cerrar «Ver más»).
+    const bondBlock = () => {
+      const bb = me.buddyBond;
+      const box = h('div', { class: 'bd-lobby' },
+        h('div', { class: 'bd-phrase' }, `“${bb.phrase}”`),
+        h('div', { class: 'row gap wrap' }, heartsEl(bb.friendship, 'sm'), h('span', { class: 'small muted' }, bb.stage),
+          petButton({ id: me.buddy.id, uid: bb.uid, name: S.dexById.get(me.buddy.id).name, petted: bb.petted, maxed: bb.friendship >= 255, ctx: 'lobby', onDone: (r) => {
+            Object.assign(bb, { petted: true, friendship: r.friendship, stage: r.stage, phrase: r.phrase });
+            if (box.isConnected) box.replaceWith(bondBlock());
+          } })));
+      return box;
+    };
     const buddyCard = h('div', { class: 'card' },
       h('h3', {}, '🤝 Compañero'),
       me.buddy
         ? h('p', {}, h('b', {}, S.dexById.get(me.buddy.id).name + (me.buddy.shiny ? ' ✨' : '')), ` te da +${(me.buddyBonus * 100).toFixed(1)}% en cada ganancia neta (hoy te quedan ${fmt(me.bonusLeft)} de bonus: crece con lo que apuestas y llega como mucho a ${fmt(me.bonusCap)} al día).`)
         : h('p', { class: 'muted' }, 'Elige un compañero en tu Pokédex: aumenta tus ganancias según su rareza y estrellas.'),
+      me.buddy && me.buddyBond ? bondBlock() : null,
       buddyFindBlock(),
       h('div', { class: 'row gap wrap' }, h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'), h('a', { class: 'btn', href: '#/huerto' }, '🌱 Huerto')));
 

@@ -121,16 +121,20 @@ function claim(u, p) {
   const H = e.hours;
   const d = dayOf(u);
   const candy = require('./candy');
-  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null };
+  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null, lovers: 0 };
   // Participantes que siguen existiendo (si una especie se bloqueó, simplemente no cuenta).
   const live = e.team.map((t) => ({ t, m: lookup(u, t) })).filter((x) => x.m);
   const n = live.length;
   let matched = 0;
+  const loveF = new Map(live.map((x) => [x.m, bond.lootFactor(x.m)])); // antes de subir la amistad con esta misma expedición
   for (const { t, m } of live) {
     const hit = matches(zone, t.id);
     if (hit) matched++;
     const avgBoost = 1 + m.level / 200; // hasta +50 % a Nv. 100
-    const c = Math.max(1, Math.round(H * CANDY_PER_HOUR * (hit ? 1 + MATCH_BONUS : 1) * avgBoost));
+    const rawCandy = H * CANDY_PER_HOUR * (hit ? 1 + MATCH_BONUS : 1) * avgBoost;
+    const lf = loveF.get(m); // «Te adora»: +10 % de caramelos (nunca de monedas)
+    if (lf > 1) out.lovers++;
+    const c = Math.max(1, lf > 1 ? bond.stochRound(rawCandy * lf) : Math.round(rawCandy));
     candy.addCandy(u, t.id, c);
     out.candy[t.id] = (out.candy[t.id] || 0) + c;
     // EXP: niveles sin caramelos (tope diario por ejemplar y nivel 100).
@@ -147,18 +151,20 @@ function claim(u, p) {
   }
   // Los que ya no están (bloqueados, etc.) no se cuentan; el resto del botín sigue su curso.
   if (n) {
-    out.wild = Math.round(H * WILD_PER_HOUR);
+    const teamF = live.reduce((a, x) => a + loveF.get(x.m), 0) / n; // +10 % por cada ejemplar que te adora, repartido entre el equipo
+    const boost = (x) => (teamF > 1 ? bond.stochRound(x * teamF) : x);
+    out.wild = teamF > 1 ? bond.stochRound(H * WILD_PER_HOUR * teamF) : Math.round(H * WILD_PER_HOUR);
     candy.addWild(u, out.wild);
     const rolls = Math.ceil(H / 4);
     for (let k = 0; k < rolls; k++) {
       const b = pick(Object.keys(items.BERRIES));
-      const q = randInt(1, 2);
+      const q = boost(randInt(1, 2));
       const before = (bond.berriesOf(u)[b] || 0);
       bond.giveBerry(u, b, q);
       const got = (bond.berriesOf(u)[b] || 0) - before;
       if (got > 0) out.berries[b] = (out.berries[b] || 0) + got;
     }
-    const dust = Math.max(0, Math.min(randInt(H, 2 * H), DUST_DAY_CAP - d.dust));
+    const dust = Math.max(0, Math.min(boost(randInt(H, 2 * H)), DUST_DAY_CAP - d.dust));
     if (dust) { u.dust += dust; d.dust += dust; out.dust = dust; }
     if (RARE_CHANCE[H] && d.rare < RARE_DAY_CAP && rand() < RARE_CHANCE[H]) {
       const it = rand() < EGG_SHARE ? 'mystery-egg' : 'ticket';

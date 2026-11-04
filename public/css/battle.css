@@ -153,6 +153,8 @@
 .fx-shot { position: absolute; width: 4.5cqw; height: 4.5cqw; margin: -2.25cqw 0 0 -2.25cqw; border-radius: 50%; background: radial-gradient(circle, #fff 0 25%, var(--c) 60%, transparent 75%); box-shadow: 0 0 12px var(--c); animation: bt-shot .45s ease-in forwards; }
 .fx-float { position: absolute; transform: translate(-50%, 0); font: 900 18px Nunito, sans-serif; color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; animation: bt-float 1s ease-out forwards; }
 .fx-float.heal { color: #8bff9a; }
+.fx-float.heart { font-size: 30px; color: #ff6b9d; }
+.spr-wrap.loved { filter: drop-shadow(0 0 10px #ff7aa8) drop-shadow(0 0 4px #fff); transition: filter .3s; }
 .fx-arrow { position: absolute; left: -2cqw; top: -14cqw; font-size: 6cqw; font-weight: 900; text-shadow: 0 2px 0 #000; animation: bt-arrow .9s ease-out forwards; }
 .fx-arrow.up { color: #ff6a5a; } .fx-arrow.dn { color: #5aa8ff; }
 .burst-ball { position: absolute; width: 5cqw; height: 5cqw; margin: -2.5cqw 0 0 -2.5cqw; border-radius: 50%; background: radial-gradient(circle, #fff 0 30%, #ffffff00 70%); animation: bt-ball .6s ease-out forwards; }
