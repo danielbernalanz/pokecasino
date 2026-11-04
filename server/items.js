@@ -56,6 +56,13 @@ const COSMETICS = {
   'back-megastone': { slot: 'cardback', rarity: 'E', name: 'Dorso Megapiedra', pokemon: 10034, event: true },
   'title-megaevolver': { slot: 'title', rarity: 'L', name: 'Título «Megaevolucionador»', title: 'Megaevolucionador', sprite: 'mega-bracelet', event: true },
 };
+// Cosméticos de la Liga Pokémon (premios de temporada, ver league.js): tampoco salen de los Huevos Misteriosos.
+Object.assign(COSMETICS, {
+  'frame-liga-super': { slot: 'frame', rarity: 'U', name: 'Marco Liga Super', sprite: 'great-ball', event: true },
+  'frame-liga-ultra': { slot: 'frame', rarity: 'R', name: 'Marco Liga Ultra', sprite: 'ultra-ball', event: true },
+  'frame-liga-master': { slot: 'frame', rarity: 'E', name: 'Marco Liga Master', sprite: 'master-ball', event: true },
+  'frame-liga-top': { slot: 'frame', rarity: 'L', name: 'Marco Liga Top 3', sprite: 'master-ball', event: true },
+});
 const SLOT_NAMES = { frame: 'marco', cardback: 'dorso de carta', title: 'título' };
 for (const [id, c] of Object.entries(COSMETICS)) {
   ITEMS[id] = { ...c, price: null, cosmetic: true, desc: `Cosmético (${SLOT_NAMES[c.slot]}). Equípalo en «Mi Entrenador»: los demás jugadores lo verán.` };

@@ -24,7 +24,8 @@ const roulette = require('./games/roulette');
 const voltorb = require('./games/voltorb');
 const race = require('./games/race');
 const duel = require('./games/duel');
-const showdown = require('./showdown'); // el simulador pesado se carga solo al empezar el primer combate
+const showdown = require('./showdown');
+const tower = require('./tower'); // el simulador pesado se carga solo al empezar el primer combate
 const { MOVES } = require('./games/battle');
 const items = require('./items');
 const healer = require('./heal');
@@ -214,6 +215,9 @@ function leaderboard() {
     badges: top((u) => (u.progress ? u.progress.badges.length * 1000 + u.progress.sets.length : 0)),
     biggestWin: top((u) => u.stats.biggestWin),
     duels: top((u) => u.stats.duelsWon),
+    // Liga Pokémon (clasificatoria): la temporada en curso, por formato. Torre Batalla: mejor racha por formato.
+    liga: { singles: require('./league').board('singles', 10).map((x) => ({ username: x.username, level: x.level, buddy: x.buddy, ...hub.looks(x), value: x.league.singles.r, w: x.league.singles.w, l: x.league.singles.l })), doubles: require('./league').board('doubles', 10).map((x) => ({ username: x.username, level: x.level, buddy: x.buddy, ...hub.looks(x), value: x.league.doubles.r, w: x.league.doubles.w, l: x.league.doubles.l })) },
+    torre: { singles: require('./tower').board('singles', 10), doubles: require('./tower').board('doubles', 10) },
     // Solo quien lo tiene público entra en el ranking de tiempo de juego.
     playtime: top((u) => (require('./playtime').isPublic(u) ? u.playMs || 0 : -1)).filter((x) => x.value > 0),
   };
@@ -226,6 +230,7 @@ function viewPlayer(_user, { username }) {
     player: {
       ...hub.publicUser(u), createdAt: u.createdAt, collection: u.collection,
       progress: { badges: u.progress.badges, sets: u.progress.sets },
+      league: u.league && u.league.played ? { singles: { r: u.league.singles.r, w: u.league.singles.w, l: u.league.singles.l }, doubles: { r: u.league.doubles.r, w: u.league.doubles.w, l: u.league.doubles.l }, best: (u.league.hist[0] || {}).best } : null,
       stats: { pulls: u.stats.pulls, duelsWon: u.stats.duelsWon, duelsLost: u.stats.duelsLost, biggestWin: u.stats.biggestWin },
       // Tiempo de juego: null si el jugador lo tiene en privado (salvo para él mismo).
       playMs: require('./playtime').isPublic(u) || u.id === _user.id ? u.playMs || 0 : null,
@@ -566,6 +571,13 @@ io.on('connection', (socket) => {
   on('battle:resume', showdown.resume, { push: false });
   on('battle:history', showdown.historyOf, { push: false });
   on('battle:replay', showdown.replay, { push: false });
+  on('league:state', (u) => require('./league').state(u), { push: false });
+  on('tower:state', (u) => tower.state(u), { push: false });
+  on('tower:start', tower.start);
+  on('tower:pick', tower.pick);
+  on('tower:fight', tower.fight);
+  on('tower:swap', tower.swap);
+  on('tower:abandon', tower.abandon);
   on('gacha:pull', gacha.pull);
   on('gacha:banners', () => gacha.bannersInfo(), { push: false });
   on('shop:craft', gacha.craft);
@@ -726,6 +738,7 @@ db.init().then(() => {
   race.start();
   crash.start();
   mega.start();
+  require('./league').start(); // cierra la temporada si cambió el mes mientras el casino estaba apagado
   showdown.restoreAll().catch((e) => console.error('Combates: no se pudieron restaurar', e)); // reconstruye los combates en curso al redesplegar
   console.log('  ✅ Casino abierto');
   if (!Object.keys(db.data.users).length) console.log('  👑 El primer jugador que se registre será administrador.');

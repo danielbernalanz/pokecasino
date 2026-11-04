@@ -34,7 +34,7 @@ const MINTS = [
 ];
 const PRICES = { mint: 50, capsule: 50, patch: 200 };
 // Topes diarios de PB (por jugador).
-const CAPS = { cpu: 30, pvp: 20 };
+const CAPS = { cpu: 30, pvp: 20, tower: 40 }; // la Torre Batalla (tower.js) tiene su propio tope diario
 const CPU_BP = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 3 }; // por victoria contra la CPU según la fuerza del rival
 const PVP_WIN = 3;
 const PVP_LOSS = 1;

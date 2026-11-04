@@ -386,6 +386,16 @@ export function avatar(buddy, looks = {}, cls = '') {
   const inner = buddy ? buddyImg(buddy) : h('span', { class: 'av-empty' }, '🧢');
   return h('span', { class: `avatar ${looks.frame ? 'fr ' + looks.frame : ''} ${cls}` }, inner);
 }
+// Emblema de rango de la Liga (Poké Ball → Master Ball). `r` = { t: 0..3, r: puntuación, top }.
+export const RANK_NAMES = ['Poké Ball', 'Super Ball', 'Ultra Ball', 'Master Ball'];
+const RANK_SPR = ['poke-ball', 'great-ball', 'ultra-ball', 'master-ball'];
+export const rankIcon = (t) => item(RANK_SPR[t]);
+export function rankBadge(r, cls = '') {
+  if (!r) return null;
+  const txt = `${RANK_NAMES[r.t]}${r.top ? ' · Top 3 de la temporada' : ''} · ${r.r} puntos`;
+  return h('span', { class: `rank-badge t${r.t}${r.top ? ' top' : ''} ${cls}`, title: txt, role: 'img', 'aria-label': txt },
+    h('img', { class: 'pixel', src: item(RANK_SPR[r.t]), alt: '' }), r.top ? h('i', { 'aria-hidden': 'true' }, '★') : null);
+}
 export const titleTag = (t) => (t ? h('span', { class: 'title-tag' }, t) : null);
 export const badgeImg = (n, got = true, cls = '') => h('img', { class: `pixel badge-img ${got ? '' : 'locked'} ${cls}`, src: `${SPR}/badges/${n}.png`, alt: `Medalla ${n}` });
 export const RAR_NAME = { C: 'Común', U: 'Poco común', R: 'Rara', E: 'Épica', L: 'Legendaria', M: 'Mítica' };

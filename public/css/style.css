@@ -575,6 +575,11 @@ label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-
 .fr.frame-master { --frc: #a855f7; --frg: #a855f7aa; }
 .fr.frame-rainbow { box-shadow: none; background: conic-gradient(#f43f5e, #f59e0b, #facc15, #22c55e, #3b82f6, #a855f7, #f43f5e); padding: 3px; animation: spin 4s linear infinite; }
 .fr.frame-rainbow > * { animation: spin 4s linear infinite reverse; background: var(--bg2); border-radius: 50%; }
+.fr.frame-liga-super { --frc: #2563eb; --frg: #60a5fa88; }
+.fr.frame-liga-ultra { --frc: #eab308; --frg: #facc15aa; }
+.fr.frame-liga-master { --frc: #7c3aed; --frg: #c084fcbb; }
+.fr.frame-liga-top { box-shadow: none; background: conic-gradient(#7c3aed, #facc15, #f43f5e, #7c3aed); padding: 3px; animation: spin 5s linear infinite; }
+.fr.frame-liga-top > * { animation: spin 5s linear infinite reverse; background: var(--bg2); border-radius: 50%; }
 .fr.frame-shiny { --frc: #fde68a; --frg: #fde68aee; animation: sparkle 1.6s ease-in-out infinite; }
 @keyframes sparkle { 50% { box-shadow: 0 0 0 3px #fff, 0 0 22px #fde68a; } }
 .mini-frame.fr { border-radius: 50%; box-shadow: 0 0 0 2px var(--frc); display: inline-grid; }

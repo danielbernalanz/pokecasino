@@ -1,6 +1,6 @@
 // Pantalla de combate al estilo Pokémon: campo de batalla, cajas de PS, cuadro de texto con escritura y menú de acciones.
 // Recibe líneas del protocolo de Showdown (ver sd-protocol.js) y las ejecuta una a una con pausas y animaciones.
-import { S, h, emit, toast, sfx, TYPE_ES, typeBadge, sprite, modal } from './core.js';
+import { S, h, emit, toast, sfx, TYPE_ES, typeBadge, sprite, modal, rankBadge, RANK_NAMES } from './core.js';
 import { aniImg } from './anim.js';
 import { Protocol, STATUS_ES, STATUS_LONG, STAT_ES, toID } from './sd-protocol.js';
 
@@ -17,6 +17,7 @@ export function loadNames() {
 export const moveDesc = (id) => (DESC && DESC[id]) || '';
 export const moveEs = (id) => (ES && ES.moves[id]) || id;
 export const abilityEs = (id) => (ES && ES.abilities[id]) || id;
+export const itemEs = (id) => (ES && ES.items && ES.items[id]) || id;
 export const moveMeta = (id) => { const m = ES && ES.meta[id]; return m ? { type: m[0], cat: m[1], bp: m[2], acc: m[3], pp: m[4] } : null; };
 export const CAT = { p: ['Físico', '🗡️'], s: ['Especial', '✨'], x: ['Estado', '🌀'] };
 
@@ -78,9 +79,9 @@ export class BattleScreen {
     this.trayMe = h('span', { class: 'tray me' });
     this.speedBtn = h('button', { class: 'btn small', type: 'button', title: 'Velocidad del texto', onclick: () => this.toggleSpeed() }, this.speed === 2 ? '⏩ x2' : '▶ x1');
     this.bar = h('div', { class: 'bt2-bar' },
-      h('div', { class: 'bt2-bar-l' }, this.trayFoe, h('b', { class: 'bt2-foe-name' }, v.foe)),
+      h('div', { class: 'bt2-bar-l' }, this.trayFoe, h('b', { class: 'bt2-foe-name' }, v.foe), rankBadge(v.ranks && v.ranks[this.foe === 'p1' ? 0 : 1], 'sm')),
       h('div', { class: 'bt2-bar-c' }, this.turnEl, this.timerEl),
-      h('div', { class: 'bt2-bar-r' }, h('b', {}, v.you), this.trayMe, this.speedBtn,
+      h('div', { class: 'bt2-bar-r' }, v.ranked ? h('span', { class: 'bt2-rk', title: 'Combate de la Clasificatoria' }, '🏆') : null, v.tower ? h('span', { class: 'bt2-rk', title: `Torre Batalla · ronda ${v.tower.round}` }, `🗼${v.tower.n}`) : null, rankBadge(v.ranks && v.ranks[this.me === 'p1' ? 0 : 1], 'sm'), h('b', {}, v.you), this.trayMe, this.speedBtn,
         h('button', { class: 'btn small', type: 'button', title: 'Registro del combate', onclick: () => this.openLog() }, '📜')));
     this.fieldEl = h('div', { class: 'bf' + (this.doubles ? ' dbl' : ' sgl') });
     this.bg = h('div', { class: 'bf-bg' }, h('div', { class: 'bf-sun' }), h('div', { class: 'bf-hills' }), h('div', { class: 'bf-grass' }));
@@ -580,6 +581,23 @@ export class BattleScreen {
       }
     }
     if (i.bp) parts.push(h('p', {}, `🎖️ +${i.bp} PB (Puntos de Batalla)`));
+    if (i.league) {
+      const L = i.league;
+      parts.push(L.rated
+        ? h('p', { class: 'bt2-league' }, '🏆 Clasificatoria: ', h('b', { class: L.delta >= 0 ? 'good' : 'bad' }, `${L.delta >= 0 ? '+' : ''}${L.delta}`), ` → ${L.rating} puntos (${RANK_NAMES[L.tier]})`)
+        : h('p', { class: 'muted small' }, `🏆 Este combate no puntúa en la Liga: ${L.why}.`));
+    }
+    if (i.tower) {
+      const t = i.tower;
+      if (t.won) {
+        parts.push(h('div', { class: 'bt2-rewards' },
+          h('span', { class: 'rw' }, `🗼 Racha: ${t.streak}${t.newBest ? ' (¡récord!)' : ''}`),
+          h('span', { class: 'rw' }, t.bp ? `🎖️ +${t.bp} PB${t.roundDone ? ` (incluye +10 por la ronda ${t.round})` : ''}` : '🎖️ +0 PB (tope diario)'),
+          h('span', { class: 'rw muted' }, `Hoy: ${t.bpToday}/${t.bpCap} PB de la Torre`)));
+        for (const m of t.medals || []) parts.push(h('p', { class: 'good' }, `🏅 ¡Título «${m.title}» (racha de ${m.at})!`));
+        if (t.boss) parts.push(h('p', { class: 'good' }, '¡Has derrotado al Jefe de la Torre!'));
+      } else if (t.ended) parts.push(h('p', { class: 'muted' }, `Fin de la carrera: racha final de ${t.streak} (tu mejor: ${Math.max(t.best || 0, t.streak)}).`));
+    }
     if (i.wager) {
       parts.push(h('p', {}, you ? `Has ganado ${(i.prize || 0).toLocaleString('es-ES')} monedas (apuesta ${i.wager.toLocaleString('es-ES')} cada uno, comisión del 5 %).` : tie ? 'Empate: se te devuelve la apuesta.' : `Has perdido ${i.wager.toLocaleString('es-ES')} monedas.`));
     }
@@ -590,7 +608,7 @@ export class BattleScreen {
       h('div', { class: 'row gap wrap bt2-end-actions' },
         this.onRematch ? h('button', { class: 'btn primary', type: 'button', onclick: () => this.onRematch() }, '🔁 Revancha') : null,
         h('button', { class: 'btn', type: 'button', onclick: () => this.openLog() }, '📜 Registro'),
-        h('button', { class: 'btn gold', type: 'button', onclick: () => this.onExit && this.onExit() }, 'Volver al menú'))));
+        h('button', { class: 'btn gold', type: 'button', onclick: () => this.onExit && this.onExit() }, this.view.tower ? 'Volver a la Torre' : 'Volver al menú'))));
   }
 
   // ---------- Menú de acciones ----------

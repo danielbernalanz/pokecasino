@@ -37,6 +37,14 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - Los EVs no tienen valor en monedas. Las fuentes gratuitas (Expediciones 60/día, combates CPU 48/día por ejemplar) cuelgan de actividades que ya tienen tope propio. Las vitaminas (1.000) y bayas de EVs (300) son un sumidero de monedas; los NPC las tratan como cualquier objeto de tienda (nunca compran por encima del 60 % ni venden por debajo del precio).
 - Los objetos de evolución (piedras 2.000, objetos raros 5.000) se compran con monedas y se gastan al evolucionar: no hay ciclo comprar → vender que gane monedas (el NPC paga como mucho el 60 % del precio de tienda) y reciclar da solo el 40 % en polvo.
 
+## Liga Pokémon (clasificatoria)
+
+- Solo puntúan combates contra **otra cuenta**, con las dos cuentas de nivel ≥ 3 y ≥ 3 días (`transfer.young`), de **≥ 3 turnos** y como mucho **5 combates puntuados al día contra el mismo rival** (los dos formatos comparten el cupo; el emparejamiento ya evita al rival con el cupo lleno y la liquidación lo vuelve a comprobar). Quedan fuera de la puntuación, pero siguen siendo combates normales.
+- Rendirse, agotar el tiempo (3 turnos sin elegir) o abandonar (15 min) cuentan como derrota; no hay forma de «huir» sin perder tras 3 turnos.
+- Sin apuesta ni monedas por combate: no se pueden pasar monedas perdiendo adrede. El máximo que puede dar la Liga a una cuenta es 2.000 monedas por temporada (y solo a Master Ball / Top 3 con ≥ 5 / ≥ 10 combates), más PB, marcos y títulos (no comerciables los títulos).
+- Win-trading con una cuenta secundaria: limitado a 5 combates/día (≈ ±80 puntos al día como mucho); las cuentas nuevas no puntúan.
+- Pendiente: varias cuentas desde redes distintas siguen siendo posibles; el tope de monedas y que los premios sean sobre todo cosméticos limitan el incentivo.
+
 ## Cuentas secundarias
 
 - Registro abierto: 3 cuentas nuevas por IP y día (IP real detrás del proxy de Render: `TRUST_PROXY_HOPS=3`).

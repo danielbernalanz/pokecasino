@@ -1,5 +1,5 @@
 // Chat, actividad en vivo y jugadores conectados.
-import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, badgeImg, notify, toast, confirmRisk, fmtPlay } from './core.js';
+import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, rankBadge, badgeImg, notify, toast, confirmRisk, fmtPlay } from './core.js';
 
 // ---------- Emotes: «:pikachu:» se pinta con el sprite del Pokémon ----------
 const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -42,7 +42,7 @@ export function addChat(m, silent) {
   log.append(h('div', { class: 'msg' + (mention ? ' mention' : '') + (m.private ? ' private' : '') },
     avatar(m.buddy, m, 'sm'),
     h('div', {},
-      h('div', { class: 'msg-head' }, h('a', { class: 'uname' + (m.admin ? ' admin' : ''), onclick: () => showPlayer(m.user) }, m.user), titleTag(m.title),
+      h('div', { class: 'msg-head' }, h('a', { class: 'uname' + (m.admin ? ' admin' : ''), onclick: () => showPlayer(m.user) }, m.user), rankBadge(m.rank, 'sm'), titleTag(m.title),
         m.private ? h('a', { class: 'dm-tag', title: 'Responder en privado', onclick: () => replyTo(other) }, mine ? `✉️ a ${m.to}` : '✉️ privado') : null,
         h('span', { class: 'muted' }, time(m.at))),
       h('div', { class: 'msg-text' }, richText(m.text)))));
@@ -72,7 +72,7 @@ export function renderOnline(list) {
   const box = $('#online');
   box.replaceChildren(...list.map((u) => h('div', { class: 'online-row', onclick: () => showPlayer(u.username) },
     avatar(u.buddy, u, 'sm'),
-    h('div', { class: 'grow' }, h('b', { class: u.isAdmin ? 'admin' : '' }, u.username), u.seeking ? h('span', { class: 'seeking', title: 'Busca rival para un combate' }, ' ⚔️') : null, titleTag(u.title), h('div', { class: 'muted small' }, `Nv ${u.level} · 🏅${u.badges} · Pokédex ${u.dex}${u.shinies ? ' · ✨' + u.shinies : ''}`)),
+    h('div', { class: 'grow' }, h('b', { class: u.isAdmin ? 'admin' : '' }, u.username), rankBadge(u.rank, 'sm'), u.seeking ? h('span', { class: 'seeking', title: 'Busca rival para un combate' }, ' ⚔️') : null, titleTag(u.title), h('div', { class: 'muted small' }, `Nv ${u.level} · 🏅${u.badges} · Pokédex ${u.dex}${u.shinies ? ' · ✨' + u.shinies : ''}`)),
     h('span', { class: 'online-dot' }))));
 }
 
@@ -95,12 +95,13 @@ export async function showPlayer(username) {
     h('div', { class: 'player-hero' },
       h('div', { class: 'avatar xl ' + (p.frame ? 'fr ' + p.frame : '') }, p.buddy ? pokeImg(p.buddy.id, p.buddy.shiny, 'player-buddy', p.buddy.mega) : h('div', { class: 'player-buddy empty' }, '?')),
       h('div', {},
-        h('h2', {}, p.username, p.isAdmin ? h('span', { class: 'tag' }, 'ANFITRIÓN') : null, ' ', titleTag(p.title)),
+        h('h2', {}, p.username, p.isAdmin ? h('span', { class: 'tag' }, 'ANFITRIÓN') : null, ' ', titleTag(p.title), ' ', rankBadge(p.rank)),
         h('div', { class: 'row gap' }, [1, 2, 3, 4, 5, 6, 7, 8].map((n) => badgeImg(n, p.badges >= n, 'tiny'))),
         h('p', { class: 'muted' }, `Nivel ${p.level} · Desde ${new Date(p.createdAt).toLocaleDateString('es-ES')}`),
         h('div', { class: 'stat-row' },
           stat('Pokédex', `${p.dex}/${S.data.dex.length}`), stat('Variocolor', p.shinies), stat('Tiradas', fmt(p.stats.pulls)),
-          stat('Duelos', `${p.stats.duelsWon}V / ${p.stats.duelsLost}D`), stat('Mayor premio', fmt(p.stats.biggestWin)),
+          stat('Duelos', `${p.stats.duelsWon}V / ${p.stats.duelsLost}D`),
+          p.league ? stat('Liga', `${p.league.singles.r} · ${p.league.doubles.r}`) : null, stat('Mayor premio', fmt(p.stats.biggestWin)),
           stat('Tiempo de juego', p.playMs === null ? '🔒 Privado' : fmtPlay(p.playMs))))),
     canTalk ? h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => { mm.close(); replyTo(p.username); } }, '✉️ Mensaje privado'),
       h('button', { class: 'btn primary', onclick: () => { mm.close(); S.pvpTarget = p.username; location.hash = '#/combates'; bus.emit('pvp:target', p.username); } }, '⚔️ Retar a combate')) : null,

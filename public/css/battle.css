@@ -319,3 +319,44 @@
 /* Las pestañas de Combates (con la Tienda PB) bajan de línea en vez de salirse de la pantalla */
 .bt-tabs { flex-wrap: wrap; gap: 4px; }
 .bt-tabs .tab { flex: 1 1 auto; }
+
+/* ---- Liga Pokémon: emblemas de rango, pestaña Liga y Torre Batalla ---- */
+.rank-badge { position: relative; display: inline-flex; align-items: center; vertical-align: middle; margin-left: 3px; line-height: 0; }
+.rank-badge img { width: 20px; height: 20px; image-rendering: pixelated; }
+.rank-badge.sm img { width: 16px; height: 16px; }
+.rank-badge.xl img { width: 56px; height: 56px; }
+.rank-badge i { position: absolute; right: -5px; top: -5px; font-style: normal; font-size: 10px; line-height: 1; color: #facc15; text-shadow: 0 0 3px #000, 0 0 2px #000; }
+.rank-badge.xl i { font-size: 18px; right: -8px; top: -6px; }
+.rank-badge.t3.top img { filter: drop-shadow(0 0 4px #c084fc); }
+.bt2-rk { font: 800 12px Nunito, sans-serif; background: #0006; border: 1px solid var(--line); border-radius: 8px; padding: 1px 6px; white-space: nowrap; }
+.bt2-league b.good { color: var(--green, #4ade80); } .bt2-league b.bad { color: var(--red, #f87171); }
+.rank-segbox { margin: 8px 0 0; }
+.lg-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.lg-head h3 { margin: 0 0 2px; } .lg-head p { margin: 0; }
+.lg-count { display: flex; flex-direction: column; align-items: flex-end; } .lg-count b { font-size: 20px; }
+.lg-fmts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+.lg-fmt { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; }
+.lg-fmt > .btn { grid-column: 1 / -1; }
+.lg-fmt h3 { margin: 0; } .lg-emb { padding: 4px 8px 4px 2px; }
+.lg-rating { font: 800 24px/1.1 'Jersey 10', Nunito, sans-serif; }
+.lg-rank .lg-top { color: #facc15; }
+.lg-prog { height: 8px; background: #0006; border-radius: 6px; overflow: hidden; margin: 4px 0 2px; border: 1px solid var(--line); }
+.lg-prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue, #3b82f6), var(--gold, #facc15)); }
+.lg-rewards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.lg-rw { display: flex; flex-direction: column; gap: 2px; background: #0003; border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+.lg-rw.on { border-color: var(--gold, #facc15); }
+.tw-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } .tw-head h3 { margin: 0 0 2px; } .tw-head p { margin: 0; }
+.tw-stats { display: flex; gap: 16px; } .tw-stats > div { display: flex; flex-direction: column; align-items: center; } .tw-stats b { font-size: 20px; }
+.tw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.tw-mon { display: flex; align-items: center; gap: 8px; text-align: left; background: #0003; border: 2px solid var(--line); border-radius: 12px; padding: 6px 8px; color: var(--text); font: inherit; }
+button.tw-mon { cursor: pointer; } button.tw-mon:hover:not(:disabled) { background: var(--panel2); }
+.tw-mon.sel { border-color: var(--gold, #facc15); background: #facc1522; } .tw-mon.dis { opacity: .45; }
+.tw-mon > img { width: 64px; height: 64px; flex: 0 0 auto; }
+.tw-info { min-width: 0; } .tw-mv { line-height: 1.25; }
+.tw-streak { display: flex; flex-direction: column; align-items: center; min-width: 54px; } .tw-streak b { font-size: 28px; line-height: 1; }
+.tw-medal { background: #0003; border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; font-size: 12px; opacity: .6; } .tw-medal.got { opacity: 1; border-color: var(--gold, #facc15); }
+@media (max-width: 640px) {
+  .tw-grid { grid-template-columns: 1fr; } .tw-mon > img { width: 52px; height: 52px; }
+  .lg-count { align-items: flex-start; } .rank-badge.xl img { width: 44px; height: 44px; }
+  .bt2-bar-r .bt2-rk { display: none; }
+}

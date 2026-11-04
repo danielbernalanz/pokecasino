@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.04-n",
+    "date": "2026-11-04",
+    "title": "Liga Pokémon: clasificatoria por temporadas",
+    "items": [
+      "🏆 Nueva pestaña «Liga» en Combates: la Clasificatoria es un modo de «Buscar rival» (1 contra 1 o dobles, nivel 50, sin apuesta ni efectos de amistad). Cada formato tiene su puntuación (empiezas en 1000) y subes de rango como las Poké Balls de los juegos: Poké Ball, Super Ball (1100), Ultra Ball (1250) y Master Ball (1400), más el Top 3 de la temporada.",
+      "📅 Las temporadas duran un mes natural (hora de España). Al acabar cobras por el rango más alto que alcances: PB, Marco Liga Super / Ultra / Master / Top 3, un título y, solo en Master Ball y Top 3, unas monedas (máx. 2.000). Después tu puntuación se acerca a 1000 y empieza otra temporada. Verás tu historial de temporadas, la cuenta atrás y el top 20.",
+      "🎖️ El emblema de tu rango aparece junto a tu nombre en la lista de conectados, la ficha del jugador, el chat y la barra del combate. El Ranking tiene una categoría nueva, «Liga».",
+      "🛡️ Para que sea justo: solo puntúan combates contra otra cuenta (nivel 3 y 3 días de antigüedad), de al menos 3 turnos y como mucho 5 al día contra el mismo rival. Rendirse o abandonar cuenta como derrota."
+    ]
+  },
+  {
     "version": "2026.11.04-m",
     "date": "2026-11-04",
     "title": "Pokémon de día y de noche",

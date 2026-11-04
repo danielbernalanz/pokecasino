@@ -242,7 +242,7 @@ function pay(user, amount, stake, game, { noBonus = false } = {}) {
 // Lo que los demás ven de tu aspecto: marco, dorso de carta y título.
 function looks(u) {
   const e = u.equip || {};
-  return { frame: e.frame || null, cardback: e.cardback || null, title: e.title ? require('./progress').titleText(e.title) : null, badges: badgeCount(u) };
+  return { frame: e.frame || null, cardback: e.cardback || null, title: e.title ? require('./progress').titleText(e.title) : null, badges: badgeCount(u), rank: require('./league').emblem(u) };
 }
 
 function publicUser(u) {

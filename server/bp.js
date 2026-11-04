@@ -17,12 +17,12 @@ const holdable = (id) => !!id && HELD_IDS.has(id);
 
 const day = (u) => {
   const k = hub.dayKey();
-  if (!u.bpDay || u.bpDay.day !== k) u.bpDay = { day: k, cpu: 0, pvp: 0, vs: {} };
+  if (!u.bpDay || u.bpDay.day !== k) u.bpDay = { day: k, cpu: 0, pvp: 0, tower: 0, vs: {} };
   return u.bpDay;
 };
 const balance = (u) => Math.max(0, Math.floor(u.bp || 0));
 
-// Da PB respetando el tope diario de su origen ('cpu' | 'pvp'). Devuelve los concedidos.
+// Da PB respetando el tope diario de su origen ('cpu' | 'pvp' | 'tower'). Devuelve los concedidos.
 function award(u, kind, amount, opponentId) {
   if (!u || u.npc || !(amount > 0)) return 0;
   const d = day(u);
@@ -30,10 +30,10 @@ function award(u, kind, amount, opponentId) {
     d.vs[opponentId] = d.vs[opponentId] || 0;
     if (d.vs[opponentId] >= bpdata.PVP_PER_OPPONENT) return 0;
   }
-  const room = bpdata.CAPS[kind] - d[kind];
-  const got = Math.max(0, Math.min(amount, room));
+  const room = bpdata.CAPS[kind] - (d[kind] || 0);
+  const got = Math.max(0, Math.min(Math.floor(amount), room));
   if (!got) return 0;
-  d[kind] += got;
+  d[kind] = (d[kind] || 0) + got;
   if (kind === 'pvp' && opponentId) d.vs[opponentId]++;
   u.bp = balance(u) + got;
   db.save();
@@ -47,7 +47,7 @@ function pvp(u, won, opponentId, turns) {
 
 function state(u) {
   const d = day(u);
-  return { bp: balance(u), caps: bpdata.CAPS, today: { cpu: d.cpu, pvp: d.pvp } };
+  return { bp: balance(u), caps: bpdata.CAPS, today: { cpu: d.cpu, pvp: d.pvp, tower: d.tower || 0 } };
 }
 
 // ---- Tienda ----

@@ -2,6 +2,8 @@
 import { S, h, fmt, act, emit, toast, sfx, bus, modal, sprite, typeBadge, TYPE_ES, confirmBet } from '../core.js';
 import { refreshPvp } from '../nav.js';
 import { bpTab } from './bp-ui.js';
+import { leagueTab } from './league-ui.js';
+import { towerTab } from './tower-ui.js';
 import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT, moveDesc } from '../battle-screen.js';
 
 const FORMAT_ES = { singles: 'Individual', doubles: 'Dobles' };
@@ -10,7 +12,7 @@ const NO_TEAM = 'auto';
 
 const BAND_ES = { none: 'Sin apuesta', small: 'Apuesta pequeña (50)', medium: 'Apuesta media (200)' };
 const BAND_COINS = { none: 0, small: 50, medium: 200 };
-const prefs = { format: 'singles', level: 'fair', team: NO_TEAM, wager: 0, band: 'none', bond: true };
+const prefs = { format: 'singles', level: 'fair', team: NO_TEAM, wager: 0, band: 'none', bond: true, ranked: false };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('btprefs') || '{}')); } catch { /* sin almacenamiento */ }
 const savePrefs = () => { try { localStorage.setItem('btprefs', JSON.stringify(prefs)); } catch { /* sin almacenamiento */ } };
 
@@ -43,7 +45,7 @@ window.addEventListener('hashchange', () => { if (location.hash.startsWith('#/co
 export default {
   id: 'combates', title: 'Combates', icon: '⚔️',
   mount(root) {
-    const ctx = { searchDraws: [], tab: /^#\/combates\/bp/.test(location.hash) ? 'bp' : 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
+    const ctx = { searchDraws: [], tab: /^#\/combates\/bp/.test(location.hash) ? 'bp' : /^#\/combates\/liga/.test(location.hash) ? 'league' : /^#\/combates\/torre/.test(location.hash) ? 'tower' : 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
     this.ctx = ctx;
     const tabsEl = h('div', { class: 'tabs bt-tabs' });
     const content = h('div', { class: 'bt-content' });
@@ -51,7 +53,7 @@ export default {
       h('p', { class: 'muted' }, 'Combates por turnos con el simulador de Pokémon Showdown: movimientos reales, habilidades, tipos, Megaevolución… Individuales y dobles, contra entrenadores de la Liga o contra otros jugadores.'));
     root.append(head, tabsEl, content);
 
-    const TABS = [['fight', '🏟️ Combatir'], ['pvp', '🤝 Retos'], ['teams', '🧩 Mis equipos'], ['hist', '📜 Historial'], ['bp', '🎖️ Tienda PB']];
+    const TABS = [['fight', '🏟️ Combatir'], ['league', '🏆 Liga'], ['tower', '🗼 Torre'], ['pvp', '🤝 Retos'], ['teams', '🧩 Mis equipos'], ['hist', '📜 Historial'], ['bp', '🎖️ Tienda PB']];
     const drawTabs = () => tabsEl.replaceChildren(...TABS.map(([id, label]) => h('button', { class: 'tab' + (ctx.tab === id ? ' active' : ''), type: 'button', onclick: () => { ctx.tab = id; drawTabs(); show(); } }, label)));
     const inBattle = () => !!ctx.screen;
 
@@ -62,9 +64,10 @@ export default {
       closeReplay();
       const screen = new BattleScreen(view, {
         onExit: () => { closeBattle(); show(); },
-        onRematch: view.mode === 'cpu' && ctx.lastCpu ? () => startCpu(ctx.lastCpu.trainer, true) : null,
+        onRematch: view.mode === 'cpu' && !view.tower && ctx.lastCpu ? () => startCpu(ctx.lastCpu.trainer, true) : null,
       });
       ctx.screen = screen;
+      if (view.tower) ctx.tab = 'tower';
       head.classList.add('hidden'); tabsEl.classList.add('hidden');
       content.replaceChildren(screen.root);
       screen.feed(view.log || [], { instant: true });
@@ -142,7 +145,7 @@ export default {
           const n = (S.pvp.q && S.pvp.q[mine.format]) || 1;
           box.replaceChildren(h('h3', {}, '🔎 Buscar rival'),
             h('p', { class: 'pvp-searching', role: 'status' }, h('span', { class: 'pvp-spin', 'aria-hidden': 'true' }), `Buscando rival… (${n} en cola)`),
-            h('div', { class: 'small muted' }, `${FORMAT_ES[mine.format]} · ${LEVEL_ES[mine.level]} · ${BAND_ES[mine.band]}${mine.bond === false ? '' : ' · 💞 amistad'}. Puedes ir a otra pantalla: te avisaremos al encontrar rival (la búsqueda dura 2 minutos).`),
+            h('div', { class: 'small muted' }, mine.ranked ? `🏆 Clasificatoria · ${FORMAT_ES[mine.format]} · nivel 50, sin apuesta ni amistad` : `${FORMAT_ES[mine.format]} · ${LEVEL_ES[mine.level]} · ${BAND_ES[mine.band]}${mine.bond === false ? '' : ' · 💞 amistad'}`, `. Puedes ir a otra pantalla: te avisaremos al encontrar rival (la búsqueda dura 2 minutos).`),
             h('button', { class: 'btn danger', type: 'button', onclick: async (e) => { const r = await act('battle:unqueue', {}, e.currentTarget); if (r) { S.pvp.mine = null; refreshPvp(); redrawSearch(); } } }, 'Cancelar búsqueda'));
           return;
         }
@@ -150,26 +153,27 @@ export default {
         box.replaceChildren(h('h3', {}, '🔎 Buscar rival'),
           h('p', { class: 'muted small' }, `Te emparejamos con otro entrenador al instante. Ahora buscando: ${q.singles + q.doubles}.`),
           h('div', { class: 'bt-ctl-row' },
+            h('div', {}, h('div', { class: 'small muted' }, 'Modo'), seg([['no', 'Amistoso / apuesta'], ['si', '🏆 Clasificatoria']], prefs.ranked ? 'si' : 'no', (v) => { prefs.ranked = v === 'si'; savePrefs(); redrawSearch(); })),
             h('div', {}, h('div', { class: 'small muted' }, 'Formato'), seg(Object.entries(FORMAT_ES), prefs.format, (v) => { prefs.format = v; savePrefs(); redrawSearch(); })),
-            h('div', {}, h('div', { class: 'small muted' }, 'Niveles'), seg(Object.entries(LEVEL_ES), prefs.level, (v) => { prefs.level = v; savePrefs(); redrawSearch(); })),
-            h('div', {}, h('div', { class: 'small muted' }, 'Apuesta'), seg(Object.entries(BAND_ES).map(([k, v]) => [k, v.replace(/ \(\d+\)/, '')]), prefs.band, (v) => { prefs.band = v; savePrefs(); redrawSearch(); })),
+            prefs.ranked ? null : h('div', {}, h('div', { class: 'small muted' }, 'Niveles'), seg(Object.entries(LEVEL_ES), prefs.level, (v) => { prefs.level = v; savePrefs(); redrawSearch(); })),
+            prefs.ranked ? null : h('div', {}, h('div', { class: 'small muted' }, 'Apuesta'), seg(Object.entries(BAND_ES).map(([k, v]) => [k, v.replace(/ \(\d+\)/, '')]), prefs.band, (v) => { prefs.band = v; savePrefs(); redrawSearch(); })),
             h('div', { class: 'grow' }, h('div', { class: 'small muted' }, 'Tu equipo'), teamSelect())),
-          bondToggle(),
+          prefs.ranked ? h('p', { class: 'small muted lg-note' }, '🏆 Clasificatoria de la Liga: nivel 50 justo, sin apuesta y sin efectos de amistad. Ganas o pierdes puntos y subes de rango (Poké Ball → Master Ball). Máximo 5 combates puntuados al día contra el mismo rival.') : bondToggle(),
           h('button', { class: 'btn primary big', type: 'button', onclick: async (e) => {
             const btn = e.currentTarget;
             btn.disabled = true;
             try {
               if (!(await ensureTeam())) return;
-              const wg = BAND_COINS[prefs.band] || 0;
+              const wg = prefs.ranked ? 0 : BAND_COINS[prefs.band] || 0;
               if (wg && !(await confirmBet('duels', wg, { what: 'jugarte en este combate' }))) return;
               const team = await teamMembers(prefs.format);
               if (!team) return;
-              const r = await act('battle:queue', { format: prefs.format, level: prefs.level, band: prefs.band, bond: !!prefs.bond, team });
+              const r = await act('battle:queue', { format: prefs.format, level: prefs.level, band: prefs.band, bond: !!prefs.bond, ranked: !!prefs.ranked, team });
               if (!r) return;
               sfx('click');
               if (r.matched) { S.pvp.mine = null; refreshPvp(); await openBattle(r.battle); } else { S.pvp.mine = r.queue; refreshPvp(); redrawSearch(); }
             } finally { btn.disabled = false; }
-          } }, '🔎 Buscar rival'));
+          } }, prefs.ranked ? '🏆 Buscar rival clasificatorio' : '🔎 Buscar rival'));
       };
       ctx.searchDraws.push(draw);
       draw();
@@ -418,6 +422,8 @@ export default {
 
     // ---------- Pestaña Tienda de Combate (los PB se ganan aquí) ----------
     function drawBp() { content.replaceChildren(bpTab()); }
+    function drawLeague() { content.replaceChildren(leagueTab({ goRanked: (f) => { prefs.ranked = true; prefs.format = f; savePrefs(); ctx.tab = 'fight'; drawTabs(); show(); } })); }
+    function drawTower() { content.replaceChildren(towerTab({ openBattle, refresh: drawTower, teamMembers: null })); }
 
     // ---------- Pestaña Historial ----------
     async function drawHist() {
@@ -471,6 +477,8 @@ export default {
       else if (ctx.tab === 'pvp') drawPvp();
       else if (ctx.tab === 'teams') drawTeams();
       else if (ctx.tab === 'bp') drawBp();
+      else if (ctx.tab === 'league') drawLeague();
+      else if (ctx.tab === 'tower') drawTower();
       else drawHist();
     }
 
