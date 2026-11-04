@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.11.04-q",
+    "date": "2026-11-04",
+    "title": "Transferir al Profesor Oak más rápido",
+    "items": [
+      "🎓 Caja PC → «Transferir varios»: toca los Pokémon que quieras (o «Marcar la caja») y transfiérelos todos con una sola confirmación; ves el polvo y los caramelos que vas a recibir.",
+      "🧹 «Todos los repetidos»: transfiere de una vez los repetidos de todas tus especies, conservando siempre el mejor de cada una, favoritos, compañero y variocolores."
+    ]
+  },
+  {
     "version": "2026.11.04-p",
     "date": "2026-11-04",
     "title": "Equipos más cómodos",

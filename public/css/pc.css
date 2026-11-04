@@ -139,3 +139,9 @@
 .pc-stats td.pc-ivcell { display: table-cell; white-space: nowrap; }
 .pc-stats .pc-ivbar { display: inline-block; width: 34px; min-width: 0; flex: none; vertical-align: middle; margin-right: 4px; }
 .pc-stats .pc-ivbar i { display: block; }
+/* Transferir varios: barra de selección y huecos marcados. */
+.pc-pickbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 8px; border: 3px solid var(--ink, #1f2a44); border-radius: 12px; background: var(--panel, #fffdf3); }
+.pc-pickbar > span { flex: 1 1 200px; }
+.pc-slot.picked { outline: 3px solid #e3350d; outline-offset: -3px; background-color: #ffe3dc; }
+.pc-slot.picked::after { content: '✔'; position: absolute; right: 3px; bottom: 2px; font-weight: 900; color: #e3350d; }
+.pc-slot:disabled { opacity: .45; }

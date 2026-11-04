@@ -314,6 +314,8 @@ const WALLPAPERS = ['bosque', 'ciudad', 'desierto', 'sabana', 'cueva', 'mar', 'v
 const WALL_NAMES = ['Bosque', 'Ciudad', 'Desierto', 'Sabana', 'Cueva', 'Mar', 'Volcán', 'Nieve'];
 let boxIdx = 0;
 let selUid = null;
+// Modo «Transferir varios»: los huecos se marcan al tocarlos en vez de abrir la ficha.
+let picking = null; // Set de uids o null
 
 export default {
   id: 'pc', title: 'Caja PC', icon: '🖥️',
@@ -333,6 +335,44 @@ export default {
       sel('sort', [['recent', 'Más recientes'], ['number', 'Nº Pokédex'], ['iv', 'IV total'], ['name', 'Nombre']]),
       check('shiny', '✨ Variocolor'), check('fav', '★ Favoritos'));
     const searchBtn = h('button', { class: 'btn', type: 'button', onclick: () => { const o = filters.classList.toggle('hidden'); searchBtn.classList.toggle('active', !o); if (!o) search.focus(); } }, '🔍 Buscar');
+    // ---- Transferir al Profesor Oak en bloque ----
+    const pickable = (m) => !m.buddy && !m.away;
+    const pickBar = h('div', { class: 'pc-pickbar hidden' });
+    const pickBtn = h('button', { class: 'btn', type: 'button', title: 'Marca varios Pokémon y transfiérelos de una vez', onclick: () => { picking = picking ? null : new Set(); render(); } }, '🎓 Transferir varios');
+    const allBtn = h('button', { class: 'btn', type: 'button', title: 'Transfiere todos los repetidos de todas las especies (se conservan favoritos, compañero, variocolores y el mejor de cada especie)', onclick: async (e) => {
+      const btn = e.currentTarget;
+      const pre = await act('pc:transferAll', { preview: true }, btn);
+      if (!pre) return;
+      if (!pre.count) return toast('No tienes repetidos que transferir: se conservan favoritos, compañero, variocolores y el mejor de cada especie.', 'info');
+      if (!(await confirmRisk('transfer-all', { section: 'la Caja PC', title: `¿Transferir ${fmt(pre.count)} repetidos?`, danger: 'Transferir todos', safe: 'Cancelar',
+        text: 'Se transfieren al Profesor Oak todos los repetidos de todas tus especies. Se conserva siempre el mejor de cada una y nunca se tocan favoritos, compañero ni variocolores.',
+        details: [`${fmt(pre.count)} Pokémon de ${fmt(pre.species)} especies`, `+${fmt(pre.dust)} ✦ de polvo estelar`, `+${fmt(pre.candy)} 🍬 caramelos`] }))) return;
+      const r = await act('pc:transferAll', {}, btn);
+      if (r) { sfx('shiny'); toast(`Transferiste ${fmt(r.count)} Pokémon: +${fmt(r.dust)} ✦ y +${fmt(r.candy)} 🍬`, 'success'); await load(); render(); }
+    } }, '🧹 Todos los repetidos');
+    function drawPickBar() {
+      pickBar.classList.toggle('hidden', !picking);
+      pickBtn.classList.toggle('active', !!picking);
+      if (!picking) return;
+      const chosen = mons.filter((m) => picking.has(m.uid));
+      const dust = chosen.reduce((s, m) => s + S.data.rarity[S.dexById.get(m.id).rarity].dust, 0);
+      const cdy = box.rules ? chosen.reduce((s, m) => s + (box.rules.transfer[S.dexById.get(m.id).rarity] || 0), 0) : 0;
+      const slice = list.slice(boxIdx * PER_BOX, (boxIdx + 1) * PER_BOX).filter((m) => pickable(m) && !m.fav && !m.shiny);
+      pickBar.replaceChildren(
+        h('span', {}, h('b', {}, `${chosen.length} marcados`), chosen.length ? ` · +${fmt(dust)} ✦ · +${fmt(cdy)} 🍬` : ' · toca los Pokémon que quieras transferir'),
+        h('button', { class: 'btn small', type: 'button', title: 'Marca los de esta caja (sin favoritos, variocolores ni compañero)', onclick: () => { for (const m of slice) picking.add(m.uid); render(); } }, 'Marcar la caja'),
+        h('button', { class: 'btn small', type: 'button', disabled: !chosen.length, onclick: () => { picking.clear(); render(); } }, 'Desmarcar'),
+        h('button', { class: 'btn primary', type: 'button', disabled: !chosen.length, onclick: async (e) => {
+          const btn = e.currentTarget;
+          const special = chosen.filter((m) => m.fav || m.shiny).length;
+          if (!(await confirmRisk('transfer-many', { section: 'la Caja PC', title: `¿Transferir ${chosen.length} Pokémon?`, danger: 'Transferir', safe: 'Cancelar',
+            text: 'Se transfieren al Profesor Oak y no se pueden recuperar. De cada especie se conserva al menos una copia.',
+            details: [`+${fmt(dust)} ✦ de polvo estelar`, `+${fmt(cdy)} 🍬 caramelos`, ...(special ? [`⚠ Incluye ${special} favorito(s) o variocolor(es)`] : [])] }))) return;
+          const r = await act('pc:transferMany', { list: chosen.map((m) => ({ id: m.id, uid: m.uid })) }, btn);
+          if (r) { sfx('shiny'); toast(`Transferiste ${r.count} Pokémon: +${fmt(r.dust)} ✦ y +${fmt(r.candy)} 🍬${r.skipped ? ` · ${r.skipped} no se pudieron (${r.reason})` : ''}`, r.count ? 'success' : 'error'); picking = null; await load(); render(); }
+        } }, '🎓 Transferir'),
+        h('button', { class: 'btn small', type: 'button', onclick: () => { picking = null; render(); } }, 'Salir'));
+    }
     let list = [];
 
     function drawSide() {
@@ -391,8 +431,12 @@ export default {
       if (selUid && !mons.some((x) => x.uid === selUid)) selUid = null;
       const slot = (m) => {
         const p = S.dexById.get(m.id);
-        return h('button', { class: `pc-slot pc-card r-${p.rarity}${m.away ? ' away' : ''}${m.shiny ? ' shiny' : ''}${m.buddy ? ' buddy' : ''}${m.uid === selUid ? ' sel' : ''}`, type: 'button', title: `${label(m)} Nv. ${m.level}`,
-          onclick: () => { selUid = m.uid; grid.querySelectorAll('.pc-slot.sel').forEach((n) => n.classList.remove('sel')); sfx('click'); drawSide(); grid.querySelector(`[data-uid="${m.uid}"]`)?.classList.add('sel'); }, 'data-uid': m.uid },
+        const picked = picking && picking.has(m.uid);
+        return h('button', { class: `pc-slot pc-card r-${p.rarity}${m.away ? ' away' : ''}${m.shiny ? ' shiny' : ''}${m.buddy ? ' buddy' : ''}${m.uid === selUid ? ' sel' : ''}${picked ? ' picked' : ''}`, type: 'button', title: `${label(m)} Nv. ${m.level}`,
+          disabled: !!picking && !pickable(m),
+          onclick: () => {
+            if (picking) { if (picking.has(m.uid)) picking.delete(m.uid); else picking.add(m.uid); sfx('click'); render(); return; }
+            selUid = m.uid; grid.querySelectorAll('.pc-slot.sel').forEach((n) => n.classList.remove('sel')); sfx('click'); drawSide(); grid.querySelector(`[data-uid="${m.uid}"]`)?.classList.add('sel'); }, 'data-uid': m.uid },
           h('img', { class: 'pixel', src: sprite(m.id, m.shiny), alt: '', loading: 'lazy' }),
           m.shiny ? h('span', { class: 'sl-shiny' }, '✨') : null,
           m.fav ? h('span', { class: 'sl-fav' }, '★') : null,
@@ -405,10 +449,11 @@ export default {
       while (cells.length < PER_BOX) cells.push(h('div', { class: 'pc-slot empty', 'aria-hidden': 'true' }));
       grid.replaceChildren(...cells);
       drawSide();
+      drawPickBar();
     }
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🖥️ Caja PC'), counter, searchBtn),
-      chip, filters,
+      h('div', { class: 'game-head' }, h('h1', {}, '🖥️ Caja PC'), counter, searchBtn, pickBtn, allBtn),
+      chip, filters, pickBar,
       h('div', { class: 'pc-layout' }, h('div', { class: 'pc-boxwrap' }, boxHead, grid), side));
     root.append(loader('Abriendo la Caja…'));
     await load();

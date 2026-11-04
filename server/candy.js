@@ -138,6 +138,45 @@ function transferBulk(u, p) {
   return { ...res, candy, count: list.length };
 }
 
+// Transferir varios ejemplares elegidos de una vez (selección múltiple de la Caja PC). Nunca el compañero ni los
+// que están de expedición o en el Criadero; cada uno sigue las mismas reglas que una transferencia suelta (se
+// conserva siempre al menos una copia de la especie). Los que no se pueden se saltan y se cuentan.
+const MANY_MAX = 300;
+function transferMany(u, p) {
+  const list = Array.isArray(p && p.list) ? p.list.slice(0, MANY_MAX) : [];
+  if (!list.length) throw new Error('No has elegido ningún Pokémon.');
+  const out = { count: 0, dust: 0, candy: 0, skipped: 0, reason: '' };
+  for (const x of list) {
+    try {
+      if (!x || typeof x.uid !== 'string') throw new Error('Pokémon no válido.');
+      if (u.buddy && u.buddy.id === Number(x.id) && u.buddy.uid === x.uid) throw new Error('Tu compañero no se transfiere.');
+      const r = transfer(u, { id: x.id, uid: x.uid });
+      out.count++; out.dust += r.dust || 0; out.candy += r.candy || 0;
+    } catch (e) { out.skipped++; out.reason ||= e.message; }
+  }
+  db.save();
+  return out;
+}
+
+// Todos los repetidos de todas las especies (mismas reglas que «Transferir repetidos»). `preview` solo calcula.
+function transferAllDupes(u, p = {}) {
+  const plan = [];
+  for (const id of Object.keys(u.collection).map(Number)) {
+    let list = [];
+    try { list = bulkPlan(u, id); } catch { list = []; }
+    if (list.length) plan.push({ id, n: list.length, rarity: BY_ID.get(id).rarity });
+  }
+  const sum = (f) => plan.reduce((s, x) => s + f(x), 0);
+  const preview = { species: plan.length, count: sum((x) => x.n), dust: sum((x) => RARITY[x.rarity].dust * x.n), candy: sum((x) => (TRANSFER_CANDY[x.rarity] + WILD_TRANSFER[x.rarity]) * x.n) };
+  if (p.preview) return preview;
+  if (!plan.length) throw new Error('No tienes repetidos que transferir (se conservan favoritos, compañero, variocolores y el mejor de cada especie).');
+  const out = { species: 0, count: 0, dust: 0, candy: 0 };
+  for (const x of plan) {
+    try { const r = transferBulk(u, { id: x.id }); out.species++; out.count += r.count; out.dust += r.dust || 0; out.candy += r.candy || 0; } catch { /* esa especie ya no tenía repetidos */ }
+  }
+  return out;
+}
+
 // ---- Subir de nivel ----
 function levelUp(u, p) {
   const times = p.times === undefined ? 1 : Number(p.times);
@@ -313,6 +352,7 @@ function boxExtra(u) {
 }
 
 module.exports = {
+  transferMany, transferAllDupes, MANY_MAX,
   TRANSFER_CANDY, WILD, WILD_PULL, WILD_TRANSFER, LEVEL_DIV, PULL_CANDY, PULL_NEW_CANDY, MIN_LEVEL, MAX_LEVEL, EVO, EVO_GAIN_PER_CANDY, TRAIN_COST, TRAIN_DAILY, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST, RECYCLE_BERRY_DAILY, RECYCLE_BERRY_DUST,
   levelCost, evoCost, isFirstEvo, evolutionsOf, candyOf, familyOf, wildOf, addCandy, addWild, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
   transfer, transferBulk, levelUp, evolve, train, wonder, recycle,

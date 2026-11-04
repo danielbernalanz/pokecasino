@@ -609,6 +609,8 @@ io.on('connection', (socket) => {
   on('pc:release', specimen.release);
   on('pc:transfer', candy.transfer);
   on('pc:transferBulk', candy.transferBulk);
+  on('pc:transferMany', candy.transferMany);
+  on('pc:transferAll', candy.transferAllDupes);
   on('pc:levelup', candy.levelUp);
   on('pc:evolve', candy.evolve);
   on('pc:train', candy.train);

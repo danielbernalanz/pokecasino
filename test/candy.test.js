@@ -309,3 +309,32 @@ test('ninguna acción de B2 crea monedas y el polvo de transferir ≤ el de libe
   candy.recycle(u, { item: 'lucky-egg', qty: 1 });
   assert.strictEqual(u.coins, coins);
 });
+
+test('transferir varios de una vez: suma polvo y caramelos, salta al compañero y conserva una copia', () => {
+  const u = user({ collection: { 1: { n: 4, s: 0 }, 4: { n: 2, s: 0 } } });
+  const a = sp.sync(u, 1);
+  const b = sp.sync(u, 4);
+  u.buddy = { id: 1, shiny: false, uid: a[0].uid };
+  const dust0 = u.dust;
+  // Elige todos los Bulbasaur (incluido el compañero) y los dos Charmander.
+  const r = candy.transferMany(u, { list: [...a, ...b].map((m) => ({ id: m === a[0] || a.includes(m) ? 1 : 4, uid: m.uid })) });
+  assert.strictEqual(r.count, 3 + 1, 'tres Bulbasaur (no el compañero) y un Charmander (se conserva uno)');
+  assert.strictEqual(r.skipped, 2);
+  assert.strictEqual(u.collection[1].n, 1);
+  assert.strictEqual(u.collection[4].n, 1);
+  assert.strictEqual(u.dust - dust0, r.dust);
+  assert.ok(r.candy > 0);
+});
+
+test('transferir todos los repetidos: la vista previa coincide con lo que se hace', () => {
+  const u = user({ collection: { 1: { n: 3, s: 0 }, 7: { n: 2, s: 0 }, 25: { n: 1, s: 0 } } });
+  const pre = candy.transferAllDupes(u, { preview: true });
+  assert.deepStrictEqual([pre.species, pre.count], [2, 3]);
+  const dust0 = u.dust;
+  const r = candy.transferAllDupes(u);
+  assert.strictEqual(r.count, pre.count);
+  assert.strictEqual(u.dust - dust0, pre.dust);
+  assert.strictEqual(r.dust, pre.dust);
+  assert.deepStrictEqual([u.collection[1].n, u.collection[7].n, u.collection[25].n], [1, 1, 1]);
+  assert.throws(() => candy.transferAllDupes(u), /No tienes repetidos/);
+});
