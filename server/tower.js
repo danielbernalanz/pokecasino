@@ -123,14 +123,14 @@ function genTeam(n, lo, hi, doubles, { cpu = false } = {}) {
   return out;
 }
 
-function offerFor(format) { return genTeam(OFFER, 400, 600, format === 'doubles'); }
+function offerFor(format) { return genTeam(OFFER, 430, 600, format === 'doubles'); }
 
 // Fuerza del rival según el número de combate: los jefes, lo más duro (sin legendarios restringidos).
 function foeBand(n) {
   if (isBoss(n)) return [540, 680];
-  if (n <= ROUND) return [330, 480];
-  if (n <= 2 * ROUND) return [400, 540];
-  if (n <= 3 * ROUND) return [450, 600];
+  if (n <= ROUND) return [300, 450];
+  if (n <= 2 * ROUND) return [380, 520];
+  if (n <= 3 * ROUND) return [440, 590];
   return [480, 640];
 }
 function foeFor(format, n) {

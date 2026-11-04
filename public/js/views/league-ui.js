@@ -42,7 +42,7 @@ export function leagueTab({ goRanked }) {
         h('div', { class: 'grow muted' }, `Individual ${p.singles.r} (${p.singles.w}V ${p.singles.l}D) · Dobles ${p.doubles.r} (${p.doubles.w}V ${p.doubles.l}D)`),
         h('span', {}, p.reward ? rewardText(p.reward) : p.games ? 'Sin premio (mín. 5 combates)' : '—')))
         : [h('p', { class: 'muted small' }, 'Aún no hay temporadas terminadas. ¡Esta es la primera!')];
-      root.replaceChildren(
+      root.replaceChildren(...[
         h('div', { class: 'card lg-head' },
           h('div', {}, h('h3', {}, `🏆 Liga Pokémon · ${st.label}`),
             h('p', { class: 'small muted' }, 'Clasificatoria 1 contra 1 por temporadas mensuales (hora de España): nivel 50, sin apuesta y sin efectos de amistad. Empiezas con 1000 puntos por formato; ganar a rivales fuertes da más.')),
@@ -58,7 +58,7 @@ export function leagueTab({ goRanked }) {
             h('span', { class: 'small muted' }, rewardText(t.reward))))),
           h('div', { class: 'small muted' }, `Top 3 de cada formato (mín. ${st.rules.minTop} combates y Super Ball): `, rewardText({ ...st.top }), '. Se premia el rango más alto alcanzado en la temporada y hay que haber jugado al menos ', String(st.rules.minGames), ' combates puntuados. Después, tu puntuación se acerca a 1000 (la mitad de la distancia).')),
         h('div', { class: 'card stack' }, h('h3', {}, '📜 Temporadas anteriores'), h('div', { class: 'duel-list' }, past)),
-        h('div', { class: 'card small muted' }, `Reglas: solo cuentan los combates contra otra cuenta (nivel 3 y 3 días de antigüedad), de al menos ${st.rules.minTurns} turnos y como mucho ${st.rules.maxVs} al día contra el mismo rival. Rendirse, quedarse sin tiempo o abandonar cuenta como derrota. Los combates clasificatorios también dan PB como cualquier combate PvP.`));
+        h('div', { class: 'card small muted' }, `Reglas: solo cuentan los combates contra otra cuenta (nivel 3 y 3 días de antigüedad), de al menos ${st.rules.minTurns} turnos y como mucho ${st.rules.maxVs} al día contra el mismo rival. Rendirse, quedarse sin tiempo o abandonar cuenta como derrota. Los combates clasificatorios también dan PB como cualquier combate PvP.`)].filter(Boolean));
     };
     draw();
   })();

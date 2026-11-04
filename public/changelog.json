@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.11.04-r",
+    "date": "2026-11-04",
+    "title": "Liga y Torre: ajustes",
+    "items": [
+      "🏆 Los emblemas de rango de la Liga se actualizan al instante en la lista de conectados tras un combate clasificatorio, y la pestaña Liga ya no muestra un texto suelto.",
+      "🗼 Torre Batalla más amable al principio: los primeros rivales son más flojos y los Pokémon de alquiler ofrecidos, algo más fuertes."
+    ]
+  },
+  {
     "version": "2026.11.04-q",
     "date": "2026-11-04",
     "title": "Transferir al Profesor Oak más rápido",

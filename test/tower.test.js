@@ -71,7 +71,7 @@ test('rivales: tamaño del equipo, fuerza creciente y Jefes de la Torre con nomb
   assert.ok(boss.boss && boss.who.name === 'Magno' && boss.who.cls === 'Jefe de la Torre');
   assert.strictEqual(tower.foeFor('singles', 42).who.name, 'Valeria');
   const bst = (m) => Object.values(sd.speciesOf(m.roster.id).baseStats).reduce((a, b) => a + b, 0);
-  for (let i = 0; i < 8; i++) for (const m of tower.foeFor('singles', 1).mons) assert.ok(bst(m) <= 480, 'los primeros rivales son flojos');
+  for (let i = 0; i < 8; i++) for (const m of tower.foeFor('singles', 1).mons) assert.ok(bst(m) <= 450, 'los primeros rivales son flojos');
   for (const m of tower.foeFor('singles', 21).mons) assert.ok(bst(m) >= 540);
   assert.deepStrictEqual([1, 7, 8, 14, 15, 30].map(tower.bpForWin), [1, 1, 2, 2, 3, 3]);
   assert.strictEqual(tower.DAY_CAP, bpdata.CAPS.tower);

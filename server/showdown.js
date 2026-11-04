@@ -454,6 +454,7 @@ function settle(b) {
   const tie = b.winner === null || b.winner === undefined;
   // Clasificatoria: puntuación Elo (solo si cumple las reglas anti-abuso de league.js).
   const lg = b.ranked ? require('./league').record(players, b.format, tie ? null : b.winner, b.turn) : null;
+  if (lg && lg.rated && queueHook) queueHook(); // refresca la lista de conectados (los emblemas de rango)
   if (tie) {
     players.forEach((u) => refundOne(u, b.wager));
   } else {
