@@ -368,7 +368,7 @@ export default {
       } }, 'Borrar') : null;
       content.replaceChildren(h('div', { class: 'tm-layout' },
         h('div', { class: 'card stack' }, slotTabs, h('label', {}, 'Nombre', nameIn), rows, h('div', { class: 'row gap wrap' }, save, del),
-          h('p', { class: 'muted small' }, 'Los movimientos (solo los que ha aprendido: por nivel, MT, huevo o tutor) y la habilidad de cada Pokémon se eligen aquí y valen en todos tus equipos. Una Megaevolución por equipo (hace falta haberla desbloqueado).')),
+          h('p', { class: 'muted small' }, 'Los movimientos (solo los que ha aprendido: por nivel, MT, huevo o tutor) de cada Pokémon se eligen aquí y valen en todos tus equipos. La habilidad viene de nacimiento (se hereda en el Criadero) y solo cambia con una Cápsula o un Parche Habilidad. Una Megaevolución por equipo (hace falta haberla desbloqueado).')),
         h('div', { class: 'card stack' }, h('h3', {}, 'Caja PC'), h('div', { class: 'row gap' }, q), pc)));
       drawRows(); drawPc();
     }
@@ -381,7 +381,10 @@ export default {
       const filter = h('input', { placeholder: 'Buscar movimiento…', class: 'grow' });
       const list = h('div', { class: 'mv-list' });
       const cur = h('div', { class: 'mv-cur one' });
-      const abil = h('div', { class: 'ab-list' }, r.abilities.map((a) => h('label', { class: 'ab' }, h('input', { type: 'radio', name: 'ab', value: a.id, checked: a.id === ability, onchange: () => { ability = a.id; } }), h('span', {}, abilityEs(a.id), a.hidden ? h('span', { class: 'muted small' }, ' (oculta)') : null))));
+      // La habilidad no se elige: es la de nacimiento (heredada en el Criadero) y solo cambia con Cápsula o Parche Habilidad.
+      const cur0 = r.abilities.find((a) => a.id === ability);
+      const abil = h('div', { class: 'ab-list' }, h('div', { class: 'ab' }, h('b', {}, abilityEs(ability)), cur0 && cur0.hidden ? h('span', { class: 'muted small' }, ' (oculta)') : ''),
+        h('p', { class: 'muted small' }, 'Para cambiarla usa una Cápsula Habilidad (entre las normales) o un Parche Habilidad (a la oculta) desde la Caja PC → Datos.'));
       const draw = () => {
         cur.replaceChildren(...[0, 1, 2, 3].map((i) => (moves[i] ? row(moves[i], true) : h('div', { class: 'mvrow empty' }, '— hueco libre —'))));
         const t = filter.value.trim().toLowerCase();
@@ -405,7 +408,7 @@ export default {
         h('div', { class: 'small muted' }, `Movimientos de ${sp.nick || dexOf(sp.id).name} (de 1 a 4). Toca un movimiento para quitarlo o añadirlo.`),
         cur, h('h4', {}, 'Habilidad'), abil, h('h4', {}, `Movimientos aprendidos (${r.learnset.length})`), h('div', { class: 'row gap' }, filter), list,
         h('div', { class: 'row gap wrap' }, h('button', { class: 'btn primary', type: 'button', onclick: async (ev) => {
-          const res = await act('battle:setmoves', { id: sp.id, uid: sp.uid, moves, ability }, ev.currentTarget);
+          const res = await act('battle:setmoves', { id: sp.id, uid: sp.uid, moves }, ev.currentTarget);
           if (res) { sp.moves = res.moves; sp.ability = res.ability; sfx('click'); m.close(); done(); }
         } }, 'Guardar'), h('button', { class: 'btn', type: 'button', onclick: () => m.close() }, 'Cancelar')));
       const m = modal(body, { title: `⚙️ ${sp.nick || dexOf(sp.id).name}`, wide: true });
