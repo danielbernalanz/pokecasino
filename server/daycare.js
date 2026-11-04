@@ -1,5 +1,5 @@
 'use strict';
-// Fase B5 «Criadero»: deja 2 Pokémon compatibles (comparten tipo, o uno es Ditto) y cada 6 h (4 h si son de la misma especie)
+// Fase B5 «Criadero»: deja 2 Pokémon compatibles (como en los juegos: macho + hembra del mismo grupo huevo, o uno es Ditto) y cada 6 h (4 h si son de la misma especie)
 // aparece un huevo. Recogerlo cuesta una tarifa (sumidero de monedas, motivo 'daycare') y eclosiona con pasos: 1 paso por cada
 // 100 monedas apostadas (o, a cambio de esperar, 12 h). Herencia: 3 IV de los padres, naturaleza de un padre con 50 %.
 // Variocolor: 1/128 (1/64 si algún padre lo es). Sin legendarios, míticos ni especies cuya forma base sea L/M.
@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const hub = require('./hub');
 const gacha = require('./gacha');
+const eggroups = require('./eggroups');
 const specimen = require('./specimen');
 const { DEX, BY_ID, RARITY } = require('./pokedex');
 const { rand, pick, shuffle } = require('./rng');
@@ -49,28 +50,58 @@ const expectedResale = (rarity) => resaleCap(rarity) * (1 + (SHINY_SELL_MULT - 1
 const feeFor = (rarity) => Math.max(FEE_MIN, Math.ceil((FEE_MARGIN * expectedResale(rarity)) / 5) * 5);
 const needFor = (rarity) => NEED_STEPS[rarity] || 150;
 
-// Comprueba la pareja y devuelve { ok, msg, baby, hours, fee }.
+// Casos especiales de la madre: Nidoran♀ (y su familia) da Nidoran♀ o Nidoran♂, e Illumise da Volbeat o Illumise (50 %).
+const NIDORAN_F = 29;
+const NIDORAN_M = 32;
+const ILLUMISE = 314;
+const VOLBEAT = 313;
+const altBaby = (mother) => {
+  const base = baseOf(mother.id).id;
+  if (base === NIDORAN_F) return NIDORAN_M;
+  if (mother.id === ILLUMISE) return VOLBEAT;
+  return null;
+};
+
+// Comprueba la pareja con las reglas de los juegos y devuelve { ok, msg, baby, alt, hours, fee, level, eggMoves }.
+//  · Se necesita un macho y una hembra, o que uno sea Ditto. Sin sexo (Magnemite, Voltorb…): solo con Ditto. Dos Ditto no.
+//  · Deben compartir grupo huevo (el grupo «Desconocido» —bebés, legendarios, míticos— no cría).
+//  · El bebé es la forma base de la familia de la madre (la hembra, o el que no es Ditto).
 function check(a, b) {
   if (!a || !b) return { ok: false, msg: 'Elige dos Pokémon para el Criadero.' };
   if (a.m.uid === b.m.uid) return { ok: false, msg: 'Necesito dos Pokémon distintos.' };
   const pa = BY_ID.get(a.id);
   const pb = BY_ID.get(b.id);
+  const no = (msg) => ({ ok: false, msg: `No parece que se lleven bien… ${msg}` });
   if (fixed(a.id) || fixed(b.id)) return { ok: false, msg: 'Los legendarios y míticos no crían. ¡Son demasiado especiales!' };
-  const dA = a.id === DITTO;
-  const dB = b.id === DITTO;
-  if (dA && dB) return { ok: false, msg: 'Dos Ditto no hacen huevos: necesito un Pokémon de verdad.' };
-  if (!dA && !dB && !pa.types.some((t) => pb.types.includes(t))) return { ok: false, msg: 'No se llevan muy bien… Necesitan compartir algún tipo (o que uno sea Ditto).' };
-  let mother = dA ? pb : dB ? pa : null;
-  if (!mother) {
-    if (a.m.gender === 'F' && b.m.gender !== 'F') mother = pa;
-    else if (b.m.gender === 'F' && a.m.gender !== 'F') mother = pb;
-    else mother = pa; // sin sexos distintos, la primera plaza
+  const dA = eggroups.isDitto(a.id);
+  const dB = eggroups.isDitto(b.id);
+  if (dA && dB) return no('Dos Ditto no hacen huevos: necesito un Pokémon de verdad.');
+  for (const [x, p] of [[a, pa], [b, pb]]) if (!eggroups.isDitto(x.id) && !eggroups.canBreed(x.id)) return no(`${p.name} no puede criar (su grupo huevo es «Desconocido»: bebés, legendarios y míticos).`);
+  let mother;
+  let level;
+  let msg;
+  if (dA || dB) {
+    mother = dA ? pb : pa;
+    level = 'ditto';
+    msg = 'Se llevan bien.';
+  } else {
+    const ga = eggroups.genderOf(a.id, a.m);
+    const gb = eggroups.genderOf(b.id, b.m);
+    if (ga === null) return no(`${pa.name} no tiene sexo: solo puede criar con Ditto.`);
+    if (gb === null) return no(`${pb.name} no tiene sexo: solo puede criar con Ditto.`);
+    if (ga === gb) return no(`Son del mismo sexo (los dos ${ga === 'F' ? 'hembras' : 'machos'}): hace falta un macho y una hembra, o un Ditto.`);
+    if (!eggroups.shareGroup(a.id, b.id)) return no(`No comparten grupo huevo (${eggroups.groupsEs(a.id).join('/')} y ${eggroups.groupsEs(b.id).join('/')}).`);
+    mother = ga === 'F' ? pa : pb;
+    level = a.id === b.id ? 'same' : 'group';
+    msg = level === 'same' ? '¡Se llevan muy bien!' : 'Se llevan bastante bien.';
   }
   const baby = baseOf(mother.id);
-  if (baby.rarity === 'L' || baby.rarity === 'M') return { ok: false, msg: 'De esa familia no puede salir un huevo.' };
+  if (baby.rarity === 'L' || baby.rarity === 'M') return no('De esa familia no puede salir un huevo.');
+  const alt = altBaby(mother);
   const hours = a.id === b.id ? HOURS_SAME : HOURS_MIXED;
-  const eggMoves = inheritedEggMoves(baby.id, [a.m, b.m]);
-  return { ok: true, msg: a.id === b.id ? '¡Son de la misma especie y se llevan muy bien!' : '¡Parece que se llevan muy bien!', baby: baby.id, hours, fee: feeFor(baby.rarity), eggMoves, eggMovesEs: namesEs(eggMoves) };
+  const ids = alt ? [baby.id, alt] : [baby.id];
+  const eggMoves = [...new Set(ids.flatMap((id) => inheritedEggMoves(id, [a.m, b.m])))].slice(0, 4);
+  return { ok: true, msg, level, baby: baby.id, alt, hours, fee: feeFor(baby.rarity), eggMoves, eggMovesEs: namesEs(eggMoves) };
 }
 
 // La especie del bebé no depende del azar: la madre es la hembra, o la de la primera plaza.
@@ -98,7 +129,7 @@ function deposit(u, p) {
   const r = check(a, b);
   if (!r.ok) throw new Error(r.msg);
   const now = Date.now();
-  care.pairs[slot] = { a: { id: a.id, uid: a.m.uid }, b: { id: b.id, uid: b.m.uid }, baby: r.baby, since: now, readyAt: now + r.hours * HOUR, hours: r.hours };
+  care.pairs[slot] = { a: { id: a.id, uid: a.m.uid }, b: { id: b.id, uid: b.m.uid }, baby: r.baby, alt: r.alt || null, since: now, readyAt: now + r.hours * HOUR, hours: r.hours };
   a.m.away = 'care';
   b.m.away = 'care';
   db.save();
@@ -125,8 +156,10 @@ function withdraw(u, p) {
 function motherOf(ma, mb, ida, idb) {
   if (ida === DITTO) return mb;
   if (idb === DITTO) return ma;
-  if (ma.gender === 'F' && mb.gender !== 'F') return ma;
-  if (mb.gender === 'F' && ma.gender !== 'F') return mb;
+  const ga = eggroups.genderOf(ida, ma);
+  const gb = eggroups.genderOf(idb, mb);
+  if (ga === 'F' && gb !== 'F') return ma;
+  if (gb === 'F' && ga !== 'F') return mb;
   return ma;
 }
 // ¿Hereda el bebé la habilidad oculta? Solo si la madre la tiene y la especie del bebé tiene una.
@@ -146,7 +179,8 @@ function makeEgg(u, pair) {
   const ma = lookup(u, pair.a);
   const mb = lookup(u, pair.b);
   if (!ma || !mb) return null;
-  const baby = BY_ID.get(pair.baby);
+  const alt = pair.alt && rand() < 0.5 ? pair.alt : null; // Nidoran♀ → ♀/♂, Illumise → Volbeat/Illumise
+  const baby = BY_ID.get(alt || pair.baby);
   const parents = [ma, mb];
   const ivs = {};
   const idx = shuffle([0, 1, 2, 3, 4, 5]).slice(0, INHERIT_IVS);
@@ -223,7 +257,8 @@ function hatch(u, p) {
 function pairEggMoves(u, pr) {
   const ma = lookup(u, pr.a);
   const mb = lookup(u, pr.b);
-  return ma && mb ? inheritedEggMoves(pr.baby, [ma, mb]) : [];
+  if (!ma || !mb) return [];
+  return [...new Set([pr.baby, pr.alt].filter(Boolean).flatMap((id) => inheritedEggMoves(id, [ma, mb])))].slice(0, 4);
 }
 
 function view(u) {
@@ -233,7 +268,7 @@ function view(u) {
   while (care.pairs.length < n) care.pairs.push(null);
   return {
     now, maxPairs: n, pair2Level: PAIR2_LEVEL,
-    pairs: care.pairs.slice(0, n).map((pr) => (pr ? { a: pr.a, b: pr.b, baby: pr.baby, eggMovesEs: namesEs(pairEggMoves(u, pr)), readyAt: pr.readyAt, hours: pr.hours, ready: now >= pr.readyAt, fee: feeFor(BY_ID.get(pr.baby).rarity),
+    pairs: care.pairs.slice(0, n).map((pr) => (pr ? { a: pr.a, b: pr.b, baby: pr.baby, alt: pr.alt || null, eggMovesEs: namesEs(pairEggMoves(u, pr)), readyAt: pr.readyAt, hours: pr.hours, ready: now >= pr.readyAt, fee: feeFor(BY_ID.get(pr.baby).rarity),
       shiny: [lookup(u, pr.a), lookup(u, pr.b)].map((m) => !!(m && m.shiny)) } : null)),
     eggs: care.eggs.map((e) => ({ id: e.id, species: e.species, moves: namesEs(e.moves || []), need: e.need, steps: e.steps, hatchAt: e.hatchAt, ready: e.steps >= e.need || now >= e.hatchAt })),
     maxEggs: MAX_EGGS,

@@ -24,6 +24,8 @@ function user(collection = {}, extra = {}) {
   const u = { id: 'id-' + name, username: name, coins: 10000, dust: 0, buddy: null, items: {}, buffs: { shinyCharges: 0 }, games: {}, collection, stats: { pulls: 0, wagered: 0, won: 0, biggestWin: 0, duelsWon: 0, duelsLost: 0 }, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 1, ...extra };
   db.addUser(u);
   sp.syncAll(u);
+  // Sexos deterministas: macho si id+copia es impar (las especies de sexo fijo mandan sobre esto).
+  for (const [id, arr] of Object.entries(u.mons || {})) arr.forEach((m, i) => { m.gender = (Number(id) + i) % 2 ? 'M' : 'F'; });
   return u;
 }
 function clock(t0 = Date.now()) {
@@ -36,23 +38,126 @@ const H = 3600 * 1000;
 const ref = (m, id) => ({ id, uid: m.uid });
 const pair = (u, a, b) => care.deposit(u, { a: ref(sp.sync(u, a)[0], a), b: ref(sp.sync(u, b)[b === a ? 1 : 0], b) });
 
-test('compatibilidad: tipo compartido, Ditto, y sin legendarios/míticos/dos Ditto', () => {
-  const u = user({ 1: { n: 1, s: 0 }, 4: { n: 1, s: 0 }, 2: { n: 1, s: 0 }, 132: { n: 2, s: 0 }, 150: { n: 1, s: 0 }, 151: { n: 1, s: 0 } });
-  const m = (id) => ({ a: ref(u.mons[id][0], id) });
-  assert.strictEqual(care.check(u, { a: ref(u.mons[1][0], 1), b: ref(u.mons[2][0], 2) }).ok, true); // planta/veneno ambos
-  assert.strictEqual(care.check(u, { a: ref(u.mons[1][0], 1), b: ref(u.mons[4][0], 4) }).ok, false); // sin tipo común
-  const dit = care.check(u, { a: ref(u.mons[132][0], 132), b: ref(u.mons[4][0], 4) });
-  assert.strictEqual(dit.ok, true);
-  assert.strictEqual(dit.baby, 4, 'sale la forma base del no-Ditto');
-  assert.strictEqual(care.check(u, { a: ref(u.mons[132][0], 132), b: ref(u.mons[132][1], 132) }).ok, false);
-  assert.strictEqual(care.check(u, { a: ref(u.mons[150][0], 150), b: ref(u.mons[132][0], 132) }).ok, false);
-  assert.strictEqual(care.check(u, { a: ref(u.mons[151][0], 151), b: ref(u.mons[132][0], 132) }).ok, false);
-  assert.ok(m(1));
-  // El bebé siempre es la forma base de la madre
+// Pareja de prueba: ejemplares sueltos con el sexo indicado (las especies de sexo fijo o sin sexo mandan sobre él).
+let uidN = 0;
+const mon = (id, gender, learned) => ({ id, m: { uid: 'x' + ++uidN, gender, learned } });
+const chk = (a, b) => care.checkPair(a, b);
+
+test('compatibilidad: macho + hembra del mismo grupo huevo', () => {
+  // Bulbasaur (Monstruo/Planta) ♂ + Charmander (Monstruo/Dragón) ♀ → comparten Monstruo; sale la forma base de la madre
+  const r = chk(mon(1, 'M'), mon(4, 'F'));
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.level, 'group');
+  assert.strictEqual(r.baby, 4);
+  assert.match(r.msg, /bastante bien/);
+  // al revés: la madre es la de la segunda plaza
+  assert.strictEqual(chk(mon(4, 'M'), mon(1, 'F')).baby, 1);
+  // mismo tipo pero distinto grupo huevo: ya no basta (Pikachu = Campo/Hada)
+  const no = chk(mon(1, 'M'), mon(25, 'F'));
+  assert.strictEqual(no.ok, false);
+  assert.match(no.msg, /^No parece que se lleven bien/);
+  assert.match(no.msg, /grupo huevo/);
+  // misma especie: «muy bien» y 4 h
+  const same = chk(mon(25, 'M'), mon(25, 'F'));
+  assert.strictEqual(same.ok, true);
+  assert.strictEqual(same.level, 'same');
+  assert.strictEqual(same.hours, care.HOURS_SAME);
+  assert.match(same.msg, /muy bien/);
+  assert.strictEqual(chk(mon(1, 'M'), mon(4, 'F')).hours, care.HOURS_MIXED);
+});
+
+test('compatibilidad: hace falta un macho y una hembra', () => {
+  const mm = chk(mon(1, 'M'), mon(4, 'M'));
+  assert.strictEqual(mm.ok, false);
+  assert.match(mm.msg, /mismo sexo/);
+  assert.strictEqual(chk(mon(1, 'F'), mon(4, 'F')).ok, false);
+  assert.strictEqual(chk(mon(25, 'M'), mon(25, 'M')).ok, false);
+});
+
+test('compatibilidad: sexo fijo y sin sexo (Tauros ♂, Chansey ♀, Magnemite)', () => {
+  // Tauros es siempre macho aunque el ejemplar diga otra cosa; Tauros + Tauros no cría
+  const t = chk(mon(128, 'F'), mon(128, 'F'));
+  assert.strictEqual(t.ok, false);
+  assert.match(t.msg, /mismo sexo/);
+  // Tauros (Campo) ♂ + Pikachu (Campo/Hada) ♀ sí; la madre es Pikachu → Pichu
+  const tp = chk(mon(128, 'F'), mon(25, 'F'));
+  assert.strictEqual(tp.ok, true);
+  assert.strictEqual(tp.baby, care.baseOf(25).id);
+  // Chansey siempre hembra: con Pikachu ♀ no; con un ♂ del grupo Hada sí
+  assert.strictEqual(chk(mon(113, 'M'), mon(25, 'F')).ok, false);
+  assert.strictEqual(chk(mon(113, 'M'), mon(25, 'M')).ok, true);
+  // Sin sexo (Magnemite, Voltorb): solo con Ditto
+  const mag = chk(mon(81, null), mon(81, null));
+  assert.strictEqual(mag.ok, false);
+  assert.match(mag.msg, /sin sexo|no tiene sexo/);
+  assert.strictEqual(chk(mon(81, null), mon(100, null)).ok, false);
+  assert.strictEqual(chk(mon(81, 'M'), mon(25, 'F')).ok, false);
+  const md = chk(mon(81, null), mon(132, null));
+  assert.strictEqual(md.ok, true);
+  assert.strictEqual(md.baby, 81);
+});
+
+test('compatibilidad: Ditto, grupo Desconocido y legendarios', () => {
+  const d = chk(mon(132, null), mon(4, 'M'));
+  assert.strictEqual(d.ok, true);
+  assert.strictEqual(d.level, 'ditto');
+  assert.strictEqual(d.baby, 4, 'sale la forma base del no-Ditto');
+  assert.match(d.msg, /^Se llevan bien\./);
+  assert.strictEqual(chk(mon(4, 'F'), mon(132, null)).baby, 4);
+  assert.strictEqual(chk(mon(132, null), mon(132, null)).ok, false); // dos Ditto
+  assert.strictEqual(chk(mon(150, null), mon(132, null)).ok, false); // legendario
+  assert.strictEqual(chk(mon(151, null), mon(132, null)).ok, false); // mítico
+  // Pichu (bebé, grupo Desconocido) no cría ni con Ditto
+  const pichu = chk(mon(172, 'M'), mon(132, null));
+  assert.strictEqual(pichu.ok, false);
+  assert.match(pichu.msg, /Desconocido/);
+  assert.strictEqual(chk(mon(172, 'M'), mon(25, 'F')).ok, false);
+  assert.strictEqual(chk(mon(1, 'M'), mon(1, 'M')).ok, false);
+  // El bebé siempre es la forma base de la familia de la madre
   const ven = DEX.find((p) => p.evolvesFrom && p.stage === 3 && p.rarity !== 'L' && p.rarity !== 'M');
   const base = care.baseOf(ven.id);
   assert.strictEqual(base.evolvesFrom, null);
   assert.strictEqual(base.chain, ven.chain);
+});
+
+test('compatibilidad: Nidoran♀ da ♀ o ♂, e Illumise da Volbeat o Illumise', () => {
+  const n = chk(mon(32, 'M'), mon(29, 'F')); // Nidoran♂ + Nidoran♀ (Nidorina y Nidoqueen no crían, como en los juegos)
+  assert.strictEqual(chk(mon(32, 'M'), mon(30, 'F')).ok, false);
+  assert.strictEqual(n.ok, true);
+  assert.strictEqual(n.baby, 29);
+  assert.strictEqual(n.alt, 32);
+  // con Ditto, la cría de Nidoran♂ es Nidoran♂ (sin alternativa)
+  const nd = chk(mon(32, 'M'), mon(132, null));
+  assert.strictEqual(nd.baby, 32);
+  assert.strictEqual(nd.alt, null);
+  const il = chk(mon(313, 'M'), mon(314, 'F'));
+  assert.strictEqual(il.ok, true);
+  assert.strictEqual(il.baby, 314);
+  assert.strictEqual(il.alt, 313);
+  assert.strictEqual(chk(mon(4, 'M'), mon(1, 'F')).alt, null);
+});
+
+test('sexo de los ejemplares: respeta las especies de sexo fijo y sin sexo', () => {
+  const eg = require('../server/eggroups');
+  for (let i = 0; i < 30; i++) {
+    assert.strictEqual(sp.make(128).gender, 'M'); // Tauros
+    assert.strictEqual(sp.make(113).gender, 'F'); // Chansey
+    assert.strictEqual(sp.make(81).gender, null); // Magnemite
+    assert.strictEqual(sp.make(132).gender, null); // Ditto
+  }
+  const genders = new Set(Array.from({ length: 60 }, () => sp.make(25).gender));
+  assert.deepStrictEqual([...genders].sort(), ['F', 'M']);
+  // ejemplares antiguos con sexo incorrecto: el sexo real lo manda la especie
+  assert.strictEqual(eg.genderOf(128, { gender: 'F' }), 'M');
+  assert.strictEqual(eg.genderOf(113, { gender: 'M' }), 'F');
+  assert.strictEqual(eg.genderOf(81, { gender: 'M' }), null);
+  assert.strictEqual(eg.genderOf(25, { gender: 'F' }), 'F');
+  const u = user({ 128: { n: 1, s: 0 } });
+  u.mons[128][0].gender = 'F';
+  assert.strictEqual(sp.boxView(u).mons.find((x) => x.id === 128).gender, 'M');
+  assert.deepStrictEqual(sp.boxView(u).mons.find((x) => x.id === 128).eg, ['Campo']);
+  assert.deepStrictEqual(eg.groupsEs(25), ['Campo', 'Hada']);
+  assert.deepStrictEqual(eg.groupsEs(172), ['Desconocido']);
 });
 
 test('depositar: ocupa a los padres, una pareja (2.ª a nivel 20), horas 6 y 4 si misma especie', () => {
@@ -293,15 +398,15 @@ test('movimientos huevo en la comprobación de la pareja, el Criadero y el huevo
   const mv = require('../server/moves');
   const egg = mv.eggMoves(4); // Charmander
   assert.ok(egg.length > 0);
-  const mk = (id, learned) => ({ id, m: { uid: 'e' + id + Math.random(), gender: 'F', learned } });
-  const none = care.checkPair(mk(4, ['scratch']), mk(5, ['tackle']));
+  const mk = (id, learned, gender = 'F') => ({ id, m: { uid: 'e' + id + Math.random(), gender, learned } });
+  const none = care.checkPair(mk(4, ['scratch']), mk(5, ['tackle'], 'M'));
   assert.deepStrictEqual(none.eggMoves, []);
   assert.deepStrictEqual(none.eggMovesEs, []);
-  const yes = care.checkPair(mk(4, ['scratch', egg[0]]), mk(5, ['tackle']));
+  const yes = care.checkPair(mk(4, ['scratch', egg[0]]), mk(5, ['tackle'], 'M'));
   assert.strictEqual(yes.ok, true);
   assert.deepStrictEqual(yes.eggMoves, [egg[0]]);
   assert.strictEqual(yes.eggMovesEs[0], mv.name(egg[0]));
-  assert.ok(care.checkPair(mk(4, egg.slice(0, 6)), mk(5, [])).eggMoves.length <= 4, 'máximo 4');
+  assert.ok(care.checkPair(mk(4, egg.slice(0, 6)), mk(5, [], 'M')).eggMoves.length <= 4, 'máximo 4');
   // la pareja depositada, el huevo y el recién nacido los mantienen, ya en español
   const u = user({ 4: { n: 2, s: 0 } });
   u.mons[4][0].learned = [...(u.mons[4][0].learned || []), egg[0]];

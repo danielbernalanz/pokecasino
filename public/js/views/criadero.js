@@ -52,7 +52,7 @@ export default {
     const eggs = h('div', { class: 'care-eggs' });
     const live = [];
     const now = () => Date.now() + skew;
-    let speech = { text: 'Hola, entrenador. Déjame dos Pokémon que se lleven bien y te guardaré un huevo.' };
+    let speech = { text: 'Hola, entrenador. Déjame un macho y una hembra del mismo grupo huevo (o un Ditto) que se lleven bien y te guardaré un huevo.' };
     const setSay = (text) => { speech = { text }; sayBox.replaceChildren(say({ emoji: '👩‍🌾', who: 'Criadora', text, cls: 'compact' })); };
     function apply(r) { if (r.now) skew = r.now - Date.now(); st = r; render(); }
 
@@ -62,10 +62,24 @@ export default {
       const cur = sel[slot] || [null, null];
       const other = cur[1 - which];
       const chosen = new Set();
-      const picker = monPicker(mons, { max: 1, selected: chosen,
-        can: (m) => (m.away ? (m.away === 'care' ? 'En el Criadero' : 'De expedición') : (['L', 'M'].includes(S.dexById.get(m.id).rarity) ? 'No cría' : (other && other.uid === m.uid ? 'Ya elegido' : null))),
+      // Pistas de compatibilidad (el servidor decide): macho + hembra del mismo grupo huevo, o un Ditto.
+      const ditto = (m) => (m.eg || []).includes('Ditto');
+      const why = (m) => {
+        if (m.away) return m.away === 'care' ? 'En el Criadero' : 'De expedición';
+        if (['L', 'M'].includes(S.dexById.get(m.id).rarity) || (m.eg || []).includes('Desconocido')) return 'No cría';
+        if (other && other.uid === m.uid) return 'Ya elegido';
+        if (!other) return null;
+        if (ditto(m) && ditto(other)) return 'Dos Ditto';
+        if (ditto(m) || ditto(other)) return null;
+        if (!m.gender) return 'Sin sexo: solo con Ditto';
+        if (!other.gender) return 'El otro no tiene sexo';
+        if (m.gender === other.gender) return 'Mismo sexo';
+        if (!m.eg.some((g) => other.eg.includes(g))) return 'Otro grupo huevo';
+        return null;
+      };
+      const picker = monPicker(mons, { max: 1, selected: chosen, eggInfo: true, can: why,
         onChange: () => { const m = picker.get()[0]; if (m) { cur[which] = m; sel[slot] = cur; mdl.close(); verify(slot); } } });
-      const mdl = modal(h('div', { class: 'stack' }, h('p', { class: 'small muted' }, 'Comparten tipo, o uno de ellos es Ditto. Los legendarios y míticos no crían.'), picker.el), { title: `Padre ${which + 1}`, wide: true });
+      const mdl = modal(h('div', { class: 'stack' }, h('p', { class: 'small muted' }, 'Como en los juegos: un macho y una hembra que compartan grupo huevo (o un Ditto con cualquier Pokémon que pueda criar). Los Pokémon sin sexo solo crían con Ditto; los bebés, legendarios y míticos no crían.'), picker.el), { title: `Padre ${which + 1}`, wide: true });
     }
     async function verify(slot) {
       const [a, b] = sel[slot] || [];

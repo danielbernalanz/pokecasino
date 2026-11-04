@@ -209,6 +209,7 @@ function openMon(uid, openPage = 'info') {
       h('div', { class: 'muted small' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level} · Naturaleza ${m.nature}${m.buddy ? ' · 🤝 Compañero' : ''}`),
       h('div', { class: 'types' }, p.types.map(typeBadge), h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity))),
       h('div', { class: 'small' }, h('b', {}, 'Habilidad: '), m.ability),
+      m.eg ? h('div', { class: 'small', title: 'Para criar, dos Pokémon deben compartir grupo huevo (y ser macho y hembra, o uno Ditto)' }, h('b', {}, 'Grupo huevo: '), m.eg.join(' · '), ' · ', m.gender === 'M' ? '♂ macho' : m.gender === 'F' ? '♀ hembra' : 'sin sexo') : null,
       h('div', {}, h('b', {}, `IV total ${total}/186`), ` · ${judge(total)}`, hpBar(total / 186 * 100)),
       h('div', { class: 'small muted' }, 'Obtenido: ' + new Date(m.at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })),
       nickRow),
