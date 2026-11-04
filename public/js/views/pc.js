@@ -358,9 +358,14 @@ export default {
       const dust = chosen.reduce((s, m) => s + S.data.rarity[S.dexById.get(m.id).rarity].dust, 0);
       const cdy = box.rules ? chosen.reduce((s, m) => s + (box.rules.transfer[S.dexById.get(m.id).rarity] || 0), 0) : 0;
       const slice = list.slice(boxIdx * PER_BOX, (boxIdx + 1) * PER_BOX).filter((m) => pickable(m) && !m.fav && !m.shiny);
+      // Según los filtros (rareza, tipo, búsqueda…): todos los que se ven en todas las cajas, o solo sus repetidos.
+      const filtered = list.filter((m) => pickable(m) && !m.fav && !m.shiny);
+      const dupes = filtered.filter((m) => bulkList(m.id).some((x) => x.uid === m.uid));
       pickBar.replaceChildren(
         h('span', {}, h('b', {}, `${chosen.length} marcados`), chosen.length ? ` · +${fmt(dust)} ✦ · +${fmt(cdy)} 🍬` : ' · toca los Pokémon que quieras transferir'),
         h('button', { class: 'btn small', type: 'button', title: 'Marca los de esta caja (sin favoritos, variocolores ni compañero)', onclick: () => { for (const m of slice) picking.add(m.uid); render(); } }, 'Marcar la caja'),
+        h('button', { class: 'btn small', type: 'button', disabled: !filtered.length, title: 'Marca todos los que cumplen los filtros de 🔍 Buscar (rareza, tipo…), en todas las cajas', onclick: () => { for (const m of filtered) picking.add(m.uid); render(); } }, `Marcar lo filtrado (${filtered.length})`),
+        h('button', { class: 'btn small', type: 'button', disabled: !dupes.length, title: 'Solo los repetidos de lo filtrado: se conserva el mejor de cada especie', onclick: () => { for (const m of dupes) picking.add(m.uid); render(); } }, `Repetidos de lo filtrado (${dupes.length})`),
         h('button', { class: 'btn small', type: 'button', disabled: !chosen.length, onclick: () => { picking.clear(); render(); } }, 'Desmarcar'),
         h('button', { class: 'btn primary', type: 'button', disabled: !chosen.length, onclick: async (e) => {
           const btn = e.currentTarget;
@@ -368,7 +373,13 @@ export default {
           if (!(await confirmRisk('transfer-many', { section: 'la Caja PC', title: `¿Transferir ${chosen.length} Pokémon?`, danger: 'Transferir', safe: 'Cancelar',
             text: 'Se transfieren al Profesor Oak y no se pueden recuperar. De cada especie se conserva al menos una copia.',
             details: [`+${fmt(dust)} ✦ de polvo estelar`, `+${fmt(cdy)} 🍬 caramelos`, ...(special ? [`⚠ Incluye ${special} favorito(s) o variocolor(es)`] : [])] }))) return;
-          const r = await act('pc:transferMany', { list: chosen.map((m) => ({ id: m.id, uid: m.uid })) }, btn);
+          // En tandas (el servidor acepta hasta 300 por llamada).
+          let r = null;
+          for (let i = 0; i < chosen.length; i += 300) {
+            const part = await act('pc:transferMany', { list: chosen.slice(i, i + 300).map((m) => ({ id: m.id, uid: m.uid })) }, btn);
+            if (!part) break;
+            r = r ? { count: r.count + part.count, dust: r.dust + part.dust, candy: r.candy + part.candy, skipped: r.skipped + part.skipped, reason: r.reason || part.reason } : part;
+          }
           if (r) { sfx('shiny'); toast(`Transferiste ${r.count} Pokémon: +${fmt(r.dust)} ✦ y +${fmt(r.candy)} 🍬${r.skipped ? ` · ${r.skipped} no se pudieron (${r.reason})` : ''}`, r.count ? 'success' : 'error'); picking = null; await load(); render(); }
         } }, '🎓 Transferir'),
         h('button', { class: 'btn small', type: 'button', onclick: () => { picking = null; render(); } }, 'Salir'));
