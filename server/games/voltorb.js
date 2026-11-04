@@ -115,7 +115,7 @@ function flip(user, { index }) {
     if (before >= 6) hub.feed('win', `${user.username} superó el nivel ${before} de Voltorb Flip ⚡`);
     if (before >= 5) {
       user.items['amulet-coin'] = (user.items['amulet-coin'] || 0) + 1;
-      hub.emitUser(user.id, 'toast', { kind: 'item', text: '🎒 Premio de Voltorb Flip: +1 Moneda Amuleto' });
+      hub.emitUser(user.id, 'toast', { kind: 'item', text: '🎒 Premio de Voltorb Flip: +1 Moneda de la Suerte' });
     }
     db.save();
     return { ...res, outcome: 'clear', newLevel: user.voltorb.level };

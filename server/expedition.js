@@ -31,6 +31,7 @@ const CANDY_WEIGHTS = [['exp-xs', 60], ['exp-s', 30], ['exp-m', 10]];
 const CANDY_DAY_CAP = 8; // caramelos Exp. al día por jugador desde expediciones
 const BIG_CHANCE = { 8: 0.05, 12: 0.12 }; // un Caramelo Exp. L (10.000 EXP), máx. 1 al día
 const LUCKY_CHANCE = { 8: 0.01, 12: 0.03 }; // un Huevo Suerte (objeto equipable), máx. 1 al día
+const AMULET_CHANCE = { 8: 0.01, 12: 0.02 }; // una Moneda Amuleto (objeto equipable), máx. 1 al día
 const FRIEND_PER_HOUR = 5; // con tope diario `bond.CAP.exp` por ejemplar
 const COIN_PER_HOUR = 8; // × (1 + 0,5 × proporción de participantes que coinciden con la zona)
 const COIN_DAY_CAP = 300;
@@ -67,7 +68,7 @@ const ZONE_BY_ID = new Map(ZONES.map((z) => [z.id, z]));
 const STATIC = {
   zones: ZONES, evoChance: EVO_CHANCE, zoneEvo: ZONE_EVO, hours: HOURS, maxTeam: MAX_TEAM, slots: SLOTS, slot3Level: SLOT3_LEVEL,
   caps: { coins: COIN_DAY_CAP, dust: DUST_DAY_CAP, rare: RARE_DAY_CAP, candies: CANDY_DAY_CAP }, matchBonus: MATCH_BONUS,
-  expBase: EXP_BASE, expLevel: EXP_LEVEL, friendPerHour: FRIEND_PER_HOUR, bigChance: BIG_CHANCE, luckyChance: LUCKY_CHANCE,
+  expBase: EXP_BASE, expLevel: EXP_LEVEL, friendPerHour: FRIEND_PER_HOUR, bigChance: BIG_CHANCE, luckyChance: LUCKY_CHANCE, amuletChance: AMULET_CHANCE,
 };
 
 const maxSlots = (u) => (u.level >= SLOT3_LEVEL ? SLOTS + 1 : SLOTS);
@@ -75,7 +76,7 @@ const expsOf = (u) => (u.expeditions ||= []);
 
 function dayOf(u) {
   const k = hub.dayKey();
-  if (!u.expDay || u.expDay.day !== k) u.expDay = { day: k, coins: 0, dust: 0, rare: 0, evo: 0, candy: 0, big: 0, lucky: 0 };
+  if (!u.expDay || u.expDay.day !== k) u.expDay = { day: k, coins: 0, dust: 0, rare: 0, evo: 0, candy: 0, big: 0, lucky: 0, amulet: 0 };
   return u.expDay;
 }
 // Valor máximo teórico por día en monedas (polvo a 4 monedas y el objeto raro más valioso al tope de compra de un PNJ).
@@ -173,6 +174,7 @@ function claim(u, p) {
     }
     if (BIG_CHANCE[H] && (d.big || 0) < 1 && rand() < BIG_CHANCE[H]) { require('./candy').giveExp(u, 'exp-l', 1); d.big = 1; out.candies['exp-l'] = (out.candies['exp-l'] || 0) + 1; }
     if (LUCKY_CHANCE[H] && (d.lucky || 0) < 1 && rand() < LUCKY_CHANCE[H]) { items.give(u, 'hi-luckyegg', 1); d.lucky = 1; out.lucky = true; }
+    if (AMULET_CHANCE[H] && (d.amulet || 0) < 1 && rand() < AMULET_CHANCE[H]) { items.give(u, 'hi-amuletcoin', 1); d.amulet = 1; out.amulet = true; }
     out.pokerus = require('./pokerus').roll(u, live.map((x) => ({ id: x.t.id, m: x.m }))); // Pokérus (muy raro; se contagia dentro del equipo)
     for (let k = 0; k < rolls; k++) {
       const b = pick(Object.keys(items.BERRIES));
@@ -209,6 +211,6 @@ function claim(u, p) {
 }
 
 module.exports = {
-  ZONES, ZONE_BY_ID, STATIC, HOURS, MAX_TEAM, SLOTS, SLOT3_LEVEL, MATCH_BONUS, EXP_BASE, EXP_LEVEL, CANDY_DAY_CAP, BIG_CHANCE, LUCKY_CHANCE, FRIEND_PER_HOUR,
+  ZONES, ZONE_BY_ID, STATIC, HOURS, MAX_TEAM, SLOTS, SLOT3_LEVEL, MATCH_BONUS, EXP_BASE, EXP_LEVEL, CANDY_DAY_CAP, BIG_CHANCE, LUCKY_CHANCE, AMULET_CHANCE, FRIEND_PER_HOUR,
   COIN_PER_HOUR, COIN_DAY_CAP, DUST_DAY_CAP, RARE_DAY_CAP, RARE_CHANCE, RARE_VALUE, BERRY_CAP, maxSlots, dailyMaxValue, view, send, claim,
 };

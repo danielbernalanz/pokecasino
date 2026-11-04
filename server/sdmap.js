@@ -194,6 +194,7 @@ function toSet(id, m, { level = 'fair', mega = 0, doubles = false, usedNames = n
   let gender = m.gender === 'F' ? 'F' : m.gender === 'M' ? 'M' : '';
   if (sp.gender) gender = sp.gender === 'N' ? '' : sp.gender; // especies de sexo fijo o sin sexo
   let item = require('./bp').holdable(m.item) ? m.item : ''; // objeto equipado (solo los de la Tienda de Combate y las bayas)
+  if (item === require('./battlemoney').AMULET_COIN) item = ''; // la Moneda Amuleto no hace nada en combate (solo duplica el premio al ganar) y el simulador ya no la conoce
   let megaForm = 0;
   let moves = m.sdMoves.slice(0, 4);
   if (mega) {

@@ -36,13 +36,13 @@ const levelCoins = (level) => 3 * level;
 // Caramelo Raro cada 5 niveles desde el 10; Master Ball cada 25 (la única legendaria segura).
 const levelItem = (level) => (level % 25 === 0 ? 'master-ball' : level % 5 === 0 && level >= 10 ? 'rare-candy' : null);
 
-// ---- Bonus de compañero / colecciones / Moneda Amuleto ----
+// ---- Bonus de compañero / colecciones / Moneda de la Suerte ----
 // El bonus de un día no puede superar una fracción de la ventaja de la casa de lo apostado ese día
 // (además del tope fijo 300 + 50 × nivel): así ningún juego sale a favor del jugador.
 // Con todo activo a la vez (Amuleto y fin de semana del Compañero) llega a 0,45 × 1,25 = 56 % de la ventaja; el
 // Huevo Suerte (XP ×2) duplica la devolución por niveles (≈19 % → 38 %): en total queda por debajo del 100 %.
 const BONUS_SHARE = 0.3; // fracción de la ventaja que se devuelve como bonus
-const BONUS_SHARE_AMULET = 0.45; // con Moneda Amuleto activa
+const BONUS_SHARE_AMULET = 0.45; // con Moneda de la Suerte activa
 const BONUS_SHARE_EVENT = 1.25; // multiplicador en el fin de semana del Compañero
 
 // ---- Recompensa diaria: 500 el primer día, +100 por día de racha hasta el 7.º (1.100) ----

@@ -142,7 +142,7 @@ test('validación de elecciones: acepta las legítimas y rechaza basura', () => 
 test('combate completo individual y en dobles entre dos IA, sin dejar el simulador abierto', async () => {
   for (const [format, size] of [['singles', 6], ['doubles', 4]]) {
     const A = trainers.buildTeam(trainers.BY_TRAINER.get('sergio'), size, { doubles: format === 'doubles' });
-    const B = trainers.buildTeam(trainers.BY_TRAINER.get('misty'), size, { doubles: format === 'doubles' });
+    const B = trainers.buildTeam(trainers.BY_TRAINER.get('vero'), size, { doubles: format === 'doubles' });
     const t0 = Date.now();
     const r = await sdw.runAiBattle({ format, teamA: A, teamB: B, timeoutMs: 40000 });
     assert.ok(!r.aborted, `${format} abortado`);
@@ -261,7 +261,7 @@ test('contra CPU: tope de combates simultáneos, recompensas y tope diario de vi
   const c0 = u1.coins;
   b1.forfeit(b1.sides[1]);
   await b1.done;
-  assert.strictEqual(u1.coins, c0 + trainers.COINS[1]);
+  assert.strictEqual(u1.coins, c0 + Math.min(24 * 50, trainers.COINS_DAY), 'premio real (Montañero ×24 × Nv. 50) con el tope diario');
   assert.ok(Object.values(u1.mons).flat().some((m) => m.xc && m.xc.n > 0 && m.exp > 0), 'EXP para los participantes');
   assert.ok(!u1.candy, 'ya no hay caramelos de familia');
   assert.strictEqual(u1.btHist[0].won, true);
@@ -282,10 +282,11 @@ test('contra CPU: tope de combates simultáneos, recompensas y tope diario de vi
     paid = (p.hist.income && p.hist.income.battle) || 0;
     void before;
   }
-  assert.strictEqual(paid, trainers.WINS_PER_DAY * trainers.COINS[1], 'máximo diario');
+  assert.strictEqual(paid, trainers.COINS_DAY, 'máximo diario de monedas');
   assert.strictEqual(sdw.dayWins(p).wins, trainers.WINS_PER_DAY);
   // Recompensa máxima diaria < recompensa diaria base.
-  assert.ok(trainers.WINS_PER_DAY * Math.max(...Object.values(trainers.COINS)) <= require('../server/balance').DAILY_BASE);
+  assert.ok(trainers.COINS_DAY <= require('../server/balance').DAILY_BASE);
+  assert.strictEqual(trainers.COINS_DAY, 800, 'el tope diario es el máximo de antes (10 victorias × 80)');
   // Entrenadores con medallas: el campeón está bloqueado para un recién llegado.
   assert.throws(() => sdw.startCpu(withMons(ids), { trainer: 'lance', format: 'singles', level: 'fair', team: team(withMons(ids)) }));
   const fresh = withMons(ids);

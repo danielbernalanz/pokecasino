@@ -16,7 +16,7 @@ export function bagTab() {
   const owned = Object.entries(S.me.items || {}).filter(([, n]) => n > 0);
   const b = S.me.buffs || {};
   const active = [
-    timeLeft(b.amuletUntil) && `🪙 Moneda Amuleto activa (${timeLeft(b.amuletUntil)})`,
+    timeLeft(b.amuletUntil) && `🪙 Moneda de la Suerte activa (${timeLeft(b.amuletUntil)})`,
     timeLeft(b.luckyUntil) && `🥚 Huevo Fortuna activo: EXP de entrenador ×2 (${timeLeft(b.luckyUntil)})`,
     b.shinyCharges > 0 && `✨ Amuleto Iris: ${b.shinyCharges} tiradas potenciadas`,
     b.masterBall && '🟣 Master Ball preparada para tu próxima tirada',
@@ -39,7 +39,7 @@ export function bagTab() {
         : h('button', { class: 'btn primary', onclick: async (e) => {
           if (id === 'mystery-egg') return openEgg(e.target);
           if (id === 'amulet-coin' && S.me.bonusLeft === 0 && !(await confirmRisk('item-wasted', { section: 'la Mochila', title: 'El objeto se desaprovecharía',
-            text: 'Hoy ya has alcanzado el tope diario de bonus de ganancias. La Moneda Amuleto dura 1 hora y se gastaría igual, así que ahora mismo no te daría nada. Mejor úsala cuando todavía te quede bonus por cobrar.', danger: 'Usarla igualmente', safe: 'Guardarla' }))) return;
+            text: 'Hoy ya has alcanzado el tope diario de bonus de ganancias. La Moneda de la Suerte dura 1 hora y se gastaría igual, así que ahora mismo no te daría nada. Mejor úsala cuando todavía te quede bonus por cobrar.', danger: 'Usarla igualmente', safe: 'Guardarla' }))) return;
           const at = centerOf(e.target);
           let payload = { itemId: id };
           if (id === 'rare-candy') {

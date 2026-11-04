@@ -157,7 +157,7 @@ function addXp(user, amount, { flat = false } = {}) {
   return leveled;
 }
 
-// ---- Compañero y Moneda Amuleto ----
+// ---- Compañero y Moneda de la Suerte ----
 function buddyBonus(user) {
   const amulet = user.buffs && user.buffs.amuletUntil > Date.now() ? 0.1 : 0;
   const sets = require('./progress').setBonus(user);
@@ -199,7 +199,7 @@ function takeBet(user, amount, game, { extra = false, quiet = false, noXp = fals
 }
 
 // Paga `amount` (incluye la apuesta devuelta). El compañero añade un % sobre la ganancia neta.
-// El bonus (compañero, colecciones, Moneda Amuleto) tiene dos topes diarios: el fijo (300 + 50 × nivel) y uno
+// El bonus (compañero, colecciones, Moneda de la Suerte) tiene dos topes diarios: el fijo (300 + 50 × nivel) y uno
 // «de sala» que crece con lo apostado ese día y vale una fracción de la ventaja de la casa de cada juego
 // (BONUS_SHARE). Sin el segundo, jugar a un juego de poca ventaja (Video Póker, Blackjack) con un compañero
 // épico daría dinero seguro a la larga; sin el primero, también lo daría en los de mucha varianza.
@@ -263,7 +263,7 @@ function privateUser(u) {
     buddyBonus: buddyBonus(u), pvpPlayed: !!(u.btHist || []).some((x) => x.mode === 'pvp'), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
     bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, lockedCoins: lockedCoins(u), locked: lockedView(u).box, lockedProg: lockedView(u).prog,
-    progress: require('./progress').view(u), mega: require('./mega').privateView(u), buddyFinds: require('./bond').findsView(u), buddyBond: require('./bond').buddyBondView(u), berries: u.berries || {},
+    progress: require('./progress').view(u), hof: (u.elite && u.elite.hof) || [], mega: require('./mega').privateView(u), buddyFinds: require('./bond').findsView(u), buddyBond: require('./bond').buddyBondView(u), berries: u.berries || {},
   };
 }
 

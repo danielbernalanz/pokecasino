@@ -564,6 +564,9 @@ io.on('connection', (socket) => {
   on('battle:saveteam', showdown.saveTeam, { push: false });
   on('battle:delteam', showdown.deleteTeam, { push: false });
   on('battle:cpu', showdown.startCpu);
+  on('battle:elite:start', (u, p) => require('./elite').start(u, p));
+  on('battle:elite:next', (u) => require('./elite').next(u));
+  on('battle:elite:abandon', (u) => require('./elite').abandon(u));
   on('battle:challenge', showdown.challenge);
   on('battle:accept', showdown.accept);
   on('battle:cancel', showdown.cancel);

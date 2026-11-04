@@ -11,7 +11,7 @@ const ITEMS = {
   ticket: { name: 'Ticket Gacha', sprite: 'pass', price: 150, desc: 'Una tirada en cualquier banner.' },
   'rare-candy': { name: 'Caramelo Raro', sprite: 'rare-candy', price: 900, desc: 'Da una estrella a un Pokémon que ya tengas. Es una estrella "ligada": no se puede vender, regalar ni liberar.' },
   'lucky-egg': { name: 'Huevo Fortuna', sprite: 'lucky-egg', price: 300, desc: 'Experiencia de entrenador doble durante 1 hora (para tu nivel de entrenador, no para la EXP de tus Pokémon; esa la da el Huevo Suerte que se equipa).' },
-  'amulet-coin': { name: 'Moneda Amuleto', sprite: 'amulet-coin', price: 400, desc: '+10 % sobre tus ganancias netas durante 1 hora y más margen de bonus (el tope sube del 30 % al 45 % de la ventaja de la casa de lo que apuestas).' },
+  'amulet-coin': { name: 'Moneda de la Suerte', sprite: 'amulet-coin', price: 400, desc: '+10 % sobre tus ganancias netas durante 1 hora y más margen de bonus (el tope sube del 30 % al 45 % de la ventaja de la casa de lo que apuestas).' },
   'shiny-charm': { name: 'Amuleto Iris', sprite: 'shiny-charm', price: null, desc: 'Las próximas 10 tiradas tienen 4 veces más probabilidad de variocolor. Solo como premio.' },
   'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada es legendaria seguro y, si el banner tiene destacadas, una de ellas. Solo como premio o en el Mercado.' },
   'mystery-egg': { name: 'Huevo Misterioso', sprite: 'mystery-egg', price: null, desc: 'Ábrelo para obtener un cosmético al azar (marco, dorso de carta o título).' },

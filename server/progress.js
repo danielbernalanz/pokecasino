@@ -19,7 +19,7 @@ const TUTORIAL = [
   { title: 'Abre un Huevo Misterioso', desc: 'Úsalo desde la Mochila: te dará un marco, un dorso de carta o un título.', link: 'bag', match: (e, d) => e === 'item_use' && d.itemId === 'mystery-egg', reward: { coins: 300 }, grantOnStart: { 'mystery-egg': 1 } },
   { title: 'Estrena el Mercado', desc: 'Publica un anuncio (ese cosmético repetido…) o compra algo a otro jugador.', link: 'market', match: isMarket, reward: { coins: 500, items: { 'mystery-egg': 1 } } },
   { title: 'Juega un duelo PvP', desc: 'Reta a alguien con uno de tus Pokémon (puede ser amistoso, sin apuesta).', link: 'duels', match: (e) => e === 'duel_play', reward: { items: { ticket: 3 } } },
-  { title: 'Consigue la Medalla Roca', desc: 'Llega a nivel 5 de entrenador. Las medallas suben tu límite de apuesta y abren mesas nuevas.', link: 'trainer', match: (e) => e === 'badge', done: (u) => u.progress.badges.length > 0, reward: { coins: 1000, items: { 'frame-poke': 1 }, title: 'novato' } },
+  { title: 'Consigue la Medalla Roca', desc: 'Vence a Brock, el Líder de Gimnasio de Ciudad Plateada, en Combates (Combatir → Líder de Gimnasio). Lleva Pokémon de nivel 12-14: entrena los tuyos contra otros entrenadores. Las medallas suben tu límite de apuesta y abren mesas nuevas.', link: 'combates', match: (e) => e === 'badge', done: (u) => u.progress.badges.length > 0, reward: { coins: 1000, items: { 'frame-poke': 1 }, title: 'novato' } },
 ];
 
 // ---- Misiones diarias (3 al día) ----
@@ -42,19 +42,19 @@ const DAILY_BONUS = { items: { 'mystery-egg': 1 }, coins: 250 };
 // ---- Medallas de Kanto ----
 const BADGE_COINS = 500; // la medalla n paga 500 × n (total 18.000)
 const CHAMPION_COINS = 10000;
-const dexCount = (u) => Object.keys(u.collection).length;
-const hasShiny = (u) => Object.values(u.collection).some((c) => c.s > 0);
-const C = (u, k) => u.progress.counters[k] || 0;
+// Cada medalla se gana VENCIENDO al líder en Combates (Combatir), en este orden (Rojo Fuego / Verde Hoja). Ver trainers.js (equipos) y showdown.js (settle).
+// `lv`: niveles de su equipo (fijos, como en los juegos). Quien ya tenía medallas de cuando se ganaban por progreso en el casino las conserva con todo lo ganado.
 const BADGES = [
-  { id: 'roca', name: 'Medalla Roca', leader: 'Brock', req: 'Llega a nivel 5', check: (u) => u.level >= 5, prog: (u) => [u.level, 5] },
-  { id: 'cascada', name: 'Medalla Cascada', leader: 'Misty', req: 'Ten 20 especies en la Pokédex', check: (u) => dexCount(u) >= 20, prog: (u) => [dexCount(u), 20] },
-  { id: 'trueno', name: 'Medalla Trueno', leader: 'Lt. Surge', req: 'Gana 40 veces en el casino', check: (u) => C(u, 'win') >= 40, prog: (u) => [C(u, 'win'), 40] },
-  { id: 'arcoiris', name: 'Medalla Arcoíris', leader: 'Erika', req: 'Completa una colección', check: (u) => u.progress.sets.length >= 1, prog: (u) => [u.progress.sets.length, 1] },
-  { id: 'alma', name: 'Medalla Alma', leader: 'Koga', req: 'Vende 3 cosas en el Mercado', check: (u) => C(u, 'market_sell') >= 3, prog: (u) => [C(u, 'market_sell'), 3] },
-  { id: 'pantano', name: 'Medalla Pantano', leader: 'Sabrina', req: "Gana 5 duelos o 10 manos de Hold'em", check: (u) => C(u, 'duel_win') >= 5 || C(u, 'poker_win') >= 10, prog: (u) => [Math.max(C(u, 'duel_win') * 2, C(u, 'poker_win')), 10] },
-  { id: 'volcan', name: 'Medalla Volcán', leader: 'Blaine', req: 'Consigue un Pokémon variocolor', check: hasShiny, prog: (u) => [hasShiny(u) ? 1 : 0, 1] },
-  { id: 'tierra', name: 'Medalla Tierra', leader: 'Giovanni', req: 'Nivel 20 y 80 especies en la Pokédex', check: (u) => u.level >= 20 && dexCount(u) >= 80, prog: (u) => [Math.min(u.level, 20) + Math.min(dexCount(u), 80), 100] },
+  { id: 'roca', name: 'Medalla Roca', leader: 'Brock', city: 'Ciudad Plateada', lv: '12-14' },
+  { id: 'cascada', name: 'Medalla Cascada', leader: 'Misty', city: 'Ciudad Celeste', lv: '18-21' },
+  { id: 'trueno', name: 'Medalla Trueno', leader: 'Teniente Surge', city: 'Ciudad Carmín', lv: '18-24' },
+  { id: 'arcoiris', name: 'Medalla Arcoíris', leader: 'Erika', city: 'Ciudad Azulona', lv: '24-29' },
+  { id: 'alma', name: 'Medalla Alma', leader: 'Koga', city: 'Ciudad Fucsia', lv: '37-43' },
+  { id: 'pantano', name: 'Medalla Pantano', leader: 'Sabrina', city: 'Ciudad Azafrán', lv: '37-43' },
+  { id: 'volcan', name: 'Medalla Volcán', leader: 'Blaine', city: 'Isla Canela', lv: '40-47' },
+  { id: 'tierra', name: 'Medalla Tierra', leader: 'Giovanni', city: 'Ciudad Verde', lv: '42-50' },
 ];
+const badgeReq = (b) => `Vence a ${b.leader} (${b.city}, Nv. ${b.lv}) en Combates`;
 
 // ---- Colecciones: completarlas da +1 % permanente a las ganancias y un título ----
 const SETS = [
@@ -183,22 +183,32 @@ function evaluate(user) {
       hub.feed('set', `📚 ${user.username} completó la colección «${s.name}»`);
     }
   }
-  let newBadge = false;
-  BADGES.forEach((b, k) => {
-    if (!p.badges.includes(b.id) && b.check(user)) {
-      p.badges.push(b.id);
-      newBadge = true;
-      grant(user, { coins: BADGE_COINS * (k + 1), items: k % 2 ? { 'mystery-egg': 1 } : { ticket: 2 }, title: 'badge-' + b.id }, `¡${b.name}!`);
-      hub.feed('badge', `🏅 ${user.username} consiguió la ${b.name} (${p.badges.length}/8)`, { badge: k + 1 });
-      if (p.badges.length === BADGES.length) {
-        grant(user, { coins: CHAMPION_COINS, items: { 'master-ball': 1, 'frame-rainbow': 1 }, title: 'campeon' }, '👑 ¡Campeón de la Liga Pokémon!');
-        hub.feed('badge', `👑 ¡${user.username} es Campeón de la Liga Pokémon!`);
-      }
-    }
-  });
-  if (newBadge) track(user, 'badge');
   const step = TUTORIAL[p.tutorial];
   if (step && step.done && step.done(user)) { completeStep(user); db.save(); }
+}
+
+// Vencer a un líder (k = 1..8). Devuelve { first, badge } si es la primera vez (medalla y premios) o { first: false } si ya la tenía (revancha: solo EXP, PB…).
+function awardBadge(user, k) {
+  const p = user.progress;
+  const b = BADGES[k - 1];
+  if (!p || !b) return { first: false };
+  if (p.badges.includes(b.id)) return { first: false, id: b.id, name: b.name, n: k };
+  p.badges.push(b.id);
+  const reward = { coins: BADGE_COINS * k, items: (k - 1) % 2 ? { 'mystery-egg': 1 } : { ticket: 2 }, title: 'badge-' + b.id };
+  grant(user, reward, `¡${b.name}!`);
+  hub.feed('badge', `🏅 ${user.username} consiguió la ${b.name} (${p.badges.length}/8)`, { badge: k });
+  track(user, 'badge');
+  return { first: true, id: b.id, name: b.name, n: k, coins: reward.coins, items: reward.items, total: p.badges.length };
+}
+
+// Campeón de la Liga: se gana al vencer la carrera del Alto Mando (elite.js), una sola vez. Quien ya tenía el título (de cuando lo daban las 8 medallas) no cobra dos veces.
+const CHAMPION_REWARD = { coins: CHAMPION_COINS, items: { 'master-ball': 1, 'frame-rainbow': 1 }, title: 'campeon' };
+function awardChampion(user) {
+  const p = user.progress;
+  if (!p || p.titles.includes('campeon')) return false;
+  grant(user, CHAMPION_REWARD, '👑 ¡Campeón de la Liga Pokémon!');
+  hub.feed('badge', `👑 ¡${user.username} es Campeón de la Liga Pokémon!`);
+  return true;
 }
 
 const setBonus = (user) => Math.min(0.08, (user.progress ? user.progress.sets.length : 0) * 0.01);
@@ -217,7 +227,7 @@ function view(user) {
       missions: p.daily.missions.map((m) => [m, DAILY.find((x) => x.id === m.id)]).filter(([, d]) => d)
         .map(([m, d]) => ({ ...m, title: d.title, n: d.n || 1, reward: d.reward })),
     },
-    badges: BADGES.map((b, k) => ({ id: b.id, n: k + 1, name: b.name, leader: b.leader, req: b.req, got: p.badges.includes(b.id), prog: b.prog(user) })),
+    badges: BADGES.map((b, k) => ({ id: b.id, n: k + 1, name: b.name, leader: b.leader, city: b.city, lv: b.lv, req: badgeReq(b), got: p.badges.includes(b.id), prog: [p.badges.includes(b.id) ? 1 : 0, 1] })),
     sets: SETS.map((s) => ({ id: s.id, name: s.name, ids: s.ids, title: s.title, done: p.sets.includes(s.id), have: s.ids.filter((id) => user.collection[id]).length })),
     titles: p.titles.map((id) => ({ id, text: TITLES[id] })),
     setBonus: setBonus(user),
@@ -226,4 +236,4 @@ function view(user) {
 
 const titleText = (id) => TITLES[id] || (require('./items').COSMETICS[id] || {}).title || null;
 
-module.exports = { BADGE_COINS, CHAMPION_COINS, track, evaluate, view, setBonus, titleText, BADGES, SETS, TUTORIAL, DAILY, TITLES };
+module.exports = { BADGE_COINS, CHAMPION_COINS, CHAMPION_REWARD, awardBadge, awardChampion, track, evaluate, view, setBonus, titleText, BADGES, SETS, TUTORIAL, DAILY, TITLES };

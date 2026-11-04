@@ -10,12 +10,13 @@ const NEEDS_TARGET = new Set(['normal', 'any', 'adjacentFoe', 'adjacentAlly']);
 // Habilidades que anulan un tipo si la especie solo tiene esa (o todas las suyas).
 const ABSORB = { ground: ['levitate'], electric: ['voltabsorb', 'lightningrod', 'motordrive'], water: ['waterabsorb', 'stormdrain', 'dryskin'], fire: ['flashfire', 'wellbakedbody'], grass: ['sapsipper'] };
 
-const jitter = () => 1 + (Math.random() - 0.5) * 0.12;
+const jitter = (smart = false) => 1 + (Math.random() - 0.5) * (smart ? 0.03 : 0.12);
 
 class Brain {
-  /** @param {'p1'|'p2'} side @param {{doubles: boolean}} opts */
-  constructor(side, { doubles = false } = {}) {
+  /** @param {'p1'|'p2'} side @param {{doubles: boolean, smart: boolean}} opts `smart` (líderes de gimnasio y Alto Mando): casi sin ruido y cambia de Pokémon cuando le conviene en vez de a veces. */
+  constructor(side, { doubles = false, smart = false } = {}) {
     this.side = side;
+    this.smart = smart;
     this.foeSide = side === 'p1' ? 'p2' : 'p1';
     this.doubles = doubles;
     this.foes = {}; // 'a'|'b' → { species, level, hp (0-1), status, fainted }
@@ -263,10 +264,10 @@ class Brain {
       if (best && bench.length && !trapped && foesList.length) {
         const mu = this.matchup(me.info, this.doubles ? foesList : foesList.slice(0, 1));
         const bestDmg = best.score >= 0 ? Math.max(0, best.score) / 100 : 0;
-        if (bestDmg < 0.28 && mu.def > 0.45 && Math.random() < 0.55) {
+        if (bestDmg < 0.28 && mu.def > 0.45 && Math.random() < (this.smart ? 0.9 : 0.55)) {
           const cands = bench.map((m) => ({ m, sc: this.benchScore(m, foesList) })).sort((a, b) => b.sc - a.sc);
           const cur = this.benchScore(me, foesList);
-          if (cands[0].sc > cur + 25) { switched.add(cands[0].m.i); parts.push('switch ' + (cands[0].m.i + 1)); continue; }
+          if (cands[0].sc > cur + (this.smart ? 15 : 25)) { switched.add(cands[0].m.i); parts.push('switch ' + (cands[0].m.i + 1)); continue; }
         }
       }
       if (!best) { parts.push('default'); continue; }
@@ -305,7 +306,7 @@ class Brain {
       if (mv.id === 'suckerpunch') total *= 0.8;
       if (mv.id === 'dreameater' || mv.id === 'focuspunch' || mv.id === 'lastresort') total *= 0.1;
       if (mv.drain) total += mv.drain[0] / mv.drain[1] * total * 0.3;
-      return total * jitter();
+      return total * jitter(this.smart);
     }
     // ---- Estado ----
     const foe = foes[0] && foes[0].f;

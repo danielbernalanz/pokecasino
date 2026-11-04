@@ -32,7 +32,7 @@ Las estrategias (Video Póker casi óptimo, Blackjack básico, Voltorb con infer
 | 9 | Regalos del ×10 | Master Ball 5 % (≈ 60 % de lo gastado en ×10 devuelto), Amuleto Iris 10 %, Huevo 30 % | Master Ball 0,5 %, Amuleto Iris 5 %, Huevo 20 % |
 | 10 | Tasas del gacha | L 1,8 % · M 0,3 % | L 1,75 % · M 0,25 % (y una legendaria concreta con 3 destacadas ≈ 51.000 monedas ≈ 3-4 semanas de ingresos) |
 | 11 | Master Ball | cada 5 niveles | cada 25 niveles, al ser Campeón y 0,5 % de los ×10 |
-| 12 | Precios de la tienda | Huevo Suerte 1.200, Moneda Amuleto 2.500 | 300 y 400 (valen mucho menos de lo que costaban) |
+| 12 | Precios de la tienda | Huevo Suerte 1.200, Moneda de la Suerte 2.500 | 300 y 400 (valen mucho menos de lo que costaban) |
 
 ## Parte A · Fases evolutivas en el gacha
 
@@ -115,7 +115,7 @@ Una heurística sencilla (probabilidad por fila y columna) recupera 55-70 %; un 
 Hay tres flujos que devuelven monedas a quien apuesta mucho:
 
 1. **Niveles**. `xp = apuesta ÷ 10` y cada nivel *n* cuesta 100·(2n−3) XP.
-2. **Bonus** de compañero (0-10 % + estrellas), colecciones (+1 % cada una, máx. 8 %) y Moneda Amuleto (+10 %) sobre las **ganancias netas**.
+2. **Bonus** de compañero (0-10 % + estrellas), colecciones (+1 % cada una, máx. 8 %) y Moneda de la Suerte (+10 %) sobre las **ganancias netas**.
 3. **Objetos** de recompensa por nivel.
 
 **Antes**, valorando los objetos a lo que pagan los PNJ (Caramelo 450, Master Ball 2.000):
@@ -140,7 +140,7 @@ Ventaja de la casa: Video Póker 0,46 %, Blackjack 0,45-0,55 %, Baccarat ≈ 1,1
   | Ruleta, Voltorb, Carrera, duelos | ≥ 5 % | 0,1 (tope) |
 
 * **Recompensas por nivel**: 3 × nivel monedas (antes 5 ×); Caramelo Raro **cada 5 niveles desde el 10** (antes cada nivel) y Master Ball **cada 25** (antes cada 5). Devolución acumulada por XP ganada, en el peor nivel: 0,076 monedas por XP = **19 % de la ventaja** (≈ 0,03-0,45 % de lo apostado según el juego). Con el Huevo Suerte (XP ×2) llega al 38 %.
-* **Bonus con tope «de sala»**: cada apuesta suma a una bolsa diaria `apuesta × ventaja × 0,30` (0,45 con Moneda Amuleto, ×1,25 el fin de semana del Compañero); el bonus pagado en un día no supera esa bolsa ni el tope fijo. En el peor caso (Amuleto + fin de semana + Huevo Suerte permanentes) la devolución total es 0,56 + 0,38 = **94 % de la ventaja**: por debajo del 100 % en todos los juegos. `test/balance.test.js` lo calcula juego a juego.
+* **Bonus con tope «de sala»**: cada apuesta suma a una bolsa diaria `apuesta × ventaja × 0,30` (0,45 con Moneda de la Suerte, ×1,25 el fin de semana del Compañero); el bonus pagado en un día no supera esa bolsa ni el tope fijo. En el peor caso (Amuleto + fin de semana + Huevo Suerte permanentes) la devolución total es 0,56 + 0,38 = **94 % de la ventaja**: por debajo del 100 % en todos los juegos. `test/balance.test.js` lo calcula juego a juego.
 * **XP no cultivable**: `takeBet(..., { noXp })` para duelos (la XP se concede al aceptarse el duelo, no al crear el reto), y la XP «fija» de los duelos (50/20) tiene un tope de 400 al día.
 
 Consecuencia visible: el compañero ya no da «+X % hasta 300 + 50 × nivel al día» sino «+X % mientras quede bolsa de bonus». El texto del Vestíbulo y de Mi Entrenador lo dice.
@@ -183,7 +183,7 @@ Ingreso diario máximo de un casual (racha ≥ 7, 3 misiones, tirada gratis y Ti
 | Ticket Gacha | 1 tirada | 150 | 150 | = coste de una tirada |
 | Caramelo Raro | +1 estrella (ligada) a un Pokémon que ya tengas | 900 | 900 | ya no se puede revender ni liberar; una estrella da ≈ +4 % de fuerza en duelos y +0,5 % de bonus |
 | Huevo Suerte | XP ×2 durante 1 h | 1.200 | **300** | extra de recompensas por nivel: ≈ 20 % de la ventaja de lo apostado en esa hora (≈ 0-80 monedas); solo vale por la velocidad de subida de nivel |
-| Moneda Amuleto | +10 % de ganancias netas y bolsa de bonus del 45 % en lugar del 30 % durante 1 h | 2.500 | **400** | beneficio máximo ≈ 0,15 × ventaja × lo apostado en la hora: con 100.000 apostados en Slots ≈ 360 monedas |
+| Moneda de la Suerte | +10 % de ganancias netas y bolsa de bonus del 45 % en lugar del 30 % durante 1 h | 2.500 | **400** | beneficio máximo ≈ 0,15 × ventaja × lo apostado en la hora: con 100.000 apostados en Slots ≈ 360 monedas |
 | Amuleto Iris | las 10 próximas tiradas tienen ×4 de variocolor | solo premio | solo premio (NPC compra a ≤ 500, antes 1.500) | ≈ 0,5 variocolor de más |
 | Master Ball | próxima tirada legendaria (la destacada del banner) | cada 5 niveles | cada 25, Campeón, 0,5 % de los ×10 | vale ≈ 17.000 monedas de tiradas |
 | Huevo Misterioso | un cosmético al azar | sin cambios | sin cambios | abrir uno vale de media ≈ 370 en PNJ frente a 900 que piden por él |
@@ -405,7 +405,7 @@ Ninguna acción de esta fase crea monedas. Los Caramelos Exp. no se pueden vende
 | Transferir al Profesor Oak | Da el mismo polvo que liberar **más Caramelos Exp.**: C 1 XS (100 EXP) · U 2 XS (200) · R 1 S (800) · E 2 S (1.600) · L 1 M (3.000) · M 2 M (6.000). Se conserva siempre una copia de la especie |
 | Evolución | **Sin coste en caramelos**: nivel de los juegos + requisitos especiales (piedras, intercambio, amistad ≥ 160, sexo, hora…). Hace falta otra copia de la especie origen, salvo la **primera** evolución a una especie nueva, que no gasta la copia de origen (una vez por especie y cuenta, `u.evoReg`; la copia nueva es la última de su especie: no se puede liberar ni vender). El destino debe tener < 5 estrellas. El ejemplar conserva IVs, naturaleza, mote, nivel, amistad, favorito, variocolor y compañero |
 | Intercambio Milagroso | 5 al día; una copia sobrante (ni favorita, ni compañero, ni variocolor, ni mítica) por una copia aleatoria de la misma rareza (pesos de fase del gacha; las L excluyen las destacadas de los banners activos; solo especies con < 5 estrellas) |
-| Reciclaje | Solo objetos con precio de tienda: 40 % del precio / 4 monedas por ✦ (Ticket 15 ✦, Huevo Fortuna 30 ✦, Moneda Amuleto 40 ✦, Caramelo Raro 90 ✦). En monedas son 60 de 150, 120 de 300, 160 de 400 y 360 de 900: siempre < precio. Tope 300 ✦ al día. Los Caramelos Exp., las Chapas y los objetos de evolución no se reciclan |
+| Reciclaje | Solo objetos con precio de tienda: 40 % del precio / 4 monedas por ✦ (Ticket 15 ✦, Huevo Fortuna 30 ✦, Moneda de la Suerte 40 ✦, Caramelo Raro 90 ✦). En monedas son 60 de 150, 120 de 300, 160 de 400 y 360 de 900: siempre < precio. Tope 300 ✦ al día. Los Caramelos Exp., las Chapas y los objetos de evolución no se reciclan |
 
 **Por qué no hay arbitraje de polvo con la evolución.** Antes lo evitaba el coste en caramelos; ahora lo evita la EXP: ver «Techo de polvo evolucionando y transfiriendo» en la sección nueva (`test/candy.test.js` y `test/progression.test.js` lo comprueban para las ≈ 380 evoluciones «de nivel»).
 

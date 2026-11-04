@@ -10,6 +10,7 @@ const hub = require('./hub');
 const sd = require('./sdmap');
 const trainers = require('./trainers');
 const { Brain } = require('./sdai');
+const battleMoney = require('./battlemoney');
 const { BY_ID } = require('./pokedex');
 
 const MAX_BATTLES = Number(process.env.SD_MAX_BATTLES) || 8;
@@ -92,9 +93,16 @@ function resolveTeam(user, members, { format, level, itemClause = false }) {
   return { sets, roster };
 }
 
+// Orden `>eval` para el simulador (queda en el registro de entradas, así que el combate se reconstruye igual tras un reinicio): fija PS, estado y PP de
+// los Pokémon del jugador. `carry[i]` es lo de su i-ésimo Pokémon en el equipo ({ hp, max, s, pp }), o null. Si cambió el máximo de PS (subió de nivel) se conserva la proporción.
+function carryCmd(carry) {
+  const C = JSON.stringify(carry.map((c) => (c ? { hp: c.hp, max: c.max, s: c.s || '', pp: c.pp || {} } : null)));
+  return `>eval const C=${C};C.forEach((c,i)=>{const p=p1.pokemon[i];if(!p||!c)return;p.sethp(Math.max(1,c.max===p.maxhp?c.hp:Math.round(p.maxhp*c.hp/c.max)));if(c.s)p.setStatus(c.s);for(const [m,n] of Object.entries(c.pp)){const sl=p.moveSlots.find(x=>x.id===m);if(sl)sl.pp=Math.min(sl.maxpp,n);}})`;
+}
+
 // ---- Combate ----
 class Battle {
-  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null, affection = false, ranked = false, tower = null }) {
+  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null, affection = false, ranked = false, tower = null, full = false, elite = null }) {
     this.id = id || crypto.randomUUID().slice(0, 8);
     // Semilla explícita: el simulador es determinista con ella y el registro de entradas, así que un combate se puede reconstruir.
     this.seed = seed || [0, 1, 2, 3].map(() => crypto.randomInt(1, 0x10000));
@@ -107,6 +115,8 @@ class Battle {
     this.wager = wager;
     this.trainer = trainer;
     this.ranked = !!ranked; // Clasificatoria de la Liga (league.js): solo PvP, nivel 50, sin apuesta ni afecto
+    this.full = !!full; // líderes y Alto Mando: cada bando lleva su equipo entero (sin «Picked Team Size»), el del jugador de hasta 6
+    this.elite = elite; // carrera del Alto Mando (elite.js): { stage, carry } — los PS, PP y estados del jugador se arrastran de un combate al siguiente
     this.tower = tower; // Torre Batalla (tower.js): { n, boss } — el rival es un «trainer» sintético
     // Afecto (affection.js): true = solo el lado del jugador (CPU); 'both' = los dos lados (PvP). Se guarda en la instantánea (aff 1 / 2).
     this.affection = affection === 'both' ? 'both' : (!!affection && mode !== 'pvp');
@@ -114,7 +124,8 @@ class Battle {
       n: i, id: 'p' + (i + 1), userId: s.user ? s.user.id : null, name: s.name, sets: s.sets, roster: s.roster,
       brain: s.brain || null, req: null, chosen: false, deadline: 0, timer: null, timeouts: 0, log: [], seen: new Set(), human: !!s.user, askedAt: Date.now(),
     }));
-    this.pickN = Math.min(FORMATS[format].cap, ...this.sides.map((s) => s.sets.length));
+    this.pickN = this.full ? this.sides[0].sets.length : Math.min(FORMATS[format].cap, ...this.sides.map((s) => s.sets.length));
+    this.pickFoe = this.full ? this.sides[1].sets.length : undefined;
     this.turn = 0;
     this.startedAt = Date.now();
     this.over = false;
@@ -126,14 +137,20 @@ class Battle {
   // responde (ni la IA ni los temporizadores actúan sobre peticiones antiguas) hasta que todo se ha asentado.
   start(replay = null) {
     const { BattleStream, getPlayerStreams } = sd.ps();
-    const streams = (this.streams = getPlayerStreams(new BattleStream()));
+    const bs = (this.bs = new BattleStream());
+    const streams = (this.streams = getPlayerStreams(bs));
     const maxLen = Math.max(...this.sides.map((s) => s.sets.length));
     const rules = ['Species Clause', 'Terastal Clause'];
-    if (this.pickN < maxLen) rules.push(`Picked Team Size = ${this.pickN}`);
+    if (!this.full && this.pickN < maxLen) rules.push(`Picked Team Size = ${this.pickN}`);
     if (this.affection) rules.push(this.affection === 'both' ? 'AffectionBoth' : 'Affection');
     const fid = `${FORMATS[this.format].id}@@@${rules.join(',')}`;
     const cmds = [`>start ${JSON.stringify({ formatid: fid, seed: this.seed })}`];
-    for (const s of this.sides) cmds.push(`>player ${s.id} ${JSON.stringify({ name: s.name, team: sd.pack(s.sets) })}`);
+    for (const s of this.sides) {
+      cmds.push(`>player ${s.id} ${JSON.stringify({ name: s.name, team: sd.pack(s.sets) })}`);
+      // Carrera del Alto Mando: tras sentar al jugador y ANTES de que entre el rival (así la vista previa ya muestra los PS buenos) se fijan PS, PP y estado.
+      if (this.elite && s.n === 0 && this.elite.carry && this.elite.carry.some(Boolean)) cmds.push(carryCmd(this.elite.carry));
+    }
+    this.setupLen = cmds.length;
     if (replay) { this.replaying = true; this.inputLog = []; }
     for (const s of this.sides) {
       if (s.brain) s.brain.pickN = this.pickN;
@@ -162,8 +179,8 @@ class Battle {
 
   snapshot() {
     return {
-      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, rk: this.ranked ? 1 : 0, tw: this.tower ? { n: this.tower.n, boss: !!this.tower.boss, tr: { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls, quote: this.trainer.quote } } : null, aff: this.affection === 'both' ? 2 : this.affection ? 1 : 0,
-      seed: this.seed, createdAt: this.createdAt, savedAt: Date.now(), input: this.inputLog.slice(1 + this.sides.length), turn: this.turn,
+      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, rk: this.ranked ? 1 : 0, tw: this.tower ? { n: this.tower.n, boss: !!this.tower.boss, tr: { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls, quote: this.trainer.quote } } : null, aff: this.affection === 'both' ? 2 : this.affection ? 1 : 0, full: this.full ? 1 : 0, el: this.elite ? { stage: this.elite.stage, carry: this.elite.carry, bonus: this.elite.bonus || 0 } : undefined,
+      seed: this.seed, createdAt: this.createdAt, savedAt: Date.now(), input: this.inputLog.slice(this.setupLen || 1 + this.sides.length), turn: this.turn,
       sides: this.sides.map((s) => ({ userId: s.userId, name: s.name, sets: s.sets, roster: s.roster, human: s.human, chosen: s.chosen, timeouts: s.timeouts, askedAt: s.askedAt })),
     };
   }
@@ -198,7 +215,7 @@ class Battle {
     for (const line of String(chunk).split('\n')) {
       if (line.startsWith('|request|')) { try { req = JSON.parse(line.slice(9)); } catch { /* petición ilegible */ } continue; }
       if (line.startsWith('|error|')) { errs.push(line); continue; }
-      if (line === '' || line.startsWith('|debug|')) continue;
+      if (line === '' || line.startsWith('|debug|') || line.startsWith('||') || line.startsWith('|html|')) continue; // (eco de >eval y >editbattle: no es para el jugador)
       out.push(line);
     }
     for (const line of out) {
@@ -313,6 +330,22 @@ class Battle {
     setTimeout(() => this.finish(), 80); // (sin unref: tiene que llegar a liquidar)
   }
 
+  // PS, PP y estado con los que han acabado los Pokémon del jugador (solo la carrera del Alto Mando los usa), por ejemplar.
+  captureCarry() {
+    try {
+      const bat = this.bs && this.bs.battle;
+      if (!bat) return null;
+      const byName = new Map(this.sides[0].roster.map((r) => [r.name, r.uid]));
+      const out = {};
+      for (const p of bat.sides[0].pokemon) {
+        const uid = byName.get(p.name);
+        if (!uid) continue;
+        out[uid] = { hp: Math.max(0, p.hp), max: p.maxhp, s: p.hp > 0 ? p.status || '' : '', pp: Object.fromEntries(p.baseMoveSlots.map((m) => [m.id, m.pp])) };
+      }
+      return out;
+    } catch (e) { console.error('Alto Mando: no se pudo leer el estado final', e); return null; }
+  }
+
   teardown() {
     for (const s of this.sides) if (s.timer) { clearTimeout(s.timer); s.timer = null; }
     try { this.streams.omniscient.writeEnd(); } catch { /* ya cerrado */ }
@@ -323,6 +356,7 @@ class Battle {
   finish() {
     if (this.finished) return;
     this.finished = true;
+    if (this.elite) this.carryOut = this.captureCarry();
     let result;
     try { result = settle(this); } catch (e) { console.error('Combate: error al liquidar', e); result = { error: true }; }
     this.unpersist();
@@ -346,7 +380,7 @@ class Battle {
 
   view(side) {
     return {
-      id: this.id, mode: this.mode, format: this.format, level: this.level, wager: this.wager, side: side.id, pickN: this.pickN, ranked: this.ranked || undefined,
+      id: this.id, mode: this.mode, format: this.format, level: this.level, wager: this.wager, side: side.id, pickN: this.pickN, pickFoe: this.pickFoe, ranked: this.ranked || undefined, elite: this.elite ? { stage: this.elite.stage } : undefined, gym: this.trainer && this.trainer.badge ? this.trainer.badge : undefined,
       tower: this.tower ? { n: this.tower.n, round: Math.floor((this.tower.n - 1) / 7) + 1, boss: !!this.tower.boss } : undefined,
       ranks: this.mode === 'pvp' ? this.sides.map((s) => require('./league').emblem(db.userById(s.userId), this.ranked ? this.format : undefined)) : undefined,
       you: side.name, foe: this.sides[1 - side.n].name, trainer: this.trainer ? { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls } : null,
@@ -374,7 +408,7 @@ function refundBattle(b) {
 
 function dayWins(u) {
   const k = hub.dayKey();
-  if (!u.btDay || u.btDay.day !== k) u.btDay = { day: k, wins: 0 };
+  if (!u.btDay || u.btDay.day !== k) u.btDay = { day: k, wins: 0, coins: 0, pick: 0 };
   return u.btDay;
 }
 
@@ -392,13 +426,11 @@ function participants(b, side) {
 function cpuReward(b, user, side) {
   const t = b.trainer;
   const d = dayWins(user);
-  const out = { coins: 0, exp: [], candies: {}, evolve: [], pokerus: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null, bp: 0, ev: 0 };
+  const out = { coins: 0, exp: [], candies: {}, evolve: [], pokerus: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null, bp: 0, ev: 0, prize: null, pickup: [] };
   if (d.wins >= trainers.WINS_PER_DAY) { out.capped = true; return out; }
   d.wins++;
   out.winsLeft = trainers.WINS_PER_DAY - d.wins;
-  out.coins = trainers.COINS[t.tier] || 20;
-  user.coins += out.coins;
-  hub.ledger(user, out.coins, 'battle', `Combate contra ${t.cls} ${t.name}`);
+  let amulet = false; // algún participante lleva la Moneda Amuleto
   const bond = require('./bond');
   const specimen = require('./specimen');
   const expMod = require('./exp');
@@ -419,9 +451,31 @@ function cpuReward(b, user, side) {
       out.friend += bond.addFriend(sp, 2, 'battle');
       out.ev += require('./evs').onWin(sp, foeStats); // EVs: +4 por rival derrotado en su estadística base más alta (tope diario por ejemplar; ×2 con Pokérus)
       members.push({ id: r.id, m: sp });
+      if (battleMoney.holdsAmulet(sp)) amulet = true;
     } catch { /* el ejemplar ya no está */ }
   }
   out.pokerus = require('./pokerus').roll(user, members); // Pokérus: muy raro; se contagia dentro del equipo
+  // Premio en metálico (clase × nivel más alto del rival), Día de Pago y Moneda Amuleto, con el tope diario de siempre (trainers.COINS_DAY).
+  const pz = battleMoney.prizeMoney(trainers.BY_TRAINER.get(t.id) || t, b.sides[1].roster.map((r) => r.level));
+  const pd = battleMoney.payDay(side.log, side.roster);
+  const gross = (pz.coins + pd.coins) * (amulet ? 2 : 1);
+  const room = Math.max(0, trainers.COINS_DAY - (d.coins || 0));
+  out.coins = Math.min(gross, room);
+  d.coins = (d.coins || 0) + out.coins;
+  out.prize = { pay: pz.pay, level: pz.level, base: pz.coins, payday: pd.coins, paydayUses: pd.uses, amulet, gross, capped: out.coins < gross, left: room - out.coins };
+  if (out.coins) {
+    user.coins += out.coins;
+    hub.ledger(user, out.coins, 'battle', `Combate contra ${t.cls} ${t.name}`);
+  }
+  // Recogida: cada Pokémon del equipo con la habilidad, un 10 % de encontrar algo (tope diario de 5 hallazgos).
+  const pickers = [];
+  for (const r of side.roster) {
+    try {
+      const sp = specimen.find(user, { id: r.id, uid: r.uid });
+      if (sd.toID(sp.sdAbility) === 'pickup') pickers.push({ name: sp.nick || (BY_ID.get(r.id) || {}).name || r.name, level: r.level });
+    } catch { /* el ejemplar ya no está */ }
+  }
+  out.pickup = battleMoney.rollPickup(user, pickers, d);
   const drop = expMod.battleDrop(d, t.tier, require('./rng').rand);
   if (drop) { require('./candy').giveExp(user, drop, 1); out.candies[drop] = 1; }
   hub.addXp(user, 15, { flat: true });
@@ -446,15 +500,23 @@ function settle(b) {
     const won = b.winner === 0;
     let reward = null;
     let tw = null;
+    let badge = null;
+    let elite = null;
     if (user) {
       if (b.tower) tw = require('./tower').onEnd(user, b, won); // Torre Batalla: sin monedas ni caramelos, solo PB con tope propio
-      else if (won) reward = cpuReward(b, user, side);
+      else {
+        if (won) {
+          reward = cpuReward(b, user, side);
+          if (b.trainer.badge) badge = require('./progress').awardBadge(user, b.trainer.badge); // vencer al líder da la medalla (la primera vez) aunque hoy ya no queden premios
+        }
+        if (b.elite) elite = require('./elite').onEnd(user, b, b.winner === 0);
+      }
       pushHist(user, { id: b.id, at: res.at, mode: 'cpu', format: b.format, level: b.level, foe: `${b.tower ? '🗼 ' : ''}${b.trainer.cls} ${b.trainer.name}`, won, tie: b.winner === null, turns: b.turn, coins: reward ? reward.coins : 0, tower: b.tower ? b.tower.n : undefined });
       if (!b.tower) hub.track(user, 'battle_play');
       db.save();
       hub.pushMe(user);
     }
-    hub.emitUser(side.userId, 'battle:end', { id: b.id, winner: b.winner === null ? 'tie' : won ? 'you' : 'foe', reward, tower: tw || undefined, trainer: { id: b.trainer.id, name: b.trainer.name, cls: b.trainer.cls, quote: b.trainer.quote } });
+    hub.emitUser(side.userId, 'battle:end', { id: b.id, winner: b.winner === null ? 'tie' : won ? 'you' : 'foe', reward, badge: badge || undefined, elite: elite || undefined, tower: tw || undefined, trainer: { id: b.trainer.id, name: b.trainer.name, cls: b.trainer.cls, quote: b.trainer.quote } });
     return res;
   }
   // PvP
@@ -516,25 +578,45 @@ function register(b) {
   return b;
 }
 
+const smartFor = (t) => !!t && t.tier >= 5; // líderes y Alto Mando: IA más fina (sdai.js)
+
 function startCpu(user, { trainer: trainerId, format, level = 'fair', team }) {
   checkFree(user);
   checkCapacity();
   const t = trainers.BY_TRAINER.get(String(trainerId));
   if (!t) throw new Error('Ese entrenador no existe.');
-  if (!trainers.unlocked(t, user)) throw new Error(`Necesitas ${t.badges} medallas para retar a ${t.name}.`);
+  if (!trainers.soloOk(t)) throw new Error(`${t.name} solo se enfrenta en el Alto Mando, seguido de los demás.`);
+  if (!trainers.unlocked(t, user)) throw new Error(`${trainers.lockText(t)} Para retar a ${t.name}.`);
+  if (trainers.fixed(t)) { format = 'singles'; level = 'real'; } // líderes y Alto Mando: Individual y niveles reales, como en los juegos
   const mine = resolveTeam(user, team, { format, level });
   const avg = mine.roster.reduce((s, r) => s + r.level, 0) / mine.roster.length;
   const foe = trainers.buildTeam(t, Math.min(FORMATS[format].cap, mine.sets.length), { level, avgLevel: avg, doubles: FORMATS[format].doubles });
   const doubles = FORMATS[format].doubles;
   const b = new Battle({
-    mode: 'cpu', format, level, trainer: t, affection: true,
+    mode: 'cpu', format, level, trainer: t, affection: true, full: trainers.fixed(t),
     sides: [
       { user, name: user.username, sets: mine.sets, roster: mine.roster },
-      { name: `${t.cls} ${t.name}`, sets: foe.sets, roster: foe.roster, brain: new Brain('p2', { doubles }) },
+      { name: `${t.cls} ${t.name}`, sets: foe.sets, roster: foe.roster, brain: new Brain('p2', { doubles, smart: smartFor(t) }) },
     ],
   });
   register(b);
   return { battle: b.view(b.sides[0]) };
+}
+
+// Alto Mando (elite.js decide quién y cuándo): equipo de nivel fijo (+`bonus` en las revanchas), Individual, niveles reales; los PS/PP/estados del jugador vienen de `carry`.
+function startEliteBattle(user, { trainer: t, mine, carry, stage, bonus = 0 }) {
+  checkFree(user);
+  checkCapacity();
+  const foe = trainers.buildTeam(t, 6, { bonus });
+  const b = new Battle({
+    mode: 'cpu', format: 'singles', level: 'real', trainer: t, affection: true, full: true, elite: { stage, carry, bonus },
+    sides: [
+      { user, name: user.username, sets: mine.sets, roster: mine.roster },
+      { name: `${t.cls} ${t.name}`.slice(0, 18), sets: foe.sets, roster: foe.roster, brain: new Brain('p2', { doubles: false, smart: true }) },
+    ],
+  });
+  register(b);
+  return b;
 }
 
 // Torre Batalla: combate contra la CPU con equipos de alquiler (tower.js decide quién y cuándo; aquí solo se arranca).
@@ -740,6 +822,7 @@ function abortSnapshot(snap, why) {
       refundOne(db.userById(e ? e.userId : s.userId), e ? e.amount : snap.wager);
     }
     if (snap.tw && s.userId) require('./tower').onAbort(s.userId, snap.id);
+    // (la carrera del Alto Mando no se toca: sigue en el mismo combate y se puede reintentar)
     if (s.userId) hub.emitUser(s.userId, 'battle:end', { id: snap.id, aborted: true, text: 'Tu combate no se pudo recuperar tras la actualización del casino.' + (snap.wager ? ' Se te ha devuelto la apuesta.' : '') });
   });
   if (db.data.sdBattles) delete db.data.sdBattles[snap.id];
@@ -755,9 +838,9 @@ async function restoreOne(snap) {
   const sides = snap.sides.map((s, i) => {
     const user = s.human ? db.userById(s.userId) : null;
     if (s.human && !user) throw new Error('jugador desaparecido');
-    return { user, name: s.name, sets: s.sets, roster: s.roster, brain: s.human ? null : new Brain('p' + (i + 1), { doubles }) };
+    return { user, name: s.name, sets: s.sets, roster: s.roster, brain: s.human ? null : new Brain('p' + (i + 1), { doubles, smart: smartFor(trainer) }) };
   });
-  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: snap.aff === 2 ? 'both' : !!snap.aff, ranked: !!snap.rk, tower: snap.tw ? { n: snap.tw.n, boss: snap.tw.boss } : null, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
+  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: snap.aff === 2 ? 'both' : !!snap.aff, ranked: !!snap.rk, tower: snap.tw ? { n: snap.tw.n, boss: snap.tw.boss } : null, full: !!snap.full, elite: snap.el ? { stage: snap.el.stage, carry: snap.el.carry, bonus: snap.el.bonus || 0 } : null, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
   b.startedAt = snap.createdAt;
   battles.set(b.id, b);
   for (const s of b.sides) if (s.userId) byUser.set(s.userId, b);
@@ -848,7 +931,7 @@ const activeFor = (user) => {
 
 function historyOf(user) {
   const d = dayWins(user);
-  return { history: user.btHist || [], wins: { n: d.wins, max: trainers.WINS_PER_DAY } };
+  return { history: user.btHist || [], wins: { n: d.wins, max: trainers.WINS_PER_DAY, coins: d.coins || 0, coinsMax: trainers.COINS_DAY } };
 }
 function replay(user, { id }) {
   const rec = history.find((h) => h.id === String(id) && h.users.includes(user.id));
@@ -940,7 +1023,7 @@ function setMoves(user, { id, uid, moves, ability }) {
 
 function state(user) {
   const d = dayWins(user);
-  return { trainers: trainers.listFor(user), wins: { n: d.wins, max: trainers.WINS_PER_DAY }, teams: user.btTeams || [], challenges: listPublic(), queue: { mine: queueMine(user), ...queueInfo() }, active: activeFor(user), formats: Object.fromEntries(Object.entries(FORMATS).map(([k, f]) => [k, { label: f.label, min: f.min, cap: f.cap }])), max: MAX_BATTLES, running: battles.size, turnMs: TURN_MS };
+  return { trainers: trainers.listFor(user), wins: { n: d.wins, max: trainers.WINS_PER_DAY, coins: d.coins || 0, coinsMax: trainers.COINS_DAY, pick: d.pick || 0, pickMax: battleMoney.PICKUP_DAY }, elite: require('./elite').view(user), teams: user.btTeams || [], challenges: listPublic(), queue: { mine: queueMine(user), ...queueInfo() }, active: activeFor(user), formats: Object.fromEntries(Object.entries(FORMATS).map(([k, f]) => [k, { label: f.label, min: f.min, cap: f.cap }])), max: MAX_BATTLES, running: battles.size, turnMs: TURN_MS };
 }
 
 // ---- Para pruebas: combate completo sin humanos (IA contra IA). ----
@@ -969,5 +1052,5 @@ module.exports = {
   undo: afterRestore(undo),
   MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu: afterRestore(startCpu), challenge: afterRestore(challenge), cancel, accept: afterRestore(accept), choose: afterRestore(choose),
   forfeit: afterRestore(forfeitAction), resume: afterRestore(resume), restoreAll, ABANDON_MS, RESTORE_GRACE_MS, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
-  startTowerBattle, cpuReward, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
+  startTowerBattle, startEliteBattle, cpuReward, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
 };

@@ -41,14 +41,52 @@ test('un paso ya cumplido se salta solo', () => {
   assert.strictEqual(u.progress.tutorial, 3, 'el paso del compañero se completa automáticamente');
 });
 
-test('medallas: nivel 5 da la Medalla Roca y sube el límite de apuesta', () => {
+test('medallas: ya no se ganan por progreso del casino, sino al vencer al líder (la primera vez)', () => {
   const u = user('brock');
   assert.strictEqual(hub.maxBetFor(u), 10000);
-  u.level = 5;
+  u.level = 30; u.stats.pulls = 5; u.collection = { 1: { n: 1, s: 0 }, 4: { n: 1, s: 0 }, 7: { n: 1, s: 0 } };
   progress.track(u, 'level');
+  assert.deepStrictEqual(u.progress.badges, [], 'ni el nivel ni la colección dan medalla');
+  const r = progress.awardBadge(u, 1);
+  assert.ok(r.first && r.id === 'roca');
   assert.ok(u.progress.badges.includes('roca'));
   assert.strictEqual(hub.maxBetFor(u), 15000);
   assert.ok(u.progress.titles.includes('badge-roca'));
+  assert.strictEqual(u.coins, 10000 + progress.BADGE_COINS, 'recompensa de la medalla 1: 500 monedas');
+  assert.strictEqual(u.items.ticket, 2, 'y 2 tickets');
+  const again = progress.awardBadge(u, 1);
+  assert.strictEqual(again.first, false, 'repetir al líder no da la medalla otra vez');
+  assert.strictEqual(u.coins, 10000 + progress.BADGE_COINS);
+  assert.strictEqual(u.progress.badges.length, 1);
+});
+
+test('las 8 medallas pagan 500 × n, alternan objeto y suben el límite de apuesta; el título de Campeón llega con el Alto Mando', () => {
+  const u = user('ocho');
+  let coins = u.coins;
+  progress.BADGES.forEach((b, k) => {
+    const r = progress.awardBadge(u, k + 1);
+    assert.ok(r.first, b.id);
+    coins += progress.BADGE_COINS * (k + 1);
+    assert.strictEqual(hub.maxBetFor(u), hub.MAX_BET_BY_BADGES[k + 1]);
+  });
+  assert.strictEqual(u.coins, coins);
+  assert.strictEqual(u.items.ticket, 8, 'medallas 1, 3, 5 y 7: 2 tickets cada una');
+  assert.strictEqual(u.items['mystery-egg'], 4, 'medallas 2, 4, 6 y 8: un huevo');
+  assert.ok(!u.progress.titles.includes('campeon'), 'las 8 medallas ya no dan el título de Campeón');
+  assert.ok(progress.awardChampion(u), 'el Alto Mando sí');
+  assert.ok(u.progress.titles.includes('campeon'));
+  assert.strictEqual(u.coins, coins + progress.CHAMPION_COINS);
+  assert.strictEqual(progress.awardChampion(u), false, 'una sola vez');
+  assert.strictEqual(u.items['master-ball'], 1);
+});
+
+test('la vista de medallas explica el requisito real: vencer al líder', () => {
+  const u = user('vista-medallas');
+  const v = progress.view(u).badges;
+  assert.strictEqual(v.length, 8);
+  assert.deepStrictEqual(v.map((b) => b.leader), ['Brock', 'Misty', 'Teniente Surge', 'Erika', 'Koga', 'Sabrina', 'Blaine', 'Giovanni']);
+  for (const b of v) assert.match(b.req, /^Vence a .* en Combates$/);
+  assert.ok(!v.some((b) => /nivel|especies|colecci|Mercado|duelo/i.test(b.req)), 'nada del progreso antiguo del casino');
 });
 
 test('completar una colección da título y +1 % permanente', () => {
@@ -56,8 +94,8 @@ test('completar una colección da título y +1 % permanente', () => {
   progress.evaluate(u);
   assert.ok(u.progress.sets.includes('starters'));
   assert.strictEqual(progress.setBonus(u), 0.01);
-  assert.ok(u.progress.badges.includes('arcoiris'), 'y con ella la Medalla Arcoíris');
-  assert.strictEqual(u.items['mystery-egg'], 2, 'un huevo por la colección y otro por la medalla');
+  assert.strictEqual(u.progress.badges.length, 0, 'la colección ya no da medalla');
+  assert.strictEqual(u.items['mystery-egg'], 1, 'un huevo por la colección');
 });
 
 test('huevo misterioso → cosmético equipable que se desequipa al venderlo', () => {

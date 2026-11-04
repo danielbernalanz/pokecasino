@@ -55,7 +55,7 @@ test('PB: topes diarios, PvP con turnos mínimos y límite por rival; no hay for
 
 test('Tienda de Combate: precios en PB, compra y falta de saldo', () => {
   for (const [id, it] of Object.entries(items.ITEMS)) if (it.bp) assert.ok(it.price === null && ((it.held && it.bp >= 16 && it.bp <= 64) || (it.mint && it.bp === 50) || (it.capsule && it.bp === 50) || (it.patch && it.bp === 200) || (it.hyper && [40, 200].includes(it.bp)) || (it.expCandy && it.bp === it.expCandy / 100)), id);
-  assert.strictEqual(Object.values(items.ITEMS).filter((i) => i.held).length, 17);
+  assert.strictEqual(Object.values(items.ITEMS).filter((i) => i.held).length, 18);
   assert.strictEqual(Object.values(items.ITEMS).filter((i) => i.mint).length, 21);
   const u = user({}, { bp: 47 });
   assert.throws(() => bp.buy(u, { itemId: 'hi-leftovers' }), /48 PB/);
@@ -65,7 +65,7 @@ test('Tienda de Combate: precios en PB, compra y falta de saldo', () => {
   assert.strictEqual(u.items['hi-leftovers'], 1);
   assert.throws(() => bp.buy(u, { itemId: 'ticket' }), /Tienda de Combate/);
   assert.throws(() => items.buy(u, { itemId: 'hi-leftovers' }), /a la venta/);
-  assert.ok(!u.hist.log.some((l) => l.d < 0), 'los PB no gastan monedas');
+  assert.ok(!((u.hist && u.hist.log) || []).some((l) => l.d < 0), 'los PB no gastan monedas');
 });
 
 test('objetos equipados: uno por Pokémon, el anterior vuelve, entran en el conjunto de Showdown y Cláusula de objetos en PvP', () => {

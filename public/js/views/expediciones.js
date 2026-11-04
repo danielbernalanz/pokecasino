@@ -81,6 +81,7 @@ export default {
       }
       const loot = [];
       for (const [c, q] of Object.entries(rw.candies || {})) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg(c), `×${q}`));
+      if (rw.amulet) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg('hi-amuletcoin'), '¡Moneda Amuleto!'));
       if (rw.lucky) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg('hi-luckyegg'), '¡Huevo Suerte!'));
       for (const [b, q] of Object.entries(rw.berries)) loot.push(h('span', { class: 'afk-rw-chip' }, berryImg(b), `×${q}`));
       if (rw.dust) loot.push(h('span', { class: 'afk-rw-chip' }, `✦ ${rw.dust}`));
