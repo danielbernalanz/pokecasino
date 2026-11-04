@@ -119,23 +119,7 @@ function openMon(uid, openPage = 'info') {
       h('div', { class: 'pc-box' }, h('h4', {}, `💪 Entrenar IV (${ru.trainCost} 🍬 = +1 IV) · quedan ${left}/${ru.trainDaily} hoy`),
         h('div', { class: 'row gap' }, statSel, h('button', { class: 'btn', disabled: left < 1 || have < ru.trainCost, onclick: async (e) => {
           const r = await act('pc:train', { id: m.id, uid, stat: Number(statSel.value) }, e.target);
-          if (r) { sfx('click'); toast(`${TRAIN_STATS[Number(statSel.value)]}: IV ${r.iv}/31`, 'success'); reopen(true); } } }, 'Entrenar'))),
-      h('div', { class: 'pc-box' }, h('h4', {}, '🎓 Profesor Oak y Intercambio Milagroso'),
-        h('div', { class: 'row gap wrap' },
-          h('button', { class: 'btn', disabled: spare < 1 || !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
-            if ((m.shiny || m.fav || m.buddy) && !(await confirmRisk('release-precious', { title: 'Vas a transferir un ejemplar especial', danger: 'Transferir igualmente', safe: 'Conservarlo',
-              text: `${label(m)} es ${[m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ')}. Solo recibes ${tDust} ✦ y ${tCandy} 🍬 y no se puede deshacer.` }))) return;
-            const r = await act('pc:transfer', { id: m.id, uid }, e.target);
-            if (r) { sfx('shiny'); toast(`Transferido: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await load(); modalRef.close(); render && render(); } } }, `Transferir (+${tDust} ✦ +${tCandy} 🍬)`),
-          h('button', { class: 'btn', disabled: spare < 1 || !!m.away || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
-            const r = await act('pc:wonder', { id: m.id, uid }, e.target);
-            if (!r) return;
-            modalRef.close();
-            await wonderReveal(r);
-            await load(); render && render();
-          } }, `🎁 Intercambio Milagroso (${box.wonderLeft}/${ru.wonderDaily})`),
-          spare > 0 ? h('button', { class: 'btn', onclick: (e) => bulkTransfer(m.id, e.target, () => { modalRef.close(); render && render(); }) }, 'Transferir repetidos') : null),
-        h('div', { class: 'small muted' }, 'Intercambio Milagroso: entregas una copia sobrante (no favorita, compañero ni variocolor) y recibes otra de la misma rareza. Sin monedas.')));
+          if (r) { sfx('click'); toast(`${TRAIN_STATS[Number(statSel.value)]}: IV ${r.iv}/31`, 'success'); reopen(true); } } }, 'Entrenar'))));
   }
   function friendPanel() {
     const love = m.friendship >= LOVE_MIN;
@@ -181,6 +165,44 @@ function openMon(uid, openPage = 'info') {
   const nickRow = h('div', { class: 'row gap', style: { display: 'none' } }, nickInput,
     h('button', { class: 'btn primary', onclick: async (e) => { reopen(await act('pc:nick', { id: m.id, uid, nick: nickInput.value }, e.target)); } }, 'Guardar'));
   // Pantalla de «Datos» como en los juegos: páginas en lugar de un scroll largo.
+  // «⋯ Más»: lo que sirve para deshacerse de un ejemplar. Nunca junto a las acciones frecuentes.
+  function openMore() {
+    const spare = spareCount(m.id);
+    const tDust = S.data.rarity[p.rarity].dust;
+    const tCandy = ru.transfer[p.rarity];
+    const special = [m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ');
+    const done = async () => { more.close(); await load(); modalRef.close(); render && render(); };
+    const more = modal(h('div', { class: 'stack pc-more' },
+      h('p', { class: 'small muted' }, `${label(m)} · Nv. ${m.level}. Estas acciones son definitivas; si el ejemplar es especial te pediremos confirmación.`),
+      h('div', { class: 'pc-box' }, h('h4', {}, '🎓 Transferir al Profesor Oak'),
+        h('p', { class: 'small muted' }, `Recibes ${tDust} ✦ de polvo y ${tCandy} 🍬 caramelos de la familia. Hace falta otra copia (se conserva siempre una de cada Pokémon).`),
+        h('div', { class: 'row gap wrap' },
+          h('button', { class: 'btn', disabled: spare < 1 || !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
+            if (special && !(await confirmRisk('release-precious', { title: 'Vas a transferir un ejemplar especial', danger: 'Transferir igualmente', safe: 'Conservarlo',
+              text: `${label(m)} es ${special}. Solo recibes ${tDust} ✦ y ${tCandy} 🍬 y no se puede deshacer.` }))) return;
+            const r = await act('pc:transfer', { id: m.id, uid }, e.target);
+            if (r) { sfx('shiny'); toast(`Transferido: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await done(); } } }, `Transferir (+${tDust} ✦ +${tCandy} 🍬)`),
+          spare > 0 ? h('button', { class: 'btn', onclick: (e) => bulkTransfer(m.id, e.target, () => done()) }, 'Transferir repetidos') : null)),
+      h('div', { class: 'pc-box' }, h('h4', {}, '🎁 Intercambio Milagroso'),
+        h('p', { class: 'small muted' }, 'Entregas una copia sobrante (no favorita, compañero ni variocolor) y recibes otra de la misma rareza. Sin monedas.'),
+        h('button', { class: 'btn', disabled: spare < 1 || !!m.away || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
+          const r = await act('pc:wonder', { id: m.id, uid }, e.target);
+          if (!r) return;
+          more.close(); modalRef.close();
+          await wonderReveal(r);
+          await load(); render && render();
+        } }, `Intercambio Milagroso (${box.wonderLeft}/${ru.wonderDaily})`)),
+      h('div', { class: 'pc-box' }, h('h4', {}, '🕊️ Liberar'),
+        h('p', { class: 'small muted' }, `Solo recibes ${S.data.rarity[p.rarity].dust} ✦ de polvo (sin caramelos): casi siempre es mejor Transferir.`),
+        h('button', { class: 'btn danger', disabled: !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
+          const c = S.me.collection[m.id];
+          if (!c || c.n - (c.cn || 0) < 2) return toast('Debes conservar al menos una copia de cada Pokémon.', 'error');
+          const dust = S.data.rarity[p.rarity].dust;
+          if (!(await confirmRisk('release-one', { section: 'la Caja PC', title: `¿Liberar a ${label(m)}?`, danger: 'Liberar', safe: 'Conservarlo',
+            text: `${special ? `${label(m)} es ${special}. ` : ''}Solo recibes ${dust} ✦ de polvo y no se puede deshacer.` }))) return;
+          if (await act('pc:release', { id: m.id, uid }, e.target)) { sfx('shiny'); toast(`Liberaste a ${label(m)}: +${dust} ✦`, 'success'); await done(); } } }, 'Liberar'))),
+    { title: '⋯ Más acciones' });
+  }
   const pages = {
     info: () => h('div', { class: 'stack' },
       m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}: no se puede liberar, transferir, evolucionar ni llevar a combates hasta que vuelva.`) : null,
@@ -215,13 +237,7 @@ function openMon(uid, openPage = 'info') {
         h('button', { class: 'btn', onclick: () => { show('info'); nickRow.style.display = nickRow.style.display === 'none' ? '' : 'none'; nickInput.focus(); } }, '✏️ Mote'),
         h('button', { class: 'btn', onclick: async (e) => { reopen(await act('pc:fav', { id: m.id, uid, fav: !m.fav }, e.target)); } }, m.fav ? '★ Quitar favorito' : '☆ Favorito'),
         h('button', { class: 'btn primary', disabled: m.buddy, onclick: async (e) => { if (await act('pc:buddy', { id: m.id, uid }, e.target)) { toast(`${label(m)} es tu compañero`, 'success'); sfx('win'); reopen(true); } } }, '🤝 Compañero'),
-        h('button', { class: 'btn danger', disabled: !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
-          const c = S.me.collection[m.id];
-          if (!c || c.n - (c.cn || 0) < 2) return toast('Debes conservar al menos una copia de cada Pokémon.', 'error');
-          const dust = S.data.rarity[p.rarity].dust;
-          if ((m.shiny || m.fav || m.buddy) && !(await confirmRisk('release-precious', { title: 'Vas a liberar un ejemplar especial', danger: 'Liberar igualmente', safe: 'Conservarlo',
-            text: `${label(m)} es ${[m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ')}. Solo recibes ${dust} ✦ de polvo y no se puede deshacer.` }))) return;
-          if (await act('pc:release', { id: m.id, uid }, e.target)) { sfx('shiny'); toast(`Liberaste a ${label(m)}: +${dust} ✦`, 'success'); await load(); modalRef.close(); render && render(); } } }, 'Liberar'))
+        h('button', { class: 'btn', type: 'button', title: 'Transferir, Intercambio Milagroso y Liberar', onclick: () => openMore() }, '⋯ Más'))
     )), { title: 'Datos', wide: true });
   // Movimientos nuevos por decidir (subida de nivel, evolución…): se preguntan al abrir la ficha.
   if (m.pending && m.pending.length && openPage !== 'moves') learnPrompt(m, async () => { await load(); modalRef.close(); openMon(uid, openPage); render && render(); });
@@ -271,8 +287,8 @@ export default {
         m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}`) : null,
         h('div', { class: 'pc-sel-actions' },
           h('button', { class: 'btn primary', type: 'button', onclick: () => openMon(m.uid) }, 'Datos'),
-          h('button', { class: 'btn', type: 'button', onclick: async (e) => { if (await act('pc:fav', { id: m.id, uid: m.uid, fav: !m.fav }, e.target)) { await load(); render(); } } }, m.fav ? '★' : '☆'),
-          h('button', { class: 'btn', type: 'button', disabled: m.buddy, title: 'Poner de compañero', onclick: async (e) => { if (await act('pc:buddy', { id: m.id, uid: m.uid }, e.target)) { toast(`${label(m)} es tu compañero`, 'success'); sfx('win'); await load(); render(); } } }, '🤝'))));
+          h('button', { class: 'btn', type: 'button', onclick: async (e) => { if (await act('pc:fav', { id: m.id, uid: m.uid, fav: !m.fav }, e.target)) { await load(); render(); } } }, m.fav ? '★ Favorito' : '☆ Favorito'),
+          h('button', { class: 'btn', type: 'button', disabled: m.buddy, title: 'Hacer compañero', onclick: async (e) => { if (await act('pc:buddy', { id: m.id, uid: m.uid }, e.target)) { toast(`${label(m)} es tu compañero`, 'success'); sfx('win'); await load(); render(); } } }, '🤝 Compañero'))));
     }
 
     function render() {

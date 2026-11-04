@@ -179,11 +179,7 @@ export default {
       bag.replaceChildren(...berryIds().map((id) => {
         const b = berries()[id];
         const n = berryCount(id);
-        return h('div', { class: 'bd-chip' + (n ? '' : ' none') }, berryImg(id), h('div', { class: 'grow' }, h('b', {}, b.name), h('div', { class: 'small muted' }, `+${b.friend} ♥ · ${b.grow} h`)), h('b', { class: 'bd-n' }, '×' + n),
-          h('button', { class: 'btn bd-mini', disabled: n < 1, title: `Reciclar 1 baya: +${S.data.recycleBerry.dust} ✦ (máx. ${S.data.recycleBerry.daily} ✦ al día)`, onclick: async (e) => {
-            const r = await act('shop:recycle', { item: id, qty: 1 }, e.currentTarget);
-            if (r) { sfx('click'); toast(`Reciclada: +${r.dust} ✦`, 'success'); render(); }
-          } }, '♻️'));
+        return h('div', { class: 'bd-chip' + (n ? '' : ' none') }, berryImg(id), h('div', { class: 'grow' }, h('b', {}, b.name), h('div', { class: 'small muted' }, `+${b.friend} ♥ · ${b.grow} h`)), h('b', { class: 'bd-n' }, '×' + n));
       }));
       findSlot.replaceChildren(...[buddyFindBlock()].filter(Boolean));
     }
@@ -194,7 +190,7 @@ export default {
       findSlot,
       h('h2', { class: 'section-title' }, 'Parcelas'), grid,
       h('h2', { class: 'section-title' }, 'Tus bayas'), bag,
-      h('p', { class: 'small muted' }, 'Las bayas no se compran ni se venden. Reciclar da 1 ✦ por baya (hasta 20 ✦ al día): es mejor dárselas a tus Pokémon.'));
+      h('p', { class: 'small muted' }, 'Las bayas no se compran ni se venden: lo mejor es dárselas a tus Pokémon. Si te sobran, ', h('a', { href: '#/workshop/recycle' }, '♻️ recíclalas en el Taller'), ' (1 ✦ por baya, hasta 20 ✦ al día).'));
     try { apply(await emit('garden:view')); } catch (e) { toast(e.message, 'error'); return; }
     tick = setInterval(() => {
       if (!grid.isConnected) { clearInterval(tick); return; } // la pantalla ya no está: no se queda un temporizador huérfano

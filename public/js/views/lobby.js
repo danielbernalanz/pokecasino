@@ -142,7 +142,7 @@ export default {
         h('b', { class: 'route-title' }, tut.title), h('p', {}, tut.desc),
         tut.n > 1 ? hpBar((tut.prog / tut.n) * 100) : null,
         h('a', { class: 'btn primary', href: '#/' + tut.link }, '¡Vamos!'));
-    const daily = h('div', { class: 'card' },
+    const daily = h('div', { class: 'card home-card' },
       h('h3', {}, '📋 Misiones de hoy'),
       ...pr.daily.missions.map((m) => h('div', { class: 'mission' + (m.done ? ' done' : '') },
         h('span', {}, m.done ? '✅' : '⬜'), h('div', { class: 'grow' }, h('div', {}, m.title), h('div', { class: 'muted small' }, rewardText(m.reward))),
@@ -171,7 +171,7 @@ export default {
         : h('p', { class: 'muted' }, 'Elige un compañero en tu Pokédex: aumenta tus ganancias según su rareza y estrellas.'),
       me.buddy && me.buddyBond ? bondBlock() : null,
       buddyFindBlock(),
-      h('div', { class: 'row gap wrap' }, h('a', { class: 'btn', href: '#/pokedex' }, 'Elegir compañero'), h('a', { class: 'btn', href: '#/huerto' }, '🌱 Huerto')));
+      h('div', { class: 'row gap wrap' }, h('a', { class: 'btn', href: '#/pc' }, '🤝 Elegir compañero'), h('a', { class: 'btn', href: '#/huerto' }, '🌱 Huerto')));
 
     if (this.offEv) this.offEv();
     const o1 = bus.on('events', () => this.remount(root));
@@ -186,6 +186,11 @@ export default {
     const buddyArt = me.buddy
       ? aniImg(me.buddy.id, { shiny: me.buddy.shiny, mega: me.buddy.mega || 0, cls: 'home-buddy', alt: S.dexById.get(me.buddy.id)?.name || '', fallback: me.buddy.mega ? art(me.buddy.mega, me.buddy.shiny) : art(me.buddy.id, me.buddy.shiny) })
       : monImg(MON.meowth, 'home-buddy');
+    const joyCard = h('div', { class: 'card home-card' }, h('h3', {}, monImg(MON.chansey, 'chansey-joy'), 'Centro Pokémon'),
+      h('p', { class: 'small muted' }, `¿Sin fondos? La enfermera Joy te presta ${fmt(hl.amount)} monedas (una vez cada ${Math.round(hl.cooldown / 3600e3)} h).`),
+      h('div', { class: 'home-actions' }, healBtn), healNote);
+    // Joy solo estorba si no la necesitas: con pocas monedas sale arriba, si no se queda en «Ver más».
+    const lowCoins = me.coins < hl.limit;
     root.append(
       h('div', { class: 'page-head home-head' }, h('h1', {}, `¡Hola, ${me.username}!`), buddyArt),
       oakSay(),
@@ -197,9 +202,9 @@ export default {
         h('div', { class: 'card home-card' }, h('h3', {}, h('img', { class: 'pixel', src: item('great-ball'), alt: '' }), 'Poké Gacha'),
           h('p', { class: 'muted' }, freeDone ? 'Ya usaste tu tirada gratis de hoy.' : 'Tu tirada gratis de hoy te espera.'),
           h('div', { class: 'home-actions' }, h('a', { class: 'btn primary', href: '#/gacha' }, freeDone ? '🎁 Ir al Gacha' : '🎁 ¡Tirada gratis disponible!'))),
-        h('div', { class: 'card home-card' }, h('h3', {}, monImg(MON.chansey, 'chansey-joy'), 'Centro Pokémon'),
-          h('p', { class: 'small muted' }, `¿Sin fondos? La enfermera Joy te presta ${fmt(hl.amount)} monedas (una vez cada ${Math.round(hl.cooldown / 3600e3)} h).`),
-          h('div', { class: 'home-actions' }, healBtn), healNote)),
+        daily),
+      routeBox && !tut.done ? h('div', { class: 'cards3' }, routeBox, buddyCard) : h('div', { class: 'cards3' }, buddyCard),
+      lowCoins ? joyCard : '',
       h('h2', { class: 'section-title' }, '¿A dónde vamos?'),
       h('div', { class: 'home-sections' }, SECTIONS.filter((s) => s.id !== 'lobby').map((sec) => h('a', { class: `hub-card tone-${SEC_TONE[sec.id]}`, href: '#/' + sec.id },
         sectionNew(sec) ? h('span', { class: 'new-badge' }, '¡NUEVO!') : null,
@@ -214,7 +219,7 @@ export default {
             h('div', { class: 'grow' }, h('b', {}, 'Instala PokéCasino en tu móvil'), h('div', { class: 'small muted' }, 'Ábrelo desde la pantalla de inicio, como una app.')),
             h('button', { class: 'btn primary', onclick: () => installApp() }, 'Instalar'),
             h('button', { class: 'icon-btn', 'aria-label': 'Ocultar', onclick: (e) => { try { localStorage.setItem('installHidden', '1'); } catch { /* nada */ } e.target.closest('.install-card').remove(); } }, '✕')) : '',
-          h('div', { class: 'cards3' }, routeBox, daily, badgeStrip, buddyCard),
+          h('div', { class: 'cards3' }, tut.done ? routeBox : '', badgeStrip, lowCoins ? '' : joyCard),
           h('h2', { class: 'section-title' }, 'Tus estadísticas'),
           h('div', { class: 'stat-row big' },
             st('Apostado', fmt(me.stats.wagered)), st('Ganado', fmt(me.stats.won)), st('Mayor premio', fmt(me.stats.biggestWin)),

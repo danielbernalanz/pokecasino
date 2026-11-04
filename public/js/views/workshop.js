@@ -4,6 +4,7 @@ import { S, h, multiSelect, fmt, act, sfx, toast, sprite, rarityName, bus, RARIT
 import { openDetail } from './pokedex.js';
 import { burstAt, coinRain, centerOf } from '../fx.js';
 import { machineTab } from './tm-ui.js';
+import { berryImg, berryCount, berryIds } from './huerto.js';
 
 export const craftFilter = { q: '', show: 'missing', rarity: [], type: [], gen: [], sort: 'rarity' };
 const TABS = [['craft', '✦ Fabricar Pokémon'], ['tm', '💿 Máquina MT'], ['exchange', '💱 Cambio de polvo'], ['recycle', '♻️ Reciclaje']];
@@ -115,6 +116,16 @@ export default {
       return h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('h3', {}, '♻️ Máquina de reciclaje'),
           h('p', { class: 'small muted' }, `Convierte objetos que no uses en polvo estelar. Recibes el 40 % de su precio de tienda (a ${S.data.dustRate} monedas por ✦ de Cambio, así que nunca sale a cuenta). Tope: ${fmt(S.data.recycleDaily)} ✦ al día. Los cosméticos y las megapiedras no se reciclan.`)),
+        h('div', { class: 'card stack' }, h('h3', {}, '🌱 Bayas'),
+          h('p', { class: 'small muted' }, `1 ✦ por baya (hasta ${S.data.recycleBerry.daily} ✦ al día). Suele ser mejor dárselas a tus Pokémon en la Caja PC.`),
+          h('div', { class: 'row gap wrap' }, berryIds().map((id) => {
+            const b = S.data.berries[id];
+            const n = berryCount(id);
+            return h('button', { class: 'btn', type: 'button', disabled: n < 1, title: `Reciclar 1 ${b.name}: +${S.data.recycleBerry.dust} ✦`, onclick: async (e) => {
+              const r = await act('shop:recycle', { item: id, qty: 1 }, e.currentTarget);
+              if (r) { sfx('click'); toast(`Reciclada: +${r.dust} ✦`, 'success'); }
+            } }, berryImg(id), ` ${b.name} ×${n}`);
+          }))),
         h('div', { class: 'shop-grid wide' }, rows.map(([id, dust, have]) => {
           const it = S.data.items[id];
           const qty = h('input', { type: 'number', min: 1, max: Math.max(1, have), value: 1, class: 'qty' });

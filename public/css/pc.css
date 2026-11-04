@@ -81,8 +81,9 @@
 .pc-sel-art { width: 100%; display: grid; place-items: center; min-height: 140px; border-radius: 10px; background: var(--sunk); }
 .pc-sel-img { width: auto; max-width: 100%; max-height: 150px; min-height: 90px; object-fit: contain; }
 .pc-sel-name { font: 700 20px var(--pixel); overflow-wrap: anywhere; }
-.pc-sel-actions { display: flex; gap: 8px; margin-top: 6px; width: 100%; }
-.pc-sel-actions .btn:first-child { flex: 1; }
+.pc-sel-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; width: 100%; }
+.pc-sel-actions .btn { flex: 1 1 calc(50% - 6px); padding-left: 6px; padding-right: 6px; }
+.pc-sel-actions .btn:first-child { flex: 1 1 100%; }
 .pc-filters { margin-bottom: 12px; }
 .pc-name-big { font: 700 20px var(--pixel); text-align: center; overflow-wrap: anywhere; }
 .pc-detail-left { flex-direction: column; gap: 4px; }

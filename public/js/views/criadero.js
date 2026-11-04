@@ -110,7 +110,17 @@ export default {
             const r = await act('care:collect', { slot }, e.currentTarget);
             if (r) { sfx('shiny'); toast(`Recogiste el huevo (−${fmt(r.fee)} monedas)`, 'success'); setSay('¡Aquí tienes! Cuídalo bien: juega para que eclosione.'); apply(r); }
           } }, `🥚 Recoger (${fmt(pr.fee)} 🪙)`),
-          h('button', { class: 'btn', onclick: async (e) => { const r = await act('care:withdraw', { slot }, e.currentTarget); if (r) { toast('Vuelven a tu Caja PC', 'success'); setSay('Muy bien, ¡hasta pronto!'); apply(r); } } }, 'Retirar')));
+          h('button', { class: 'btn', type: 'button', title: 'Retirar a los padres', onclick: () => moreMenu(slot) }, '⋯ Más')));
+    }
+
+    // «⋯ Más»: lo que casi nunca se usa, lejos del botón de recoger.
+    function moreMenu(slot) {
+      const dlg = modal(h('div', { class: 'stack' },
+        h('p', { class: 'small muted' }, 'Los padres vuelven a tu Caja PC. Si hay un huevo esperando, recógelo antes: se pierde al retirarlos. Los huevos que ya llevas no se tocan.'),
+        h('button', { class: 'btn danger', type: 'button', onclick: async (e) => {
+          const r = await act('care:withdraw', { slot }, e.currentTarget);
+          if (r) { dlg.close(); toast('Vuelven a tu Caja PC', 'success'); setSay('Muy bien, ¡hasta pronto!'); apply(r); }
+        } }, 'Retirar a los padres')), { title: '⋯ Más' });
     }
 
     function eggCard(e) {
