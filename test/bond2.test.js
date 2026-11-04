@@ -1,5 +1,5 @@
 'use strict';
-// «Ampliar la amistad»: niveles de vínculo, efectos de afecto en el simulador (solo p1 contra la CPU, nunca PvP), Retribución /
+// «Ampliar la amistad»: niveles de vínculo, efectos de afecto en el simulador (solo p1 contra la CPU; ambos lados en PvP), Retribución /
 // Frustración, caricias diarias, frases y botín de expediciones.
 const os = require('os');
 const path = require('path');
@@ -129,6 +129,15 @@ test('afecto: solo actúa en el lado p1 (aunque el rival tenga la amistad al má
     // Con el interruptor apagado (como PvP o duelos entre IA) no hay ningún efecto.
     const off = await aiRun(ta, tb, { affection: false });
     assert.strictEqual(affLines(off.log).length, 0);
+    // Variante PvP («AffectionBoth»): los dos lados tienen efectos, cada uno según su amistad.
+    const sides = new Set();
+    for (let i = 0; i < 3; i++) for (const l of affLines((await aiRun(ta, tb, { affection: 'both' })).log)) sides.add(ACT.exec(l)[1]);
+    assert.deepStrictEqual([...sides].sort(), ['p1', 'p2']);
+    // Sin amistad alta no hay efectos en ninguno de los dos lados.
+    const lo = withMons(ids, 70), lo2 = withMons(ids, 70);
+    const tl = sdw.resolveTeam(lo, members(lo, ids), { format: 'singles', level: 'fair' });
+    const tl2 = sdw.resolveTeam(lo2, members(lo2, ids), { format: 'singles', level: 'fair' });
+    assert.strictEqual(affLines((await aiRun(tl, tl2, { affection: 'both' })).log).length, 0);
   } finally { delete process.env.AFFECTION_FORCE; }
 });
 
@@ -142,7 +151,7 @@ test('afecto: por debajo de 150 de amistad no pasa nada ni siquiera forzado', as
   } finally { delete process.env.AFFECTION_FORCE; }
 });
 
-test('afecto: CPU sí, PvP no (formato del simulador y registro de entradas)', async () => {
+test('afecto: CPU solo el jugador (Affection), PvP los dos lados (AffectionBoth)', async () => {
   const ids = [25, 6, 9];
   const u = withMons(ids, 255);
   const v = sdw.startCpu(u, { trainer: 'hugo', format: 'singles', level: 'fair', team: members(u, ids) });
@@ -158,11 +167,22 @@ test('afecto: CPU sí, PvP no (formato del simulador y registro de entradas)', a
   const acc = sdw.accept(b, { id: c.challenge, team: members(b, ids) });
   const pvp = sdw.battles.get(acc.battle.id);
   assert.strictEqual(pvp.mode, 'pvp');
-  assert.strictEqual(pvp.affection, false);
-  assert.ok(!pvp.inputLog[0].includes('Affection'));
-  assert.strictEqual(pvp.snapshot().aff, 0);
+  assert.strictEqual(pvp.affection, 'both');
+  assert.match(pvp.inputLog[0], /AffectionBoth/);
+  assert.strictEqual(pvp.snapshot().aff, 2);
   sdw.forfeit(a, { id: pvp.id });
   await pvp.done;
+  // Opción del reto: sin «bond» no hay afecto en PvP; el valor debe ser booleano.
+  const a2 = withMons(ids, 255), b2 = withMons(ids, 255);
+  assert.throws(() => sdw.challenge(a2, { format: 'singles', level: 'fair', wager: 0, bond: 'si', team: members(a2, ids) }), /amistad/);
+  const c2 = sdw.challenge(a2, { format: 'singles', level: 'fair', wager: 0, bond: false, team: members(a2, ids) });
+  assert.strictEqual(sdw.listPublic().find((x) => x.id === c2.challenge).bond, false);
+  const off = sdw.battles.get(sdw.accept(b2, { id: c2.challenge, team: members(b2, ids) }).battle.id);
+  assert.strictEqual(off.affection, false);
+  assert.ok(!off.inputLog[0].includes('Affection'));
+  assert.strictEqual(off.snapshot().aff, 0);
+  sdw.forfeit(a2, { id: off.id });
+  await off.done;
 });
 
 // Combate crudo con el simulador: misma semilla y mismas entradas ⇒ mismo registro (incluidos los eventos de afecto).

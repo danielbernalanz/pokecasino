@@ -1,12 +1,15 @@
 // Combates al estilo Pokémon Showdown (individuales y dobles): Liga de entrenadores, retos PvP, equipos e historial.
 import { S, h, fmt, act, emit, toast, sfx, bus, modal, sprite, typeBadge, TYPE_ES, confirmBet } from '../core.js';
+import { refreshPvp } from '../nav.js';
 import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT } from '../battle-screen.js';
 
 const FORMAT_ES = { singles: 'Individual', doubles: 'Dobles' };
 const LEVEL_ES = { fair: 'Nivel 50 (justo)', real: 'Niveles reales' };
 const NO_TEAM = 'auto';
 
-const prefs = { format: 'singles', level: 'fair', team: NO_TEAM, wager: 0 };
+const BAND_ES = { none: 'Sin apuesta', small: 'Apuesta pequeña (50)', medium: 'Apuesta media (200)' };
+const BAND_COINS = { none: 0, small: 50, medium: 200 };
+const prefs = { format: 'singles', level: 'fair', team: NO_TEAM, wager: 0, band: 'none', bond: true };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('btprefs') || '{}')); } catch { /* sin almacenamiento */ }
 const savePrefs = () => { try { localStorage.setItem('btprefs', JSON.stringify(prefs)); } catch { /* sin almacenamiento */ } };
 
@@ -39,7 +42,7 @@ window.addEventListener('hashchange', () => { if (location.hash.startsWith('#/co
 export default {
   id: 'combates', title: 'Combates', icon: '⚔️',
   mount(root) {
-    const ctx = { tab: 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
+    const ctx = { searchDraws: [], tab: 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
     this.ctx = ctx;
     const tabsEl = h('div', { class: 'tabs bt-tabs' });
     const content = h('div', { class: 'bt-content' });
@@ -127,6 +130,52 @@ export default {
       return h('div', { class: 'seg' }, options.map(([v, label]) => h('button', { class: 'seg-b' + (current === v ? ' on' : ''), type: 'button', onclick: () => onPick(v) }, label)));
     }
 
+    // ---------- Buscar rival (cola de emparejamiento) ----------
+    function searchCard() {
+      const box = h('div', { class: 'card stack pvp-search' });
+      const bondToggle = (onChange) => h('label', { class: 'bond-opt', title: 'Los Pokémon con mucha amistad pueden aguantar un golpe, esquivar, curarse o dar críticos. Afecta a los dos jugadores según la amistad de sus Pokémon.' },
+        h('input', { type: 'checkbox', checked: prefs.bond, onchange: (e) => { prefs.bond = e.target.checked; savePrefs(); if (onChange) onChange(); } }), ' 💞 Efectos de amistad');
+      const draw = () => {
+        const mine = S.pvp && S.pvp.mine;
+        if (mine) {
+          const n = (S.pvp.q && S.pvp.q[mine.format]) || 1;
+          box.replaceChildren(h('h3', {}, '🔎 Buscar rival'),
+            h('p', { class: 'pvp-searching', role: 'status' }, h('span', { class: 'pvp-spin', 'aria-hidden': 'true' }), `Buscando rival… (${n} en cola)`),
+            h('div', { class: 'small muted' }, `${FORMAT_ES[mine.format]} · ${LEVEL_ES[mine.level]} · ${BAND_ES[mine.band]}${mine.bond === false ? '' : ' · 💞 amistad'}. Puedes ir a otra pantalla: te avisaremos al encontrar rival (la búsqueda dura 2 minutos).`),
+            h('button', { class: 'btn danger', type: 'button', onclick: async (e) => { const r = await act('battle:unqueue', {}, e.currentTarget); if (r) { S.pvp.mine = null; refreshPvp(); redrawSearch(); } } }, 'Cancelar búsqueda'));
+          return;
+        }
+        const q = S.pvp && S.pvp.q ? S.pvp.q : { singles: 0, doubles: 0 };
+        box.replaceChildren(h('h3', {}, '🔎 Buscar rival'),
+          h('p', { class: 'muted small' }, `Te emparejamos con otro entrenador al instante. Ahora buscando: ${q.singles + q.doubles}.`),
+          h('div', { class: 'bt-ctl-row' },
+            h('div', {}, h('div', { class: 'small muted' }, 'Formato'), seg(Object.entries(FORMAT_ES), prefs.format, (v) => { prefs.format = v; savePrefs(); redrawSearch(); })),
+            h('div', {}, h('div', { class: 'small muted' }, 'Niveles'), seg(Object.entries(LEVEL_ES), prefs.level, (v) => { prefs.level = v; savePrefs(); redrawSearch(); })),
+            h('div', {}, h('div', { class: 'small muted' }, 'Apuesta'), seg(Object.entries(BAND_ES).map(([k, v]) => [k, v.replace(/ \(\d+\)/, '')]), prefs.band, (v) => { prefs.band = v; savePrefs(); redrawSearch(); })),
+            h('div', { class: 'grow' }, h('div', { class: 'small muted' }, 'Tu equipo'), teamSelect())),
+          bondToggle(),
+          h('button', { class: 'btn primary big', type: 'button', onclick: async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            try {
+              if (!(await ensureTeam())) return;
+              const wg = BAND_COINS[prefs.band] || 0;
+              if (wg && !(await confirmBet('duels', wg, { what: 'jugarte en este combate' }))) return;
+              const team = await teamMembers(prefs.format);
+              if (!team) return;
+              const r = await act('battle:queue', { format: prefs.format, level: prefs.level, band: prefs.band, bond: !!prefs.bond, team });
+              if (!r) return;
+              sfx('click');
+              if (r.matched) { S.pvp.mine = null; refreshPvp(); await openBattle(r.battle); } else { S.pvp.mine = r.queue; refreshPvp(); redrawSearch(); }
+            } finally { btn.disabled = false; }
+          } }, '🔎 Buscar rival'));
+      };
+      ctx.searchDraws.push(draw);
+      draw();
+      return box;
+    }
+    const redrawSearch = () => ctx.searchDraws.forEach((f) => f());
+
     // ---------- Pestaña Combatir ----------
     async function startCpu(trainerId, rematch = false) {
       if (!rematch) { const ok = await ensureTeam(); if (!ok) return; }
@@ -180,14 +229,16 @@ export default {
         prefs.level === 'fair' ? ' Todos combaten a nivel 50: gana el mejor equipo, no el más entrenado.' : ' Niveles reales: cada Pokémon pelea con el nivel que tiene.'),
         h('div', { class: 'bt-wins' }, `🏆 Victorias premiadas hoy: ${st.wins.n}/${st.wins.max}`, h('span', { class: 'small muted' }, ' · Cada victoria da monedas, caramelos de la familia y amistad; perder no cuesta nada.')));
       redraw();
-      content.replaceChildren(controls, list);
+      ctx.searchDraws = [];
+      content.replaceChildren(searchCard(), controls, list);
     }
 
     // ---------- Pestaña Retos ----------
     async function drawPvp() {
       const st = ctx.state;
       const wager = h('input', { type: 'number', min: 0, step: 10, value: prefs.wager || 0, 'aria-label': 'Apuesta' });
-      const target = h('input', { list: 'bt-online', placeholder: 'Cualquiera (opcional)' });
+      const target = h('input', { list: 'bt-online', placeholder: 'Cualquiera (opcional)', value: S.pvpTarget || '' });
+      S.pvpTarget = null;
       const datalist = h('datalist', { id: 'bt-online' }, (S.online || []).filter((u) => u.username !== S.me.username).map((u) => h('option', { value: u.username })));
       const openBox = h('div', { class: 'duel-list' });
       const drawOpen = () => {
@@ -198,7 +249,7 @@ export default {
           const forOther = c.target && c.target !== S.me.username && !mine;
           return h('div', { class: 'duel-row' + (c.target === S.me.username ? ' for-me' : '') },
             h('div', { class: 'duel-hidden' }, c.format === 'doubles' ? '2v2' : '1v1'),
-            h('div', { class: 'grow' }, h('b', {}, c.creator), mine ? ' (tú)' : '', h('div', { class: 'muted small' }, `${FORMAT_ES[c.format]} · ${LEVEL_ES[c.level]} · ${c.size} Pokémon${c.target ? ' · Reto a ' + c.target : ''}`)),
+            h('div', { class: 'grow' }, h('b', {}, c.creator), mine ? ' (tú)' : '', h('div', { class: 'muted small' }, `${FORMAT_ES[c.format]} · ${LEVEL_ES[c.level]} · ${c.size} Pokémon${c.target ? ' · Reto a ' + c.target : ''}`, c.bond === false ? null : h('span', { class: 'bond-tag', title: 'Con efectos de amistad: los Pokémon con mucho cariño pueden aguantar, esquivar, curarse o dar críticos' }, ' · 💞 amistad'))),
             h('div', { class: 'wager' }, c.wager ? fmt(c.wager) : 'Amistoso'),
             mine ? h('button', { class: 'btn danger', type: 'button', onclick: (e) => { const btn = e.currentTarget; act('battle:cancel', { id: c.id }, btn); } }, 'Cancelar')
               : h('button', { class: 'btn primary', type: 'button', disabled: forOther, onclick: async (e) => {
@@ -221,6 +272,7 @@ export default {
         h('div', {}, h('div', { class: 'small muted' }, 'Formato'), seg(Object.entries(FORMAT_ES), prefs.format, (v) => { prefs.format = v; savePrefs(); drawPvp(); })),
         h('div', {}, h('div', { class: 'small muted' }, 'Niveles'), seg(Object.entries(LEVEL_ES), prefs.level, (v) => { prefs.level = v; savePrefs(); drawPvp(); })),
         h('div', {}, h('div', { class: 'small muted' }, 'Tu equipo'), teamSelect()),
+        h('label', { class: 'bond-opt', title: 'Los Pokémon con mucha amistad pueden aguantar un golpe, esquivar, curarse o dar críticos (para los dos jugadores, según su propia amistad).' }, h('input', { type: 'checkbox', checked: prefs.bond, onchange: (e) => { prefs.bond = e.target.checked; savePrefs(); } }), ' 💞 Efectos de amistad'),
         h('label', {}, 'Apuesta (0 = amistoso)', wager),
         h('label', {}, 'Rival', target, datalist),
         h('button', { class: 'btn primary big', type: 'button', onclick: async (e) => {
@@ -231,11 +283,12 @@ export default {
           const team = await teamMembers(prefs.format);
           if (!team) return;
           prefs.wager = wg; savePrefs();
-          const r = await act('battle:challenge', { format: prefs.format, level: prefs.level, wager: wg, target: target.value.trim() || null, team }, btn);
+          const r = await act('battle:challenge', { format: prefs.format, level: prefs.level, wager: wg, target: target.value.trim() || null, bond: !!prefs.bond, team }, btn);
           if (r) { sfx('click'); toast('Reto publicado. Cuando alguien lo acepte empezará el combate.', 'success'); }
         } }, 'Publicar reto'),
         h('p', { class: 'muted small' }, 'Cada jugador elige su equipo a ciegas y llevan lo mismo (el equipo más pequeño marca cuántos). El ganador se lleva el bote menos un 5 % de comisión. Turnos de 60 s: si te quedas sin tiempo se elige solo, y 3 seguidos pierden el combate. Los retos caducan a los 10 minutos.'));
-      content.replaceChildren(h('div', { class: 'duel-layout' }, form, h('div', { class: 'stack' }, h('h3', {}, 'Retos abiertos'), openBox)));
+      ctx.searchDraws = [];
+      content.replaceChildren(searchCard(), h('div', { class: 'duel-layout' }, form, h('div', { class: 'stack' }, h('h3', {}, 'Retos abiertos'), openBox)));
       drawOpen();
     }
 
@@ -377,7 +430,7 @@ export default {
       if (!r.replay) { toast('La repetición ya no está disponible (se borra al reiniciar el servidor).', 'info'); return; }
       await loadNames();
       const rp = r.replay;
-      const view = { id: rp.id, side: rp.side, format: rp.format, you: rp.players[Number(rp.side[1]) - 1], foe: rp.players[2 - Number(rp.side[1])], roster: rp.roster, pickN: rp.pickN, log: rp.log };
+      const view = { id: rp.id, mode: rp.mode, side: rp.side, format: rp.format, you: rp.players[Number(rp.side[1]) - 1], foe: rp.players[2 - Number(rp.side[1])], roster: rp.roster, pickN: rp.pickN, log: rp.log };
       closeReplay();
       const screen = new BattleScreen(view, { replay: true, onExit: () => { closeReplay(); show(); } });
       ctx.replayScreen = screen;
@@ -403,6 +456,9 @@ export default {
         const r = await act('battle:state');
         if (r) { ctx.state = r; ctx.challenges = r.challenges; }
       }
+      if (ctx.state && ctx.state.queue) { S.pvp.mine = ctx.state.queue.mine; S.pvp.q = { singles: ctx.state.queue.singles, doubles: ctx.state.queue.doubles }; refreshPvp(); }
+      if (S.pvpTarget) ctx.tab = 'pvp';
+      drawTabs();
       if (ctx.tab === 'fight') { await loadBox().catch(() => {}); drawFight(); }
       else if (ctx.tab === 'pvp') drawPvp();
       else if (ctx.tab === 'teams') drawTeams();
@@ -424,7 +480,9 @@ export default {
     };
     const onStart = (p) => { if (p && p.battle) openBattle(p.battle); };
     const onList = (l) => { ctx.challenges = l; if (ctx.state) ctx.state.challenges = l; if (ctx.tab === 'pvp' && ctx.drawOpen && !inBattle()) ctx.drawOpen(); };
-    ctx.offs.push(bus.on('battle:event', onEvent), bus.on('battle:end', onEnd), bus.on('battle:start', onStart), bus.on('battle:list', onList));
+    ctx.offs.push(bus.on('battle:event', onEvent), bus.on('battle:end', onEnd), bus.on('battle:start', onStart), bus.on('battle:list', onList),
+      bus.on('battle:queue', () => { if (!inBattle()) redrawSearch(); }), bus.on('pvp:mine', () => redrawSearch()),
+      bus.on('pvp:target', () => { if (!inBattle()) { ctx.tab = 'pvp'; drawTabs(); show(); } }));
     const onConnect = () => { if (ctx.screen) { ctx.screen.setOffline(false); resync(); } };
     const onDisconnect = () => { if (ctx.screen && !ctx.screen.over) ctx.screen.setOffline(true); };
     if (S.socket) { S.socket.on('connect', onConnect); S.socket.on('disconnect', onDisconnect); }

@@ -58,7 +58,7 @@ export class BattleScreen {
     this.dead = false;
     this.proto = new Protocol({
       me: this.me, names: ES || {}, roster: view.roster, players: { [this.me]: view.you, [this.foe]: view.foe },
-      megaName: (id) => ((S.megaById && S.megaById.get(id)) || {}).name || '',
+      megaName: (id) => ((S.megaById && S.megaById.get(id)) || {}).name || '', pvp: view.mode === 'pvp',
     });
     this.proto.doubles = this.doubles;
     this.build();

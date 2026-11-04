@@ -1,6 +1,6 @@
 import { aniImg } from '../anim.js';
 import { S, h, fmt, act, sfx, toast, art, item, badgeImg, bus, hpBar, monImg, MON } from '../core.js';
-import { SECTIONS, sectionNew } from '../nav.js';
+import { SECTIONS, sectionNew, pvpParts } from '../nav.js';
 import { canInstall, installApp } from '../main.js';
 import { dailyChest } from '../rewards.js';
 import { buddyFindBlock, petButton, heartsEl } from './huerto.js';
@@ -62,6 +62,23 @@ export function eventsCard() {
     ev.active.map((e) => h('div', { class: 'row gap event-row' }, h('span', { class: 'event-ico' }, e.icon),
       h('div', { class: 'grow' }, h('b', {}, e.name), h('div', { class: 'small' }, e.desc)),
       h('span', { class: 'muted small nowrap' }, `quedan ${left(e.ends - Date.now())}`))));
+}
+
+// Tarjeta «Hay N retos abiertos»: se repinta sola con los cambios en directo y se oculta si no hay nada.
+function pvpCard() {
+  const box = h('div');
+  const draw = () => {
+    const { open, seeking } = pvpParts();
+    if (!open && !seeking) { box.replaceChildren(); return; }
+    const parts = [];
+    if (open) parts.push(`${open} ${open === 1 ? 'reto abierto' : 'retos abiertos'}`);
+    if (seeking) parts.push(`${seeking} ${seeking === 1 ? 'jugador buscando' : 'jugadores buscando'} rival`);
+    box.replaceChildren(h('a', { class: 'card pvp-card', href: '#/combates' }, h('span', { class: 'mb-ico' }, '⚔️'),
+      h('div', { class: 'grow' }, h('b', {}, `⚔️ Hay ${parts.join(' y ')} — ¡Combate!`), h('div', { class: 'small muted' }, 'Entra en Combates y empieza un combate PvP en un momento.')),
+      h('span', { class: 'btn primary' }, 'Combatir')));
+  };
+  draw();
+  return { box, draw };
 }
 
 export default {
@@ -162,12 +179,17 @@ export default {
     const o3 = bus.on('visited', () => { if (S.view === 'lobby') this.remount(root); });
     this.offEv = () => { o1(); o2(); o3(); };
 
+    const pc = pvpCard();
+    const o4 = bus.on('pvp:count', pc.draw);
+    const prevOff = this.offEv;
+    this.offEv = () => { prevOff(); o4(); };
     const buddyArt = me.buddy
       ? aniImg(me.buddy.id, { shiny: me.buddy.shiny, mega: me.buddy.mega || 0, cls: 'home-buddy', alt: S.dexById.get(me.buddy.id)?.name || '', fallback: me.buddy.mega ? art(me.buddy.mega, me.buddy.shiny) : art(me.buddy.id, me.buddy.shiny) })
       : monImg(MON.meowth, 'home-buddy');
     root.append(
       h('div', { class: 'page-head home-head' }, h('h1', {}, `¡Hola, ${me.username}!`), buddyArt),
       oakSay(),
+      pc.box,
       h('div', { class: 'stack' }, backupReminder(), megaBanner(), S.events && S.events.active.length ? eventsCard() : ''),
       h('div', { class: 'home-grid' },
         h('div', { class: 'card home-card' }, h('h3', {}, h('img', { class: 'pixel', src: item('amulet-coin'), alt: '' }), 'Regalo diario'),

@@ -178,9 +178,10 @@ hub.setIO(io);
 // ---- Presencia ----
 const online = new Map(); // userId -> nº de sockets
 function onlineList() {
-  return [...online.keys()].map((id) => db.userById(id)).filter((u) => u && !u.npc).map(hub.publicUser);
+  return [...online.keys()].map((id) => db.userById(id)).filter((u) => u && !u.npc).map((u) => (showdown.isQueued(u.id) ? { ...hub.publicUser(u), seeking: true } : hub.publicUser(u)));
 }
 const pushOnline = () => io.emit('online', onlineList());
+showdown.setQueueHook(pushOnline);
 
 function claimDaily(user) {
   if (user.npc) throw new Error('Los comerciantes NPC no reclaman recompensas.');
@@ -524,7 +525,7 @@ io.on('connection', (socket) => {
   on('hello', (u) => ({
     chat: [...db.data.chat.slice(-50), ...myDms(u)].sort((a, b) => a.at - b.at), feed: db.data.feed.slice(-30), online: onlineList(),
     jackpot: db.data.state.jackpot, race: race.publicState(), raceBets: race.myBets(db.userById(uid)),
-    duels: duel.listPublic(), duelHistory: duel.recent(), battle: showdown.activeFor(u),
+    duels: duel.listPublic(), duelHistory: duel.recent(), battle: showdown.activeFor(u), btChallenges: showdown.listPublic(), btQueue: showdown.queueInfo(), btMine: showdown.queueMine(u),
     crash: crash.publicState(), poker: holdem.lobby(), events: events.publicState(), mega: mega.publicState(),
     newsSeen: u.newsSeen || null, createdAt: u.createdAt || 0,
   }), { push: false });
@@ -553,6 +554,8 @@ io.on('connection', (socket) => {
   on('battle:challenge', showdown.challenge);
   on('battle:accept', showdown.accept);
   on('battle:cancel', showdown.cancel);
+  on('battle:queue', showdown.enqueue);
+  on('battle:unqueue', showdown.unqueue);
   on('battle:choose', showdown.choose, { push: false });
   on('battle:forfeit', showdown.forfeit, { push: false });
   on('battle:undo', showdown.undo, { push: false });
@@ -675,7 +678,8 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     clearInterval(refill);
     const n = (online.get(uid) || 1) - 1;
-    if (n <= 0) online.delete(uid); else online.set(uid, n);
+    if (n <= 0) { online.delete(uid); showdown.unqueueUser(uid); }
+    else online.set(uid, n);
     pushOnline();
   });
 });

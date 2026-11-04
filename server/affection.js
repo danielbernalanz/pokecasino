@@ -1,7 +1,7 @@
 'use strict';
 // «Afecto» (como los juegos de las generaciones 6 y 7): un Pokémon que te quiere mucho a veces aguanta un golpe, esquiva,
-// se cura de un estado o da un golpe crítico "con todas sus fuerzas". SOLO en combates contra la CPU (y los duelos rápidos
-// contra la casa): en PvP no actúa, igual que en los juegos no funciona en los combates por cable, para que sea justo.
+// se cura de un estado o da un golpe crítico "con todas sus fuerzas". En combates contra la CPU solo actúa para el jugador
+// (regla «Affection»); en PvP actúa para los DOS jugadores (regla «AffectionBoth»), cada uno según la amistad de sus Pokémon.
 //
 // Cómo se engancha al simulador de Showdown: es una regla («Affection») registrada en `Dex.data.Rulesets` que los combates de
 // la CPU añaden al formato (`...@@@Species Clause,Terastal Clause,Affection`). Showdown convierte cada regla con manejadores
@@ -37,13 +37,15 @@ const frustrationPower = (f) => Math.floor(((FRIEND_MAX - clampF(f)) * 10) / 25)
 const forced = (kind) => { const f = process.env.AFFECTION_FORCE; return !!f && (f === '1' || f.split(',').includes(kind)); };
 const roll = (battle, pct, kind) => pct > 0 && (forced(kind) || battle.randomChance(pct, 100));
 const isPlayer = (pokemon) => !!pokemon && !!pokemon.side && pokemon.side.n === 0;
+const isAny = (pokemon) => !!pokemon && !!pokemon.side && (pokemon.side.n === 0 || pokemon.side.n === 1);
 const STATUSES = new Set(['brn', 'par', 'psn', 'tox', 'slp', 'frz']);
 
 // Definición de la regla para `Dex.data.Rulesets`. Los manejadores usan `this` = Battle del simulador.
-const RULE = {
+// `AffectionBoth` (PvP): los mismos manejadores, pero para los Pokémon de los DOS jugadores, cada uno según su propia amistad.
+const makeRule = (name, desc, isPlayer) => ({
   effectType: 'Rule',
-  name: 'Affection',
-  desc: 'Efectos de afecto de las generaciones 6 y 7 para el Pokémon del jugador (solo contra la CPU).',
+  name,
+  desc,
   // Aguantar el golpe: como Robustez/Banda Focus pero con probabilidad; se ejecuta después de los demás (prioridad baja).
   onDamagePriority: -50,
   onDamage(damage, target, source, effect) {
@@ -78,13 +80,16 @@ const RULE = {
     this.add('-activate', pokemon, 'affection', 'cure');
     pokemon.cureStatus();
   },
-};
+});
+const RULE = makeRule('Affection', 'Efectos de afecto de las generaciones 6 y 7 para el Pokémon del jugador (combates contra la CPU).', isPlayer);
+const RULE_BOTH = makeRule('AffectionBoth', 'Efectos de afecto para los Pokémon de ambos jugadores (PvP).', isAny);
 
 // Registra la regla en el Dex del simulador (idempotente).
 function install(Dex) {
   const R = Dex.data.Rulesets;
   if (!R.affection) R.affection = RULE;
+  if (!R.affectionboth) R.affectionboth = RULE_BOTH;
   return RULE;
 }
 
-module.exports = { LOVE_MIN, FRIEND_MAX, TIERS, tierOf, chancesOf, returnPower, frustrationPower, RULE, install };
+module.exports = { LOVE_MIN, FRIEND_MAX, TIERS, tierOf, chancesOf, returnPower, frustrationPower, RULE, RULE_BOTH, install };

@@ -72,7 +72,7 @@ export function renderOnline(list) {
   const box = $('#online');
   box.replaceChildren(...list.map((u) => h('div', { class: 'online-row', onclick: () => showPlayer(u.username) },
     avatar(u.buddy, u, 'sm'),
-    h('div', { class: 'grow' }, h('b', { class: u.isAdmin ? 'admin' : '' }, u.username), titleTag(u.title), h('div', { class: 'muted small' }, `Nv ${u.level} · 🏅${u.badges} · Pokédex ${u.dex}${u.shinies ? ' · ✨' + u.shinies : ''}`)),
+    h('div', { class: 'grow' }, h('b', { class: u.isAdmin ? 'admin' : '' }, u.username), u.seeking ? h('span', { class: 'seeking', title: 'Busca rival para un combate' }, ' ⚔️') : null, titleTag(u.title), h('div', { class: 'muted small' }, `Nv ${u.level} · 🏅${u.badges} · Pokédex ${u.dex}${u.shinies ? ' · ✨' + u.shinies : ''}`)),
     h('span', { class: 'online-dot' }))));
 }
 
@@ -102,7 +102,8 @@ export async function showPlayer(username) {
           stat('Pokédex', `${p.dex}/${S.data.dex.length}`), stat('Variocolor', p.shinies), stat('Tiradas', fmt(p.stats.pulls)),
           stat('Duelos', `${p.stats.duelsWon}V / ${p.stats.duelsLost}D`), stat('Mayor premio', fmt(p.stats.biggestWin)),
           stat('Tiempo de juego', p.playMs === null ? '🔒 Privado' : fmtPlay(p.playMs))))),
-    canTalk ? h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => { mm.close(); replyTo(p.username); } }, '✉️ Mensaje privado')) : null,
+    canTalk ? h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => { mm.close(); replyTo(p.username); } }, '✉️ Mensaje privado'),
+      h('button', { class: 'btn primary', onclick: () => { mm.close(); S.pvpTarget = p.username; location.hash = '#/combates'; bus.emit('pvp:target', p.username); } }, '⚔️ Retar a combate')) : null,
     canTalk ? giftCoins : null,
     canTalk ? h('p', { class: 'muted small' }, 'Para regalar o retar con un Pokémon usa la Pokédex o los Duelos.') : null,
     h('div', { class: 'mini-grid' }, owned.map((x) => h('div', { class: `mini-card r-${x.rarity}`, title: `${x.name} · ${rarityName(x.rarity)}` },

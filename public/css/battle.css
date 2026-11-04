@@ -294,3 +294,21 @@
   .bt2-wide .bt2-row { margin-top: 4px; }
   .bt2-wide .bt2-row .btn { padding: 3px 10px; min-height: 0; }
 }
+
+/* ---- Buscar rival y avisos PvP ---- */
+.pvp-search { border: 2px solid var(--red); margin-bottom: 12px; }
+.pvp-searching { display: flex; align-items: center; gap: 10px; font-weight: 800; margin: 0; }
+.pvp-spin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--ink); border-top-color: var(--red); animation: pvpspin .9s linear infinite; flex: none; }
+@keyframes pvpspin { to { transform: rotate(360deg); } }
+.bond-opt { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; cursor: pointer; }
+.bond-opt input { width: auto; }
+.pvp-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red); color: #fff; border: 2px solid var(--ink); font: 800 11px/14px var(--body); font-style: normal; text-align: center; flex: none; box-sizing: border-box; }
+.pvp-badge.hidden { display: none; }
+.nav-link.pvp-quick.live { font-weight: 800; }
+.tab-btn.has-pvp .tab-ico, .nav-sec.has-pvp .nav-ico { position: relative; }
+.tab-btn.has-pvp .tab-ico::after, .nav-sec.has-pvp .nav-ico::after { content: ''; position: absolute; top: -2px; right: -4px; width: 11px; height: 11px; border-radius: 50%; background: var(--red); border: 2px solid var(--ink); }
+.pvp-card { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; border: 2px solid var(--red); margin-bottom: 12px; }
+.pvp-toast { pointer-events: auto; flex-wrap: wrap; }
+.pvp-toast::after { display: none; }
+.pvp-toast .t-txt { flex: 1 1 200px; }
+.online-row .seeking { font-size: 13px; }

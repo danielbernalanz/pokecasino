@@ -35,6 +35,7 @@ try { SIM_VERSION = require('pokemon-showdown/package.json').version; } catch { 
 const battles = new Map(); // id → Battle
 const byUser = new Map(); // userId → Battle
 const challenges = new Map();
+const queue = new Map(); // userId → { userId, format, level, band, wager, team, at }: «Buscar rival»
 const history = []; // últimos combates con registro completo (repeticiones)
 
 // ---- Validación de lo que manda el cliente ----
@@ -105,8 +106,8 @@ class Battle {
     this.level = level;
     this.wager = wager;
     this.trainer = trainer;
-    // Afecto (affection.js): solo combates contra la CPU, nunca PvP. Se guarda en la instantánea para reconstruir igual el combate.
-    this.affection = !!affection && mode !== 'pvp';
+    // Afecto (affection.js): true = solo el lado del jugador (CPU); 'both' = los dos lados (PvP). Se guarda en la instantánea (aff 1 / 2).
+    this.affection = affection === 'both' ? 'both' : (!!affection && mode !== 'pvp');
     this.sides = sides.map((s, i) => ({
       n: i, id: 'p' + (i + 1), userId: s.user ? s.user.id : null, name: s.name, sets: s.sets, roster: s.roster,
       brain: s.brain || null, req: null, chosen: false, deadline: 0, timer: null, timeouts: 0, log: [], seen: new Set(), human: !!s.user, askedAt: Date.now(),
@@ -127,7 +128,7 @@ class Battle {
     const maxLen = Math.max(...this.sides.map((s) => s.sets.length));
     const rules = ['Species Clause', 'Terastal Clause'];
     if (this.pickN < maxLen) rules.push(`Picked Team Size = ${this.pickN}`);
-    if (this.affection) rules.push('Affection');
+    if (this.affection) rules.push(this.affection === 'both' ? 'AffectionBoth' : 'Affection');
     const fid = `${FORMATS[this.format].id}@@@${rules.join(',')}`;
     const cmds = [`>start ${JSON.stringify({ formatid: fid, seed: this.seed })}`];
     for (const s of this.sides) cmds.push(`>player ${s.id} ${JSON.stringify({ name: s.name, team: sd.pack(s.sets) })}`);
@@ -159,7 +160,7 @@ class Battle {
 
   snapshot() {
     return {
-      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, aff: this.affection ? 1 : 0,
+      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, aff: this.affection === 'both' ? 2 : this.affection ? 1 : 0,
       seed: this.seed, createdAt: this.createdAt, savedAt: Date.now(), input: this.inputLog.slice(1 + this.sides.length), turn: this.turn,
       sides: this.sides.map((s) => ({ userId: s.userId, name: s.name, sets: s.sets, roster: s.roster, human: s.human, chosen: s.chosen, timeouts: s.timeouts, askedAt: s.askedAt })),
     };
@@ -482,7 +483,8 @@ function checkFree(user) {
 }
 function register(b) {
   battles.set(b.id, b);
-  for (const s of b.sides) if (s.userId) byUser.set(s.userId, b);
+  for (const s of b.sides) if (s.userId) { byUser.set(s.userId, b); queue.delete(s.userId); }
+  pushQueue();
   b.start();
   for (const s of b.humans()) hub.emitUser(s.userId, 'battle:start', { battle: b.view(s) });
   return b;
@@ -511,12 +513,19 @@ function startCpu(user, { trainer: trainerId, format, level = 'fair', team }) {
 
 // ---- PvP ----
 function listPublic() {
-  return [...challenges.values()].map((c) => ({ id: c.id, creator: c.creator, format: c.format, level: c.level, wager: c.wager, target: c.target, size: c.members.length, createdAt: c.createdAt }));
+  return [...challenges.values()].map((c) => ({ id: c.id, creator: c.creator, format: c.format, level: c.level, wager: c.wager, target: c.target, size: c.members.length, bond: c.bond, createdAt: c.createdAt }));
 }
 const pushList = () => hub.broadcast('battle:list', listPublic());
 
-function challenge(user, { format, level = 'fair', wager, target, team }) {
+// Efectos de amistad en PvP: opción del reto (por defecto activada). Debe ser un booleano.
+function bondFlag(v) {
+  if (v === undefined || v === null) return true;
+  if (typeof v !== 'boolean') throw new Error('Opción de amistad no válida.');
+  return v;
+}
+function challenge(user, { format, level = 'fair', wager, target, team, bond }, quiet = false) {
   checkFree(user);
+  bond = bondFlag(bond);
   if ([...challenges.values()].filter((c) => c.creatorId === user.id).length >= 2) throw new Error('Máximo 2 retos abiertos.');
   resolveTeam(user, team, { format, level, itemClause: true }); // valida
   wager = Number(wager) || 0;
@@ -526,11 +535,15 @@ function challenge(user, { format, level = 'fair', wager, target, team }) {
     target = t.username;
   } else target = null;
   if (wager !== 0) hub.takeBet(user, wager, 'duel', { quiet: true, noXp: true });
-  const c = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, format, level, wager, target, members: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), createdAt: Date.now() };
+  const c = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, format, level, wager, target, members: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), bond, createdAt: Date.now() };
   challenges.set(c.id, c);
   db.escrowSet('btlc:' + c.id, user.id, wager);
   pushList();
-  if (c.target) hub.emitUser(db.userByName(c.target).id, 'toast', { kind: 'duel', text: `⚔️ ${user.username} te reta a un combate ${FORMATS[format].label.toLowerCase()}${wager ? ` por ${wager} monedas` : ''}` });
+  if (!quiet) {
+    const what = `un combate ${FORMATS[format].label.toLowerCase()}${wager ? ` por ${wager} monedas` : ''}`;
+    if (c.target) hub.emitUser(db.userByName(c.target).id, 'battle:ping', { kind: 'direct', from: user.username, text: `⚔️ ${user.username} te reta a ${what}` });
+    else hub.broadcast('battle:ping', { kind: 'open', from: user.username, text: `⚔️ ${user.username} ha abierto un reto: ${what}` });
+  }
   return { challenge: c.id };
 }
 
@@ -568,7 +581,7 @@ function accept(user, { id, team }) {
   challenges.delete(c.id);
   db.escrowDel('btlc:' + c.id);
   const b = new Battle({
-    mode: 'pvp', format: c.format, level: c.level, wager: c.wager,
+    mode: 'pvp', format: c.format, level: c.level, wager: c.wager, affection: c.bond === false ? false : 'both',
     sides: [{ user: creator, name: creator.username, sets: theirs.sets, roster: theirs.roster }, { user, name: user.username, sets: mine.sets, roster: mine.roster }],
   });
   if (c.wager) { db.escrowSet(escKey(b, 0), creator.id, c.wager); db.escrowSet(escKey(b, 1), user.id, c.wager); }
@@ -576,6 +589,70 @@ function accept(user, { id, team }) {
   pushList();
   return { battle: b.view(b.sides[1]) };
 }
+
+// ---- «Buscar rival»: cola de emparejamiento (mismo formato, nivel y banda de apuesta) ----
+const QUEUE_MS = 2 * 60 * 1000;
+const BANDS = { none: 0, small: 50, medium: 200 };
+function queueCounts() {
+  const c = { singles: 0, doubles: 0 };
+  for (const e of queue.values()) c[e.format]++;
+  return c;
+}
+const queueInfo = () => ({ ...queueCounts(), challenges: challenges.size });
+function pushQueue() { hub.broadcast('battle:queue', queueInfo()); if (queueHook) queueHook(); }
+let queueHook = null;
+const setQueueHook = (fn) => { queueHook = fn; };
+const isQueued = (userId) => queue.has(userId);
+function queueMine(user) { const e = queue.get(user.id); return e ? { format: e.format, level: e.level, band: e.band, wager: e.wager, bond: e.bond, left: Math.max(0, e.at + QUEUE_MS - Date.now()) } : null; }
+
+function enqueue(user, { format, level = 'fair', band = 'none', team, bond }) {
+  checkFree(user);
+  bond = bondFlag(bond);
+  if (!(band in BANDS)) throw new Error('Apuesta no válida.');
+  const wager = BANDS[band];
+  resolveTeam(user, team, { format, level, itemClause: true }); // valida
+  if (wager && user.coins < wager) throw new Error('No tienes monedas suficientes para esa apuesta.');
+  queue.delete(user.id);
+  const me = { userId: user.id, format, level, band, wager, bond, team: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), at: Date.now() };
+  const rivals = [...queue.values()].filter((e) => e.format === format && e.level === level && e.band === band && e.bond === bond && e.userId !== user.id).sort((a, b) => a.at - b.at);
+  for (const o of rivals) {
+    const other = db.userById(o.userId);
+    if (!other || byUser.has(o.userId)) { queue.delete(o.userId); continue; }
+    let c;
+    try { c = challenge(other, { format, level, wager, target: user.username, team: o.team, bond }, true); } catch (e) {
+      queue.delete(o.userId);
+      hub.emitUser(o.userId, 'battle:queue:end', { reason: 'error', text: 'Te hemos sacado de la cola: ' + e.message });
+      continue;
+    }
+    let acc;
+    try { acc = accept(user, { id: c.challenge, team: me.team }); } catch (e) {
+      const ch = challenges.get(c.challenge);
+      if (ch) dropChallenge(ch);
+      pushList();
+      throw e;
+    }
+    queue.delete(o.userId);
+    pushQueue();
+    hub.emitUser(o.userId, 'battle:ping', { kind: 'match', from: user.username, text: `🔎 ¡Rival encontrado! Te toca contra ${user.username}` });
+    hub.emitUser(user.id, 'battle:ping', { kind: 'match', from: other.username, text: `🔎 ¡Rival encontrado! Te toca contra ${other.username}` });
+    return { matched: true, battle: acc.battle };
+  }
+  queue.set(user.id, me);
+  pushQueue();
+  return { matched: false, queue: queueMine(user) };
+}
+function unqueue(user) {
+  if (queue.delete(user.id)) pushQueue();
+  return {};
+}
+function unqueueUser(userId) { if (queue.delete(userId)) pushQueue(); }
+
+setInterval(() => {
+  const now = Date.now();
+  let gone = false;
+  for (const e of [...queue.values()]) if (now - e.at > QUEUE_MS) { queue.delete(e.userId); gone = true; hub.emitUser(e.userId, 'battle:queue:end', { reason: 'timeout', text: 'No ha aparecido ningún rival en 2 minutos.' }); }
+  if (gone) pushQueue();
+}, 5000).unref();
 
 setInterval(() => {
   const now = Date.now();
@@ -628,7 +705,7 @@ async function restoreOne(snap) {
     if (s.human && !user) throw new Error('jugador desaparecido');
     return { user, name: s.name, sets: s.sets, roster: s.roster, brain: s.human ? null : new Brain('p' + (i + 1), { doubles }) };
   });
-  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: !!snap.aff, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
+  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: snap.aff === 2 ? 'both' : !!snap.aff, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
   b.startedAt = snap.createdAt;
   battles.set(b.id, b);
   for (const s of b.sides) if (s.userId) byUser.set(s.userId, b);
@@ -810,7 +887,7 @@ function setMoves(user, { id, uid, moves, ability }) {
 
 function state(user) {
   const d = dayWins(user);
-  return { trainers: trainers.listFor(user), wins: { n: d.wins, max: trainers.WINS_PER_DAY }, teams: user.btTeams || [], challenges: listPublic(), active: activeFor(user), formats: Object.fromEntries(Object.entries(FORMATS).map(([k, f]) => [k, { label: f.label, min: f.min, cap: f.cap }])), max: MAX_BATTLES, running: battles.size, turnMs: TURN_MS };
+  return { trainers: trainers.listFor(user), wins: { n: d.wins, max: trainers.WINS_PER_DAY }, teams: user.btTeams || [], challenges: listPublic(), queue: { mine: queueMine(user), ...queueInfo() }, active: activeFor(user), formats: Object.fromEntries(Object.entries(FORMATS).map(([k, f]) => [k, { label: f.label, min: f.min, cap: f.cap }])), max: MAX_BATTLES, running: battles.size, turnMs: TURN_MS };
 }
 
 // ---- Para pruebas: combate completo sin humanos (IA contra IA). ----
@@ -832,12 +909,12 @@ function _dropMemory() {
     b.over = true;
     try { b.streams.omniscient.writeEnd(); } catch { /* ya cerrado */ }
   }
-  battles.clear(); byUser.clear(); challenges.clear();
+  battles.clear(); byUser.clear(); challenges.clear(); queue.clear();
 }
 
 module.exports = {
   undo: afterRestore(undo),
   MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu: afterRestore(startCpu), challenge: afterRestore(challenge), cancel, accept: afterRestore(accept), choose: afterRestore(choose),
   forfeit: afterRestore(forfeitAction), resume: afterRestore(resume), restoreAll, ABANDON_MS, RESTORE_GRACE_MS, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
-  listPublic, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
+  listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
 };

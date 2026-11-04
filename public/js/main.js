@@ -2,6 +2,7 @@ import { installEmoji } from './pkicons.js';
 import { animPref, setAnimPref } from './anim.js';
 import { S, bus, $, h, fmt, toast, sfx, setMe, isMuted, toggleMute, sprite, art, emit, modal, notify, notifyEnabled, toggleNotify, badgeImg, resetWarnings, buddyImg, monImg, MON, loader } from './core.js';
 import { celebrate, coinRain, burstAt, vibrate } from './fx.js';
+import { initPvp } from './pvp.js';
 import { initSocial, addChat, addFeed, renderOnline, showPlayer } from './social.js';
 import lobby from './views/lobby.js';
 import slots from './views/slots.js';
@@ -290,6 +291,7 @@ function connect() {
     S.race = res.race; S.raceBets = res.raceBets;
     S.duels = res.duels; S.duelHistory = res.duelHistory;
     S.battle = res.battle || null; bus.emit('battle:active', S.battle);
+    initPvp(res);
     S.crash = res.crash; S.poker = res.poker; S.events = res.events; S.mega = res.mega;
     bus.emit('mega', res.mega);
     bus.emit('events', res.events);
@@ -314,7 +316,7 @@ function connect() {
   socket.on('race:state', (r) => { if (S.race && r.round !== S.race.round) S.raceBets = []; S.race = r; bus.emit('race', r); });
   socket.on('race:payout', (p) => bus.emit('race:payout', p));
   socket.on('duel:list', (l) => { S.duels = l; bus.emit('duels', l); });
-  for (const ev of ['battle:start', 'battle:event', 'battle:end', 'battle:list']) socket.on(ev, (p) => bus.emit(ev, p));
+  for (const ev of ['battle:start', 'battle:event', 'battle:end', 'battle:list', 'battle:queue', 'battle:ping', 'battle:queue:end']) socket.on(ev, (p) => bus.emit(ev, p));
   socket.on('duel:result', (r) => {
     S.duelHistory = [r, ...(S.duelHistory || [])].slice(0, 20);
     bus.emit('duel:result', r);

@@ -259,7 +259,7 @@ function privateUser(u) {
     id: u.id, username: u.username, isAdmin: u.isAdmin, playMs: u.playMs || 0, playPublic: u.playPublic !== false, coins: u.coins, dust: u.dust, bp: Math.max(0, Math.floor(u.bp || 0)),
     xp: u.xp, level: u.level, xpCur: xpForLevel(u.level), xpNext: xpForLevel(u.level + 1),
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy, candy: u.candy || {}, trades: u.tradeLog || [],
-    buddyBonus: buddyBonus(u), stats: u.stats, voltorbLevel: u.voltorb.level,
+    buddyBonus: buddyBonus(u), pvpPlayed: !!(u.btHist || []).some((x) => x.mode === 'pvp'), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
     bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, lockedCoins: lockedCoins(u), locked: lockedView(u).box, lockedProg: lockedView(u).prog,
     progress: require('./progress').view(u), mega: require('./mega').privateView(u), buddyFinds: require('./bond').findsView(u), buddyBond: require('./bond').buddyBondView(u), berries: u.berries || {},

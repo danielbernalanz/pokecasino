@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.04-g",
+    "date": "2026-11-04",
+    "title": "Buscar rival en los combates",
+    "items": [
+      "🔎 «Buscar rival»: en Combates elige formato, niveles, apuesta (sin apuesta, pequeña de 50 o media de 200) y equipo, y te emparejamos al instante con otro entrenador que busque lo mismo. Puedes irte a otra pantalla: la búsqueda dura 2 minutos y te avisamos al encontrar rival.",
+      "⚔️ Combates, más a la vista: entrada «Combates» con contador en el menú, punto en «Pokémon» en el móvil, tarjeta en Inicio cuando hay retos abiertos o gente buscando, y aviso (con botón «Ir al combate») cuando alguien abre un reto, te reta a ti o se encuentra rival. En la lista de online verás un ⚔️ junto a quien busca combate.",
+      "🤝 «⚔️ Retar a combate» en la ficha de cada jugador: te lleva a Retos con el rival ya escrito. El Profesor Oak te animará a probar tu primer combate PvP.",
+      "💞 Efectos de amistad en PvP, ahora también contra jugadores: los Pokémon de los dos con mucho cariño pueden aguantar un golpe, esquivar, curarse o dar críticos, según su propia amistad (y los mensajes dicen de quién es cada Pokémon). Es una opción del reto y de la búsqueda («💞 Efectos de amistad», activada por defecto) y se ve en la lista de retos antes de aceptar. Contra la CPU sigue igual."
+    ]
+  },
+  {
     "version": "2026.11.04-e",
     "date": "2026-11-04",
     "title": "Ampliar la amistad",

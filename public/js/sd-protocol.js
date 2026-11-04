@@ -53,10 +53,15 @@ const STATUS_CURE = {
   par: '¡{m} se libró de la parálisis!', brn: '¡{m} se curó de las quemaduras!', psn: '¡{m} se curó del envenenamiento!', tox: '¡{m} se curó del envenenamiento!',
   slp: '¡{m} se despertó!', frz: '¡{m} se descongeló!',
 };
-// Efectos de afecto (el Pokémon del jugador, solo contra la CPU).
+// Efectos de afecto (tu Pokémon; en PvP también el del rival, ver AFFECTION_FOE).
 const AFFECTION = {
   survive: '¡{m} aguantó el golpe para no defraudarte!', evade: '¡{m} esquivó el ataque!',
   cure: '¡{m} se recuperó del estado alterado para que no te preocuparas!', crit: '¡{m} dio en un punto débil con todas sus fuerzas!',
+};
+// En PvP, el Pokémon rival también tiene afecto: se nombra a su entrenador ({t}).
+const AFFECTION_FOE = {
+  survive: '¡{m} aguantó el golpe para no defraudar a {t}!', evade: '¡{m} esquivó el ataque por el cariño que le tiene a {t}!',
+  cure: '¡{m} se recuperó del estado alterado para que {t} no se preocupara!', crit: '¡{m} dio en un punto débil con todas sus fuerzas por {t}!',
 };
 const CANT = {
   par: '¡{m} está paralizado! ¡No se puede mover!', slp: '{m} está profundamente dormido.', frz: '¡{m} está congelado!', flinch: '¡{m} se amedrentó!',
@@ -98,8 +103,9 @@ export class Protocol {
   /**
    * @param {{me: 'p1'|'p2', names?: {moves?: object, abilities?: object, items?: object}, roster: {p1: object[], p2: object[]}, players?: {p1: string, p2: string}, megaName?: (formId:number)=>string}} o
    */
-  constructor({ me, names = {}, roster = { p1: [], p2: [] }, players = {}, megaName = () => '' }) {
+  constructor({ me, names = {}, roster = { p1: [], p2: [] }, players = {}, megaName = () => '', pvp = false }) {
     this.me = me;
+    this.pvp = pvp;
     this.names = names;
     this.roster = roster;
     this.players = { p1: players.p1 || 'Jugador 1', p2: players.p2 || 'Jugador 2' };
@@ -140,7 +146,7 @@ export class Protocol {
   say(tpl, key) {
     if (!tpl) return '';
     const idx = tpl.indexOf('{m}');
-    return tpl.replace('{m}', this.label(key, idx <= 1));
+    return tpl.replace('{m}', this.label(key, idx <= 1)).replace('{t}', this.trainer(String(key).slice(0, 2)));
   }
 
   rosterOf(side, name) { return (this.roster[side] || []).find((r) => r.name === name) || null; }
@@ -329,8 +335,9 @@ export class Protocol {
         const r = ref(p[2]);
         if (!r) return [];
         const id = toID(String(p[3]).replace(/^(move|ability|item): /, ''));
-        if (id === 'affection') { // efectos de afecto (server/affection.js): solo contra la CPU, nunca en PvP
-          const t = AFFECTION[toID(p[4])];
+        if (id === 'affection') { // efectos de afecto (server/affection.js): CPU (tu lado) y PvP (los dos lados)
+          const kind = toID(p[4]);
+          const t = this.pvp && !this.own(r.key.slice(0, 2)) ? AFFECTION_FOE[kind] : AFFECTION[kind];
           return t ? [{ k: 'effect', kind: 'affection', slot: r.key, msg: this.say(t, r.key) }] : [];
         }
         if (/^(protect|detect|spikyshield|kingsshield|banefulbunker|obstruct|silktrap|burningbulwark)$/.test(id)) return [{ k: 'msg', slot: r.key, msg: `¡${this.label(r.key, true)} se protegió!` }];

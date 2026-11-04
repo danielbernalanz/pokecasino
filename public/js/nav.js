@@ -84,6 +84,24 @@ export function secIcon(sec) {
   return h('img', { class: 'pixel', src: i.item ? item(i.item) : SPR_BADGE(i.badge), alt: '', width: 32, height: 32 });
 }
 
+// ---- Combates PvP en directo: retos abiertos de otros + gente buscando rival ----
+export function pvpParts() {
+  const p = S.pvp;
+  if (!p || !S.me) return { open: 0, seeking: 0 };
+  const open = (p.list || []).filter((c) => c.creator !== S.me.username && (!c.target || c.target === S.me.username)).length;
+  const seeking = Math.max(0, (p.q ? p.q.singles + p.q.doubles : 0) - (p.mine ? 1 : 0));
+  return { open, seeking };
+}
+export const pvpCount = () => { const { open, seeking } = pvpParts(); return open + seeking; };
+export function refreshPvp() {
+  const n = pvpCount();
+  document.querySelectorAll('.pvp-badge').forEach((b) => { b.textContent = n > 9 ? '9+' : String(n); b.classList.toggle('hidden', !n); });
+  document.querySelector('.tab-btn[data-tab=pokemon]')?.classList.toggle('has-pvp', n > 0);
+  document.querySelector('.nav-sec[data-sec=pokemon]')?.classList.toggle('has-pvp', n > 0);
+  document.querySelector('.pvp-quick')?.classList.toggle('live', n > 0);
+  bus.emit('pvp:count', n);
+}
+
 // ---- Barra lateral (escritorio) ----
 const open = new Set(['casino']);
 export function buildSidebar(nav) {
@@ -103,10 +121,12 @@ export function buildSidebar(nav) {
         } }, '▶'));
     const sub = h('div', { class: 'nav-sub' }, groupsOf(sec).map((g) => [
       h('div', { class: 'nav-label' }, g.name),
-      g.items.map((id) => h('a', { href: '#/' + id, class: 'nav-link', 'data-view': id }, h('span', { class: 'nav-ico' }, META[id].ico), h('span', { class: 'grow' }, META[id].t), h('i', { class: 'new-dot hidden', title: '¡Nuevo!' })))]).flat(2));
+      g.items.map((id) => h('a', { href: '#/' + id, class: 'nav-link', 'data-view': id }, h('span', { class: 'nav-ico' }, META[id].ico), h('span', { class: 'grow' }, META[id].t), id === 'combates' ? h('i', { class: 'pvp-badge hidden' }) : null, h('i', { class: 'new-dot hidden', title: '¡Nuevo!' })))]).flat(2));
     nav.append(h('div', { class: 'nav-group' + (open.has(sec.id) ? ' open' : ''), 'data-group': sec.id }, head, sec.id === 'lobby' ? '' : sub));
+    if (sec.id === 'lobby') nav.append(h('a', { href: '#/combates', class: 'nav-link pvp-quick', 'data-pvp': '1', title: 'Combates PvP: retos abiertos y gente buscando rival' }, h('span', { class: 'nav-ico' }, '⚔️'), h('span', { class: 'grow' }, 'Combates'), h('i', { class: 'pvp-badge hidden' })));
   }
   refreshNew();
+  refreshPvp();
 }
 // Pinta/quita los «¡Nuevo!» y puntos de la barra lateral, la barra inferior y los centros.
 export function refreshNew() {
@@ -138,6 +158,7 @@ export function buildTabbar(bar) {
     location.hash = '#/' + sec.id;
   } }, h('span', { class: 'tab-ico' }, secIcon(sec)), h('span', { class: 'tab-lbl' }, sec.label))));
   refreshNew();
+  refreshPvp();
 }
 
 // ---- Profesor Oak: una sola sugerencia ----
@@ -178,6 +199,9 @@ export function suggestion() {
   if (tut && !tut.done && tut.link && tut.link !== 'lobby') return { text: `${tut.title}. ${tut.desc}`, go: '¡Vamos!', link: '#/' + tut.link, id: 'route' };
   const t = TIPS.find((x) => isNew(x.id));
   if (t) return { ...t, link: '#/' + t.id };
+  if (me && !me.pvpPlayed && Object.keys(me.collection || {}).length > 0) {
+    return { text: '¿Has probado un combate PvP? Pulsa «Buscar rival» en Combates y te emparejo con otro entrenador. ¡Y tus Pokémon cariñosos te echarán una mano!', go: '🔎 Buscar rival', link: '#/combates', id: 'pvp' };
+  }
   const quips = ['¡Lo has probado casi todo, entrenador! Ahora a por las 8 medallas.', 'Recuerda: juega con cabeza. Las apuestas altas siempre piden confirmación.', 'La Caja PC guarda tus Pokémon: ¿has probado a entrenarlos con caramelos?'];
   return { text: quips[new Date().getDate() % quips.length], go: null, id: 'quip' };
 }
