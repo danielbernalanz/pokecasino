@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.04-m",
+    "date": "2026-11-04",
+    "title": "Pokémon de día y de noche",
+    "items": [
+      "🌙 En el Gacha salen más Pokémon nocturnos de noche (Gastly, Zubat, Hoothoot, Murkrow, Misdreavus, Sableye…) y más diurnos de día (Ledyba, Sunkern, Cherubi, Hoppip, Starly…). Hora de España: noche de 21:00 a 06:00. Pesan el doble a su hora y la mitad fuera, así que ninguno queda excluido y la Pokédex se puede completar siempre. La pantalla del Gacha lo muestra.",
+      "🧭 En las Expediciones, un Pokémon de noche que sale de noche (o de día que sale de día) trae un 25 % más de caramelos. Las zonas muestran quiénes rinden más ahora, y el Profesor Oak te lo recuerda.",
+      "⏰ Espeon evoluciona de día y Umbreon de noche (con mucha amistad), con el mismo reloj."
+    ]
+  },
+  {
     "version": "2026.11.04-l",
     "date": "2026-11-04",
     "title": "Evoluciones especiales: piedras, intercambio, sexo y hora",

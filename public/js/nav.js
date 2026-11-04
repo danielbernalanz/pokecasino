@@ -1,6 +1,7 @@
 // Navegación: 5 secciones (Inicio, Casino, Pokémon, Mercado, Entrenador), qué ha visitado ya el jugador
 // (para el «¡Nuevo!») y la sugerencia del Profesor Oak.
 import { S, h, bus, sprite, item, SPR_BADGE, monImg } from './core.js';
+import { phaseNow } from './daytime.js';
 
 // Una ficha por pantalla: título, frase de una línea, Pokémon que la representa y color de la ficha.
 export const META = {
@@ -205,6 +206,9 @@ export function suggestion() {
   if (me && !me.pvpPlayed && Object.keys(me.collection || {}).length > 0) {
     return { text: '¿Has probado un combate PvP? Pulsa «Buscar rival» en Combates y te emparejo con otro entrenador. ¡Y tus Pokémon cariñosos te echarán una mano!', go: '🔎 Buscar rival', link: '#/combates', id: 'pvp' };
   }
+  const night = phaseNow() === 'night';
+  const timeTip = night ? '🌙 Es de noche en España: en el Gacha salen más Gastly, Zubat, Hoothoot, Murkrow y Misdreavus, y esos Pokémon rinden más en las expediciones que salen ahora.' : '☀️ Es de día en España: en el Gacha salen más Ledyba, Sunkern, Cherubi, Hoppip y Starly, y esos Pokémon rinden más en las expediciones que salen ahora.';
+  if (new Date().getDate() % 2 === 0) return { text: timeTip, go: 'Ir al Gacha', link: '#/gacha', id: 'time' };
   const quips = ['¡Lo has probado casi todo, entrenador! Ahora a por las 8 medallas.', 'Recuerda: juega con cabeza. Las apuestas altas siempre piden confirmación.', 'La Caja PC guarda tus Pokémon: ¿has probado a entrenarlos con caramelos?'];
   return { text: quips[new Date().getDate() % quips.length], go: null, id: 'quip' };
 }

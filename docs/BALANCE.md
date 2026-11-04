@@ -634,3 +634,10 @@ Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + reg
 - **Precios (sumidero):** piedras **2.000**, objetos raros **5.000**, Cordón Unión **1.500** en la Tienda Poké. Una evolución por intercambio con objeto cuesta ≈ 6.500 monedas más los caramelos; una por piedra, 2.000.
 - **Fuente gratuita:** las Expediciones de 8 h (6 %) y 12 h (12 %) pueden dar un objeto de evolución de la zona (sobre todo piedras), máx. 1 al día. Sin valor en monedas: los PNJ no los compran y **no se reciclan** (por eso un objeto de 2.000 que cae gratis no es un surtidor de polvo); entre jugadores se comercian como cualquier objeto.
 - **Intercambio real:** cada Pokémon recibido de otro jugador (regalo o Mercado) da un «intercambio pendiente» (máx. 2 al día y 3 guardados) que vale como un Cordón Unión. No se puede obtener con cuentas NPC ni con uno mismo, y los regalos ya tienen sus topes (ver ANTIABUSO.md).
+
+## Pokémon de día y de noche (server/daytime.js, gacha.js, expedition.js · test/daytime.test.js)
+
+- Reloj de España (`Europe/Madrid`, con cambio de hora): **noche 21:00–06:00, día 06:00–21:00**. Todo recibe `now` para poder probarse.
+- **Gacha (todos los banners):** 41 especies nocturnas (línea de Gastly, Zubat, Hoothoot, Murkrow, Misdreavus, Sableye, Houndour, Sneasel, Absol, Duskull, Litwick, Phantump…) y 28 diurnas (Ledyba, Sunkern, Cherubi, Hoppip, Starly, Combee, Pidgey…) pesan **×2 a su hora y ×0,5 fuera** (4× entre una y otra). Es un peso dentro de la rareza ya sorteada, igual que el peso por fase evolutiva y el sesgo «Pokédex»: la probabilidad de cada rareza, los destacados, el valor esperado de una tirada y los legendarios/míticos no cambian, y nada se excluye (la Pokédex se completa a cualquier hora).
+- **Expediciones** (nunca dan Pokémon): un Pokémon de día/noche que **sale a su hora** (se guarda en la expedición, `phase`) rinde **+25 % de caramelos** de su familia; fuera de hora, igual que antes (sin penalización). Los caramelos no tienen valor en monedas.
+- También manda el reloj en las evoluciones de horario (Espeon de día, Umbreon de noche…; ver el apartado de evoluciones especiales).

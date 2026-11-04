@@ -161,6 +161,7 @@ const STATIC = {
   expedition: expedition.STATIC,
   evs: require('./evs').STATIC,
   evo: require('./evoreq').STATIC,
+  daytime: require('./daytime').STATIC,
   daycare: daycare.STATIC,
   quiz: quiz.STATIC,
 };

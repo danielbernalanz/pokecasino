@@ -3,6 +3,7 @@ import { useFx } from '../rewards.js';
 import { centerOf } from '../fx.js';
 import { reveal } from './gacha-reveal.js';
 import { tmGachaTab } from './tm-gacha.js';
+import { phaseNow, PHASE, timeSpecies, listNames } from '../daytime.js';
 
 let selected = 'kanto';
 const pct = (x) => (x * 100).toFixed(1).replace('.', ',') + ' %';
@@ -66,6 +67,7 @@ export default {
         h('div', { class: 'banner-hero' },
           h('div', { class: 'banner-info' },
             h('h2', {}, b.name), h('p', {}, b.desc),
+            timeLines(),
             featured.length ? h('div', { class: 'featured' }, featured.map((id) => h('div', { class: 'feat' }, pokeImg(id, false), h('span', {}, S.dexById.get(id).name)))) : null,
             h('div', { class: 'pity' },
               h('div', {}, 'Legendaria o mítica: ', h('b', {}, pct(S.data.gachaRates.L + S.data.gachaRates.M * (b.mythicBoost || 1))), ' en cada tirada · sin pity'),
@@ -85,6 +87,19 @@ export default {
         h('details', { class: 'rates' }, h('summary', {}, 'Probabilidades y reglas'),
           h('table', {}, h('tbody', {}, Object.entries(S.data.gachaRates).map(([r, p]) => h('tr', {}, h('td', {}, h('span', { class: 'rar r-' + r }, rarityName(r))), h('td', {}, `${String(parseFloat((p * 100).toFixed(2))).replace('.', ',')} %`), h('td', { class: 'muted' }, `${S.data.rarity[r].dust} ✦ por duplicado extra`))))),
           h('p', { class: 'small muted' }, `Variocolor: 1/${Math.round(1 / S.data.shinyRate)} en cualquier tirada. Cada copia (hasta 5) da una estrella al Pokémon: más fuerza en duelos y más bonus como compañero. A partir de la 5ª copia se convierte en polvo estelar. Dentro de cada rareza, las formas evolucionadas salen mucho menos: una primera evolución con un cuarto de probabilidad y una evolución final con un 6 % de la de una forma básica (legendarios y míticos no cambian).`)));
+    }
+
+    // «🌙 De noche salen más: …» / «☀️ De día salen más: …» (hora de España; ×2 a su hora y ×0,5 fuera, ver server/daytime.js).
+    function timeLines() {
+      const now = phaseNow();
+      const dt = S.data.daytime;
+      return h('div', { class: 'time-species small', 'data-testid': 'time-species' }, ['night', 'day'].map((ph) => {
+        const ids = timeSpecies(ph);
+        const P = PHASE[ph];
+        return h('div', { class: 'time-line' + (ph === now ? ' now' : ''), 'data-phase': ph },
+          `${P.ico} ${P.label} (${P.range}) salen más: `, h('b', {}, listNames(ids, 7)),
+          ph === now ? h('span', { class: 'chip active small' }, `ahora ×${dt.atTime}`) : h('span', { class: 'muted' }, ` (ahora ×${String(dt.offTime).replace('.', ',')})`));
+      }), h('div', { class: 'muted' }, 'Solo cambia qué especie sale dentro de cada rareza: ninguna se excluye y la probabilidad de cada rareza es la misma.'));
     }
 
     // Objetos que afectan a las tiradas.

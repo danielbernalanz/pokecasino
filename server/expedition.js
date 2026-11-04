@@ -12,6 +12,7 @@ const bond = require('./bond');
 const specimen = require('./specimen');
 const gacha = require('./gacha');
 const evs = require('./evs');
+const daytime = require('./daytime');
 const { BY_ID } = require('./pokedex');
 const { rand, randInt, pick } = require('./rng');
 
@@ -115,7 +116,7 @@ function send(u, p) {
     return { m, id: Number(t.id) };
   });
   const now = Date.now();
-  const e = { id: crypto.randomBytes(4).toString('hex'), zone: zone.id, hours, start: now, end: now + hours * HOUR, team: found.map((x) => ({ id: x.id, uid: x.m.uid })) };
+  const e = { id: crypto.randomBytes(4).toString('hex'), zone: zone.id, hours, start: now, end: now + hours * HOUR, phase: daytime.phase(now), team: found.map((x) => ({ id: x.id, uid: x.m.uid })) };
   for (const x of found) x.m.away = 'exp:' + e.id;
   exps.push(e);
   db.save();
@@ -143,7 +144,8 @@ function claim(u, p) {
     const hit = matches(zone, t.id);
     if (hit) matched++;
     const avgBoost = 1 + m.level / 200; // hasta +50 % a Nv. 100
-    const rawCandy = H * CANDY_PER_HOUR * (hit ? 1 + MATCH_BONUS : 1) * avgBoost;
+    const timeHit = daytime.affinity(t.id) === (e.phase || daytime.phase(e.start)); // Pokémon de día/noche que salen a su hora: +25 % de caramelos
+    const rawCandy = H * CANDY_PER_HOUR * (hit ? 1 + MATCH_BONUS : 1) * (timeHit ? 1 + daytime.EXP_BONUS : 1) * avgBoost;
     const lf = loveF.get(m); // «Te adora»: +10 % de caramelos (nunca de monedas)
     if (lf > 1) out.lovers++;
     const c = Math.max(1, lf > 1 ? bond.stochRound(rawCandy * lf) : Math.round(rawCandy));
@@ -160,7 +162,7 @@ function claim(u, p) {
     out.ev += ev;
     const fr = bond.addFriend(m, FRIEND_PER_HOUR * H, 'exp');
     out.friend += fr;
-    out.members.push({ id: t.id, uid: t.uid, from, to: m.level, friend: fr, ev, match: hit, candy: c });
+    out.members.push({ id: t.id, uid: t.uid, from, to: m.level, friend: fr, ev, time: timeHit, match: hit, candy: c });
     delete m.away;
   }
   // Los que ya no están (bloqueados, etc.) no se cuentan; el resto del botín sigue su curso.

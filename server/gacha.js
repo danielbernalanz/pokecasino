@@ -5,6 +5,7 @@ const db = require('./db');
 const hub = require('./hub');
 const { BY_ID, BY_RARITY, RARITY } = require('./pokedex');
 const { rand, pick, weighted } = require('./rng');
+const daytime = require('./daytime');
 
 const COST = { 1: 150, 10: 1350 };
 const SHINY_RATE = 1 / 64;
@@ -113,13 +114,16 @@ function rollRarity(banner, { minRare = false } = {}) {
 // (Progresión casual: antes 0,25 / 0,06. Las evoluciones son baratas, así que las tiradas favorecen aún más a las formas base.)
 const STAGE_WEIGHT = { 0: 1, 1: 1, 2: 0.12, 3: 0.03 };
 const stageWeight = (p) => (p.rarity === 'L' || p.rarity === 'M' ? 1 : STAGE_WEIGHT[p.stage] ?? 1);
-const weightCache = new WeakMap(); // lista → pesos acumulados
-function pickByStage(list) {
-  let cum = weightCache.get(list);
+// Pokémon de día y de noche (daytime.js): ×2 a su hora y ×0,5 fuera de ella, siempre dentro de su rareza (no se excluye a nadie).
+const weightCache = new WeakMap(); // lista → { day, night }: pesos acumulados
+function pickByStage(list, phase = daytime.phase()) {
+  let both = weightCache.get(list);
+  if (!both) { both = {}; weightCache.set(list, both); }
+  let cum = both[phase];
   if (!cum) {
     let t = 0;
-    cum = list.map((p) => (t += stageWeight(p)));
-    weightCache.set(list, cum);
+    cum = list.map((p) => (t += stageWeight(p) * daytime.mult(p.id, phase)));
+    both[phase] = cum;
   }
   const r = rand() * cum[cum.length - 1];
   let lo = 0;
@@ -139,18 +143,18 @@ function draw(owned, pickFn) {
   return p;
 }
 
-function rollPokemon(rarity, banner, { masterBall = false, owned = null } = {}) {
+function rollPokemon(rarity, banner, { masterBall = false, owned = null, phase = daytime.phase() } = {}) {
   const all = BY_RARITY[rarity];
   if (rarity === 'L' && banner.featuredL.length) {
     // 50 % destacado; con Master Ball, destacado seguro.
     const featured = masterBall || rand() < 0.5;
     const pool = all.filter((x) => banner.featuredL.includes(x.id) === featured);
-    return draw(owned, () => pickByStage(pool.length ? pool : all));
+    return draw(owned, () => pickByStage(pool.length ? pool : all, phase));
   }
   if (rarity === 'E' && banner.featuredE.length && rand() < 0.5) {
     return draw(owned, () => BY_ID.get(pick(banner.featuredE)));
   }
-  return draw(owned, () => pickByStage(all));
+  return draw(owned, () => pickByStage(all, phase));
 }
 
 // Añade un Pokémon a la colección. Más allá de 5 copias se convierte en polvo estelar.
@@ -174,7 +178,7 @@ function grant(user, id, shiny, { unlock = false } = {}) {
   return { isNew, newShiny, dust, stars: Math.min(5, c.n), ...(unlocked ? { unlocked: true } : {}) };
 }
 
-function pull(user, { banner: bannerId, count, free, ticket }) {
+function pull(user, { banner: bannerId, count, free, ticket }, now = Date.now()) {
   const banner = BANNER_BY_ID.get(bannerId);
   if (!banner) throw new Error('Banner desconocido.');
   const act = activeBanners();
@@ -197,6 +201,7 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
     require('./mega').onBet(user, cost, 'gacha', { play: false });
   }
   const results = [];
+  const phase = daytime.phase(now); // hora de España: ver daytime.js
   for (let i = 0; i < count; i++) {
     let rarity;
     const masterBall = !!user.buffs.masterBall;
@@ -209,7 +214,7 @@ function pull(user, { banner: bannerId, count, free, ticket }) {
       const minRare = count === 10 && i === 9 && !results.some((r) => RANK[r.rarity] >= 2);
       rarity = rollRarity(banner, { minRare });
     }
-    const poke = rollPokemon(rarity, banner, { masterBall, owned: (id) => !!(user.collection[id] && user.collection[id].n > 0) });
+    const poke = rollPokemon(rarity, banner, { masterBall, phase, owned: (id) => !!(user.collection[id] && user.collection[id].n > 0) });
     const charm = user.buffs.shinyCharges > 0;
     if (charm) user.buffs.shinyCharges--;
     const shiny = rand() < SHINY_RATE * (charm ? 4 : 1) * (require('./events').has('shiny') ? 2 : 1);
@@ -307,4 +312,4 @@ function takePoke(user, id, shiny) {
   return p;
 }
 
-module.exports = { X10_GIFTS, realCopies, spareCopies, STAGE_WEIGHT, stageWeight, pull, takePoke, craft, exchangeDust, release, grant, activeBanners, bannersInfo, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon, TUNING };
+module.exports = { weightOf: (p, phase) => stageWeight(p) * daytime.mult(p.id, phase), X10_GIFTS, realCopies, spareCopies, STAGE_WEIGHT, stageWeight, pull, takePoke, craft, exchangeDust, release, grant, activeBanners, bannersInfo, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon, TUNING };

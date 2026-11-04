@@ -110,7 +110,7 @@ function openMon(uid, openPage = 'info') {
     if (tc && tc.n >= 5) reasons.push('ya tienes 5 estrellas');
     return h('div', { class: 'pc-evo' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
       h('div', { class: 'grow small' }, h('b', {}, t.name),
-        needs.length ? h('div', { class: 'pc-evo-needs', 'data-testid': 'evo-needs' }, 'Necesita: ', needs.map((n, i) => [i ? (i === needs.length - 1 ? ' y ' : ', ') : '', h('span', { class: n.ok ? 'good' : 'bad' }, (n.ok ? '✓ ' : '✗ ') + n.text)])) : null,
+        needs.length ? h('div', { class: 'pc-evo-needs', 'data-testid': 'evo-needs' }, 'Necesita: ', needs.flatMap((n, i) => [i ? (i === needs.length - 1 ? ' y ' : ', ') : '', h('span', { class: n.ok ? 'good' : 'bad' }, (n.ok ? '✓ ' : '✗ ') + n.text)])) : null,
         h('div', { class: 'muted' }, (viaFriend ? `💖 Por amistad: ${e.cost} 🍬 · sin nivel mínimo` : `${e.cost} 🍬${e.level ? ` · Nv. ${e.level} mín.` : ''}`) + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ''))),
       h('button', { class: 'btn primary', disabled: reasons.length > 0, onclick: async (ev) => {
         const r = await act('pc:evolve', { id: m.id, uid, to: t.id }, ev.target);

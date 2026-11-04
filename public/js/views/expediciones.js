@@ -4,6 +4,7 @@ import { aniImg } from '../anim.js';
 import { burstEl, reduced } from '../fx.js';
 import { clock, loadMons, monPicker } from './afk-common.js';
 import { berryImg } from './huerto.js';
+import { phaseNow, PHASE, timeSpecies } from '../daytime.js';
 
 const EV_SHORT = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
 const cfg = () => S.data.expedition;
@@ -38,7 +39,7 @@ export default {
     const zones = h('div', { class: 'afk-zones' });
     const live = [];
     const now = () => Date.now() + skew;
-    const intro = say({ emoji: '🧑‍🔬', who: 'Prof. Oak', text: 'Tus Pokémon pueden explorar por su cuenta. Elige una zona, mándalos de 1 a 12 horas y ¡recoge el botín cuando vuelvan!', cls: 'compact' });
+    const intro = say({ emoji: '🧑‍🔬', who: 'Prof. Oak', text: 'Tus Pokémon pueden explorar por su cuenta. Elige una zona, mándalos de 1 a 12 horas y ¡recoge el botín cuando vuelvan! Los Pokémon de noche (Gastly, Zubat…) rinden más si salen de noche, y los de día (Ledyba, Cherubi…) de día.', cls: 'compact' });
 
     function apply(r) { if (r.now) skew = r.now - Date.now(); st = r; render(); }
 
@@ -74,7 +75,7 @@ export default {
         const p = S.dexById.get(m.id);
         rows.push(h('div', { class: 'afk-rw-mon' }, h('img', { class: 'pixel', src: sprite(m.id), alt: '' }),
           h('div', { class: 'grow' }, h('b', {}, p.name + (m.match ? ' ⭐' : '')),
-            h('div', { class: 'small muted' }, `+${m.candy} 🍬 · Nv. ${m.from}${m.to > m.from ? ` → ${m.to}` : ''} · +${m.friend} ♥${m.ev ? ` · +${m.ev} EV ${EV_SHORT[rw.evStat]}` : ''}`))));
+            h('div', { class: 'small muted' }, `+${m.candy} 🍬 · Nv. ${m.from}${m.to > m.from ? ` → ${m.to}` : ''} · +${m.friend} ♥${m.ev ? ` · +${m.ev} EV ${EV_SHORT[rw.evStat]}` : ''}${m.time ? ' · 🌙☀️ +25 %' : ''}`))));
       }
       const loot = [];
       loot.push(h('span', { class: 'afk-rw-chip' }, `🍬 +${rw.wild} comodín`));
@@ -133,11 +134,20 @@ export default {
       update();
     }
 
+    // Pokémon de esta zona que rinden más según la hora de salida (+25 % de caramelos si coincide con su hora).
+    function timeNote(z) {
+      const ph = phaseNow();
+      const ids = timeSpecies(ph).filter((id) => matches(z, id)).map((id) => S.dexById.get(id).name);
+      if (!ids.length) return null;
+      return h('span', { class: 'small afk-zone-time', 'data-testid': 'zone-time' }, `${PHASE[ph].ico} ${PHASE[ph].label.toLowerCase()} rinden +${Math.round(S.data.daytime.expBonus * 100)} % de caramelos: ${ids.slice(0, 4).join(', ')}${ids.length > 4 ? '…' : ''}`);
+    }
+
     function zoneCard(z) {
       const full = st && st.exps.length >= st.slots;
       return h('div', { class: `afk-zone tone-${z.tone}` },
         h('div', { class: 'afk-zone-art' }, aniImg(z.hostId, { cls: 'afk-zone-img', alt: z.host })),
         h('b', { class: 'afk-zone-name' }, z.name), typesEl(z), h('span', { class: 'small muted' }, z.desc),
+        timeNote(z),
         h('span', { class: 'small afk-zone-ev', title: 'Puntos de esfuerzo que ganan tus Pokémon en esta zona' }, `💪 +${S.data.evs.expPerHour} EV/h de ${EV_SHORT[z.ev]}`),
         h('button', { class: 'btn primary', disabled: full, title: full ? 'Todas tus expediciones están en marcha' : '', onclick: () => openSend(z) }, full ? 'Sin plazas libres' : '🧭 Enviar'));
     }

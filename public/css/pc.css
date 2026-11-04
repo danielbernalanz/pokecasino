@@ -129,3 +129,13 @@
 .pc-evo-needs { margin: 2px 0; }
 .pc-evo-needs .good { color: var(--good); }
 .pc-evo-needs .bad { color: var(--bad); }
+
+/* Pokémon de día y de noche (Gacha y Expediciones) */
+.time-species { display: grid; gap: 2px; margin: 6px 0; }
+.time-line { opacity: .75; }
+.time-line.now { opacity: 1; }
+.afk-zone-time { color: var(--muted); }
+/* La tabla de estadísticas lleva IV y EV: las barras son compactas y las celdas siguen siendo celdas de tabla. */
+.pc-stats td.pc-ivcell { display: table-cell; white-space: nowrap; }
+.pc-stats .pc-ivbar { display: inline-block; width: 34px; min-width: 0; flex: none; vertical-align: middle; margin-right: 4px; }
+.pc-stats .pc-ivbar i { display: block; }
