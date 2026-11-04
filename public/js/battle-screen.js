@@ -659,28 +659,39 @@ export class BattleScreen {
   menuPreview(req) {
     const mine = req.side.pokemon;
     const need = req.maxChosenTeamSize || mine.length;
+    // Como en Showdown: si llevas a todo el equipo solo eliges quién sale primero (en dobles, los dos primeros);
+    // el resto entra en el orden del equipo. Solo si hay que dejar a alguno fuera se eligen todos.
+    const leadsOnly = need >= mine.length;
+    const leads = Math.min(this.doubles ? 2 : 1, mine.length);
     const picked = [];
     const foeRoster = this.view.roster[this.foe] || [];
     const info = h('div', { class: 'bt2-pv-t' });
     const grid = h('div', { class: 'pty-grid' });
     const go = h('button', { class: 'btn primary big', type: 'button' }, '¡Listo!');
+    const sendTeam = () => {
+      const order = leadsOnly ? [...picked, ...mine.map((_, i) => i).filter((i) => !picked.includes(i))] : picked;
+      this.send('team ' + order.map((i) => i + 1).join(''));
+    };
     const render = () => {
-      info.textContent = need >= mine.length ? 'Elige el orden: el primero sale al combate' + (this.doubles ? ' (los dos primeros)' : '') + '.' : `Elige ${need} Pokémon (${picked.length}/${need}). Los ${this.doubles ? 'dos primeros' : 'primero'} salen al combate.`;
+      info.textContent = leadsOnly
+        ? (this.doubles ? `¿Quiénes salen primero? Toca dos Pokémon (${picked.length}/${leads}).` : '¿Quién sale primero? Toca un Pokémon.')
+        : `Elige ${need} Pokémon (${picked.length}/${need}). Los ${this.doubles ? 'dos primeros' : 'primero'} salen al combate.`;
       grid.replaceChildren(...mine.map((p, i) => {
         const at = picked.indexOf(i);
         return this.partyCard(p, i, { tag: at >= 0 ? `#${at + 1}` : '', disabled: false, onPick: (ix) => {
           const k = picked.indexOf(ix);
-          if (k >= 0) picked.splice(k, 1); else if (picked.length < need) picked.push(ix);
+          if (k >= 0) picked.splice(k, 1); else if (picked.length < (leadsOnly ? leads : need)) picked.push(ix);
+          if (leadsOnly && picked.length === leads) return sendTeam();
           render();
         } });
       }));
       grid.querySelectorAll('.pty').forEach((b, i) => b.classList.toggle('sel', picked.includes(i)));
       go.disabled = picked.length !== need;
     };
-    go.addEventListener('click', () => this.send('team ' + picked.map((i) => i + 1).join('')));
-    const auto = h('button', { class: 'btn', type: 'button', onclick: () => { picked.length = 0; for (let i = 0; i < Math.min(need, mine.length); i++) picked.push(i); render(); } }, 'Orden actual');
+    go.addEventListener('click', sendTeam);
+    const auto = h('button', { class: 'btn', type: 'button', onclick: () => { picked.length = 0; for (let i = 0; i < Math.min(leadsOnly ? leads : need, mine.length); i++) picked.push(i); if (leadsOnly) sendTeam(); else render(); } }, leadsOnly ? 'Orden del equipo' : 'Orden actual');
     const foes = h('div', { class: 'bt2-pv-foes' }, h('span', { class: 'small muted' }, 'Rival:'), ...foeRoster.map((r) => h('img', { class: 'pixel', src: sprite(r.id, r.shiny), alt: '', title: dexName(r.id) })));
-    this.menu.replaceChildren(h('div', { class: 'bt2-pv' }, foes, info, grid, h('div', { class: 'row gap wrap' }, auto, go, this.forfeitButton())));
+    this.menu.replaceChildren(h('div', { class: 'bt2-pv' }, foes, info, grid, h('div', { class: 'row gap wrap' }, auto, leadsOnly ? '' : go, this.forfeitButton())));
     render();
     // Pantalla de vista previa en el campo.
     if (!this.shown) { this.shown = true; this.say(`¡${this.view.foe} quiere combatir!`, 200); }
