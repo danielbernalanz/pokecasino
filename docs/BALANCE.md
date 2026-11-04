@@ -394,40 +394,33 @@ ni megapiedras. Crea objetos, no monedas, y se venden por encima del suelo (sumi
 Los NPC **nunca escriben en el chat**. En el feed «En vivo» solo aparecen anuncios de encargos (máx. 3) y ofertas
 flash, **4 líneas al día en total**; las operaciones con NPC ya no generan línea de feed.
 
-## Fase B2 · Repetidos y reciclaje: caramelos, evolución, Milagroso, reciclaje (server/candy.js, test/candy.test.js)
+## Fase B2 · Repetidos y reciclaje: transferir, evolución, Milagroso, reciclaje (server/candy.js, test/candy.test.js)
 
-Ninguna acción de esta fase crea monedas. Los caramelos no se pueden vender ni tienen valor en monedas; el polvo que dan las acciones es el de liberar (o menos).
+> **Actualizado el 04-11-2026.** Los caramelos de familia y comodín (subir nivel, evolución y entrenar IV con caramelos) se sustituyeron por el sistema de EXP de los juegos: ver «Progresión como en los juegos» más abajo. Lo que sigue describe lo que se mantiene.
+
+Ninguna acción de esta fase crea monedas. Los Caramelos Exp. no se pueden vender ni tienen valor en monedas; el polvo que dan las acciones es el de liberar (o menos).
 
 | Mecánica | Números |
 |---|---|
-| Caramelos por familia evolutiva | Tirada de gacha: +1 (+3 si la especie es nueva). Transferir un ejemplar (da además el mismo polvo que liberar): C 3 · U 4 · R 6 · E 10 · L 20 · M 25 |
-| Subir nivel (5 → 100) | Nivel N → N+1 cuesta ⌈N/10⌉ caramelos de la familia. 5 → 50 = 141; 5 → 100 = 536. Efecto en duelos: ×(1 + 0,001 × (Nv − 5)): Nv. 100 ≈ +9,5 %; los ejemplares de nivel 5 no cambian |
-| Evolución | Fase 2: 25 caramelos y Nv. 16; fase 3: 100 caramelos y Nv. 36. Si evolucionar sube la rareza (p. ej. Magikarp C → Gyarados E), el coste sube a ⌈polvo extra / 1,5⌉ (hasta 50). Destinos L/M: ×4. Hace falta otra copia de la especie origen (se conserva su entrada en la Pokédex) y que el destino tenga < 5 estrellas. El ejemplar conserva IVs, naturaleza, mote, nivel, amistad, favorito, variocolor y compañero. No hay piedras de evolución en `items.js`, así que no hay evolución por piedra |
-| Entrenar IV | +1 IV (máx. 31) = 2 caramelos; 10 entrenamientos al día por ejemplar |
-| Intercambio Milagroso | 3 al día; una copia sobrante (ni favorita, ni compañero, ni variocolor, ni mítica) por una copia aleatoria de la misma rareza (pesos de fase del gacha; las L excluyen las destacadas de los banners activos; solo especies con < 5 estrellas) |
-| Reciclaje | Solo objetos con precio de tienda: 40 % del precio / 4 monedas por ✦ (Ticket 15 ✦, Huevo Suerte 30 ✦, Moneda Amuleto 40 ✦, Caramelo Raro 90 ✦). En monedas son 60 de 150, 120 de 300, 160 de 400 y 360 de 900: siempre < precio. Tope 300 ✦ al día, por si un objeto se compra barato en el Mercado |
+| Transferir al Profesor Oak | Da el mismo polvo que liberar **más Caramelos Exp.**: C 1 XS (100 EXP) · U 2 XS (200) · R 1 S (800) · E 2 S (1.600) · L 1 M (3.000) · M 2 M (6.000). Se conserva siempre una copia de la especie |
+| Evolución | **Sin coste en caramelos**: nivel de los juegos + requisitos especiales (piedras, intercambio, amistad ≥ 220, sexo, hora…). Hace falta otra copia de la especie origen, salvo la **primera** evolución a una especie nueva, que no gasta la copia de origen (una vez por especie y cuenta, `u.evoReg`; la copia nueva es la última de su especie: no se puede liberar ni vender). El destino debe tener < 5 estrellas. El ejemplar conserva IVs, naturaleza, mote, nivel, amistad, favorito, variocolor y compañero |
+| Intercambio Milagroso | 5 al día; una copia sobrante (ni favorita, ni compañero, ni variocolor, ni mítica) por una copia aleatoria de la misma rareza (pesos de fase del gacha; las L excluyen las destacadas de los banners activos; solo especies con < 5 estrellas) |
+| Reciclaje | Solo objetos con precio de tienda: 40 % del precio / 4 monedas por ✦ (Ticket 15 ✦, Huevo Fortuna 30 ✦, Moneda Amuleto 40 ✦, Caramelo Raro 90 ✦). En monedas son 60 de 150, 120 de 300, 160 de 400 y 360 de 900: siempre < precio. Tope 300 ✦ al día. Los Caramelos Exp., las Chapas y los objetos de evolución no se reciclan |
 
-**Por qué no hay arbitraje de polvo.** Transferir da ≥ 5/3 ≈ 1,67 ✦ por caramelo (el peor caso, las Comunes) y evolucionar da como máximo 1,5 ✦ extra por caramelo gastado al liberar el resultado. Es decir, los caramelos de una evolución costaron siempre más polvo (transfiriendo las copias que los dan) del que la evolución añade. `test/candy.test.js` lo comprueba para las 484 evoluciones. Sin la subida de coste por rareza, Magikarp → Gyarados (+75 ✦ por 25 caramelos = 3 ✦/caramelo) sí habría sido rentable.
+**Por qué no hay arbitraje de polvo con la evolución.** Antes lo evitaba el coste en caramelos; ahora lo evita la EXP: ver «Techo de polvo evolucionando y transfiriendo» en la sección nueva (`test/candy.test.js` y `test/progression.test.js` lo comprueban para las ≈ 380 evoluciones «de nivel»).
 
-**Tiempo para completar la Pokédex (estimación).** Simulación aproximada (`banner permanente, 20 tiradas al día, fabricando con polvo`; el Milagroso se modela como 3 especies nuevas al día el 70 % de los días y la evolución como gratis si hay caramelos suficientes; es optimista porque ignora el requisito de copia sobrante):
-
-| | 50 % | 90 % | 99 % | 100 % |
-|---|---|---|---|---|
-| Solo tiradas y fabricar (antes) | ≈ 50 días | ≈ 290 | ≈ 590 | ≈ 780 (≈ 15.700 tiradas, coherente con las 14.400 de arriba) |
-| Con caramelos, evolución y Milagroso | ≈ 36 días | ≈ 160 | ≈ 310 | ≈ 470 |
-
-El 100 % pasa de ≈ 2 años a ≈ 15 meses para quien tira 20 veces al día: los Pokémon de fase 2 y 3 (que casi no salen) se consiguen evolucionando y el Milagroso reparte las últimas especies. Sigue siendo un objetivo de más de un año; no se ha tocado ningún número por esto.
+**Tiempo para completar la Pokédex.** Ver «Progresión casual» y la tabla actualizada en «Progresión como en los juegos».
 
 ## Fase B3 · Personalidad y vínculo: amistad, hallazgos del compañero y Huerto (server/bond.js, test/bond.test.js)
 
-La única fuente nueva de monedas de toda la fase es el hallazgo del compañero: **máximo +200 monedas al día por jugador** (motivo `buddy` en el registro). Todo lo demás (amistad, bayas, caramelos) no tiene precio en monedas.
+La única fuente nueva de monedas de toda la fase es el hallazgo del compañero: **máximo +200 monedas al día por jugador** (motivo `buddy` en el registro). Todo lo demás (amistad, bayas, Caramelos Exp.) no tiene precio en monedas.
 
 | Mecánica | Números |
 |---|---|
 | Amistad | 0-255 por ejemplar (70 al obtenerlo). Compañero: +1 por cada 1.000 monedas apostadas (tope +20/día; los duelos no cuentan). Bayas: +5/+10/+10/+15/+20 (tope +60/día por ejemplar). Ganar un duelo: +3 (5 victorias al día). Máximo teórico por ejemplar y día: +95 |
 | Efecto | Amistad ≥ 220 («Te adora»): +3 % a PS, ataque, defensa y velocidad en duelos (menos que el +9,5 % del nivel 100). Corazones 0-5 y etiqueta: Indiferente (< 100), Amistoso (≥ 100), Muy amistoso (≥ 150), Compañero fiel (≥ 200), Te adora (≥ 220), Vínculo máximo (255); efectos por nivel en «Ampliar la amistad» |
-| Evolución por amistad | 18 evoluciones (Pichu → Pikachu, Cleffa, Igglybuff, Golbat, Chansey, Eevee → Espeon/Umbreon, Togepi, Azurill, Budew, Buneary, Chingling, Riolu, Munchlax, Woobat, Swadloon, Código Cero, Snom). Con amistad ≥ 220: sin nivel mínimo y la mitad del coste base (25 → 13, 100 → 50). Se mantiene el suelo por subida de rareza (≤ 1,5 ✦ de polvo extra por caramelo), así que el argumento de «no hay arbitraje de polvo» de B2 sigue valiendo (`test/bond.test.js` lo comprueba). Espeon y Umbreon solo salen por amistad; el resto admite también la vía normal |
-| Hallazgos del compañero | Uno cada 4 h reales (sin conexión), máximo 3 acumulados (12 h; lleno, el contador se para). Premio: caramelos de su familia 2-5 (60 %), 1-2 bayas (≈ 24-30 %), 10-40 ✦ (≈ 8-12 %, tope 40 ✦ al día) o 1 Ticket Gacha (≈ 2-5 %, máximo 1 al día), más 20-80 monedas **con tope de 200 al día**. La amistad solo mejora los pesos de baya, polvo y ticket |
+| Evolución por amistad | 18 evoluciones (Pichu → Pikachu, Cleffa, Igglybuff, Golbat, Chansey, Eevee → Espeon/Umbreon, Togepi, Azurill, Budew, Buneary, Chingling, Riolu, Munchlax, Woobat, Swadloon, Código Cero, Snom). Desde el 04-11-2026 **todas** exigen amistad ≥ 220 (como en los juegos; antes solo Espeon y Umbreon) y no cuestan caramelos. El nivel mínimo es el de los juegos o, si sube la rareza, el suelo por EXP de «Progresión como en los juegos» |
+| Hallazgos del compañero | Uno cada 4 h reales (sin conexión), máximo 3 acumulados (12 h; lleno, el contador se para). Premio: 2-5 Caramelos Exp. XS (60 %), 1-2 bayas (≈ 24-30 %), 10-40 ✦ (≈ 8-12 %, tope 40 ✦ al día) o 1 Ticket Gacha (≈ 2-5 %, máximo 1 al día), más 20-80 monedas **con tope de 200 al día**. La amistad solo mejora los pesos de baya, polvo y ticket |
 | Huerto | 4 parcelas. Planta 1 baya y da 2-4 bayas de la misma clase: Aranja 4 h, Frambu 6 h, Zidra 8 h, Latano 10 h, Pinia 12 h. Regar una vez quita el 25 % del tiempo que falta. Regalo inicial: 3 Bayas Aranja |
 | Bayas | No están en `ITEMS`: no se compran, no entran en el Mercado ni las comercian los NPC. Reciclar da 1 ✦ por baya con un tope de 20 ✦ al día (dentro de los 300 ✦ del reciclaje general), es decir, ≤ 80 monedas al día en el peor caso si se cambia el polvo |
 
@@ -451,25 +444,27 @@ Inspirado en el «afecto» de las generaciones 6 y 7. **Contra la CPU (Liga) act
 * **Retribución / Frustración:** potencia `⌊amistad × 10 / 25⌋` y `⌊(255 − amistad) × 10 / 25⌋` (mínimo 1; máx. 102), la fórmula del simulador. No están en el aprendizaje de la 9.ª generación, así que el vínculo las desbloquea gratis una vez por ejemplar desde la ficha «Vínculo»: Retribución con amistad ≥ 150, Frustración con ≤ 99. La Caja PC muestra la potencia actual según la amistad. (Retribución a 255 es un ataque Normal de 102 sin desventajas, como en los juegos; cuesta llegar al máximo con las bayas, la caricia y los topes diarios.)
 * **Acariciar:** una vez al día por ejemplar, +2 de amistad (tope propio `pet`: 2, aparte de bayas 100, compañero 30, duelos 15, combates 10 y expediciones 40). Máximo teórico por ejemplar y día: +97.
 * **Frases del Pokémon:** 12 por nivel (8 comunes, 2 de la ficha y 2 del inicio), fijas por ejemplar, contexto y día (sin parpadeo).
-* **Botín de expediciones:** cada ejemplar que «te adora» aporta +10 % (repartido entre el equipo) a caramelos de su familia, caramelos comodín, bayas y polvo (con redondeo aleatorio para que cuente en cantidades pequeñas; el polvo sigue topado a 20 al día). **Monedas, MT, materiales, fragmentos y objetos raros no cambian.**
+* **Botín de expediciones:** cada ejemplar que «te adora» aporta +10 % (repartido entre el equipo) a la EXP, los Caramelos Exp., las bayas y el polvo (con redondeo aleatorio para que cuente en cantidades pequeñas; el polvo sigue topado a 20 al día). **Monedas, MT, materiales, fragmentos y objetos raros no cambian.**
 * **Duelos rápidos:** siguen con el +3 % de «Te adora»; no se añadieron efectos de afecto al motor de duelos rápidos (no hay turnos).
 
 ## Fase B6 · Expediciones AFK (server/expedition.js, test/expedition.test.js)
 
-Los ejemplares salen de la Caja durante 1, 4, 8 o 12 h reales (1-3 por equipo, 2 expediciones a la vez; la tercera, a nivel de entrenador 15) y vuelven con un botín. **Nunca dan Pokémon** (ni legendarios ni míticos) y nada se paga por adelantado: la única fuente de monedas es un hallazgo pequeño con tope.
+Los ejemplares salen de la Caja durante 1, 4, 8 o 12 h reales (1-3 por equipo, 2 expediciones a la vez; la tercera, a nivel de entrenador 15) y vuelven con EXP y un botín. **Nunca dan Pokémon** (ni legendarios ni míticos) y nada se paga por adelantado: la única fuente de monedas es un hallazgo pequeño con tope.
 
 | Recompensa (por expedición de `H` horas) | Número | Tope |
 |---|---|---|
-| Caramelos de la familia de cada participante | `H × 1 × (1,5 si comparte tipo con la zona) × (1 + nivel/200)` | sin tope diario (un ejemplar solo puede estar en una expedición a la vez: ≤ 24 h al día) |
-| Caramelos comodín | `H` (por expedición) | |
+| **EXP** de cada participante | `H × (300 + 8 × nivel) × (1,5 si comparte tipo con la zona) × (1,25 a su hora, día/noche) × (1,1 «Te adora») × (1,5 Huevo Suerte)`: a Nv. 50, 12 h = 8.400 | tope diario de EXP por ejemplar (`exp.dayCap`, compartido con los combates): ≥ 24.000 y ≈ 5 niveles a niveles medios |
+| Caramelos Exp. | `⌈H/4⌉` tiradas de 1-2 (XS 60 % · S 30 % · M 10 %) | **8 al día** por jugador |
+| Caramelo Exp. L | solo 8 h (5 %) y 12 h (12 %) | **1 al día** |
+| Huevo Suerte (objeto equipable) | solo 8 h (1 %) y 12 h (3 %) | **1 al día** |
+| Pokérus | 1 / 3.000 por participante; contagia dentro del equipo | ver «Pokérus» |
 | Bayas | `⌈H/4⌉` tiradas de 1-2 bayas al azar | tope de 999 por baya |
 | Polvo estelar | `H…2H` | **20 ✦ al día** por jugador |
 | Objeto raro (Ticket Gacha 70 % / Huevo Misterioso 30 %) | solo 8 h (10 %) y 12 h (20 %) | **1 al día** entre los dos |
-| Niveles (sin caramelos) | `⌊H/2⌋` por participante | **8 al día** por ejemplar y nivel 100 |
 | Amistad | `5 × H` (vía `bond.addFriend`, fuente `exp`) | **40 al día** por ejemplar |
 | Monedas (motivo `expedition`) | `8 × H × (1 + 0,5 × proporción que coincide)`: 12 h con todos coincidiendo = 144 | **300 al día** por jugador |
 
-**Valor máximo diario** (`expedition.dailyMaxValue()`, test): 300 monedas + 20 ✦ × 4 monedas (cambio de polvo) + 1 objeto raro valorado al tope de compra de un PNJ (Huevo Misterioso 172) = **552 monedas equivalentes**, es decir, ≈ 22 % del ingreso diario de un casual (≈ 2.500) y menos que los hallazgos del compañero (590 en el techo teórico). El test comprueba que el tope de monedas se alcanza pero no se supera tras 12 expediciones de 12 h el mismo día, que el polvo y el objeto raro respetan su tope y que no hay ningún otro movimiento positivo en el libro. Maxear por niveles gratis: +8 niveles al día por ejemplar (de Nv. 5 a 100, ≥ 12 días por ejemplar con las expediciones solas; con caramelos se acorta).
+**Valor máximo diario** (`expedition.dailyMaxValue()`, test): 300 monedas + 20 ✦ × 4 monedas (cambio de polvo) + 1 objeto raro valorado al tope de compra de un PNJ (Huevo Misterioso 172) = **552 monedas equivalentes**, es decir, ≈ 22 % del ingreso diario de un casual (≈ 2.500) y menos que los hallazgos del compañero (590 en el techo teórico). El test comprueba que el tope de monedas se alcanza pero no se supera tras 12 expediciones de 12 h el mismo día, que el polvo y el objeto raro respetan su tope y que no hay ningún otro movimiento positivo en el libro. La EXP ya no es «niveles gratis»: se reparte con la fórmula de arriba y con el tope diario por ejemplar (ver «Progresión como en los juegos»).
 
 **Ejemplares ocupados** (`m.away = 'exp:<id>'`, o `'care'` en el criadero): no se pueden liberar (`pc:release`), transferir (`pc:transfer` y en bloque), intercambiar (Milagroso), evolucionar, regalar ni vender en el Mercado (`gacha.takePoke` y `market.owned` descuentan los ocupados y, si solo quedan copias ocupadas, se rechaza con un mensaje claro), liberar por especie (`gacha.release`) ni llevar a combates o equipos guardados. `specimen.sync` nunca descarta a un ocupado (prioridad +20). El compañero sí puede ir de expedición.
 
@@ -482,7 +477,7 @@ Dos ejemplares compatibles (comparten un tipo, o uno es Ditto; sin legendarios, 
 | Especie del bebé | forma base de la familia de la madre (la hembra, o la primera plaza); con Ditto, la del otro padre |
 | Herencia | 3 IV al azar tomados de uno de los padres; naturaleza de un padre con 50 % |
 | Variocolor | 1/128 por huevo (1/64 si algún padre es variocolor: «Método Masuda» simplificado) |
-| Bebé | ejemplar nuevo Nv. 5 por `gacha.grant` (Pokédex, estrellas; a 5 estrellas solo da polvo) + 3 caramelos de su familia |
+| Bebé | ejemplar nuevo Nv. 5 por `gacha.grant` (Pokédex, estrellas; a 5 estrellas solo da polvo) + 1 Caramelo Exp. S |
 | Tarifa | `máx(200, ⌈1,2 × reventa esperada⌉)` donde reventa esperada = `polvo × 4 × (1 + 2/64)` (= tope de compra de un PNJ, con la cota alta del variocolor ×3): C 200 · U 200 · R 200 · E 400 |
 
 **No es un grifo de monedas.** El máximo que se recupera de un bebé normal es el tope de compra de un PNJ = el polvo de liberarlo cambiado a 4 monedas (C 20, U 48, R 120, E 320); la tarifa de todas las rarezas (200-400) lo supera, y también la reventa esperada con el variocolor. El test (`economía: criar → vender/liberar…`) lo comprueba para todas las rarezas y todas las formas base criables, y simula el bucle completo (tarifa → eclosión → liberar → cambiar polvo) con pérdida neta. Además cada huevo tarda ≥ 4 h reales y, para los pasos, ≥ 5.000-15.000 monedas apostadas (o 12 h). Los caramelos que da transferir al bebé (hasta 5-16) no tienen valor en monedas.
@@ -496,13 +491,15 @@ Combates reales con el simulador oficial de Pokémon Showdown (individuales y do
 | Mecánica | Números |
 |---|---|
 | Liga (CPU) | Victoria: **20 / 30 / 40 / 50 / 65 / 80 monedas** según la fuerza del rival (novato, ruta, medio, veterano, líder de gimnasio, campeón), motivo `battle` en el registro. **Máximo 10 victorias premiadas al día → techo de 10 × 80 = 800 monedas/día** (la recompensa diaria base ya son 1.000 y el techo realista, con rivales de ruta, es de 200-400): se queda en «casual» y por debajo de lo que paga el casino por jugar. Perder no cuesta nada. |
-| Resto del premio CPU | Mismo tope de 10 victorias/día: +2 caramelos de cada familia que participó (≤ 6 familias → ≤ 120 caramelos/día en el peor caso, menos que 3 tiradas de gacha diarias valen en caramelos de especies nuevas), +2 de amistad por participante (tope +10/día por ejemplar, `bond.js`), 15 XP fija (dentro de los 400 XP/día). |
+| Resto del premio CPU | Mismo tope de 10 victorias/día: **EXP** para cada participante (fórmula de 5.ª gen.; ver «Progresión como en los juegos») y una tirada de Caramelo Exp. con tope de 12.000 EXP al día, +2 de amistad por participante (tope +10/día por ejemplar, `bond.js`), 15 XP fija (dentro de los 400 XP/día). |
 | PvP | Apuesta opcional igual para los dos, dentro de `maxBet`. Se cobra al crear el reto (depósito `escrow`) y al aceptar; el ganador cobra el bote menos el **5 % de comisión** (0 % en el evento de duelos); empate, cancelación, caducidad (10 min), fallo del simulador o reinicio del servidor: **devolución íntegra**. Sin bonus de compañero (`noBonus`), como los duelos. Cuenta como duelo para estadísticas y misiones. |
 | Zero-sum | Un combate PvP no crea monedas: `suma antes = suma después + comisión`, con test. |
 | Simultáneos | Máximo 8 combates a la vez (`SD_MAX_BATTLES`): el simulador pesa ~130 MB de RSS cuando se usa y la instancia gratuita tiene 512 MB. El simulador se carga solo al empezar el primer combate. |
 | Turnos | 60 s por turno; al agotarse se elige «default»; 3 tiempos agotados seguidos = derrota por inactividad. |
 
 ## Progresión casual: completar la Pokédex y maxear un Pokémon sin cientos de horas (server/gacha.js, candy.js, bond.js, pokedex.js · test/progression.test.js)
+
+> **Histórico (28-10-2026).** Las tablas de esta sección describen el sistema de caramelos de familia, que se sustituyó el 04-11-2026 por EXP, Caramelos Exp. y Chapas (ver «Progresión como en los juegos»). Se conserva porque explica el sesgo de Pokédex, la fabricación barata y los topes que siguen vigentes.
 
 Petición del dueño: «completar la Pokédex y maxear un Pokémon no debe costar cientos de horas; el casino es casual, pero sin abusar de las mecánicas para sacar una ventaja considerable». Se mantienen los topes diarios de monedas y todos los invariantes anti-faucet; lo que cambia es **cuánto cuesta cada cosa en tiempo**.
 
@@ -556,12 +553,83 @@ Petición del dueño: «completar la Pokédex y maxear un Pokémon no debe costa
 ### Combates y redespliegues
 Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + registro de entradas); al arrancar se reconstruye reescribiendo las entradas en un simulador nuevo (sin que la IA ni los temporizadores actúen sobre peticiones antiguas) y el turno de los humanos recibe 60 s extra. Los depósitos de PvP (`escrow btl:*`) no se devuelven en el arranque mientras exista el combate guardado; si el registro está dañado o es de otra versión del simulador, se devuelven desde el propio depósito. Abandono: 15 min sin elegir = derrota (en PvP el rival cobra el bote).
 
+## Progresión como en los juegos: EXP, Caramelos Exp., evolución por nivel, Chapas, Pokérus (server/exp.js, candy.js, hyper.js, pokerus.js, forms.js · test/exp.test.js, candy.test.js, progression.test.js) — 04-11-2026
+
+Petición del dueño: sustituir los caramelos de familia (estilo Pokémon GO) por los sistemas de la serie principal, **sin nerfs de valor y sin perder nada de lo que ya tienen los jugadores**, y «que tenga sentido, no demasiado fácil».
+
+### EXP y niveles
+* Cada ejemplar tiene `exp` y su nivel sale del **grupo de experiencia real** de su especie (Rápido 800.000 · Medio rápido 1.000.000 · Medio lento 1.059.860 · Lento 1.250.000 · Errático 600.000 · Fluctuante 1.640.000 al Nv. 100). Los datos (grupo y EXP base de las 1.025 especies, y las seis tablas) salen de los CSV de PokeAPI con `node scripts/build-exp.js <carpeta-csv>` → `server/expdata.json` (Showdown no trae el grupo). Los ejemplares anteriores tenían `exp: 0`: `exp.ensure` les da la EXP de su nivel la primera vez (no pierden nada).
+* **Combates contra la CPU:** a cada participante, por cada rival derrotado, `⌊((base × N_rival) ÷ (5 × participantes) × ((2 N_rival + 10) ÷ (N_rival + N_propio + 10))^2,5 + 1) × 1,5⌋` (fórmula escalada de 5.ª gen., ×1,5 por ser entrenador; el nivel propio es el real del ejemplar, el del rival el de la partida: 50 en «Nivel 50 (justo)» o el del equipo + 0…9 en «Niveles reales»). Se aplica en el servidor al terminar la victoria premiada (las 10 al día de siempre). Huevo Suerte: ×1,5.
+* **Expediciones:** `H × (300 + 8 × nivel)` por participante, con las bonificaciones de zona (×1,5), hora (×1,25) y «Te adora» (×1,1) de antes.
+* **Tope diario por ejemplar** (combates + expediciones, `exp.dayCap`): lo que cuesta subir 5 niveles desde el nivel con el que empezó el día, con un mínimo de **24.000 EXP** (a Nv. 50 ≈ 50.000; a Nv. 80 ≈ 100.000; a niveles bajos son muchos niveles de golpe, como subir a un Pokémon flojo en los juegos). **Los Caramelos Exp. no cuentan para el tope.**
+* Al subir de nivel se aprenden los movimientos de ese nivel (cola de pendientes de siempre) y, si cumple los requisitos, el servidor ofrece **«¿Quieres que evolucione?»** (`evoOptions`: solo las evoluciones «de nivel», es decir, nivel, amistad, objeto equipado o movimiento). Cancelar no cambia nada y se puede evolucionar desde la Caja PC.
+
+### Caramelos Exp.
+| | XS | S | M | L | XL |
+|---|---|---|---|---|---|
+| EXP | 100 | 800 | 3.000 | 10.000 | 30.000 |
+| Tienda de Combate (PB) | – | 8 | 30 | 100 | – |
+
+* Sin precio en monedas (no se compran, no se reciclan, los PNJ no los comercian; entre jugadores se pueden vender en el Mercado como cualquier objeto). Se usan en Caja PC → Datos → Entrenar (se elige cuántos; se gastan solo los necesarios hasta el Nv. 100) o desde la Mochila.
+* **Fuentes** (todas con tope): victoria contra la CPU (una tirada según la fuerza del rival: tier 1 XS 30 % / S 5 % … tier 6 S 25 % / M 15 % / L 4 %; **tope 12.000 EXP en caramelos al día**) · expediciones (≤ 8 caramelos al día + 1 L al día) · cada tirada del gacha 1 XS (S si es especie nueva) · eclosión 1 S · hallazgo del compañero 2-5 XS · transferir: C 1 XS, U 2 XS, R 1 S, E 2 S, L 1 M, M 2 M · Torre: 1 M al cerrar una ronda con PB (dentro del tope de 40 PB/día) · Liga: premios de temporada · Tienda de Combate (100 EXP por PB; con el tope de 90 PB al día son ≤ 9.000 EXP al día).
+* **Huevo Suerte** (objeto equipable de la Tienda de Combate, 64 PB; 1 % / 3 % en expediciones de 8 / 12 h, 1 al día): ×1,5 a la EXP de combates y expediciones (no a los caramelos, como en los juegos). El consumible anterior «Huevo Suerte» (EXP de entrenador ×2, 1 h) se llama ahora «Huevo Fortuna» y no cambia.
+
+### Migración (sin pérdidas)
+Una sola vez por cuenta (`u.expMig`; `fixes.js` la aplica al arrancar **después de una copia de seguridad**, y además de forma perezosa al leer la cuenta si llegara una restaurada de una copia vieja): cada caramelo de familia o comodín se convierte en Caramelos Exp. por **lo que valía subir de nivel con él**: de 5 a 100 costaba 144 caramelos (⌈N/50⌉ por nivel), así que 1 caramelo = `⌈EXP(5→100) del grupo de su familia ÷ 144⌉` = **8.680** (Lento) · **6.944** (Medio rápido) · 5.555 (Rápido) · 7.360 (Medio lento) · 4.166 (Errático) · 11.389 (Fluctuante) EXP, y 1 caramelo comodín = **7.373** EXP (la media de los grupos ponderada por especies). El total se redondea hacia arriba a 100 EXP y se reparte en XL, L, M, S y XS (voraz). `u.candy` desaparece y `u.candyOld = { n, exp, at }` deja constancia. **Los niveles ya subidos, los IV ya entrenados (ahora son IV reales) y las evoluciones hechas no se tocan.** `test/exp.test.js` comprueba el valor, el redondeo, la idempotencia, que se suman a lo que ya había y que la corrección de arranque y la lectura perezosa coinciden.
+
+### Evolución sin caramelos
+* Requisitos: **nivel** (de los juegos, `evodata.json` → `lvl`; 30 / 40 por fase si el dato es «pasos, críticos, lugares…»), **amistad ≥ 220** en las 18 evoluciones por amistad (antes solo Espeon y Umbreon; las demás podían hacerse con caramelos), y los especiales de siempre (piedras, intercambio, sexo, hora, movimiento, estadísticas). La «primera evolución» a una especie nueva sigue sin gastar la copia de origen (es por copias, no por caramelos).
+* **Suelo de EXP por polvo ganado** (`candy.evoLevel`): en las evoluciones «de nivel» que **suben la rareza**, el nivel mínimo es el menor para el que la EXP desde el Nv. 5 sea ≥ **300 × el polvo que gana el resultado al liberarlo**. Afecta a 38 de ≈ 380 evoluciones, casi siempre por 1-6 niveles (Magikarp → Gyarados Nv. 20 → 27, Riolu → Lucario 31, Golbat → Crobat 28, Munchlax → Snorlax 27…).
+* **Techo de polvo evolucionando y transfiriendo** (`test/progression.test.js`, «techo de polvo…»; `SHOW=1` imprime los números): la EXP «externa» máxima al día es ≈ **444.600** (15 ejemplares al tope de 24.000 + botín de combates 12.000 + expediciones 24.000 + 10.000 + PB 9.000 + Torre 12.000 + tiradas 17.600) y la EXP que da transferir es, como mucho, 26,7 EXP por ✦ de polvo (la peor rareza, R: 800 ÷ 30), con lo que el factor de reinversión es 26,7 ÷ 300 < 0,09.
+  * **Techo teórico** (eligiendo siempre la evolución más barata en EXP por ✦ y teniendo justo esos duplicados): ≤ **1.627 ✦ ≈ 6.500 monedas al día** (la prueba exige ≤ 7.000).
+  * **Caso típico** (los duplicados que da el gacha de verdad, evolucionados por la rama de más polvo): cada Pokémon tirado vale ≈ 25 ✦ de polvo extra a cambio de ≈ 26.000 EXP → **0,00096 ✦ por EXP**, 100 veces menos que el suelo. Un casual (≈ 150.000 EXP al día, dedicándolos TODOS a esto) gana ≈ **145 ✦ ≈ 580 monedas al día** (antes, con caramelos: ≈ 770) y con la EXP máxima teórica ≈ 1.700 monedas. Todo exige tener los duplicados (cada tirada cuesta 135-150 monedas y el bucle gacha → liberar sigue devolviendo < 70 %) y gastar la EXP que si no iría a tus Pokémon.
+  * `test/balance.test.js` mantiene el bucle «una tirada con todo repetido y transferido, con toda su EXP gastada en evolucionar» por debajo del 95 % de lo que cuesta.
+
+### Tiempo para subir de nivel (jugador de ≈ 1 h al día)
+`levelDays` simula día a día con las funciones reales (`foeExp`, `award`, tope diario, botín esperado): **10 victorias** contra rivales de EXP base 150 que van 3 niveles por encima (3 participantes, «niveles reales»), **una expedición de 12 h** y los Caramelos Exp. esperados (≈ 6.000 al día entre combates, expedición y 22 tiradas).
+
+| Un Pokémon al que se dedica el día | Nv. 50 | Nv. 100 |
+|---|---|---|
+| Medio rápido (Pikachu) | 5 días | **20 días** (15 con Huevo Suerte) |
+| Medio lento (Charizard) | 4 días | **21 días** (16) |
+| Lento (Gyarados) | 5 días | **25 días** (18) |
+| «Nivel 50 (justo)» (rivales fijos de Nv. 50: rinden menos a partir del Nv. 50) | 4-5 días | 31-38 días |
+| Más tranquilo (5 victorias y 8 h de expedición al día) | 6-8 días | 32-40 días |
+
+Objetivo: Nv. 50 en 3-5 días y Nv. 100 en 2-3 semanas dedicándole el día: significativo, no trivial (el último tramo cuesta más de 3 veces lo que cuesta llegar al 50).
+
+### Pokédex (con la evolución gastando EXP)
+Mismo modelo que antes (22 tiradas al día, Milagroso, fabricar con polvo, requisitos especiales ignorados) pero cada evolución nueva gasta la EXP que falta hasta su nivel (≈ 140.000 EXP al día en combates «justos» de Nv. 50 contra Pokémon de Nv. ≈ 20 y una expedición de 8 h, más los caramelos de tiradas y transferencias):
+
+| | Antes (caramelos) | Después (EXP) |
+|---|---|---|
+| Núcleo (931 especies) | ≈ 33 días | **≈ 45 días** (límite del test 52) |
+| Completa (1.025) | ≈ 97 días | **≈ 106 días** (límite 125) |
+| Especies al día 35 | ≈ 957 | **≈ 917** |
+
+Es más lento porque evolucionar ya no es «gratis con caramelos baratos» sino que pide subir de nivel, que es lo que se buscaba; sigue siendo cuestión de semanas, no de cientos de horas.
+
+### Entrenamiento Extremo (Chapas)
+* **Chapa de Botella** (40 PB): UN IV *efectivo* a 31 en combate (a elegir); **Chapa Dorada** (200 PB): todos los que no lo sean. Solo con **Nv. 50+** (regla de Escarlata/Púrpura). `m.hyper = [bool × 6]`; los IV reales (`m.ivs`) no cambian: el Criadero hereda los reales (`test/daycare.test.js`) y las estadísticas de la Caja PC y los conjuntos de Showdown (`sdmap.toSet`) usan los efectivos (`hyper.effIvs`). Una estadística con IV 31 no admite chapa; no se puede deshacer.
+* **Fuentes:** Tienda de Combate (PB, nunca monedas), Torre (Chapa de Botella al vencer a un Jefe, una al día) y Liga (premios de temporada). Con 20 PB al día (solo 10 victorias) una Dorada son 10 días; con ≈ 40 (victorias + una carrera corta de Torre) ≈ 5 días; 6 Chapas de Botella (240 PB) cuestan más que una Dorada. Un Pokémon al azar necesita ≈ 5,8 estadísticas: **IV al máximo en ≈ 1-2 semanas de PB**.
+* El entrenamiento de IV con caramelos **desaparece**; lo ya entrenado queda como IV real.
+
+### Pokérus
+`server/pokerus.js`: **1 / 3.000** por Pokémon y victoria premiada o expedición (no a cuentas NPC). Duplica los EVs que gana (el tope diario cuenta el valor base). Se contagia (25 % por cada otro Pokémon del mismo equipo de combate o expedición, solo mientras el portador está «infectado») y a los **2-5 días** (según el ejemplar) queda «curado»: sigue duplicando, ya no contagia. Aviso al jugador y mensaje en «En vivo» cuando aparece (no al contagiar). Marca «PKRS» en la Caja PC.
+
+### Evoluciones al azar «reales» (`server/forms.js`)
+Fijas por ejemplar (se derivan de su `uid`): **Wurmple** → Silcoon o Cascoon (50 / 50; solo se ofrece la que toca); **Dunsparce** → Dudunsparce, 1 de cada 100 «de tres segmentos» (`Dudunsparce-Three-Segment` en Showdown); **Tandemaus** → Maushold, 1 de cada 100 «familia de tres» y el resto «familia de cuatro» (`Maushold-Four`). Al evolucionar se guarda `m.form` y la Caja PC muestra la forma; el sprite sigue siendo el de la especie.
+
+### Cómo se mide
+* `test/exp.test.js`: tablas y grupos, fórmula, tope diario, Huevo Suerte, Caramelos Exp., combate CPU, migración (valor, redondeo, idempotencia, arranque y lectura perezosa), Chapas, Pokérus (contagio, curación, EVs ×2) y evoluciones al azar.
+* `test/candy.test.js`: transferencias, evolución sin coste, aviso al subir de nivel y suelo de EXP por polvo en las ≈ 380 evoluciones; `test/progression.test.js`: Pokédex, tiempo de nivel, Chapas y techo de polvo; `test/balance.test.js`: bucle de caramelos; `test/bp.test.js` y `test/npc.test.js`: precios en PB y artículos inertes.
+
 ## Movimientos como en los juegos: por nivel, MT, Puntos de Batalla, objetos, habilidades… (server/moves.js · test/moves.test.js)
 
 ### Fase 1 · Movimientos por nivel
 * Cada ejemplar tiene `learned` (todos los movimientos que ha aprendido) y `sdMoves` (hasta 4 equipados, los que lleva a combate), más `pending` (movimientos nuevos por decidir) y `mv: 2` (versión del formato).
 * **Migración B (perezosa, una vez por ejemplar):** aprendidos = movimientos por nivel de su especie con nivel ≤ su nivel (los de «al evolucionar» cuentan como nivel 1); equipados = los 4 últimos, como un Pokémon salvaje de los juegos. Los movimientos libres antiguos se descartan. Los equipos guardados solo guardan ejemplares, así que siempre salen con movimientos legales.
-* **Subir de nivel / evolucionar** (caramelos, expediciones, evolución): los movimientos nuevos se equipan solos si hay hueco; si no, quedan pendientes y el cliente pregunta «¿cuál olvida?». «No aprender» lo deja en `learned` (se equipa luego gratis, como el Recordador de Escarlata/Púrpura). La evolución conserva todo lo aprendido.
+* **Subir de nivel / evolucionar** (combates, caramelos, expediciones, evolución): los movimientos nuevos se equipan solos si hay hueco; si no, quedan pendientes y el cliente pregunta «¿cuál olvida?». «No aprender» lo deja en `learned` (se equipa luego gratis, como el Recordador de Escarlata/Púrpura). La evolución conserva todo lo aprendido.
 * Datos de `server/learnsets.json` (`scripts/gen-learnsets.js`, Showdown generación 9 y, para especies ausentes de Escarlata/Púrpura, la última con datos). La Caja PC no carga el simulador.
 * En «Nivel 50 (justo)» las estadísticas se normalizan a 50, pero los movimientos son los realmente aprendidos (como el VGC). Los entrenadores básicos de la CPU (fuerza 1) llevan movimientos por nivel acordes al equipo del jugador.
 * No crea monedas ni valor: aprender, olvidar y cambiar movimientos es gratis.
@@ -625,21 +693,22 @@ Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + reg
 - **Migración sin nerf:** los ejemplares anteriores (sin campo `evs`) reciben perezosamente 84 en cada estadística (504 en total), que es lo que usaban los combates; sus combates no cambian. Los ejemplares nuevos empiezan en 0 (`specimen.make`).
 - **Fuentes gratuitas** (con tope diario por ejemplar, `evd`): Expediciones **+4 EV/h por participante** en la estadística de la zona (Bosque Verde PS, Cueva Celeste Defensa, Mar Espuma Def. Esp., Volcán Canela At. Esp., Central Energía Velocidad, Torre Dragón Ataque, Jardín Hada Def. Esp., Barrio Oscuro Ataque), tope **60/día**; victorias contra la CPU **+4 EV por rival derrotado** en su estadística base más alta (Showdown no trae «EV yield»), a todos los participantes, tope **48/día** (y las victorias premiadas ya tienen tope de 10 al día).
 - **Sumidero de monedas:** vitaminas (Más PS, Proteína, Hierro, Calcio, Zinc, Carburante) **+10 EV por 1.000 monedas** (hasta 252 y 510 total) y bayas Grana, Algama, Ispero, Meluce, Uvav y Tamate **−10 EV por 300 monedas**. Un Pokémon a 252 en una estadística cuesta ≈ 25 vitaminas = 25.000 monedas (≈ 2 semanas de ingresos casuales): entrenar a fondo es una meta, no un trámite. Las gratuitas dan como mucho 108 EV al día por ejemplar si se combina todo (≈ 5 días para 510).
+- **Pokérus** (`server/pokerus.js`): ×2 a los EVs que gana el ejemplar (el tope diario cuenta el valor base, así que el tope máximo de EVs al día no cambia: solo se alcanza antes). Ver «Progresión como en los juegos».
 - Los EVs no valen monedas ni polvo y no se transfieren; las vitaminas y bayas son objetos de tienda normales (Mercado y NPC con sus topes habituales: el NPC nunca compra por encima del 60 % ni vende por debajo del precio de tienda; reciclar da el 40 %).
 
 ## Evoluciones especiales como en los juegos (server/evoreq.js, scripts/build-evo.js, server/evodata.json · test/evoreq.test.js)
 
-- Los requisitos salen de los datos de Showdown (`evoType`, `evoItem`, `evoCondition`, sexo del destino) y se guardan en `evodata.json` (111 evoluciones; regenerar con `node scripts/build-evo.js`). El coste en caramelos y el descuento de la primera evolución **no cambian**: el requisito especial se añade encima y se gasta al evolucionar (solo si todo lo demás es válido).
-- Tipos: **piedras** (Fuego, Agua, Trueno, Hoja, Lunar, Solar, Día, Noche, Alba, Hielo: Eevee → Vaporeon/Jolteon/Flareon/Leafeon/Glaceon…); **objetos** (Manzana Ácida/Dulce/Melosa, Tetera Agrietada, Augurita Negra, Armaduras…); **intercambio** (Kadabra, Machoke, Graveler, Haunter… y con objeto: Revestimiento Metálico, Escama Dragón, Mejora, Protector, Electrizador, Magmatizador, Tela Terrible, Disco Extraño, Roca del Rey, Escamas, Saquito, Nata) que se paga con un **Cordón Unión** o con un **intercambio real pendiente**; **sexo** del destino (Kirlia ♂ + Piedra Alba → Gallade, Snorunt ♀ → Froslass, Combee ♀ → Vespiquen, Burmy ♀/♂ → Wormadam/Mothim, Salandit ♀ → Salazzle); **hora** de España (Espeon de día y Umbreon de noche además de amistad ≥ 220; Chansey/Weavile/Gliscor con su objeto; Tyrantrum, Aurorus, Lurantis, Gumshoos, Houndstone); **estadísticas** (Tyrogue → Hitmonlee/Hitmonchan/Hitmontop según Ataque y Defensa a Nv. 50); **movimiento** (Mr. Mime/Sudowoodo con Mimético, Mamoswine con Poder Pasado…: solo si la preevolución puede aprenderlo aquí). Lo demás (pasos, críticos, lugares, clima) sigue siendo solo por caramelos.
-- **Precios (sumidero):** piedras **2.000**, objetos raros **5.000**, Cordón Unión **1.500** en la Tienda Poké. Una evolución por intercambio con objeto cuesta ≈ 6.500 monedas más los caramelos; una por piedra, 2.000.
-- **Fuente gratuita:** las Expediciones de 8 h (6 %) y 12 h (12 %) pueden dar un objeto de evolución de la zona (sobre todo piedras), máx. 1 al día. Sin valor en monedas: los PNJ no los compran y **no se reciclan** (por eso un objeto de 2.000 que cae gratis no es un surtidor de polvo); entre jugadores se comercian como cualquier objeto.
+- Los requisitos salen de los datos de Showdown (`evoType`, `evoItem`, `evoCondition`, sexo del destino) y se guardan en `evodata.json` (111 evoluciones; regenerar con `node scripts/build-evo.js`). Desde el 04-11-2026 la evolución **no cuesta caramelos**: el requisito especial se suma al nivel mínimo y se gasta al evolucionar (solo si todo lo demás es válido).
+- Tipos: **piedras** (Fuego, Agua, Trueno, Hoja, Lunar, Solar, Día, Noche, Alba, Hielo: Eevee → Vaporeon/Jolteon/Flareon/Leafeon/Glaceon…); **objetos** (Manzana Ácida/Dulce/Melosa, Tetera Agrietada, Augurita Negra, Armaduras…); **intercambio** (Kadabra, Machoke, Graveler, Haunter… y con objeto: Revestimiento Metálico, Escama Dragón, Mejora, Protector, Electrizador, Magmatizador, Tela Terrible, Disco Extraño, Roca del Rey, Escamas, Saquito, Nata) que se paga con un **Cordón Unión** o con un **intercambio real pendiente**; **sexo** del destino (Kirlia ♂ + Piedra Alba → Gallade, Snorunt ♀ → Froslass, Combee ♀ → Vespiquen, Burmy ♀/♂ → Wormadam/Mothim, Salandit ♀ → Salazzle); **hora** de España (Espeon de día y Umbreon de noche además de amistad ≥ 220; Chansey/Weavile/Gliscor con su objeto; Tyrantrum, Aurorus, Lurantis, Gumshoos, Houndstone); **estadísticas** (Tyrogue → Hitmonlee/Hitmonchan/Hitmontop según Ataque y Defensa a Nv. 50); **movimiento** (Mr. Mime/Sudowoodo con Mimético, Mamoswine con Poder Pasado…: solo si la preevolución puede aprenderlo aquí). Lo demás (pasos, críticos, lugares, clima) es solo por nivel (el de los juegos, o 30 / 40 si no tiene).
+- **Precios (sumidero):** piedras **2.000**, objetos raros **5.000**, Cordón Unión **1.500** en la Tienda Poké. Una evolución por intercambio con objeto cuesta ≈ 6.500 monedas; una por piedra, 2.000.
+- **Fuente gratuita:** las Expediciones de 8 h (6 %) y 12 h (12 %) pueden dar un objeto de evolución de la zona (sobre todo piedras), máx. 1 al día. Sin valor en monedas: los PNJ no los compran y **no se reciclan** (por eso un objeto de 2.000 que cae gratis no es un surtidor de polvo; en todos los casos el objeto vale más monedas que el polvo que gana la evolución: lo comprueba `test/candy.test.js`); entre jugadores se comercian como cualquier objeto.
 - **Intercambio real:** cada Pokémon recibido de otro jugador (regalo o Mercado) da un «intercambio pendiente» (máx. 2 al día y 3 guardados) que vale como un Cordón Unión. No se puede obtener con cuentas NPC ni con uno mismo, y los regalos ya tienen sus topes (ver ANTIABUSO.md).
 
 ## Pokémon de día y de noche (server/daytime.js, gacha.js, expedition.js · test/daytime.test.js)
 
 - Reloj de España (`Europe/Madrid`, con cambio de hora): **noche 21:00–06:00, día 06:00–21:00**. Todo recibe `now` para poder probarse.
 - **Gacha (todos los banners):** 41 especies nocturnas (línea de Gastly, Zubat, Hoothoot, Murkrow, Misdreavus, Sableye, Houndour, Sneasel, Absol, Duskull, Litwick, Phantump…) y 28 diurnas (Ledyba, Sunkern, Cherubi, Hoppip, Starly, Combee, Pidgey…) pesan **×2 a su hora y ×0,5 fuera** (4× entre una y otra). Es un peso dentro de la rareza ya sorteada, igual que el peso por fase evolutiva y el sesgo «Pokédex»: la probabilidad de cada rareza, los destacados, el valor esperado de una tirada y los legendarios/míticos no cambian, y nada se excluye (la Pokédex se completa a cualquier hora).
-- **Expediciones** (nunca dan Pokémon): un Pokémon de día/noche que **sale a su hora** (se guarda en la expedición, `phase`) rinde **+25 % de caramelos** de su familia; fuera de hora, igual que antes (sin penalización). Los caramelos no tienen valor en monedas.
+- **Expediciones** (nunca dan Pokémon): un Pokémon de día/noche que **sale a su hora** (se guarda en la expedición, `phase`) rinde **+25 % de EXP**; fuera de hora, igual que antes (sin penalización).
 - También manda el reloj en las evoluciones de horario (Espeon de día, Umbreon de noche…; ver el apartado de evoluciones especiales).
 
 ## Liga Pokémon: clasificatoria por temporadas (server/league.js · test/league.test.js)
@@ -647,7 +716,7 @@ Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + reg
 - **Qué es:** un modo más de «🔎 Buscar rival» (`battle:queue {ranked: true}`): 1 contra 1 o dobles, **nivel 50 justo, sin apuesta y sin efectos de amistad** (se fuerzan en el servidor; el cliente no puede cambiarlo). No hay monedas en juego: el PvP clasificatorio no crea ni destruye monedas. Los combates dan los PB de siempre (3/1, topes y límites por rival de `bp.js`).
 - **Puntuación:** Elo por formato (Individual y Dobles por separado): empieza en 1000, K = 32, suelo 0, empate = ½. Rangos: Poké Ball < 1100 · Super Ball 1100 · Ultra Ball 1250 · Master Ball 1400, más el «Top 3» de cada formato (mín. 10 combates puntuados y Super Ball). El emparejamiento prefiere al rival más cercano (ventana de ±300 que crece 150 cada 30 s de espera).
 - **Temporadas:** mes natural en hora de España (`Europe/Madrid`). Un comprobador cierra la temporada al arrancar y cada minuto (idempotente; si el casino estuvo apagado meses, la cierra igualmente). Reloj inyectable para pruebas (`LEAGUE_FAKE_NOW` o `_setClock`).
-- **Premios de fin de temporada** (por el rango más alto alcanzado; hace falta haber jugado **≥ 5 combates puntuados**): Poké Ball 20 PB · Super Ball 40 PB + Marco Liga Super + título · Ultra Ball 80 PB + Marco Liga Ultra + título · Master Ball 150 PB + Marco Liga Master + título + **1.000 monedas** · Top 3 (en lugar de las 1.000): Marco Liga Top 3 + título + **2.000 monedas**. **Tope: 2.000 monedas por jugador y temporada** (≈ 3 % de una sesión normal; las monedas solo llegan a Master Ball y Top 3, quien suele jugar mucho). Los PB de temporada no cuentan en los topes diarios: son un premio, no una vía de granjeo (máx. 150 al mes).
+- **Premios de fin de temporada** (por el rango más alto alcanzado; hace falta haber jugado **≥ 5 combates puntuados**): Poké Ball 20 PB · Super Ball 40 PB + Marco Liga Super + título · Ultra Ball 80 PB + Marco Liga Ultra + título · Master Ball 150 PB + Marco Liga Master + título + **1.000 monedas** · Top 3 (en lugar de las 1.000): Marco Liga Top 3 + título + **2.000 monedas**. Además, **objetos de entrenamiento** (una vez al mes): Poké Ball 3 Caramelos Exp. S · Super Ball 3 M + 1 Chapa de Botella · Ultra Ball 2 L + 2 Chapas de Botella · Master Ball 1 XL + 2 L + 1 Chapa Dorada · el Top 3 suma 1 Chapa Dorada. **Tope: 2.000 monedas por jugador y temporada** (≈ 3 % de una sesión normal; las monedas solo llegan a Master Ball y Top 3, quien suele jugar mucho). Los PB de temporada no cuentan en los topes diarios: son un premio, no una vía de granjeo (máx. 150 al mes).
 - **Cosméticos:** los marcos son objetos `event` (no salen de Huevos Misteriosos; los PNJ no los compran ni venden); los títulos se ganan (no comerciables).
 - **Reinicio suave:** nueva puntuación = 1000 + (puntuación − 1000) / 2, por formato. El historial de temporadas (último año) se guarda en el jugador (`u.league.hist`).
 - **Dónde se ve:** pestaña «🏆 Liga» de Combates (rango, puntuación, V/D, cuenta atrás, top 20, premios, temporadas pasadas), categoría «Liga» del Ranking y el emblema (sprites de objeto Poké/Super/Ultra/Master Ball) junto al nombre en la lista de conectados, la ficha del jugador, el chat y la barra del combate.
@@ -656,5 +725,5 @@ Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + reg
 
 - **Qué es:** carrera de combates contra la CPU con **equipos de alquiler**: conjuntos de los combates aleatorios de Showdown (movimientos del `movepool` del rol, habilidad real, objeto sin repetir, EVs por rol), **nivel 50**, validados con `TeamValidator` (`gen9customgame@@@Obtainable`; las especies que solo existen en eventos o son legendarias se descartan). Se eligen 3 de 6 (Individual) o 4 de 6 (Dobles); tras cada victoria se puede cambiar uno por uno del rival derrotado (cláusula de especies). No hace falta tener ningún Pokémon.
 - **Estructura:** 7 combates = una ronda; el combate 21 (y cada 21) es contra un Jefe de la Torre con nombre (Magno, Valeria, Tomás, Elena). Fuerza del rival por suma de base: 300–450 (1–7), 380–520 (8–14), 440–590 (15–21), 480–640 (22+), jefes 540–680. Perder (o empatar, rendirse, abandonar) termina la carrera; se guarda el récord por formato.
-- **Recompensas: solo PB y títulos, NUNCA monedas** (ni caramelos, ni amistad, ni MT): **1 PB por victoria en los combates 1–7, 2 en 8–14, 3 de ahí en adelante, +10 PB al cerrar cada ronda**, con **tope propio de 40 PB al día** (`bpdata.CAPS.tower`, independiente de los 30 + 20 de CPU y PvP). Una carrera hasta el 21 vale 72 PB sin tope, así que el tope manda: el máximo total de PB al día pasa de 50 a 90 (≈ dos objetos de la Tienda). Títulos a las rachas de 21, 50 y 100 («Aspirante / Maestro / Leyenda de la Torre»).
+- **Recompensas: PB, títulos y un poco de entrenamiento, NUNCA monedas** (ni amistad, ni MT; un Caramelo Exp. M al cerrar cada ronda con PB —o sea, dentro del tope diario de la Torre— y una Chapa de Botella al vencer a un Jefe, una al día como mucho): **1 PB por victoria en los combates 1–7, 2 en 8–14, 3 de ahí en adelante, +10 PB al cerrar cada ronda**, con **tope propio de 40 PB al día** (`bpdata.CAPS.tower`, independiente de los 30 + 20 de CPU y PvP). Una carrera hasta el 21 vale 72 PB sin tope, así que el tope manda: el máximo total de PB al día pasa de 50 a 90 (≈ dos objetos de la Tienda). Títulos a las rachas de 21, 50 y 100 («Aspirante / Maestro / Leyenda de la Torre»).
 - **Persistencia:** la carrera vive en `u.tower.run` (fase, equipo de alquiler, racha); el combate es un combate CPU normal con `tw` en su instantánea (se reconstruye con semilla + registro de entradas). Si el combate guardado se pierde, la carrera vuelve a «lista» sin perder la racha.

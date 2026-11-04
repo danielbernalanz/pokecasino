@@ -24,6 +24,7 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - Liberar, transferir, reciclar o vender a un NPC nunca devuelve más de lo que cuesta conseguirlo
   (`test/balance.test.js`, `test/npc.test.js`, `test/candy.test.js`, `test/progression.test.js`).
 - Criadero: la tarifa supera lo que vale el bebé (`test/daycare.test.js`).
+- Evolución + transferir: la EXP de cada fuente tiene tope diario por ejemplar y en el botín; las evoluciones «de nivel» que suben la rareza exigen ≥ 300 EXP por ✦ ganado, así que el máximo teórico es ≈ 1.600 ✦ al día (≈ 6.500 monedas, con duplicados escogidos a mano) y el típico ≈ 580 monedas (`test/progression.test.js`, `test/candy.test.js`). Los Caramelos Exp. no se compran con monedas ni los comercian los PNJ.
 - Puntos de Batalla: solo en combates, 30/día (CPU) + 20/día (PvP con mínimo de turnos y 3 combates/rival); intransferibles y sin conversión a monedas; los PNJ no compran lo que se paga con PB (`test/bp.test.js`).
 - Fragmentos del Tutor: 3/día desde expediciones; los PNJ no los comercian (`test/tutor.test.js`).
 - Máquina MT: fabricar cuesta monedas (`tm_craft`) y materiales; los PNJ no compran MT ni materiales y su tope teórico sería ≤ 25 % del coste (`test/tm.test.js`). Botín de materiales: 12/día en expediciones y 15/día en combates; MT de premio: 1/día por vía (`tm.js`).
@@ -39,7 +40,7 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 
 ## Torre Batalla
 
-- Solo da PB (tope **40/día**) y títulos; nunca monedas, caramelos ni objetos comerciables, así que no hay nada que convertir. Los PB no se regalan ni se venden (ver arriba).
+- Da PB (tope **40/día**), títulos y, solo cuando cobra PB (o sea, dentro de ese tope), un Caramelo Exp. M al cerrar ronda y, al vencer a un Jefe, una Chapa de Botella (una al día); nunca monedas. Los PNJ no compran nada de eso. Los PB no se regalan ni se venden (ver arriba).
 - Los equipos son de alquiler y se generan en el servidor (el cliente solo elige índices); el rival lo genera el servidor al empezar cada combate. Empatar, rendirse o abandonar acaba la carrera.
 - Una cuenta secundaria puede sacar como mucho 40 PB al día en la Torre, igual que la principal: no aporta nada a la principal (los PB son intransferibles).
 
@@ -70,3 +71,11 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - Varias cuentas desde redes distintas (datos móviles) siguen siendo posibles; los topes de regalos limitan el daño.
 - El Mercado entre jugadores veteranos admite cualquier precio (es su libertad); la alerta de saldo sospechoso
   avisa si alguien acumula sin explicación.
+
+## EXP, Caramelos Exp., Chapas y Pokérus
+
+- **EXP** solo se gana combatiendo contra la CPU (victorias premiadas, 10 al día) y en expediciones, con un **tope diario por ejemplar** (≥ 24.000 EXP, ≈ 5 niveles) que un jugador no puede saltarse con cuentas secundarias (la EXP no se transfiere). Los combates PvP no dan EXP.
+- **Caramelos Exp.:** sin precio en monedas; se pueden vender entre jugadores como cualquier objeto, pero sus fuentes tienen tope (combates 12.000 EXP/día, expediciones 8/día + 1 L, Tienda de Combate ≤ 9.000 EXP/día por los PB, Torre y Liga). Pasar caramelos a una cuenta secundaria no aporta nada que no pueda conseguir ella con esos mismos topes.
+- **Chapas** (Entrenamiento Extremo): solo PB, Torre (1 al día) y Liga (mensual); IV reales intactos, así que no hay forma de «criar» IV perfectos con ellas.
+- **Pokérus:** 1/3.000 por victoria o expedición, solo duplica los EVs (que ya tienen tope diario por ejemplar); no crea monedas ni EXP.
+- **Migración de caramelos:** una sola vez por cuenta (`u.expMig`), tras una copia de seguridad, y solo convierte lo que la cuenta ya tenía; los valores se redondean hacia arriba, nunca hacia abajo. No se puede repetir ni forzar desde el cliente.
