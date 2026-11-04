@@ -69,7 +69,8 @@ function check(a, b) {
   const baby = baseOf(mother.id);
   if (baby.rarity === 'L' || baby.rarity === 'M') return { ok: false, msg: 'De esa familia no puede salir un huevo.' };
   const hours = a.id === b.id ? HOURS_SAME : HOURS_MIXED;
-  return { ok: true, msg: a.id === b.id ? '¡Son de la misma especie y se llevan muy bien!' : '¡Parece que se llevan muy bien!', baby: baby.id, hours, fee: feeFor(baby.rarity) };
+  const eggMoves = inheritedEggMoves(baby.id, [a.m, b.m]);
+  return { ok: true, msg: a.id === b.id ? '¡Son de la misma especie y se llevan muy bien!' : '¡Parece que se llevan muy bien!', baby: baby.id, hours, fee: feeFor(baby.rarity), eggMoves, eggMovesEs: namesEs(eggMoves) };
 }
 
 // La especie del bebé no depende del azar: la madre es la hembra, o la de la primera plaza.
@@ -133,6 +134,7 @@ function inheritsHa(mother, babyId, roll = rand()) {
   return !!(mother && mother.ha && require('./moves').abilitiesOf(babyId).hidden && roll < HA_INHERIT);
 }
 
+const namesEs = (ids) => ids.map((x) => require('./moves').name(x));
 // Movimientos huevo del bebé que cualquiera de los dos padres tiene aprendidos (regla de la 6.ª generación en adelante).
 function inheritedEggMoves(babyId, parents) {
   const mv = require('./moves');
@@ -214,7 +216,14 @@ function hatch(u, p) {
   const rarity = BY_ID.get(id).rarity;
   if (egg.shiny && rarity !== 'C') hub.feed('gacha', `🥚✨ ${u.username} sacó un ${BY_ID.get(id).name} VARIOCOLOR del Criadero`, { pokeId: id, shiny: true });
   db.save();
-  return { ...view(u), hatched: { id, uid: baby ? baby.uid : null, shiny: !!egg.shiny, isNew: g.isNew, dust: g.dust, candy: BABY_CANDY, nature: baby ? baby.nature : null, ivs: baby ? baby.ivs : null } };
+  return { ...view(u), hatched: { id, uid: baby ? baby.uid : null, shiny: !!egg.shiny, isNew: g.isNew, dust: g.dust, candy: BABY_CANDY, nature: baby ? baby.nature : null, ivs: baby ? baby.ivs : null, moves: namesEs(egg.moves || []) } };
+}
+
+// Movimientos huevo que heredaría el bebé de una pareja ya depositada (con los movimientos que saben ahora los padres).
+function pairEggMoves(u, pr) {
+  const ma = lookup(u, pr.a);
+  const mb = lookup(u, pr.b);
+  return ma && mb ? inheritedEggMoves(pr.baby, [ma, mb]) : [];
 }
 
 function view(u) {
@@ -224,9 +233,9 @@ function view(u) {
   while (care.pairs.length < n) care.pairs.push(null);
   return {
     now, maxPairs: n, pair2Level: PAIR2_LEVEL,
-    pairs: care.pairs.slice(0, n).map((pr) => (pr ? { a: pr.a, b: pr.b, baby: pr.baby, readyAt: pr.readyAt, hours: pr.hours, ready: now >= pr.readyAt, fee: feeFor(BY_ID.get(pr.baby).rarity),
+    pairs: care.pairs.slice(0, n).map((pr) => (pr ? { a: pr.a, b: pr.b, baby: pr.baby, eggMovesEs: namesEs(pairEggMoves(u, pr)), readyAt: pr.readyAt, hours: pr.hours, ready: now >= pr.readyAt, fee: feeFor(BY_ID.get(pr.baby).rarity),
       shiny: [lookup(u, pr.a), lookup(u, pr.b)].map((m) => !!(m && m.shiny)) } : null)),
-    eggs: care.eggs.map((e) => ({ id: e.id, species: e.species, need: e.need, steps: e.steps, hatchAt: e.hatchAt, ready: e.steps >= e.need || now >= e.hatchAt })),
+    eggs: care.eggs.map((e) => ({ id: e.id, species: e.species, moves: namesEs(e.moves || []), need: e.need, steps: e.steps, hatchAt: e.hatchAt, ready: e.steps >= e.need || now >= e.hatchAt })),
     maxEggs: MAX_EGGS,
   };
 }

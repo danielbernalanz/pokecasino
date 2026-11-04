@@ -5,6 +5,10 @@ import { burstAt, flash, reduced, confetti } from '../fx.js';
 import { clock, loadMons, monTile, monPicker } from './afk-common.js';
 
 const cfg = () => S.data.daycare;
+// Movimientos huevo que heredará la cría (los que ya saben los padres y la especie del bebé puede aprender al nacer).
+const eggLine = (moves) => (moves && moves.length
+  ? h('div', { class: 'small care-eggmoves' }, `🥚 La cría heredará: ${moves.join(', ')}`)
+  : h('div', { class: 'small muted care-eggmoves' }, 'Ningún movimiento huevo', h('span', { class: 'muted' }, ' · Los padres pueden enseñar movimientos huevo si los conocen.')));
 const NATURE_NOTE = 'Hereda 3 IV de los padres y, con un 50 %, la naturaleza de uno de ellos.';
 
 // Animación de eclosión: huevo que tiembla → grieta → destello → Pokémon animado.
@@ -30,7 +34,8 @@ async function hatchAnim(r) {
   title.textContent = `¡Ha nacido ${r.shiny ? '✨ ' : ''}${p.name}!`;
   if (!fast) { const [x, y] = [innerWidth / 2, innerHeight / 2.4]; burstAt(x, y, r.shiny ? '#ffd54f' : '#ff9ec4', r.shiny ? 40 : 24, { spread: 220, stars: 0.6 }); if (r.shiny) confetti({ count: 50 }); }
   const bits = [r.isNew ? '¡Nueva entrada en la Pokédex!' : null, `+${r.candy} 🍬 caramelos de su familia`, r.dust ? `Ya tenías 5 estrellas: +${r.dust} ✦` : null, r.nature ? `Naturaleza ${r.nature}` : null].filter(Boolean);
-  info.replaceChildren(...bits.map((t) => h('div', { class: 'small' }, t)), h('button', { class: 'btn primary big', onclick: () => ov.remove() }, '¡Genial!'));
+  const learned = r.moves && r.moves.length ? h('div', { class: 'hatch-moves' }, `¡Nació sabiendo ${r.moves.join(', ')}!`) : null;
+  info.replaceChildren(...(learned ? [learned] : []), ...bits.map((t) => h('div', { class: 'small' }, t)), h('button', { class: 'btn primary big', onclick: () => ov.remove() }, '¡Genial!'));
   await new Promise((res) => { const done = new MutationObserver(() => { if (!ov.isConnected) { done.disconnect(); res(); } }); done.observe(document.body, { childList: true }); });
 }
 
@@ -87,6 +92,7 @@ export default {
           h('b', {}, `Plaza ${slot + 1}`),
           h('div', { class: 'care-parents' }, parentSlot(slot, 0, a), h('span', { class: 'care-heart', 'aria-hidden': 'true' }, ck && ck.ok ? '💕' : '➕'), parentSlot(slot, 1, b)),
           ck ? h('div', { class: 'small ' + (ck.ok ? 'good' : 'bad') }, ck.msg) : h('div', { class: 'small muted' }, 'Elige dos Pokémon de la Caja PC.'),
+          ck && ck.ok ? eggLine(ck.eggMovesEs) : null,
           h('div', { class: 'care-actions' }, h('button', { class: 'btn primary', disabled: !(ck && ck.ok), onclick: async (e) => {
             const r = await act('care:deposit', { slot, a: { id: a.id, uid: a.uid }, b: { id: b.id, uid: b.uid } }, e.currentTarget);
             if (!r) return;
@@ -104,7 +110,7 @@ export default {
       return h('div', { class: 'care-pair' },
         h('b', {}, `Plaza ${slot + 1}`),
         h('div', { class: 'care-parents' }, h('div', { class: 'care-slot filled' }, monTile(mk(pr.a, 0), { cls: 'compact' })), h('span', { class: 'care-heart', 'aria-hidden': 'true' }, '💕'), h('div', { class: 'care-slot filled' }, monTile(mk(pr.b, 1), { cls: 'compact' }))),
-        h('div', { class: 'small' }, `Saldrá un ${baby.name} · cada ${pr.hours} h · tarifa ${fmt(pr.fee)} 🪙`), bar, txt,
+        h('div', { class: 'small' }, `Saldrá un ${baby.name} · cada ${pr.hours} h · tarifa ${fmt(pr.fee)} 🪙`), eggLine(pr.eggMovesEs), bar, txt,
         h('div', { class: 'care-actions' },
           h('button', { class: 'btn gold', disabled: !ready || st.eggs.length >= st.maxEggs, title: st.eggs.length >= st.maxEggs ? 'Ya llevas el máximo de huevos' : '', onclick: async (e) => {
             const r = await act('care:collect', { slot }, e.currentTarget);
@@ -141,6 +147,7 @@ export default {
         h('b', {}, 'Huevo'), bar,
         h('span', { class: 'small' }, `${e.steps}/${e.need} pasos · 100 monedas apostadas = 1 paso`),
         h('span', { class: 'small muted' }, ready ? '¡Está a punto de salir!' : `O espera ${clock(left)}`),
+        e.moves && e.moves.length ? h('span', { class: 'small care-eggmoves' }, `🥚 Sabrá: ${e.moves.join(', ')}`) : null,
         hatchBtn);
     }
 

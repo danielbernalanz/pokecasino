@@ -288,3 +288,32 @@ test('especies L/M no crían y datos estáticos coherentes', () => {
   assert.ok(care.STATIC.fees.E >= care.STATIC.fees.C);
   assert.strictEqual(care.STATIC.wagerPerStep, 100);
 });
+
+test('movimientos huevo en la comprobación de la pareja, el Criadero y el huevo', () => {
+  const mv = require('../server/moves');
+  const egg = mv.eggMoves(4); // Charmander
+  assert.ok(egg.length > 0);
+  const mk = (id, learned) => ({ id, m: { uid: 'e' + id + Math.random(), gender: 'F', learned } });
+  const none = care.checkPair(mk(4, ['scratch']), mk(5, ['tackle']));
+  assert.deepStrictEqual(none.eggMoves, []);
+  assert.deepStrictEqual(none.eggMovesEs, []);
+  const yes = care.checkPair(mk(4, ['scratch', egg[0]]), mk(5, ['tackle']));
+  assert.strictEqual(yes.ok, true);
+  assert.deepStrictEqual(yes.eggMoves, [egg[0]]);
+  assert.strictEqual(yes.eggMovesEs[0], mv.name(egg[0]));
+  assert.ok(care.checkPair(mk(4, egg.slice(0, 6)), mk(5, [])).eggMoves.length <= 4, 'máximo 4');
+  // la pareja depositada, el huevo y el recién nacido los mantienen, ya en español
+  const u = user({ 4: { n: 2, s: 0 } });
+  u.mons[4][0].learned = [...(u.mons[4][0].learned || []), egg[0]];
+  const ck = clock();
+  try {
+    const v = care.deposit(u, { a: ref(u.mons[4][0], 4), b: ref(u.mons[4][1], 4) });
+    assert.deepStrictEqual(v.pairs[0].eggMovesEs, [mv.name(egg[0])]);
+    ck.advance(4 * H);
+    const v2 = care.collect(u, { slot: 0 });
+    assert.deepStrictEqual(v2.eggs[0].moves, [mv.name(egg[0])]);
+    ck.advance(13 * H);
+    const h = care.hatch(u, { id: v2.eggs[0].id });
+    assert.deepStrictEqual(h.hatched.moves, [mv.name(egg[0])]);
+  } finally { ck.restore(); }
+});
