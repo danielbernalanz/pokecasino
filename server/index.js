@@ -166,6 +166,8 @@ app.get('/api/quiz/img/:token', quiz.imgHandler);
 app.get('/api/static', (req, res) => res.json(STATIC));
 // Nombres en español de movimientos, habilidades y objetos del simulador (los usa la pantalla de combates).
 app.get('/data/sd-es.json', (req, res) => res.sendFile(path.join(__dirname, 'sd-es.json'), { headers: { 'Cache-Control': 'public, max-age=3600' } }));
+// Descripciones en español de los movimientos (se cargan solo al abrir una ficha de movimientos o un combate).
+app.get('/data/move-desc-es.json', (req, res) => res.sendFile(path.join(__dirname, 'move-desc-es.json'), { headers: { 'Cache-Control': 'public, max-age=3600' } }));
 
 const server = http.createServer(app);
 // Compresión de mensajes grandes (estado del mercado, mesas de póker…).
