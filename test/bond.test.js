@@ -194,8 +194,15 @@ test('Eevee: Espeon y Umbreon solo con amistad ≥ 220; el resto de evoluciones,
   assert.throws(() => candy.evolve(u, { id: eevee, uid: a.uid, to: espeon }), /amistad/);
   a.friendship = 220;
   a.level = 5;
-  assert.strictEqual(candy.evolve(u, { id: eevee, uid: a.uid, to: espeon }).to, espeon);
-  assert.strictEqual(candy.evolve(u, { id: eevee, uid: b.uid, to: vaporeon }).to, vaporeon);
+  // Espeon solo de día (hora de España) y Vaporeon con Piedra Agua (evoluciones especiales: test/evoreq.test.js)
+  const realNow = Date.now;
+  Date.now = () => Date.parse('2026-11-04T11:00:00Z');
+  try {
+    assert.strictEqual(candy.evolve(u, { id: eevee, uid: a.uid, to: espeon }).to, espeon);
+    assert.throws(() => candy.evolve(u, { id: eevee, uid: b.uid, to: vaporeon }), /Piedra Agua/);
+    u.items['water-stone'] = 1;
+    assert.strictEqual(candy.evolve(u, { id: eevee, uid: b.uid, to: vaporeon }).to, vaporeon);
+  } finally { Date.now = realNow; }
 });
 
 test('hallazgos del compañero: tarda 4 h, acumula como máximo 3 y no necesita conexión', () => {

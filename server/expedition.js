@@ -35,6 +35,16 @@ const RARE_DAY_CAP = 1; // entre Ticket Gacha y Huevo Misterioso
 const RARE_CHANCE = { 8: 0.1, 12: 0.2 };
 const EGG_SHARE = 0.3; // de las veces que toca objeto raro, ¿huevo en vez de ticket?
 const BERRY_CAP = bond.BERRY_CAP;
+// Objetos de evolución como botín raro (aparte del objeto raro de arriba, con su propio tope): solo en expediciones largas.
+// Sin valor en monedas: los PNJ no los compran ni se reciclan (ver npc.js y candy.js); entre jugadores se comercian libremente.
+const EVO_CHANCE = { 8: 0.06, 12: 0.12 };
+const EVO_DAY_CAP = 1;
+const ZONE_EVO = {
+  bosque: ['leaf-stone', 'sun-stone', 'tart-apple', 'sweet-apple'], cueva: ['moon-stone', 'dusk-stone', 'oval-stone', 'deep-sea-tooth'],
+  mar: ['water-stone', 'ice-stone', 'prism-scale', 'deep-sea-scale', 'kings-rock'], volcan: ['fire-stone', 'magmarizer', 'sun-stone'],
+  central: ['thunder-stone', 'electirizer', 'up-grade', 'metal-coat', 'protector'], torre: ['dragon-scale', 'sun-stone', 'razor-claw'],
+  jardin: ['moon-stone', 'shiny-stone', 'dawn-stone', 'sachet', 'whipped-dream'], barrio: ['dusk-stone', 'razor-claw', 'razor-fang', 'reaper-cloth', 'dubious-disc'],
+};
 
 // Zona → tipos favorecidos y anfitrión (Pokémon amable que te despide y te recibe).
 const ZONES = [
@@ -51,7 +61,7 @@ const ZONES = [
 const ZONE_BY_ID = new Map(ZONES.map((z) => [z.id, z]));
 
 const STATIC = {
-  zones: ZONES, hours: HOURS, maxTeam: MAX_TEAM, slots: SLOTS, slot3Level: SLOT3_LEVEL,
+  zones: ZONES, evoChance: EVO_CHANCE, zoneEvo: ZONE_EVO, hours: HOURS, maxTeam: MAX_TEAM, slots: SLOTS, slot3Level: SLOT3_LEVEL,
   caps: { coins: COIN_DAY_CAP, dust: DUST_DAY_CAP, rare: RARE_DAY_CAP, levels: LEVEL_DAY_CAP }, matchBonus: MATCH_BONUS,
   levelEvery: LEVEL_EVERY, friendPerHour: FRIEND_PER_HOUR,
 };
@@ -61,7 +71,7 @@ const expsOf = (u) => (u.expeditions ||= []);
 
 function dayOf(u) {
   const k = hub.dayKey();
-  if (!u.expDay || u.expDay.day !== k) u.expDay = { day: k, coins: 0, dust: 0, rare: 0 };
+  if (!u.expDay || u.expDay.day !== k) u.expDay = { day: k, coins: 0, dust: 0, rare: 0, evo: 0 };
   return u.expDay;
 }
 // Valor máximo teórico por día en monedas (polvo a 4 monedas y el objeto raro más valioso al tope de compra de un PNJ).
@@ -123,7 +133,7 @@ function claim(u, p) {
   const H = e.hours;
   const d = dayOf(u);
   const candy = require('./candy');
-  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null, lovers: 0, ev: 0, evStat: zone.ev };
+  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null, lovers: 0, evoItem: null, ev: 0, evStat: zone.ev };
   // Participantes que siguen existiendo (si una especie se bloqueó, simplemente no cuenta).
   const live = e.team.map((t) => ({ t, m: lookup(u, t) })).filter((x) => x.m);
   const n = live.length;
@@ -175,6 +185,13 @@ function claim(u, p) {
       items.give(u, it, 1);
       d.rare++;
       out.item = it;
+    }
+    if (EVO_CHANCE[H] && (d.evo || 0) < EVO_DAY_CAP && rand() < EVO_CHANCE[H]) {
+      const stones = ZONE_EVO[zone.id].filter((x) => require('./evoreq').STONES.includes(x));
+      const it = rand() < 0.7 && stones.length ? pick(stones) : pick(ZONE_EVO[zone.id]); // sobre todo piedras
+      items.give(u, it, 1);
+      d.evo = (d.evo || 0) + 1;
+      out.evoItem = it;
     }
     const loot = require('./tm').expeditionLoot(u, zone, H); // materiales de MT (según los tipos de la zona) y, a veces, una MT
     out.mats = loot.mats; out.tm = loot.tm; out.shards = require('./tutor').expeditionLoot(u, zone, H);

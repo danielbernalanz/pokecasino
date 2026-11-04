@@ -84,6 +84,7 @@ export default {
       if (rw.item) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg(rw.item), S.data.items[rw.item].name));
       for (const [mt, q] of Object.entries(rw.mats || {})) loot.push(h('span', { class: 'afk-rw-chip' }, itemImg(mt), `×${q}`));
       for (const [sh, q] of Object.entries(rw.shards || {})) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg(sh), `×${q}`));
+      if (rw.evoItem) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg(rw.evoItem), S.data.items[rw.evoItem].name));
       if (rw.tm) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg(rw.tm), S.data.items[rw.tm].name));
       const body = h('div', { class: 'stack afk-reveal' },
         say({ mon: zone.hostId, who: zone.host, text: `¡Qué bien lo hemos pasado en ${zone.name}! Mira lo que hemos traído.`, cls: 'compact' }),

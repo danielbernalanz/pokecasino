@@ -81,6 +81,8 @@ Object.assign(ITEMS, require('./bpdata').buildItems());
 for (const [id, sh] of Object.entries(require('./tutor').SHARDS)) ITEMS[id] = { name: sh.name, sprite: sh.sprite, price: null, shard: true, desc: 'Se gasta en el Tutor de movimientos (Caja PC → Movimientos). Cae, poco a poco, en las Expediciones largas.' };
 // Vitaminas y bayas de EVs (ver evs.js): se compran con monedas en la Tienda Poké.
 Object.assign(ITEMS, require('./evs').buildItems());
+// Piedras, objetos de evolución y Cordón Unión (ver evoreq.js).
+Object.assign(ITEMS, require('./evoreq').buildItems());
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
 
@@ -176,7 +178,7 @@ function use(user, { itemId, pokeId }) {
     throw new Error('Una MT se usa desde la Máquina MT o desde los Movimientos de un Pokémon (Caja PC).');
   } else if (ITEMS[itemId] && (ITEMS[itemId].held || ITEMS[itemId].mint || ITEMS[itemId].capsule || ITEMS[itemId].patch)) {
     throw new Error('Este objeto se usa desde la Caja PC → Datos → Objeto y habilidad de un Pokémon.');
-  } else if (ITEMS[itemId] && ITEMS[itemId].ev) {
+  } else if (ITEMS[itemId] && (ITEMS[itemId].ev || ITEMS[itemId].evo)) {
     throw new Error('Esto se usa desde la Caja PC → Datos → Entrenar.');
   } else if (ITEMS[itemId] && ITEMS[itemId].shard) {
     throw new Error('Los fragmentos se gastan en el Tutor de movimientos (Caja PC → Movimientos).');

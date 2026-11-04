@@ -176,7 +176,9 @@ function evolve(u, p) {
   const c = u.collection[id];
   if (!first && gacha.spareCopies(c) < 1) throw new Error(`Necesitas otra copia de ${BY_ID.get(id).name}: ya tienes ${target.name} y evolucionar gasta una copia.`);
   if (tc && tc.n >= 5) throw new Error(`Ya tienes 5 estrellas de ${target.name}.`);
+  const special = require('./evoreq').plan(u, m, id, to); // objeto, intercambio, sexo, hora… (lanza error sin gastar nada si falta algo)
   takeCandy(u, id, cost);
+  special.consume();
   if (first) (u.evoReg ||= {})[to] = 1; // una sola vez por especie y cuenta (aunque luego vendas la copia)
   // Sale el ejemplar concreto de la especie origen (si es la primera vez, la especie origen conserva su entrada y
   // `sync` le crea un ejemplar nuevo de nivel 5)…
@@ -201,7 +203,7 @@ function evolve(u, p) {
   specimen.sync(u, to);
   if (target.rarity === 'L' || target.rarity === 'M') hub.feed('evolve', `🌟 ${u.username} hizo evolucionar a ${BY_ID.get(id).name} en ${target.name}`, { pokeId: to, shiny: m.shiny });
   db.save();
-  return { from: id, to, uid: m.uid, name: target.name, cost, learned: learnt.auto, pending: learnt.pending };
+  return { from: id, to, uid: m.uid, name: target.name, cost, used: special.uses, learned: learnt.auto, pending: learnt.pending };
 }
 
 // ---- Entrenar IVs ----
@@ -266,7 +268,7 @@ const RECYCLE_BERRY_DUST = 1; // cada baya
 const RECYCLE_BERRY_DAILY = 20; // ✦ al día (dentro del tope general): ≈ 80 monedas como mucho
 function recycleValue(itemId) {
   const it = items.ITEMS[itemId];
-  if (!it || !it.price || it.cosmetic || it.megaStone) return 0;
+  if (!it || !it.price || it.cosmetic || it.megaStone || it.evo) return 0; // los objetos de evolución caen gratis en expediciones: no se reciclan
   return Math.floor((it.price * RECYCLE_RATE) / gacha.DUST_RATE);
 }
 function recycleList() {
@@ -302,7 +304,7 @@ function boxExtra(u) {
   for (const [k, v] of Object.entries(u.candy || {})) if (k !== WILD) candyView[k] = v;
   if (wild) for (const k of FAMILY_NAME.keys()) candyView[k] = (candyView[k] || 0) + wild;
   return {
-    candy: candyView, wild, train, wonderLeft: WONDER_DAILY - d.wonder, recycleLeft: RECYCLE_DAILY_DUST - d.recycle,
+    tradeTokens: require('./evoreq').tokensOf(u), phase: require('./daytime').phase(), candy: candyView, wild, train, wonderLeft: WONDER_DAILY - d.wonder, recycleLeft: RECYCLE_DAILY_DUST - d.recycle,
     rules: { transfer: Object.fromEntries(Object.keys(TRANSFER_CANDY).map((r) => [r, TRANSFER_CANDY[r] + WILD_TRANSFER[r]])), evoFirst: DEX.filter((x) => x.evolvesFrom && isFirstEvo(u, x.id)).map((x) => x.id), levelDiv: LEVEL_DIV, feedCap: require('./bond').CAP.feed, betStep: require('./bond').BET_STEP, trainCost: TRAIN_COST, trainDaily: TRAIN_DAILY, wonderDaily: WONDER_DAILY, maxLevel: MAX_LEVEL, recycleDaily: RECYCLE_DAILY_DUST, recycle: Object.fromEntries(recycleList()),
       evo: Object.fromEntries(DEX.filter((x) => x.evolvesFrom).map((x) => [x.id, evoCost(x.evolvesFrom, x.id, false, isFirstEvo(u, x.id))])),
       evoFriend: Object.fromEntries([...require('./bond').FRIEND_EVO].map(([to, from]) => [to, evoCost(from, to, true, isFirstEvo(u, to))])), loveMin: require('./bond').LOVE_MIN,

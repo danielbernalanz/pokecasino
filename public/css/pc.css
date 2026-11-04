@@ -126,3 +126,6 @@
 .pc-evrow { align-items: center; padding: 2px 0; }
 .pc-evname { min-width: 96px; font-size: 13px; font-weight: 700; }
 .afk-zone-ev { color: var(--muted); }
+.pc-evo-needs { margin: 2px 0; }
+.pc-evo-needs .good { color: var(--good); }
+.pc-evo-needs .bad { color: var(--bad); }

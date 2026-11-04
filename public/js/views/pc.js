@@ -4,12 +4,12 @@ import { evolveAnim, wonderReveal } from './pc-fx.js';
 import { heartsEl, friendLabel, friendTier, movePower, petButton, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
 import { movesPage, learnPrompt, swapDialog } from './moves-ui.js';
 import { gearPage } from './bp-ui.js';
-import { loadNames } from '../battle-screen.js';
+import { loadNames, moveEs } from '../battle-screen.js';
 
 const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
 
 let mons = [];
-let box = { candy: {}, train: {}, wonderLeft: 0, rules: null };
+let box = { candy: {}, train: {}, wonderLeft: 0, rules: null, tradeTokens: 0, phase: 'day' };
 const TRAIN_STATS = [...STAT_NAMES];
 let filter = { q: '', type: [], rarity: [], shiny: false, fav: false, species: 0, sort: 'recent' };
 let loading = null;
@@ -55,7 +55,7 @@ export function openInPc(id) { filter = { ...filter, q: '', species: Number(id) 
 
 function load() {
   if (loading) return loading;
-  loading = Promise.all([emit('pc:box'), loadNames()]).then(([r]) => { mons = r.mons; box = { candy: r.candy || {}, train: r.train || {}, wonderLeft: r.wonderLeft, rules: r.rules }; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
+  loading = Promise.all([emit('pc:box'), loadNames()]).then(([r]) => { mons = r.mons; box = { candy: r.candy || {}, train: r.train || {}, wonderLeft: r.wonderLeft, rules: r.rules, tradeTokens: r.tradeTokens || 0, phase: r.phase || 'day' }; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
   return loading;
 }
 
@@ -77,6 +77,23 @@ function openMon(uid, openPage = 'info') {
       h('td', { class: 'pc-final' }, m.stats[i]));
   });
   const ru = box.rules;
+  // Requisitos especiales de evolución (piedras, intercambio, sexo, hora…): [{ text, ok }]. Los valida el servidor (evoreq.js).
+  const evoNeeds = (t) => {
+    const r = (S.data.evo.req || {})[t.id];
+    if (!r) return [];
+    const out = [];
+    if (r.item) { const have = S.me.items[r.item] || 0; out.push({ text: `${S.data.items[r.item].name} (tienes ${have})`, ok: have > 0 }); }
+    if (r.trade) {
+      const cords = S.me.items[S.data.evo.link] || 0;
+      const tokens = box.tradeTokens || 0;
+      out.push({ text: `intercambio: ${S.data.items[S.data.evo.link].name} (tienes ${cords}${tokens ? ` + ${tokens} intercambio${tokens > 1 ? 's' : ''} pendiente${tokens > 1 ? 's' : ''}` : ''})`, ok: cords > 0 || tokens > 0 });
+    }
+    if (r.gender) out.push({ text: r.gender === 'M' ? 'ser macho' : 'ser hembra', ok: m.gender === r.gender });
+    if (r.time) out.push({ text: r.time === 'day' ? 'que sea de día (06:00–21:00)' : 'que sea de noche (21:00–06:00)', ok: box.phase === r.time });
+    if (r.stat) { const [a, op, b] = [m.stats[1], r.stat[3], m.stats[2]]; out.push({ text: op === '>' ? 'más Ataque que Defensa' : op === '<' ? 'menos Ataque que Defensa' : 'Ataque igual a Defensa', ok: op === '>' ? a > b : op === '<' ? a < b : a === b }); }
+    if (r.move) out.push({ text: `conocer ${moveEs(r.move)}`, ok: (m.learned || []).includes(r.move) });
+    return out;
+  };
   const evoRow = (t) => {
     const love = m.friendship >= (ru.loveMin || LOVE_MIN);
     const viaFriend = love && ru.evoFriend && ru.evoFriend[t.id];
@@ -84,13 +101,17 @@ function openMon(uid, openPage = 'info') {
     const reasons = [];
     if (ru.friendOnly && ru.friendOnly.includes(t.id) && !love) reasons.push(`amistad ≥ ${LOVE_MIN}`);
     if (m.away) reasons.push('fuera ahora');
+    const needs = evoNeeds(t);
+    for (const n of needs) if (!n.ok) reasons.push(n.text);
     if (m.level < e.level) reasons.push(`Nv. ${e.level}`);
     if (candyOf(m.id) < e.cost) reasons.push(`${e.cost} 🍬`);
     if (spareCount(m.id) < 1 && !(ru.evoFirst && ru.evoFirst.includes(t.id))) reasons.push('otra copia');
     const tc = S.me.collection[t.id];
     if (tc && tc.n >= 5) reasons.push('ya tienes 5 estrellas');
     return h('div', { class: 'pc-evo' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
-      h('div', { class: 'grow small' }, h('b', {}, t.name), h('div', { class: 'muted' }, (viaFriend ? `💖 Por amistad: ${e.cost} 🍬 · sin nivel mínimo` : `${e.cost} 🍬${e.level ? ` · Nv. ${e.level} mín.` : ''}`) + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ''))),
+      h('div', { class: 'grow small' }, h('b', {}, t.name),
+        needs.length ? h('div', { class: 'pc-evo-needs', 'data-testid': 'evo-needs' }, 'Necesita: ', needs.map((n, i) => [i ? (i === needs.length - 1 ? ' y ' : ', ') : '', h('span', { class: n.ok ? 'good' : 'bad' }, (n.ok ? '✓ ' : '✗ ') + n.text)])) : null,
+        h('div', { class: 'muted' }, (viaFriend ? `💖 Por amistad: ${e.cost} 🍬 · sin nivel mínimo` : `${e.cost} 🍬${e.level ? ` · Nv. ${e.level} mín.` : ''}`) + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ''))),
       h('button', { class: 'btn primary', disabled: reasons.length > 0, onclick: async (ev) => {
         const r = await act('pc:evolve', { id: m.id, uid, to: t.id }, ev.target);
         if (!r) return;

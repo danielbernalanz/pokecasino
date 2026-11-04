@@ -160,6 +160,7 @@ const STATIC = {
   mega: mega.STATIC,
   expedition: expedition.STATIC,
   evs: require('./evs').STATIC,
+  evo: require('./evoreq').STATIC,
   daycare: daycare.STATIC,
   quiz: quiz.STATIC,
 };
@@ -279,6 +280,7 @@ function giftPoke(user, { to, id, shiny }) {
   const p = gacha.takePoke(user, id, !!shiny);
   require('./transfer').notePokeIn(t, rare);
   gacha.grant(t, p.id, !!shiny);
+  require('./evoreq').noteTrade(t, user); // intercambio real: vale como un Cordón Unión
   hub.track(t, 'gift_recv');
   db.save();
   hub.emitUser(t.id, 'toast', { kind: 'gift', text: `🎁 ${user.username} te envió un ${shiny ? p.name + ' variocolor' : p.name}` });

@@ -126,6 +126,7 @@ function settle(a, qty, price, seller, buyer) {
   seller.stats.sold = (seller.stats.sold || 0) + qty;
   buyer.stats.bought = (buyer.stats.bought || 0) + qty;
   const dust = giveGoods(buyer, a, qty);
+  if (a.kind === 'poke') require('./evoreq').noteTrade(buyer, seller); // intercambio real: vale como un Cordón Unión
   const t = record(a, qty, price, seller.username, buyer.username, { sellerNpc: seller.npc, buyerNpc: buyer.npc });
   // Historial propio de cada jugador (el del mercado solo guarda las últimas operaciones de todos).
   for (const u of [seller, buyer]) {
