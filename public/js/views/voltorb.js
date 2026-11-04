@@ -1,5 +1,6 @@
 import { S, h, fmt, emit, act, sfx, toast, sprite, betInput, confirmBet } from '../core.js';
 import { winFx, burstEl, flash, shake, vibrate, confetti } from '../fx.js';
+import { hotkey } from '../gamekit.js';
 
 export default {
   id: 'voltorb', title: 'Voltorb Flip', icon: '⚡',
@@ -11,8 +12,25 @@ export default {
     const grid = h('div', { class: 'vf-grid' });
     const info = h('div', { class: 'vf-info' });
     const msg = h('div', { class: 'vf-msg' }, 'Gira cartas: ×1, ×2, ×3… ¡pero cuidado con Voltorb!');
-    const startBtn = h('button', { class: 'btn primary big', onclick: async (e) => { if (!(await confirmBet('voltorb', bet.value))) return; const r = await act('voltorb:start', { bet: bet.value }, e.target); if (r) { memo.clear(); sfx('click'); render(r); } } }, 'Nueva partida');
-    const cashBtn = h('button', { class: 'btn big gold', onclick: async (e) => { const r = await act('voltorb:cashout', {}, e.target); if (r) end(r); } }, 'Retirarse');
+    let busy = false;
+    let live = false; // hay una partida en curso (no solo el tablero destapado del final)
+    const startGame = async () => {
+      if (busy || live) return;
+      busy = true; startBtn.disabled = true;
+      try {
+        const stake = bet.value;
+        if (!(await confirmBet('voltorb', stake))) return;
+        const r = await act('voltorb:start', { bet: stake });
+        if (r) { memo.clear(); sfx('click'); render(r); }
+      } finally { busy = false; startBtn.disabled = false; }
+    };
+    const cashGame = async () => {
+      if (busy || !live || state.game.score === 0) return;
+      busy = true; cashBtn.disabled = true;
+      try { const r = await act('voltorb:cashout', {}); if (r) end(r); } finally { busy = false; cashBtn.disabled = !live || state.game.score === 0; }
+    };
+    const startBtn = h('button', { class: 'btn primary big', type: 'button', title: 'Espacio o Intro', onclick: startGame }, 'Nueva partida');
+    const cashBtn = h('button', { class: 'btn big gold', type: 'button', onclick: cashGame }, 'Retirarse');
     const noteBtns = ['0', '1', '2', '3'].map((n) => h('button', { class: 'chip note-btn n' + n, title: 'Marcar notas', onclick: () => {
       memoMode = memoMode === n ? null : n;
       noteBtns.forEach((b, k) => b.classList.toggle('active', String(k) === memoMode));
@@ -21,6 +39,7 @@ export default {
 
     function render(s, reveal) {
       state = s;
+      live = !!s.game && !reveal;
       const g = s.game;
       info.replaceChildren(
         h('div', { class: 'stat' }, h('span', { class: 'muted small' }, 'Nivel'), h('b', {}, g ? g.level : s.level)),
@@ -28,8 +47,11 @@ export default {
         h('div', { class: 'stat' }, h('span', { class: 'muted small' }, 'Cobrarías'), h('b', { class: 'good' }, g ? fmt(g.cashout) : 0)),
         h('div', { class: 'stat' }, h('span', { class: 'muted small' }, 'Apuesta'), h('b', {}, g ? fmt(g.bet) : '—')));
       startBtn.classList.toggle('hidden', !!g && !reveal);
-      bet.el.classList.toggle('hidden', !!g && !reveal);
-      cashBtn.classList.toggle('hidden', !g || reveal || g.score === 0);
+      bet.lock(!!g && !reveal);
+      // El botón de retirada ocupa su sitio durante la partida (apagado mientras no haya puntos).
+      cashBtn.classList.toggle('hidden', !g || reveal);
+      cashBtn.disabled = !g || reveal || g.score === 0;
+      cashBtn.title = cashBtn.disabled ? 'Gira alguna carta ×2 o ×3 para poder retirarte' : 'Espacio o Intro';
       memoBtn.classList.toggle('hidden', !g || reveal);
       if (!g) { grid.replaceChildren(...Array.from({ length: 36 }, (_, i) => (i % 6 === 5 || i >= 30) ? h('div', { class: 'vf-hint empty' }) : h('div', { class: 'vf-card back' }))); return; }
       const cells = [];
@@ -64,8 +86,10 @@ export default {
         render(state);
         return;
       }
+      if (busy) return;
+      busy = true;
       let r;
-      try { r = await emit('voltorb:flip', { index: i }); } catch (e) { toast(e.message, 'error'); return; }
+      try { r = await emit('voltorb:flip', { index: i }); } catch (e) { toast(e.message, 'error'); return; } finally { busy = false; }
       if (r.outcome) return end(r, i);
       sfx('flip');
       render(r);
@@ -109,6 +133,7 @@ export default {
             h('p', { class: 'small' }, 'Tus puntos se multiplican con cada carta (×2, ×3). Al retirarte o limpiar todos los ×2 y ×3 cobras: apuesta × puntos ÷ divisor del nivel (los puntos cuentan hasta ' + S.data.voltorbCap + '; con más puntos ya puedes retirarte).'),
             h('p', { class: 'muted small' }, mults),
             h('p', { class: 'muted small' }, 'Limpiar el tablero sube un nivel. Si explota un Voltorb bajas al nº de cartas que giraste.')))));
+    hotkey(root, () => { if (live) cashGame(); else startGame(); });
     try { render(await emit('voltorb:state')); } catch (e) { toast(e.message, 'error'); }
   },
 };

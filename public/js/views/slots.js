@@ -1,5 +1,6 @@
 import { S, h, fmt, emit, sfx, toast, bus, item, sprite, betInput, sleep, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, glow, vibrate } from '../fx.js';
+import { speedToggle, hotkey, wait, tw } from '../gamekit.js';
 
 const ICON = {
   berry: item('oran-berry'), poke: item('poke-ball'), great: item('great-ball'), ultra: item('ultra-ball'),
@@ -23,10 +24,11 @@ export default {
     setGrid(reels.map((r) => [r[0], r[1], r[2]]));
 
     const spinBtn = h('button', { class: 'btn primary huge', onclick: () => spin() }, 'GIRAR');
-    const autoBtn = h('button', { class: 'btn', onclick: () => toggleAuto() }, 'Auto');
+    const autoBtn = h('button', { class: 'btn', type: 'button', title: 'Tira sin parar hasta que lo pares o te quedes sin saldo', onclick: () => toggleAuto() }, 'Auto');
+    const setAuto = (on) => { auto = on; autoBtn.classList.toggle('active', on); autoBtn.textContent = on ? '■ Parar' : 'Auto'; };
 
     async function toggleAuto() {
-      if (auto) { auto = false; autoBtn.classList.remove('active'); return; }
+      if (auto) { setAuto(false); return; }
       if (spinning) return;
       // Modo Auto: se asume una serie de 10 tiradas para estimar el riesgo.
       const total = bet.value * 10;
@@ -36,15 +38,16 @@ export default {
           text: `El modo Auto tira sin parar. Con ${fmt(bet.value)} por tirada, 10 tiradas suman ${fmt(total)} monedas (${Math.round(total / Math.max(1, S.me.coins) * 100)} % de tus ${fmt(S.me.coins)}). Puedes pararlo pulsando Auto otra vez.` });
         if (!ok) return;
       }
-      auto = true; autoBtn.classList.add('active');
-      if (!spinning) spin();
+      setAuto(true);
+      if (!spinning) spin(true);
     }
 
-    async function spin() {
+    async function spin(fromAuto = false) {
       if (spinning) return;
       spinning = true;
       spinBtn.disabled = true;
-      if (!(await confirmBet('slots', bet.value))) { spinning = false; spinBtn.disabled = false; auto = false; autoBtn.classList.remove('active'); return; }
+      // En Auto el riesgo ya se confirmó al activarlo: no se pregunta en cada tirada.
+      if (!fromAuto && !(await confirmBet('slots', bet.value))) { spinning = false; spinBtn.disabled = false; setAuto(false); return; }
       lineSvg.replaceChildren();
       winBox.textContent = '…';
       winBox.className = 'slot-win';
@@ -65,7 +68,7 @@ export default {
       try { res = await emit('slots:spin', { bet: bet.value }); } catch (e) {
         releaseCoins();
         timers.forEach(clearInterval); reelEls.forEach((r) => r.classList.remove('spinning'));
-        toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; auto = false; autoBtn.classList.remove('active'); return;
+        toast(e.message, 'error'); sfx('error'); spinning = false; spinBtn.disabled = false; setAuto(false); return;
       }
       // ¿Los dos primeros rodillos ya forman pareja en alguna línea? Entonces el último frena con suspense.
       const pair = (a, b) => a === 'ditto' || b === 'ditto' || a === b;
@@ -80,14 +83,14 @@ export default {
           sfx('charge', 0); vibrate([30, 40, 30]);
           // El último rodillo gira cada vez más despacio, con tics más graves.
           clearInterval(timers[2]);
-          for (const d of [110, 150, 210, 290, 400]) {
+          for (const d of [110, 150, 210, 290, 400].map((x) => tw(x))) {
             const strip = reels[2];
             const k = Math.floor(Math.random() * strip.length);
             reelEls[2].firstChild.replaceChildren(...[0, 1, 2].map((r) => symImg(strip[(k + r) % strip.length])));
             sfx('tick'); await sleep(d);
           }
           reelEls[2].classList.remove('tense');
-        } else await sleep(300 + i * 250);
+        } else await wait(300 + i * 250);
         clearInterval(timers[i]);
         reelEls[i].classList.remove('spinning');
         reelEls[i].firstChild.replaceChildren(...res.grid[i].map(symImg));
@@ -114,14 +117,15 @@ export default {
       } else { winBox.textContent = 'Sin premio. ¡Otra vez!'; }
       spinning = false;
       spinBtn.disabled = false;
-      if (auto) { await sleep(700); if (auto && document.contains(spinBtn)) spin(); }
+      if (auto && S.me.coins < bet.value) { setAuto(false); toast('Auto parado: ya no te queda saldo para esa apuesta.', 'info'); }
+      if (auto) { await wait(700); if (auto && document.contains(spinBtn)) spin(true); }
     }
 
     const payRows = Object.entries(S.data.slots.symbols).reverse().map(([k, v]) => h('div', { class: 'pay-row' },
       symImg(k), symImg(k), symImg(k), h('b', {}, `×${v.pay}`), v.two ? h('span', { class: 'muted small' }, ` (2 seguidas ×${v.two})`) : null));
 
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🎰 Pika-Slots'), h('div', { class: 'jackpot-big' }, 'BOTE PROGRESIVO ', jack)),
+      h('div', { class: 'game-head' }, h('h1', {}, '🎰 Pika-Slots'), speedToggle(), h('div', { class: 'jackpot-big' }, 'BOTE PROGRESIVO ', jack)),
       h('div', { class: 'slots-layout' },
         h('div', { class: 'machine' },
           h('div', { class: 'machine-top' }, h('img', { class: 'pixel', src: sprite(25), alt: '' }), 'PIKA·SLOTS', h('img', { class: 'pixel', src: sprite(132), alt: '' })),
@@ -133,8 +137,10 @@ export default {
           h('p', { class: 'muted small' }, 'Pagos por línea (apuesta ÷ 5). 5 líneas: 3 horizontales y 2 diagonales. Ditto sustituye a todo menos a la Master Ball. Tres Master Ball en la línea central ganan el BOTE completo; el 2 % de cada apuesta lo alimenta.'),
           payRows)),
     );
+    // Espacio / Intro: girar (o parar el Auto si está en marcha).
+    const offKey = hotkey(root, () => { if (auto) setAuto(false); else spin(); });
     this.offs = [bus.on('jackpot', (j) => { jack.textContent = fmt(j); })];
-    this.stop = () => { auto = false; };
+    this.stop = () => { auto = false; offKey(); };
   },
   unmount() { this.offs.forEach((f) => f()); this.stop(); },
 };

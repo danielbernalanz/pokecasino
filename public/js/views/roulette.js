@@ -1,5 +1,6 @@
 import { S, h, fmt, emit, sfx, toast, item, TYPE_ES, sleep, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, glow, pop, vibrate, reduced } from '../fx.js';
+import { speedToggle, hotkey, fast } from '../gamekit.js';
 
 const COLORS = {
   pokeball: '#e3350d', normal: '#a8a77a', fire: '#ee8130', water: '#6390f0', electric: '#f7d02c', grass: '#7ac74c', ice: '#96d9d6',
@@ -15,6 +16,7 @@ export default {
     const n = wheel.length;
     const seg = 360 / n;
     let chip = 50;
+    try { const c = Number(localStorage.getItem('chip:roulette')); if ([10, 50, 100, 500, 1000, 5000].includes(c)) chip = c; } catch { /* nada */ }
     let bets = new Map(); // clave kind:value -> importe
     let rotation = 0;
     let spinning = false;
@@ -28,7 +30,7 @@ export default {
     const total = h('b', {}, '0');
 
     const chipBtns = [10, 50, 100, 500, 1000, 5000].map((v) => h('button', { class: 'chip-btn' + (v === chip ? ' active' : ''), onclick: (e) => {
-      chip = v; chipBtns.forEach((b) => b.classList.toggle('active', b === e.currentTarget)); sfx('click');
+      if (e.detail) e.currentTarget.blur(); chip = v; try { localStorage.setItem('chip:roulette', String(v)); } catch { /* nada */ } chipBtns.forEach((b) => b.classList.toggle('active', b === e.currentTarget)); sfx('click');
     } }, v >= 1000 ? v / 1000 + 'k' : v));
 
     const cells = new Map();
@@ -36,8 +38,8 @@ export default {
       const key = kind + ':' + value;
       const amt = h('span', { class: 'bet-amt' });
       const el = h('button', { class: 'bcell ' + cls, style, title: `Paga ×${payout[kind]}`,
-        onclick: () => { if (spinning) return; bets.set(key, (bets.get(key) || 0) + chip); sfx('click'); refresh(); },
-        oncontextmenu: (e) => { e.preventDefault(); bets.delete(key); refresh(); } }, label, amt);
+        onclick: (e) => { if (e.detail) e.currentTarget.blur(); if (spinning) return; bets.set(key, (bets.get(key) || 0) + chip); sfx('click'); refresh(); },
+        oncontextmenu: (e) => { e.preventDefault(); if (!spinning) { bets.delete(key); refresh(); } } }, label, amt);
       cells.set(key, amt);
       return el;
     }
@@ -59,7 +61,7 @@ export default {
       h('div', { class: 'rgroups' }, Object.keys(groups).map((g) => cell('group', g, h('span', {}, GROUP_NAMES[g], h('small', {}, groups[g].map((t) => TYPE_ES[t]).join(', '))), 'rg'))),
       h('div', { class: 'rgroups' }, cell('parity', 'par', 'PAR', 'rg'), cell('parity', 'impar', 'IMPAR', 'rg')));
 
-    const spinBtn = h('button', { class: 'btn primary huge', onclick: spin }, 'GIRAR');
+    const spinBtn = h('button', { class: 'btn primary huge', type: 'button', onclick: spin }, 'GIRAR');
     async function spin() {
       if (spinning) return;
       const list = [...bets].map(([k, amount]) => { const [kind, value] = k.split(':'); return { kind, value, amount }; });
@@ -78,13 +80,17 @@ export default {
       // Gira para que el segmento ganador quede bajo el puntero (arriba).
       const target = 360 - (res.slot * seg + seg / 2);
       rotation += 360 * 5 + ((target - (rotation % 360)) + 360) % 360;
+      // Modo rápido: la ruleta y la bola frenan en un tercio del tiempo.
+      const SPIN = fast() ? 1500 : 4200;
+      disc.style.transitionDuration = SPIN + 'ms';
       disc.style.transform = `rotate(${rotation}deg)`;
       // La bola corre en sentido contrario por el borde y frena junto con la ruleta hasta quedar bajo el puntero.
       orbit.classList.add('on');
-      if (!reduced()) orbit.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-1800deg)' }], { duration: 4200, easing: 'cubic-bezier(.12,.7,.1,1)' });
+      if (!reduced()) orbit.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-1800deg)' }], { duration: SPIN, easing: 'cubic-bezier(.12,.7,.1,1)' });
       resultEl.textContent = '…';
-      for (let i = 0; i < 12; i++) { sfx('tick'); await sleep(120 + i * 25); }
-      await sleep(Math.max(0, 4200 - 12 * 120 - 66 * 25));
+      const k = SPIN / 4200;
+      for (let i = 0; i < 12; i++) { sfx('tick'); await sleep((120 + i * 25) * k); }
+      await sleep(Math.max(0, (4200 - 12 * 120 - 66 * 25) * k));
       const t = res.type;
       releaseCoins();
       resultEl.replaceChildren(h('span', { class: 'type t-' + t }, `${res.slot} · ${TYPE_ES[t]}`),
@@ -96,8 +102,9 @@ export default {
       spinning = false; spinBtn.disabled = false;
     }
 
+    hotkey(root, spin);
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🎡 Ruleta de Tipos'), h('p', { class: 'muted' }, 'Tipo exacto ×18 · Grupo ×3 · Par/Impar ×2 · La Poké Ball solo paga a quien apuesta por ella.')),
+      h('div', { class: 'game-head' }, h('h1', {}, '🎡 Ruleta de Tipos'), speedToggle(), h('p', { class: 'muted' }, 'Tipo exacto ×18 · Grupo ×3 · Par/Impar ×2 · La Poké Ball solo paga a quien apuesta por ella.')),
       h('div', { class: 'roulette-layout' },
         h('div', { class: 'wheel-wrap' }, h('div', { class: 'wheel-pointer' }), disc, orbit, h('div', { class: 'wheel-hub' }, h('img', { class: 'pixel', src: item('master-ball'), alt: '' }))),
         h('div', { class: 'stack' },
@@ -106,7 +113,7 @@ export default {
             h('div', { class: 'row between wrap gap' }, h('div', { class: 'chips' }, chipBtns),
               h('div', {}, 'Total: ', total)),
             board,
-            h('p', { class: 'muted small' }, 'Clic para añadir ficha · clic derecho para quitarla.'),
+            h('p', { class: 'muted small' }, 'Toca para añadir ficha · clic derecho (o mantén pulsado) para quitarla · Espacio = Girar. Tus apuestas se quedan para repetir.'),
             h('div', { class: 'row gap sticky-actions' }, h('button', { class: 'btn', onclick: () => { bets = new Map(); refresh(); } }, 'Limpiar'), spinBtn)))),
     );
   },

@@ -243,15 +243,39 @@ export const maxBet = () => (S.me && S.me.maxBet) || S.data.maxBet;
 export function betInput(initial = 100, storeKey) {
   let saved = initial;
   try { saved = Number(localStorage.getItem('bet:' + storeKey)) || initial; } catch { /* sin almacenamiento */ }
-  const input = h('input', { type: 'number', min: S.data.minBet, max: maxBet(), step: 10, value: Math.min(saved, maxBet()), class: 'bet-input' });
+  // Tope real: el límite por medallas y, si se puede, el saldo.
+  const cap = () => { const m = maxBet(); const c = Math.floor((S.me && S.me.coins) || 0); return c >= S.data.minBet ? Math.min(m, c) : m; };
+  const clamp = (v) => Math.max(S.data.minBet, Math.min(cap(), Math.floor(Number(v)) || S.data.minBet));
+  const input = h('input', { type: 'number', min: S.data.minBet, max: maxBet(), step: 10, value: clamp(saved), class: 'bet-input', inputmode: 'numeric', 'aria-label': 'Apuesta' });
+  // Aviso de por qué cambió el número (un aviso flotante: no mueve nada de sitio).
+  const say = (t) => { if (t) toast(t, 'info', 3000); };
   const persist = () => { try { localStorage.setItem('bet:' + storeKey, input.value); } catch { /* nada */ } };
-  input.addEventListener('change', persist);
-  const set = (v) => { input.value = Math.max(S.data.minBet, Math.min(maxBet(), Math.floor(v))); persist(); };
-  const chips = [['½', () => set(input.value / 2)], ['×2', () => set(input.value * 2)], ['MIN', () => set(S.data.minBet)], ['MAX', () => set(Math.min(maxBet(), S.me.coins))]];
+  // Ajusta a [mín, tope] y avisa una vez de por qué cambió el número.
+  const normalize = () => {
+    const raw = Math.floor(Number(input.value)) || 0;
+    const v = clamp(raw);
+    if (raw > maxBet()) say(`Tu límite por apuesta es ${fmt(maxBet())} (sube con las medallas).`);
+    else if (raw > cap()) say(`Solo tienes ${fmt(S.me.coins)} monedas.`);
+    else if (raw < S.data.minBet) say(`La apuesta mínima es ${fmt(S.data.minBet)}.`);
+    input.value = v; persist();
+    return v;
+  };
+  input.addEventListener('change', normalize);
+  input.addEventListener('focus', () => { try { input.select(); } catch { /* nada */ } });
+  const set = (v) => { input.value = clamp(v); persist(); say(''); };
+  const chips = [['½', 'Mitad de la apuesta', () => set(Number(input.value) / 2)], ['×2', 'Doble de la apuesta', () => set(Number(input.value) * 2)], ['MIN', 'Apuesta mínima', () => set(S.data.minBet)], ['MAX', 'Lo máximo que puedes apostar', () => set(cap())]];
+  const chipEls = chips.map(([t, title, fn]) => h('button', { class: 'chip', type: 'button', title, onclick: (e) => { fn(); sfx('click'); if (e.detail) e.currentTarget.blur(); } }, t));
   const el = h('div', { class: 'bet-box' },
-    h('label', { title: 'El límite sube con las medallas de gimnasio' }, `Apuesta (máx. ${fmt(maxBet())})`), h('div', { class: 'bet-row' }, h('span', { class: 'coin-ico' }), input,
-      ...chips.map(([t, fn]) => h('button', { class: 'chip', type: 'button', onclick: () => { fn(); sfx('click'); } }, t))));
-  return { el, get value() { return Math.floor(Number(input.value)); }, set };
+    h('label', { title: 'El límite sube con las medallas de gimnasio' }, `Apuesta (máx. ${fmt(maxBet())})`),
+    h('div', { class: 'bet-row' }, h('span', { class: 'coin-ico' }), input, ...chipEls));
+  return {
+    el,
+    // Siempre un entero válido: si lo escrito se pasa del tope, se ajusta antes de apostar.
+    get value() { return normalize(); },
+    set,
+    // Durante una partida la apuesta no se puede tocar, pero la caja sigue en su sitio (nada se mueve).
+    lock(on) { input.disabled = !!on; chipEls.forEach((c) => { c.disabled = !!on; }); el.classList.toggle('locked', !!on); },
+  };
 }
 
 // ---- Sonido sintetizado (sin archivos) ----

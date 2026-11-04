@@ -14,6 +14,9 @@ export default {
     let tick = null;
     let wasMyTurn = false;
     let wonNo = null;
+    let boardSeen = 0; // cartas comunitarias ya mostradas: solo las nuevas se animan al repintar
+    let boardNo = null;
+    let raiseMemo = null; // {key, value}: la subida elegida no se pierde cuando la mesa se repinta
     let gone = false; // al salir de la pantalla, las respuestas tardías ya no pintan ni arrancan temporizadores
 
     const mySeat = () => (t ? t.seats.findIndex((s) => s && s.username === S.me.username) : -1);
@@ -81,8 +84,9 @@ export default {
           won ? h('div', { class: 'p-won' }, `+${fmt(won.amount)}`) : null);
       });
       const center = h('div', { class: 'p-center' },
-        h('div', { class: 'p-board' }, (hd ? hd.board : []).map((c) => playingCard(c, { cls: 'deal' }))),
+        h('div', { class: 'p-board' }, (hd ? hd.board : []).map((c, i) => playingCard(c, { cls: i >= boardSeen ? 'deal' : '' }))),
         hd ? h('div', { class: 'p-pot' }, `Bote ${fmt(hd.pot)}`) : h('div', { class: 'muted' }, t.seats.filter(Boolean).length < 2 ? 'Esperando jugadores…' : 'Nueva mano en breve…'));
+      if (hd) { if (boardNo !== hd.no) { boardNo = hd.no; } boardSeen = hd.board.length; } else { boardSeen = 0; boardNo = null; }
       const needs = (t.badges || 0) - S.me.progress.badges.filter((b) => b.got).length;
       tableBox.replaceChildren(
         h('div', { class: 'row between wrap gap' }, h('h2', {}, t.name), h('span', { class: 'muted' }, `Ciegas ${fmt(t.sb)}/${fmt(t.bb)}`)),
@@ -117,9 +121,11 @@ export default {
         const toCall = hd.currentBet - myBet;
         const minTo = Math.min(hd.currentBet + hd.minRaise, s.stack + myBet);
         const maxTo = s.stack + myBet;
-        const raise = h('input', { type: 'range', min: minTo, max: maxTo, step: t.sb, value: minTo });
-        const raiseLbl = h('b', {}, fmt(minTo));
-        raise.addEventListener('input', () => { raiseLbl.textContent = fmt(raise.value); });
+        const rkey = `${hd.no}:${hd.currentBet}:${hd.board.length}`;
+        const startVal = raiseMemo && raiseMemo.key === rkey ? Math.max(minTo, Math.min(maxTo, raiseMemo.value)) : minTo;
+        const raise = h('input', { type: 'range', min: minTo, max: maxTo, step: t.sb, value: startVal });
+        const raiseLbl = h('b', {}, fmt(startVal));
+        raise.addEventListener('input', () => { raiseLbl.textContent = fmt(raise.value); raiseMemo = { key: rkey, value: Number(raise.value) }; });
         const send = async (type, amount) => {
           const goesAllIn = type === 'allin' || (type === 'raise' && amount >= maxTo) || (type === 'call' && toCall >= s.stack);
           if (goesAllIn) {

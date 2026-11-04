@@ -1,5 +1,6 @@
-import { S, h, fmt, emit, sfx, toast, betInput, item, confirmBet, holdCoins, releaseCoins } from '../core.js';
+import { S, h, fmt, emit, sfx, toast, betInput, item, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstAt, burstEl, glow, vibrate } from '../fx.js';
+import { speedToggle, hotkey, viewAlive, tw, wait } from '../gamekit.js';
 
 const RISK = { low: 'Bajo', medium: 'Medio', high: 'Alto' };
 let risk = 'medium';
@@ -26,19 +27,38 @@ export default {
       buckets.replaceChildren(...S.data.plinko.tables[risk].map((m, k) => h('div', { class: 'bucket ' + (m >= 10 ? 'hot' : m >= 2 ? 'warm' : m >= 1 ? 'ok' : 'cold'), 'data-k': k }, '×' + m)));
     }
 
-    async function drop() {
+    let auto = false;
+    const alive = viewAlive(root);
+    const autoBtn = h('button', { class: 'btn', type: 'button', title: 'Suelta una bola tras otra hasta que lo pares', onclick: () => toggleAuto() }, 'Auto');
+    const setAuto = (on) => { auto = on; autoBtn.classList.toggle('active', on); autoBtn.textContent = on ? '■ Parar' : 'Auto'; };
+    async function toggleAuto() {
+      if (auto) return setAuto(false);
+      // Serie de 10 bolas para estimar el riesgo, igual que en las tragaperras.
+      if (bet.value * 10 >= S.me.coins * 0.5 && !(await confirmRisk('auto-series:plinko', { title: 'Auto con mucho en juego', danger: 'Activar Auto', safe: 'No activar',
+        text: `Con ${fmt(bet.value)} por bola, 10 bolas suman ${fmt(bet.value * 10)} monedas (${Math.round(bet.value * 10 / Math.max(1, S.me.coins) * 100)} % de tus ${fmt(S.me.coins)}). Puedes parar pulsando «Parar».` }))) return;
+      setAuto(true);
+      while (auto && alive()) {
+        if (S.me.coins < bet.value) { toast('Auto parado: no te queda saldo para esa apuesta.', 'info'); break; }
+        if (!(await drop(true))) break;
+        await wait(650);
+      }
+      setAuto(false);
+    }
+
+    // Devuelve true si la bola se lanzó (para que Auto sepa si seguir).
+    async function drop(fromAuto = false) {
       const stake = bet.value;
-      if (!(await confirmBet('plinko', stake, { what: 'soltar una bola con' }))) return;
+      if (!fromAuto && !(await confirmBet('plinko', stake, { what: 'soltar una bola con' }))) return false;
       let r;
       holdCoins(stake); // el premio se ve cuando la bola cae en su casilla
-      try { r = await emit('plinko:drop', { bet: bet.value, risk }); } catch (e) { releaseCoins(); toast(e.message, 'error'); sfx('error'); return; }
+      try { r = await emit('plinko:drop', { bet: stake, risk }); } catch (e) { releaseCoins(); toast(e.message, 'error'); sfx('error'); return false; }
       const ball = h('img', { class: 'pixel plinko-ball', src: item('poke-ball'), alt: '' });
       board.append(ball);
       const frames = [{ left: X(0, 0) + '%', top: '0%' }];
       let pos = 0;
       r.path.forEach((step, row) => { pos += step; frames.push({ left: X(pos, row + 1) + '%', top: Y(row + 1) - 2 + '%' }); });
       frames.push({ left: X(r.bucket, rows) + '%', top: '96%' });
-      const anim = ball.animate(frames, { duration: 1700, easing: 'cubic-bezier(.4,0,.8,1)' });
+      const anim = ball.animate(frames, { duration: tw(1700), easing: 'cubic-bezier(.4,0,.8,1)' });
       const tick = setInterval(() => sfx('tick'), 140);
       // Chispas cada vez que la bola pasa una fila de clavos.
       let row = -1;
@@ -67,15 +87,17 @@ export default {
         }
         if (r.paid) winFx(r.paid, stake, { el: b, icon: '🔻' });
       };
+      return true;
     }
 
     const riskBtns = Object.entries(RISK).map(([k, l]) => h('button', { class: 'chip' + (k === risk ? ' active' : ''), onclick: (e) => { risk = k; riskBtns.forEach((b) => b.classList.toggle('active', b === e.currentTarget)); draw(); } }, l));
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🔻 Plinko de Poké Balls'), h('p', { class: 'muted' }, 'Suelta Poké Balls y mira dónde caen. Puedes lanzar varias a la vez.')),
+      h('div', { class: 'game-head' }, h('h1', {}, '🔻 Plinko de Poké Balls'), speedToggle(), h('p', { class: 'muted' }, 'Suelta Poké Balls y mira dónde caen. Puedes lanzar varias a la vez.')),
       h('div', { class: 'plinko-layout' },
         h('div', { class: 'plinko-wrap' }, board, buckets),
         h('div', { class: 'card stack' }, bet.el, h('div', {}, h('div', { class: 'muted small' }, 'Riesgo'), h('div', { class: 'row gap' }, riskBtns)),
-          h('button', { class: 'btn primary huge', onclick: drop }, 'SOLTAR'), last)));
+          h('div', { class: 'row gap' }, autoBtn, h('button', { class: 'btn primary huge', type: 'button', onclick: () => drop() }, 'SOLTAR')), last)));
+    hotkey(root, () => { if (auto) setAuto(false); else drop(); });
     draw();
   },
 };

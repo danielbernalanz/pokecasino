@@ -341,3 +341,18 @@
   .view-mega .mg { height: var(--av); }
   .view-mega .mg-hero-sym { display: none; }
 }
+
+/* ---- Flujo de juego (gamekit.js): modo rápido, apuesta bloqueada sin saltos y objetivos táctiles ---- */
+.game-head .speed-chip { align-self: center; min-height: 30px; }
+.bet-box.locked { opacity: .55; }
+.bet-box.locked .bet-input { cursor: not-allowed; }
+.chip:disabled, .btn:disabled { cursor: not-allowed; }
+/* Blackjack: el hueco de las manos se reserva desde el principio para que Repartir / Pedir no se desplacen al repartir. */
+.bj-hands { min-height: 150px; align-content: center; }
+@media (max-width: 640px) { .bj-hands { min-height: 126px; } }
+@media (pointer: coarse), (max-width: 640px) {
+  .chip, .bet-row .chip, .speed-chip { min-height: 44px; }
+  .bet-row .chip { min-width: 44px; padding-inline: 10px; }
+  .chip-btn, .view-roulette .chip-btn { width: 44px; height: 44px; }
+  .bet-input { min-height: 44px; }
+}

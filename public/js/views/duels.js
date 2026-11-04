@@ -2,6 +2,7 @@ import { S, h, fmt, act, sfx, bus, sprite, art, img, animImg, modal, typeBadge, 
 import { aniImg, animEnabled, TYPE_COLOR } from '../anim.js';
 import { pickPokemon } from '../picker.js';
 import { burstEl, shake, flash, confetti, coinRain, vibrate, floatText, reduced } from '../fx.js';
+import { speedToggle, fast } from '../gamekit.js';
 
 // Reproduce un combate con animaciones.
 export function playBattle(record, { held = false } = {}) {
@@ -30,7 +31,7 @@ export function playBattle(record, { held = false } = {}) {
     pop,
     text);
   const skipBtn = h('button', { class: 'btn', onclick: () => { skip = true; } }, 'Saltar ⏩');
-  let skip = false;
+  let skip = fast(); // modo rápido: sin pausas ni efectos entre golpes
   const m = modal(h('div', { class: 'stack' }, scene, skipBtn), { title: `⚔️ Duelo${record.wager ? ' por ' + fmt(record.wager) : ' amistoso'}`, wide: true });
   const setHp = (i, v) => {
     const pct = (v / f[i].maxHp) * 100;
@@ -39,8 +40,9 @@ export function playBattle(record, { held = false } = {}) {
     hpTxt[i].textContent = `${v}/${f[i].maxHp}`;
   };
   setHp(0, hp[0]); setHp(1, hp[1]);
+  setTimeout(() => skipBtn.focus(), 50); // Intro / Espacio = saltar, y luego cerrar
   (async () => {
-    await sleep(900);
+    await sleep(skip ? 150 : 900);
     for (const ev of record.log) {
       if (!document.contains(scene)) return;
       const att = f[ev.by];
@@ -99,13 +101,17 @@ const pickName = (p) => (p.mega ? '💠 ' + (S.megaById.get(p.mega)?.name || '')
 
 // Pokémon elegidos en los retos que he creado (solo en esta sesión).
 const myPicks = {};
+let lastChosen = null; // el último Pokémon elegido se recuerda para retar de nuevo sin volver a buscarlo
 
 export default {
   id: 'duels', title: 'Duelos PvP', icon: '⚔️',
   mount(root) {
-    let chosen = null;
+    let chosen = lastChosen;
     const chosenBox = h('div', { class: 'chosen' });
-    const wager = h('input', { type: 'number', min: 0, step: 10, value: 200 });
+    let w0 = 200;
+    try { const v = localStorage.getItem('bet:duels'); if (v !== null && v !== '') w0 = Math.max(0, Number(v) || 0); } catch { /* nada */ }
+    const wager = h('input', { type: 'number', min: 0, step: 10, value: w0 });
+    wager.addEventListener('change', () => { try { localStorage.setItem('bet:duels', String(Math.max(0, Math.floor(Number(wager.value) || 0)))); } catch { /* nada */ } });
     const target = h('input', { list: 'online-users', placeholder: 'Cualquiera (opcional)' });
     const datalist = h('datalist', { id: 'online-users' }, S.online.filter((u) => u.username !== S.me.username).map((u) => h('option', { value: u.username })));
     const showChosen = () => chosenBox.replaceChildren(chosen
@@ -155,17 +161,17 @@ export default {
     }
 
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '⚔️ Duelos PvP'), h('p', { class: 'muted' }, 'Combate 1 contra 1 a nivel 50 con elección a ciegas: ninguno ve el Pokémon del otro hasta que empieza. Cuentan las estadísticas, las estrellas, la versión variocolor y la tabla de tipos.',
+      h('div', { class: 'game-head' }, h('h1', {}, '⚔️ Duelos PvP'), speedToggle(), h('p', { class: 'muted' }, 'Combate 1 contra 1 a nivel 50 con elección a ciegas: ninguno ve el Pokémon del otro hasta que empieza. Cuentan las estadísticas, las estrellas, la versión variocolor y la tabla de tipos.',
         S.events && S.events.active.some((e) => e.id === 'duels') ? h('span', { class: 'event-pill' }, '⚔️ Lunes de Duelos: sin comisión') : null)),
       h('div', { class: 'duel-layout' },
         h('div', { class: 'card stack' },
           h('h3', {}, 'Crear reto'),
           chosenBox,
-          h('button', { class: 'btn', onclick: async () => { const p = await pickPokemon({ mega: true }); if (p) { chosen = p; showChosen(); } } }, 'Elegir Pokémon'),
+          h('button', { class: 'btn', onclick: async () => { const p = await pickPokemon({ mega: true }); if (p) { chosen = lastChosen = p; showChosen(); } } }, 'Elegir Pokémon'),
           h('label', {}, 'Apuesta (0 = amistoso)', wager),
           h('label', {}, 'Rival', target, datalist),
           h('button', { class: 'btn primary big', onclick: async (e) => {
-            if (!chosen) return pickPokemon({ mega: true }).then((p) => { if (p) { chosen = p; showChosen(); } });
+            if (!chosen) return pickPokemon({ mega: true }).then((p) => { if (p) { chosen = lastChosen = p; showChosen(); } });
             const wg = Number(wager.value) || 0;
             if (wg && !(await confirmBet('duels', wg, { what: 'poner en juego' }))) return;
             const r = await act('duel:create', { pokeId: chosen.id, shiny: chosen.shiny, mega: chosen.mega || 0, wager: Number(wager.value) || 0, target: target.value.trim() || null }, e.target);

@@ -1,5 +1,19 @@
 [
   {
+    "version": "2026.11.04-d",
+    "date": "2026-11-04",
+    "title": "Juegos más cómodos",
+    "items": [
+      "⌨️ Teclado en todos los juegos: Espacio o Intro hacen la acción principal (girar, soltar, repartir, apostar, retirarse…). Blackjack: P pedir, S plantarse, D doblar, V dividir. Video Póker: 1-5 guardan cartas. Gran Carrera: 1-6 apuestan por ese corredor. Trivia: 1-4 eligen respuesta.",
+      "⚡ Botón «Rápido» en Tragaperras, Ruleta, Plinko, Baccarat y Duelos: acorta las animaciones a un tercio y se recuerda.",
+      "🔁 Auto en Plinko y «Repetir cada ronda» en Crash (con aviso de riesgo una sola vez y parada automática si te quedas sin saldo). El Auto de las tragaperras ya no pregunta en cada tirada y se para solo sin saldo.",
+      "💰 La apuesta se ajusta sola a tu límite y a tu saldo, con un aviso claro, y la caja de apuesta ya no desaparece durante la partida (nada se mueve). Ruleta y Baccarat recuerdan la ficha elegida; Duelos recuerda apuesta y Pokémon.",
+      "🃏 Blackjack ya no se desplaza al repartir ni vuelve a repartir las cartas del crupier al pedir; Video Póker y la mesa de Poker solo animan las cartas nuevas, y Poker conserva la subida que ibas a hacer.",
+      "💣 Minas y Voltorb Flip: «Retirarse» ocupa su sitio desde el principio (apagado hasta que puedas) y no se pueden pulsar dos veces. Desafío Pokémon: «Jugar otra vez» empieza directamente con tu apuesta y ajustes.",
+      "👆 Botones de apuesta y fichas de al menos 44 px en el móvil."
+    ]
+  },
+  {
     "version": "2026.11.04-b",
     "date": "2026-11-04",
     "title": "Gacha de MT",

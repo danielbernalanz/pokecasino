@@ -1,5 +1,6 @@
 import { S, h, fmt, emit, sfx, toast, playingCard, sleep, sprite, confirmBet, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, vibrate } from '../fx.js';
+import { speedToggle, hotkey, wait } from '../gamekit.js';
 
 const LABEL = { player: 'Punto', banker: 'Banca', tie: 'Empate' };
 
@@ -7,6 +8,7 @@ export default {
   id: 'baccarat', title: 'Baccarat', icon: '🎴',
   mount(root) {
     let chip = 100;
+    try { const c = Number(localStorage.getItem('chip:baccarat')); if ([10, 50, 100, 500, 1000, 5000].includes(c)) chip = c; } catch { /* nada */ }
     const bets = { player: 0, banker: 0, tie: 0 };
     const pBox = h('div', { class: 'cards-row' });
     const bBox = h('div', { class: 'cards-row' });
@@ -14,12 +16,13 @@ export default {
     const bScore = h('b', { class: 'bac-score' }, '–');
     const msg = h('div', { class: 'table-msg' }, 'Apuesta a Punto, Banca o Empate.');
     const amt = {};
-    const spot = (k) => h('button', { class: `bac-spot bs-${k}`, onclick: () => { bets[k] += chip; sfx('click'); refresh(); }, oncontextmenu: (e) => { e.preventDefault(); bets[k] = 0; refresh(); } },
+    const spot = (k) => h('button', { class: `bac-spot bs-${k}`, onclick: (e) => { if (e.detail) e.currentTarget.blur(); bets[k] += chip; sfx('click'); refresh(); }, oncontextmenu: (e) => { e.preventDefault(); bets[k] = 0; refresh(); } },
       h('b', {}, LABEL[k]), h('span', { class: 'muted small' }, `paga ×${S.data.baccaratPayout[k]}`), amt[k] = h('span', { class: 'bet-amt' }));
     function refresh() { for (const k of Object.keys(bets)) { amt[k].textContent = bets[k] ? fmt(bets[k]) : ''; amt[k].parentElement.classList.toggle('has', bets[k] > 0); } }
-    const chipBtns = [10, 50, 100, 500, 1000, 5000].map((v) => h('button', { class: 'chip-btn' + (v === chip ? ' active' : ''), onclick: (e) => { chip = v; chipBtns.forEach((b) => b.classList.toggle('active', b === e.currentTarget)); } }, v >= 1000 ? v / 1000 + 'k' : v));
-    const playBtn = h('button', { class: 'btn primary huge', onclick: play }, 'JUGAR');
+    const chipBtns = [10, 50, 100, 500, 1000, 5000].map((v) => h('button', { class: 'chip-btn' + (v === chip ? ' active' : ''), onclick: (e) => { if (e.detail) e.currentTarget.blur(); chip = v; try { localStorage.setItem('chip:baccarat', String(v)); } catch { /* nada */ } chipBtns.forEach((b) => b.classList.toggle('active', b === e.currentTarget)); } }, v >= 1000 ? v / 1000 + 'k' : v));
+    const playBtn = h('button', { class: 'btn primary huge', type: 'button', title: 'Espacio o Intro. Tus fichas se quedan en la mesa para repetir la apuesta', onclick: play }, 'JUGAR');
     async function play() {
+      if (playBtn.disabled) return;
       if (!bets.player && !bets.banker && !bets.tie) return toast('Coloca fichas primero.', 'error');
       const stake = bets.player + bets.banker + bets.tie;
       playBtn.disabled = true;
@@ -33,8 +36,8 @@ export default {
         if (r.banker[2]) order.push([bBox, r.banker[2]]);
         for (const [k, [box, c]] of order.entries()) {
           // Suspense: la última carta se hace esperar.
-          if (k === order.length - 1) { sfx('charge', 0); vibrate(25); await sleep(450); }
-          box.append(playingCard(c, { cls: 'deal' })); sfx('flip'); await sleep(380);
+          if (k === order.length - 1) { sfx('charge', 0); vibrate(25); await wait(450); }
+          box.append(playingCard(c, { cls: 'deal' })); sfx('flip'); await wait(380);
         }
         releaseCoins();
         pScore.textContent = r.ps; bScore.textContent = r.bs;
@@ -44,8 +47,9 @@ export default {
       } catch (e) { releaseCoins(); toast(e.message, 'error'); }
       playBtn.disabled = false;
     }
+    hotkey(root, play);
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🎴 Baccarat de Mr. Mime'), h('p', { class: 'muted' }, 'Gana la mano más cercana a 9. Banca paga 0,95:1, Empate 8:1; en empate se devuelven Punto y Banca.')),
+      h('div', { class: 'game-head' }, h('h1', {}, '🎴 Baccarat de Mr. Mime'), speedToggle(), h('p', { class: 'muted' }, 'Gana la mano más cercana a 9. Banca paga 0,95:1, Empate 8:1; en empate se devuelven Punto y Banca.')),
       h('div', { class: 'felt' },
         h('div', { class: 'bac-table' },
           h('div', { class: 'bac-side' }, h('div', { class: 'row gap' }, h('h3', {}, 'Punto'), pScore), pBox),

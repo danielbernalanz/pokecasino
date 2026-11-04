@@ -1,3 +1,4 @@
+import { viewAlive } from '../gamekit.js';
 import { S, h, fmt, act, sfx, bus, animImg, betInput, confirmBet } from '../core.js';
 import { winFx, burstEl, confetti, flash } from '../fx.js';
 
@@ -26,6 +27,13 @@ export default {
       track.replaceChildren(...lanes.map((l) => l.el));
     }
 
+    async function betOn(lane, btn) {
+      const stake = bet.value;
+      if (!(await confirmBet('race', stake))) return;
+      const res = await act('race:bet', { lane, amount: stake }, btn);
+      if (res) { S.raceBets = res.myBets; sfx('click'); renderRunners(S.race); }
+    }
+
     function renderRunners(r) {
       const mine = S.raceBets || [];
       runnersBox.replaceChildren(...r.runners.map((x) => {
@@ -37,11 +45,7 @@ export default {
           h('div', { class: 'grow' }, h('b', {}, `${x.lane + 1}. ${p.name}`), h('div', { class: 'muted small' }, `Velocidad ${x.spe} · Bote ${fmt(r.pools[x.lane])}`),
             myAmt ? h('div', { class: 'small good' }, `Tu apuesta: ${fmt(myAmt)}`) : null),
           h('div', { class: 'odds' }, '×' + x.odds),
-          h('button', { class: 'btn primary', disabled: r.phase !== 'betting', onclick: async (e) => {
-            if (!(await confirmBet('race', bet.value))) return;
-            const res = await act('race:bet', { lane: x.lane, amount: bet.value }, e.target);
-            if (res) { S.raceBets = res.myBets; sfx('click'); renderRunners(S.race); }
-          } }, 'Apostar'));
+          h('button', { class: 'btn primary', 'data-lane': x.lane, disabled: r.phase !== 'betting', title: r.phase === 'betting' ? `Apostar por el nº ${x.lane + 1} (tecla ${x.lane + 1})` : 'Las apuestas están cerradas: espera a la siguiente carrera', onclick: (e) => betOn(x.lane, e.currentTarget) }, 'Apostar'));
       }));
       myBox.textContent = mine.length ? `Apuestas en esta carrera: ${fmt(mine.reduce((s, b) => s + b.amount, 0))} monedas` : '';
     }
@@ -104,8 +108,19 @@ export default {
         if (p.paid) { sfx('big'); banner.append(h('div', { class: 'good' }, `¡Ganaste ${fmt(p.paid)} monedas!`)); confetti({ count: 36 }); winFx(p.paid, p.stake, { el: banner, icon: '🏁' }); } else if (p.stake) sfx('lose');
       }),
     ];
+    // Teclas 1-6: apostar por ese corredor con la apuesta elegida (solo con las apuestas abiertas).
+    const alive = viewAlive(root);
+    const onNum = (e) => {
+      if (!alive()) return document.removeEventListener('keydown', onNum);
+      if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal-wrap, .gx') || (e.target.closest && e.target.closest('input, textarea, select'))) return;
+      const lane = Number(e.key) - 1;
+      const btn = lane >= 0 && lane < 6 ? runnersBox.querySelector(`button[data-lane="${lane}"]:not([disabled])`) : null;
+      if (btn) { e.preventDefault(); btn.click(); }
+    };
+    document.addEventListener('keydown', onNum);
+    this.offKey = () => document.removeEventListener('keydown', onNum);
     if (S.race) onState(S.race);
     this.stop = () => cancelAnimationFrame(raf);
   },
-  unmount() { this.offs.forEach((f) => f()); this.stop(); },
+  unmount() { this.offs.forEach((f) => f()); this.stop(); this.offKey && this.offKey(); },
 };

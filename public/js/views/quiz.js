@@ -1,5 +1,6 @@
 import { S, h, fmt, emit, sfx, toast, betInput, confirmBet, typeBadge, avatar, titleTag } from '../core.js';
 import { winFx, burstEl, flash, shake, vibrate, glow, pop, floatText } from '../fx.js';
+import { hotkey, viewAlive } from '../gamekit.js';
 
 const MODES = [
   { id: 'type', ico: '🔍', name: '¿Quién es ese Pokémon?', desc: 'Escribe el nombre' },
@@ -288,14 +289,16 @@ export default {
         }
         setTimeout(() => nextBtn.focus(), 50);
       } else {
-        const again = h('button', { class: 'btn primary big', onclick: again_ }, 'Jugar otra vez');
-        acts.append(again);
+        const again = h('button', { class: 'btn primary big', onclick: replay }, 'Jugar otra vez');
+        acts.append(again, h('button', { class: 'btn big', type: 'button', onclick: again_ }, 'Cambiar ajustes'));
         setTimeout(() => again.focus(), 50);
       }
       stage.replaceChildren(...parts.filter(Boolean), acts);
       if (!r.correct) { refreshBoard(); }
     }
     function again_() { game = null; show(false); drawSetup(); }
+    // «Jugar otra vez»: misma apuesta, modo y dificultad, sin pasar por el selector.
+    function replay() { game = null; show(false); start(); }
     function paidFx(r) {
       idleTimer();
       sfx(r.paid >= game.bet * 5 ? 'big' : 'win');
@@ -306,7 +309,7 @@ export default {
         h('div', { class: 'qz-won' }, h('div', { class: 'qz-won-ico' }, '💰'),
           h('b', { class: 'good' }, `${mf(r.mult)} · +${fmt(r.paid)} monedas`),
           h('div', { class: 'small muted' }, `${g.streak} aciertos seguidos${r.bonus ? ' · bonus de objetivo' : ''}${r.capped ? ' · pago limitado al tope por ronda' : ''}`)),
-        h('div', { class: 'qz-actions' }, h('button', { class: 'btn primary big', onclick: again_ }, 'Jugar otra vez')));
+        h('div', { class: 'qz-actions' }, h('button', { class: 'btn primary big', onclick: replay }, 'Jugar otra vez'), h('button', { class: 'btn big', type: 'button', onclick: again_ }, 'Cambiar ajustes')));
       winFx(r.paid, g.bet, { el: stage, icon: '🧠', title: '¡GRAN RACHA!' });
       refreshBoard();
     }
@@ -339,7 +342,20 @@ export default {
         h('p', { class: 'muted' }, 'Contesta seguido para subir el multiplicador y retírate cuando quieras. Un fallo o quedarte sin tiempo pierde la apuesta.')),
       h('div', { class: 'qz-layout' }, h('div', { class: 'stack' }, setup, play), boardCard));
 
-    this.unmount = () => { stopTimer(); clearTimeout(autoNext); };
+    // Espacio / Intro: empezar (selector) o pasar a lo siguiente (tras responder). 1-4: elegir respuesta en la trivia.
+    const offKey = hotkey(root, () => {
+      if (!setup.classList.contains('hidden')) start();
+      else { const b = stage.querySelector('.qz-actions .btn.primary'); if (b) b.click(); }
+    });
+    const alive = viewAlive(root);
+    const onNum = (e) => {
+      if (!alive()) return document.removeEventListener('keydown', onNum);
+      if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal-wrap, .gx') || (e.target.closest && e.target.closest('input, textarea, select'))) return;
+      const o = stage.querySelector(`.qz-opt[data-i="${Number(e.key) - 1}"]:not([disabled])`);
+      if (o) { e.preventDefault(); o.click(); }
+    };
+    document.addEventListener('keydown', onNum);
+    this.unmount = () => { stopTimer(); clearTimeout(autoNext); offKey(); document.removeEventListener('keydown', onNum); };
     drawSetup();
     try {
       const st = await emit('quiz:state');

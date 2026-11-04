@@ -1,11 +1,26 @@
-import { S, h, fmt, act, sfx, bus, betInput, sprite, confirmBet, confirmRisk } from '../core.js';
+import { S, h, fmt, act, sfx, bus, toast, betInput, sprite, confirmBet, confirmRisk } from '../core.js';
 import { winFx, burstEl, flash, shake, pop, vibrate } from '../fx.js';
+import { hotkey } from '../gamekit.js';
 
 export default {
   id: 'crash', title: 'Crash Rocket', icon: '🚀',
   mount(root) {
     const bet = betInput(100, 'crash');
-    const auto = h('input', { type: 'number', min: 1.01, step: 0.01, placeholder: 'p. ej. 2.00', class: 'bet-input' });
+    let savedAuto = '';
+    try { savedAuto = localStorage.getItem('crash:auto') || ''; } catch { /* nada */ }
+    const auto = h('input', { type: 'number', min: 1.01, step: 0.01, placeholder: 'p. ej. 2.00', class: 'bet-input', value: savedAuto });
+    auto.addEventListener('change', () => { try { localStorage.setItem('crash:auto', auto.value); } catch { /* nada */ } });
+    // «Repetir cada ronda»: apuesta sola al abrirse cada ronda con la misma apuesta y retiro, hasta que lo pares.
+    let rebet = false;
+    const rebetBtn = h('button', { class: 'chip', type: 'button', title: 'Apuesta sola en cada ronda con la misma apuesta y retiro automático', onclick: () => toggleRebet() }, '🔁 Repetir cada ronda');
+    const setRebet = (on) => { rebet = on; rebetBtn.classList.toggle('active', on); rebetBtn.textContent = on ? '■ Parar repetición' : '🔁 Repetir cada ronda'; };
+    async function toggleRebet() {
+      if (rebet) return setRebet(false);
+      if (bet.value * 10 >= S.me.coins * 0.5 && !(await confirmRisk('auto-series:crash', { title: 'Repetir con mucho en juego', danger: 'Activar', safe: 'No activar',
+        text: `Apostarás ${fmt(bet.value)} en cada ronda: 10 rondas suman ${fmt(bet.value * 10)} monedas (${Math.round(bet.value * 10 / Math.max(1, S.me.coins) * 100)} % de tus ${fmt(S.me.coins)}). Se para solo si te quedas sin saldo o pulsando el botón otra vez.` }))) return;
+      setRebet(true);
+      if (st && st.phase === 'betting' && !mine()) placeBet(true);
+    }
     const canvas = h('canvas', { class: 'crash-canvas', width: 900, height: 420 });
     const big = h('div', { class: 'crash-mult' }, '×1.00');
     const status = h('div', { class: 'crash-status' });
@@ -19,26 +34,39 @@ export default {
     let offset = 0;
     let raf = null;
     let milestone = 1;
+    let placing = false;
 
     const mult = (ms) => Math.floor(Math.exp(G * (ms / 1000)) * 100) / 100;
     const mine = () => st && st.players.find((p) => p.username === S.me.username);
 
-    async function onMain() {
-      if (!st) return;
-      if (st.phase === 'betting') {
-        if (!(await confirmBet('crash', bet.value))) return;
+    // Apuesta de la ronda. fromRebet: la apuesta automática no vuelve a preguntar por el riesgo.
+    async function placeBet(fromRebet = false) {
+      if (!st || st.phase !== 'betting' || mine() || placing) return;
+      placing = true;
+      try {
+        const stake = bet.value;
+        if (!fromRebet && !(await confirmBet('crash', stake))) return;
         const au = auto.value ? Number(auto.value) : null;
-        if (!au || au >= 10) {
+        if (!fromRebet && (!au || au >= 10)) {
           const pr = (x) => { const p = 97 / x; return p >= 10 ? Math.round(p) : p.toFixed(1).replace('.', ','); };
           const text = au
             ? `Tu retiro automático está en ×${au}. Con la ventaja de la casa (3 %), la probabilidad de llegar a ×${au} es de ~${pr(au)} %: solo ~${pr(au)} de cada 100 rondas llegan tan lejos, y en el resto pierdes la apuesta.`
             : `No has puesto retiro automático: dependes de pulsar «Retirar» a tiempo y el cohete puede explotar en cualquier momento (la mitad de las rondas acaban antes de ×2). Para llegar a ×10 solo ~10 de cada 100 rondas lo consiguen.`;
           if (!(await confirmRisk('crash-risky', { title: au ? 'Retiro automático muy alto' : 'Sin retiro automático', text, danger: 'Apostar igualmente', safe: 'Cancelar' }))) return;
         }
-        if (st.phase !== 'betting') return;
-        const r = await act('crash:bet', { amount: bet.value, auto: au }, mainBtn);
-        if (r) sfx('click');
+        if (!st || st.phase !== 'betting') return;
+        if (S.me.coins < stake) { setRebet(false); toast('No tienes saldo para esa apuesta.', 'error'); return; }
+        const r = await act('crash:bet', { amount: stake, auto: au }, mainBtn);
+        if (r) sfx('click'); else setRebet(false);
+      } finally { placing = false; }
+    }
+    async function onMain() {
+      if (!st) return;
+      if (st.phase === 'betting') {
+        placeBet();
       } else if (st.phase === 'flying') {
+        const b = mine();
+        if (!b || b.cashedAt) return;
         const r = await act('crash:cashout', {}, mainBtn);
         if (r) sfx('win');
       }
@@ -112,6 +140,7 @@ export default {
       offset = s.now - Date.now();
       rocket.classList.toggle('gone', s.phase === 'crashed');
       if (s.phase === 'betting') milestone = 1;
+      if (s.phase === 'betting' && prevPhase !== 'betting' && rebet) setTimeout(() => placeBet(true), 250);
       if (s.phase === 'crashed' && prevPhase === 'flying') {
         const lost = mine() && !mine().cashedAt;
         sfx(lost ? 'boom' : 'flip');
@@ -120,8 +149,8 @@ export default {
       }
       status.textContent = s.phase === 'betting' ? 'Apuestas abiertas: ¡prepárate para el despegue!' : s.phase === 'flying' ? '¡Despegando!' : '¡El Team Rocket sale volando otra vez! 💥';
       const b = mine();
-      if (s.phase === 'betting') { mainBtn.disabled = !!b; mainBtn.textContent = b ? 'APOSTADO ✓' : 'APOSTAR'; }
-      else if (s.phase === 'flying') { mainBtn.disabled = !b || !!b.cashedAt; if (!b) mainBtn.textContent = 'ESPERA A LA SIGUIENTE'; else if (b.cashedAt) mainBtn.textContent = `RETIRADO ×${b.cashedAt}`; }
+      if (s.phase === 'betting') { mainBtn.disabled = !!b; mainBtn.textContent = b ? 'APOSTADO ✓' : 'APOSTAR'; mainBtn.title = b ? 'Ya estás dentro de esta ronda' : 'Espacio o Intro'; }
+      else if (s.phase === 'flying') { mainBtn.disabled = !b || !!b.cashedAt; mainBtn.title = b ? 'Espacio o Intro para retirarte' : 'Ya ha despegado: apuesta en la siguiente ronda'; if (!b) mainBtn.textContent = 'ESPERA A LA SIGUIENTE'; else if (b.cashedAt) mainBtn.textContent = `RETIRADO ×${b.cashedAt}`; }
       else { mainBtn.disabled = true; mainBtn.textContent = 'NUEVA RONDA…'; }
       players.replaceChildren(...s.players.map((p) => h('div', { class: 'crash-player' + (p.cashedAt ? ' out' : '') + (s.phase === 'crashed' && !p.cashedAt ? ' lost' : '') },
         h('b', {}, p.username), h('span', {}, fmt(p.amount)), h('span', {}, p.cashedAt ? `×${p.cashedAt} · +${fmt(p.paid)}` : p.auto ? `auto ×${p.auto}` : '…'))));
@@ -134,12 +163,13 @@ export default {
       h('div', { class: 'crash-layout' },
         h('div', { class: 'crash-stage' }, canvas, rocket, big, status),
         h('div', { class: 'stack' },
-          h('div', { class: 'card stack' }, bet.el, h('label', {}, 'Retiro automático (opcional)', auto), mainBtn,
+          h('div', { class: 'card stack' }, bet.el, h('label', {}, 'Retiro automático (opcional)', auto), h('div', { class: 'row gap' }, rebetBtn), mainBtn,
             h('p', { class: 'muted small' }, 'Todos juegan la misma ronda. Retírate antes de que Meowth salga volando. Devuelve de media el 97 % en cualquier punto.')),
           h('div', { class: 'card' }, h('h3', {}, 'Entrenadores en esta ronda'), players))));
     this.offs = [bus.on('crash', onState), bus.on('crash:result', (r) => { if (r.paid) { sfx('win'); winFx(r.paid, r.at ? r.paid / r.at : 0, { el: big, icon: '🚀' }); } })];
+    const offKey = hotkey(root, onMain);
     if (S.crash) onState(S.crash);
-    this.stop = () => cancelAnimationFrame(raf);
+    this.stop = () => { cancelAnimationFrame(raf); rebet = false; offKey(); };
   },
   unmount() { this.offs.forEach((f) => f()); this.stop(); },
 };

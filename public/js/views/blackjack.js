@@ -1,5 +1,6 @@
 import { S, h, fmt, emit, sfx, toast, betInput, playingCard, sprite, confirmBet, confirmRisk, holdCoins, releaseCoins } from '../core.js';
 import { winFx, burstEl, flash, floatText, vibrate } from '../fx.js';
+import { hotkey, viewAlive, tw } from '../gamekit.js';
 
 const RESULT = { blackjack: '¡Blackjack!', win: 'Ganas', push: 'Empate', lose: 'Pierdes', bust: 'Te pasaste' };
 
@@ -11,10 +12,12 @@ export default {
     const dealerTotal = h('span', { class: 'bj-total' });
     const handsBox = h('div', { class: 'bj-hands' });
     const msg = h('div', { class: 'table-msg' }, 'Haz tu apuesta y reparte.');
-    const btn = (label, action, cls = '') => h('button', { class: 'btn big ' + cls, onclick: () => play(action) }, label);
-    const dealBtn = h('button', { class: 'btn primary big', onclick: () => deal() }, 'Repartir');
-    const actions = { hit: btn('Pedir', 'hit', 'primary'), stand: btn('Plantarse', 'stand'), double: btn('Doblar', 'double', 'gold'), split: btn('Dividir', 'split') };
-    let shown = 0;
+    const btn = (label, action, cls = '', key = '') => h('button', { class: 'btn big ' + cls, type: 'button', title: key ? `Tecla ${key}` : '', onclick: () => play(action) }, label);
+    const dealBtn = h('button', { class: 'btn primary big', type: 'button', title: 'Espacio o Intro', onclick: () => deal() }, 'Repartir');
+    let busy = false;
+    const actions = { hit: btn('Pedir', 'hit', 'primary', 'P'), stand: btn('Plantarse', 'stand', '', 'S'), double: btn('Doblar', 'double', 'gold', 'D'), split: btn('Dividir', 'split', '', 'V') };
+    // Cartas ya en mesa (clave por posición): solo las nuevas se animan; volver a pintar no reparte otra vez.
+    let seen = new Set();
     let cur = null;
     const CV = { A: 11, K: 10, Q: 10, J: 10, T: 10 };
     // Total de una mano y si es blanda (con un As contando 11).
@@ -27,14 +30,14 @@ export default {
 
     function render(g, animate) {
       cur = g;
-      if (!g) { dealerBox.replaceChildren(); handsBox.replaceChildren(); dealerTotal.textContent = ''; setButtons(null); return; }
-      dealerBox.replaceChildren(...g.dealer.map((c, i) => playingCard(c, { cls: animate ? 'deal' : '', delay: i * 120, back: S.me.equip.cardback })));
+      if (!g) { dealerBox.replaceChildren(); handsBox.replaceChildren(); dealerTotal.textContent = ''; seen = new Set(); setButtons(null); return; }
+      const fresh = (key, c) => { const k = key + ':' + c; const isNew = animate && !seen.has(k); seen.add(k); return isNew ? 'deal' : ''; };
+      dealerBox.replaceChildren(...g.dealer.map((c, i) => playingCard(c, { cls: fresh('d' + i, c), delay: i * 120, back: S.me.equip.cardback })));
       dealerTotal.textContent = g.dealerTotal;
       handsBox.replaceChildren(...g.hands.map((hd, k) => h('div', { class: 'bj-hand' + (k === g.active && !g.done ? ' active' : '') + (hd.result ? ' r-' + hd.result : '') },
-        h('div', { class: 'cards-row' }, hd.cards.map((c, i) => playingCard(c, { cls: animate && i >= shown ? 'deal' : '', delay: i * 120 }))),
+        h('div', { class: 'cards-row' }, hd.cards.map((c, i) => playingCard(c, { cls: fresh(`h${k}.${i}`, c), delay: i * 120 }))),
         h('div', { class: 'row gap' }, h('span', { class: 'bj-total' }, hd.total), h('span', { class: 'muted small' }, `Apuesta ${fmt(hd.bet)}`),
           hd.result ? h('b', { class: ['win', 'blackjack'].includes(hd.result) ? 'good' : hd.result === 'push' ? '' : 'bad' }, RESULT[hd.result]) : null))));
-      shown = Math.max(...g.hands.map((x) => x.cards.length));
       setButtons(g);
       if (g.done) {
         msg.replaceChildren(g.paid ? h('b', { class: 'good' }, `+${fmt(g.paid)} monedas`) : h('span', { class: 'muted' }, 'La casa gana esta vez.'));
@@ -50,19 +53,24 @@ export default {
     function setButtons(g) {
       const playing = g && !g.done;
       dealBtn.classList.toggle('hidden', !!playing);
-      bet.el.classList.toggle('hidden', !!playing);
+      bet.lock(!!playing);
       actions.hit.classList.toggle('hidden', !playing);
       actions.stand.classList.toggle('hidden', !playing);
       actions.double.classList.toggle('hidden', !playing || !g.canDouble);
       actions.split.classList.toggle('hidden', !playing || !g.canSplit);
     }
     async function deal() {
-      shown = 0;
-      if (!(await confirmBet('blackjack', bet.value))) return;
-      holdCoins(bet.value, 3000);
-      try { const r = await emit('bj:deal', { bet: bet.value }); sfx('flip'); render(r.game, true); setTimeout(releaseCoins, 700); } catch (e) { releaseCoins(); toast(e.message, 'error'); sfx('error'); }
+      if (busy || (cur && !cur.done)) return;
+      busy = true; dealBtn.disabled = true;
+      try {
+        const stake = bet.value;
+        if (!(await confirmBet('blackjack', stake))) return;
+        holdCoins(stake, 3000);
+        try { const r = await emit('bj:deal', { bet: stake }); seen = new Set(); sfx('flip'); render(r.game, true); setTimeout(releaseCoins, tw(700)); } catch (e) { releaseCoins(); toast(e.message, 'error'); sfx('error'); }
+      } finally { busy = false; dealBtn.disabled = false; }
     }
     async function play(action) {
+      if (busy) return;
       const hd = cur && !cur.done && cur.hands[cur.active];
       if (hd) {
         const { t, soft } = handTotal(hd.cards);
@@ -75,16 +83,30 @@ export default {
           danger: action === 'double' ? 'Doblar igualmente' : 'Pedir igualmente', safe: 'Plantarme / volver' }))) return;
         if ((action === 'double' || action === 'split') && !(await confirmBet('blackjack', hd.bet, { what: action === 'double' ? 'doblar con' : 'añadir' }))) return;
       }
+      busy = true;
+      Object.values(actions).forEach((b) => { b.disabled = true; });
       holdCoins(0, 3000);
-      try { const r = await emit('bj:act', { action }); sfx('flip'); render(r.game, true); setTimeout(releaseCoins, 700); } catch (e) { releaseCoins(); toast(e.message, 'error'); }
+      try { const r = await emit('bj:act', { action }); sfx('flip'); render(r.game, true); setTimeout(releaseCoins, tw(700)); } catch (e) { releaseCoins(); toast(e.message, 'error'); } finally { busy = false; Object.values(actions).forEach((b) => { b.disabled = false; }); }
     }
+    // Espacio / Intro: repartir de nuevo con la misma apuesta. Durante la mano: P pedir, S plantarse, D doblar, V dividir.
+    const playing = () => cur && !cur.done;
+    hotkey(root, () => { if (!playing()) deal(); });
+    const alive = viewAlive(root);
+    const onLetter = (e) => {
+      if (!alive()) return document.removeEventListener('keydown', onLetter);
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || document.querySelector('.modal-wrap, .gx') || (e.target.closest && e.target.closest('input, textarea, select'))) return;
+      const map = { p: 'hit', s: 'stand', d: 'double', v: 'split' };
+      const a = map[e.key.toLowerCase()];
+      if (a && playing() && !actions[a].classList.contains('hidden')) { e.preventDefault(); play(a); }
+    };
+    document.addEventListener('keydown', onLetter);
 
     root.append(
       h('div', { class: 'game-head' }, h('h1', {}, '🃏 Blackjack de Snorlax'), h('p', { class: 'muted' }, 'Blackjack paga 3:2 · El crupier se planta en 17 · Doblar con 2 cartas · Dividir una vez')),
       h('div', { class: 'felt' },
         h('div', { class: 'dealer-area' }, h('img', { class: 'pixel dealer-mon', src: sprite(143), alt: 'Snorlax' }), h('div', {}, h('div', { class: 'muted small' }, 'Crupier ', dealerTotal), dealerBox)),
         handsBox, msg,
-        h('div', { class: 'row gap wrap center' }, bet.el, dealBtn, ...Object.values(actions))));
+        h('div', { class: 'row gap wrap center bj-controls' }, bet.el, dealBtn, ...Object.values(actions))));
     try { const r = await emit('bj:state'); render(r.game); } catch { render(null); }
   },
 };
