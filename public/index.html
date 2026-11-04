@@ -55,14 +55,16 @@
     <header class="topbar">
       <button class="icon-btn menu-btn" id="menu-btn" aria-label="Menú">☰</button>
       <a class="logo" href="#/lobby"><span class="logo-ball"></span><span class="logo-text">Poké<b>Casino</b></span></a>
-      <div class="jackpot-pill" title="Bote progresivo de Pika-Slots">BOTE <b id="jackpot">0</b></div>
+      <a class="jackpot-pill" href="#/slots" title="Bote progresivo de Pika-Slots: ir a jugar">BOTE <b id="jackpot">0</b></a>
       <div class="wallet">
         <span class="pill coins" title="Monedas"><img class="pixel meow" alt="" width="34" height="34" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png"><span class="coin-ico"></span><b id="coins">0</b></span>
         <a class="pill mega-pill hidden" id="mega-pill" href="#/mega" title="Megafragmentos (evento Megaevolución)">💠 <b id="mega-frags">0</b><i id="mega-mult"></i></a>
-        <span class="pill dust" title="Polvo estelar">✦ <b id="dust">0</b></span>
-        <span class="pill lvl" title="Nivel de entrenador">Nv <b id="level">1</b><i class="xpbar"><i id="xpfill"></i></i></span>
+        <a class="pill dust" href="#/workshop/exchange" title="Polvo estelar: cambiar, fabricar y reciclar en el Taller">✦ <b id="dust">0</b></a>
+        <a class="pill lvl" href="#/trainer" title="Nivel de entrenador: ver mi perfil">Nv <b id="level">1</b><i class="xpbar"><i id="xpfill"></i></i></a>
       </div>
       <button class="icon-btn" id="mute-btn" aria-label="Sonido"></button>
+      <a class="icon-btn hd-gift hidden" id="gift-btn" href="#/lobby" title="Tu regalo diario te espera" aria-label="Regalo diario disponible">🎁<span class="dot"></span></a>
+      <a class="icon-btn" id="bag-btn" href="#/bag" title="Mochila" aria-label="Mochila">🎒</a>
       <button class="icon-btn" id="social-btn" aria-label="Chat">💬<span class="dot hidden" id="chat-dot"></span></button>
       <button class="user-btn" id="user-btn"><span id="buddy-mini"></span><span id="uname"></span></button>
     </header>

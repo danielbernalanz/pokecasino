@@ -18,6 +18,8 @@ import huerto from './views/huerto.js';
 import expediciones from './views/expediciones.js';
 import criadero from './views/criadero.js';
 import shop from './views/shop.js';
+import bag from './views/bag.js';
+import workshop from './views/workshop.js';
 import ranking from './views/ranking.js';
 import admin from './views/admin.js';
 import blackjack from './views/blackjack.js';
@@ -39,7 +41,7 @@ import { buildSidebar, buildTabbar, markNav, refreshNew, markVisited, resetVisit
 installEmoji(); // emojis genéricos → iconos de Pokémon (pkicons.js)
 
 duels.title = 'Duelos rápidos'; // los duelos de siempre (1 Pokémon a ciegas) pasan a llamarse así junto a los nuevos Combates
-const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, criadero, shop, megaView, market, ranking, admin, ...hubs];
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, criadero, shop, bag, workshop, megaView, market, ranking, admin, ...hubs];
 
 // ---------- Autenticación ----------
 let mode = 'login';
@@ -150,8 +152,16 @@ bus.on('me', (me) => {
   if (!S.megaHold) updateMegaPill(me);
   $('#buddy-mini').className = me.looks && me.looks.frame ? 'mini-frame fr ' + me.looks.frame : '';
   document.querySelector('[data-view=admin]')?.classList.toggle('hidden', !me.isAdmin);
+  paintGift(me);
 });
 bus.on('toast', (t) => toast(t, 'success'));
+// 🎁 de la cabecera: aparece mientras el regalo diario de hoy sigue sin reclamar (lleva al Inicio).
+function paintGift(me = S.me) {
+  const b = $('#gift-btn');
+  if (!b || !me || !me.daily) return;
+  b.classList.toggle('hidden', me.daily.last === new Date().toISOString().slice(0, 10));
+}
+setInterval(() => paintGift(), 60000);
 
 // Chip 💠 de la barra superior: fragmentos y combo mientras el evento está activo.
 let shownFrags = null;
@@ -202,17 +212,22 @@ $('#user-btn').addEventListener('click', () => {
   const themeBtn = h('button', { class: 'btn', title: 'Cambia entre el tema claro y el «Modo noche». Por defecto sigue a tu dispositivo.', onclick: () => { if (!theme) return; theme.set(theme.get() === 'night' ? 'day' : 'night'); themeBtn.textContent = themeLabel(); } }, themeLabel());
   const nLabel = () => notifyEnabled() ? '🔔 Avisos activados' : '🔕 Activar avisos';
   const notifyBtn = h('button', { class: 'btn', title: 'Notificación cuando te toca en el póker, te escriben por privado o te mencionan, aunque no estés mirando', onclick: async () => { await toggleNotify(); notifyBtn.textContent = nLabel(); } }, nLabel());
+  const go = (hash) => () => { close(); location.hash = hash; };
+  // Ajustes agrupados: preferencias y, dentro de «Avanzado», el mantenimiento que casi nadie necesita.
+  const settings = h('details', { class: 'menu-settings' }, h('summary', { class: 'btn' }, '⚙️ Ajustes'),
+    h('div', { class: 'stack menu-sub' }, themeBtn, muteBtn, animBtn, notifyBtn,
+      h('details', { class: 'menu-adv' }, h('summary', { class: 'small muted' }, 'Avanzado'),
+        h('div', { class: 'stack menu-sub' },
+          h('button', { class: 'btn', title: 'Vuelve a mostrar los avisos de acciones arriesgadas que marcaste como «no volver a avisar»', onclick: () => { const n = resetWarnings(); close(); toast(n ? `Avisos restablecidos (${n}): volverás a verlos.` : 'Todos los avisos ya estaban activos.', 'success'); } }, '⚠️ Restablecer avisos'),
+          h('button', { class: 'btn', title: 'Vuelve a marcar como «¡Nuevo!» los apartados que aún no has visitado en este dispositivo', onclick: () => { resetVisited(); close(); toast('Los apartados vuelven a salir como «¡Nuevo!».', 'info'); } }, '✨ Volver a ver los «¡Nuevo!»')))));
   const menu = h('div', { class: 'stack' },
     h('button', { class: 'btn', onclick: () => { close(); showPlayer(S.me.username); } }, '👤 Ver mi ficha'),
-    h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/trainer'; } }, '🏅 Mi Entrenador'),
-    themeBtn,
-    muteBtn,
-    animBtn,
-    notifyBtn,
-    h('button', { class: 'btn', title: 'Vuelve a mostrar los avisos de acciones arriesgadas que marcaste como «no volver a avisar»', onclick: () => { const n = resetWarnings(); close(); toast(n ? `Avisos restablecidos (${n}): volverás a verlos.` : 'Todos los avisos ya estaban activos.', 'success'); } }, '⚠️ Restablecer avisos'),
-    h('button', { class: 'btn', title: 'Vuelve a marcar como «¡Nuevo!» los apartados que aún no has visitado en este dispositivo', onclick: () => { resetVisited(); close(); toast('Los apartados vuelven a salir como «¡Nuevo!».', 'info'); } }, '✨ Volver a ver los «¡Nuevo!»'),
+    h('button', { class: 'btn', onclick: go('#/trainer') }, '🏅 Mi Entrenador'),
+    h('button', { class: 'btn', onclick: go('#/bag') }, '🎒 Mochila'),
+    settings,
     canInstall() ? h('button', { class: 'btn', onclick: () => { close(); installApp(); } }, '📲 Instalar app') : '',
-    h('button', { class: 'btn danger', onclick: logout }, '🚪 Cerrar sesión'));
+    S.me && S.me.isAdmin ? h('button', { class: 'btn', onclick: go('#/admin') }, '🛠️ Admin (anfitrión)') : '',
+    h('button', { class: 'btn danger menu-logout', onclick: logout }, '🚪 Cerrar sesión'));
   const wrap = h('div', { class: 'popover', onclick: (e) => e.stopPropagation() }, menu);
   const close = () => { wrap.remove(); document.removeEventListener('click', close); };
   document.body.append(wrap);
@@ -239,8 +254,12 @@ function exploreReward(id) {
 }
 
 let current = null;
+// Enlaces antiguos de la Tienda (#/shop/craft…) → el sitio nuevo de cada cosa.
+const LEGACY_SHOP = { bag: '#/bag', craft: '#/workshop/craft', tm: '#/workshop/tm', exchange: '#/workshop/exchange', recycle: '#/workshop/recycle', tmg: '#/gacha/tm', bp: '#/combates/bp' };
 function route() {
   const id = (location.hash.match(/^#\/(\w+)/) || [])[1] || 'lobby';
+  const legacy = id === 'shop' && LEGACY_SHOP[(location.hash.match(/^#\/shop\/(\w+)/) || [])[1]];
+  if (legacy) { location.replace(legacy); return; }
   const view = VIEWS.find((v) => v.id === id) || (id === 'lobby' ? lobby : notFound);
   if (current && current.unmount) current.unmount();
   current = view;

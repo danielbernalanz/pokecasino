@@ -16,7 +16,7 @@ function rewardText(r) {
 
 const SEC_TONE = { casino: 'r', pokemon: 'b', mercado: 'y', entrenador: 'g' };
 const SEC_MON = { casino: 52, pokemon: 25, mercado: 352, entrenador: 133 };
-const SEC_DESC = { casino: 'Mesas, máquinas y retos', pokemon: 'Gacha, Caja PC y combates', mercado: 'Compra y vende', entrenador: 'Medallas y ranking' };
+const SEC_DESC = { casino: 'Mesas, máquinas y retos', pokemon: 'Gacha, Caja PC y combates', mercado: 'Mercado, Tienda y Taller', entrenador: 'Mochila, medallas y ranking' };
 
 // Aviso a los anfitriones: hace tiempo que nadie descarga una copia (se puede cerrar hasta recargar).
 let backupDismissed = false;

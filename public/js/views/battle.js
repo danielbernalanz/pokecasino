@@ -1,6 +1,7 @@
 // Combates al estilo Pokémon Showdown (individuales y dobles): Liga de entrenadores, retos PvP, equipos e historial.
 import { S, h, fmt, act, emit, toast, sfx, bus, modal, sprite, typeBadge, TYPE_ES, confirmBet } from '../core.js';
 import { refreshPvp } from '../nav.js';
+import { bpTab } from './bp-ui.js';
 import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT, moveDesc } from '../battle-screen.js';
 
 const FORMAT_ES = { singles: 'Individual', doubles: 'Dobles' };
@@ -42,7 +43,7 @@ window.addEventListener('hashchange', () => { if (location.hash.startsWith('#/co
 export default {
   id: 'combates', title: 'Combates', icon: '⚔️',
   mount(root) {
-    const ctx = { searchDraws: [], tab: 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
+    const ctx = { searchDraws: [], tab: /^#\/combates\/bp/.test(location.hash) ? 'bp' : 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
     this.ctx = ctx;
     const tabsEl = h('div', { class: 'tabs bt-tabs' });
     const content = h('div', { class: 'bt-content' });
@@ -50,7 +51,7 @@ export default {
       h('p', { class: 'muted' }, 'Combates por turnos con el simulador de Pokémon Showdown: movimientos reales, habilidades, tipos, Megaevolución… Individuales y dobles, contra entrenadores de la Liga o contra otros jugadores.'));
     root.append(head, tabsEl, content);
 
-    const TABS = [['fight', '🏟️ Combatir'], ['pvp', '🤝 Retos'], ['teams', '🎒 Mis equipos'], ['hist', '📜 Historial']];
+    const TABS = [['fight', '🏟️ Combatir'], ['pvp', '🤝 Retos'], ['teams', '🧩 Mis equipos'], ['hist', '📜 Historial'], ['bp', '🎖️ Tienda de Combate']];
     const drawTabs = () => tabsEl.replaceChildren(...TABS.map(([id, label]) => h('button', { class: 'tab' + (ctx.tab === id ? ' active' : ''), type: 'button', onclick: () => { ctx.tab = id; drawTabs(); show(); } }, label)));
     const inBattle = () => !!ctx.screen;
 
@@ -415,6 +416,9 @@ export default {
       draw();
     }
 
+    // ---------- Pestaña Tienda de Combate (los PB se ganan aquí) ----------
+    function drawBp() { content.replaceChildren(bpTab()); }
+
     // ---------- Pestaña Historial ----------
     async function drawHist() {
       const r = await act('battle:history');
@@ -466,6 +470,7 @@ export default {
       if (ctx.tab === 'fight') { await loadBox().catch(() => {}); drawFight(); }
       else if (ctx.tab === 'pvp') drawPvp();
       else if (ctx.tab === 'teams') drawTeams();
+      else if (ctx.tab === 'bp') drawBp();
       else drawHist();
     }
 
@@ -487,6 +492,7 @@ export default {
     ctx.offs.push(bus.on('battle:event', onEvent), bus.on('battle:end', onEnd), bus.on('battle:start', onStart), bus.on('battle:list', onList),
       bus.on('battle:queue', () => { if (!inBattle()) redrawSearch(); }), bus.on('pvp:mine', () => redrawSearch()),
       bus.on('pvp:target', () => { if (!inBattle()) { ctx.tab = 'pvp'; drawTabs(); show(); } }));
+    ctx.offs.push(bus.on('me', () => { if (ctx.tab === 'bp' && !inBattle() && !ctx.replayScreen && (!document.activeElement || document.activeElement.tagName !== 'INPUT')) drawBp(); }));
     const onConnect = () => { if (ctx.screen) { ctx.screen.setOffline(false); resync(); } };
     const onDisconnect = () => { if (ctx.screen && !ctx.screen.over) ctx.screen.setOffline(true); };
     if (S.socket) { S.socket.on('connect', onConnect); S.socket.on('disconnect', onDisconnect); }

@@ -79,7 +79,7 @@ export default {
     // ---------- Pestañas ----------
     const body = h('div', { class: 'mg-body' });
     const tabsEl = h('div', { class: 'mg-tabs', role: 'tablist' });
-    const TABS = [['machine', '🎰', 'Máquina'], ['today', '📋', 'Hoy'], ['pass', '🎁', 'Pase'], ['craft', '💠', 'Fabricar'], ['megas', '🧬', 'Megas'], ['rank', '🏆', 'Ranking']];
+    const TABS = [['machine', '🎰', 'Máquina'], ['today', '📋', 'Hoy'], ['pass', '🎁', 'Pase'], ['craft', '💠', 'Megapiedras'], ['megas', '🧬', 'Megas'], ['rank', '🏆', 'Ranking']];
     const paintTabs = () => tabsEl.replaceChildren(...TABS.map(([id, ico, l]) => h('button', { class: 'mg-tab' + (prefs.tab === id ? ' active' : ''), role: 'tab', onclick: () => { prefs.tab = id; paintTabs(); paintTab(); } }, h('span', {}, ico), h('small', {}, l))));
 
     root.append(h('div', { class: 'mg' }, hero, hourEl, hud, tabsEl, body));
@@ -132,7 +132,7 @@ export default {
       picksChip.textContent = `🎟️ ${mm.picks} megapiedra${mm.picks > 1 ? 's' : ''} a elegir`;
       const need = T.cfg.craftCost - mm.frags;
       craftBar.style.width = Math.min(100, (mm.frags / T.cfg.craftCost) * 100) + '%';
-      craftTxt.textContent = need > 0 ? `Te faltan ${need} 💠 para fabricar una megapiedra a tu elección` : '¡Ya puedes fabricar una megapiedra! (pestaña Fabricar)';
+      craftTxt.textContent = need > 0 ? `Te faltan ${need} 💠 para fabricar una megapiedra a tu elección` : '¡Ya puedes fabricar una megapiedra! (pestaña Megapiedras)';
       hud.classList.toggle('ready', need <= 0);
       tickClock();
     }

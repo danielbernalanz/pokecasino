@@ -1,4 +1,4 @@
-// Máquina MT (pestaña de la Tienda) y uso de MT: fabricar con monedas + materiales, enseñar a un Pokémon compatible.
+// Máquina MT (en el Taller) y uso de MT: fabricar con monedas + materiales, enseñar a un Pokémon compatible.
 import { S, h, multiSelect, fmt, act, emit, toast, sfx, modal, sprite, TYPE_ES, itemImg, typeBadge, bus } from '../core.js';
 import { loadNames, moveEs, moveMeta, moveDesc, CAT } from '../battle-screen.js';
 import { pickPokemon } from '../picker.js';
@@ -61,11 +61,11 @@ export async function pcTmDialog(m, onChange) {
           toast(`¡${m.nick || S.dexById.get(m.id).name} aprendió ${moveEs(res.move)}!`, 'success');
           if (res.how !== 'equipped') await swapDialog(m, onChange); else if (onChange) onChange();
         } }, t.known ? 'Ya la conoce' : 'Enseñar'));
-    }) : [h('p', { class: 'muted' }, 'No tienes MT que este Pokémon pueda aprender. Fabrícalas en la Máquina MT (Tienda) o consíguelas en el Mercado.'),
-      h('a', { class: 'btn', href: '#/shop', onclick: () => box.close() }, 'Ir a la Máquina MT')]), { title: '💿 MT para ' + (m.nick || S.dexById.get(m.id).name) });
+    }) : [h('p', { class: 'muted' }, 'No tienes MT que este Pokémon pueda aprender. Fabrícalas en la Máquina MT (Taller) o consíguelas en el Mercado.'),
+      h('a', { class: 'btn', href: '#/workshop/tm', onclick: () => box.close() }, 'Ir a la Máquina MT')]), { title: '💿 MT para ' + (m.nick || S.dexById.get(m.id).name) });
 }
 
-/** Pestaña «Máquina MT» de la Tienda. `redraw`: vuelve a pintar la vista al cambiar el inventario. */
+/** Pestaña «Máquina MT» del Taller. `redraw`: vuelve a pintar la vista al cambiar el inventario. */
 export function machineTab() {
   const f = filter;
   const list = h('div', { class: 'tm-grid' });

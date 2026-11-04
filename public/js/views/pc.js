@@ -198,7 +198,7 @@ function openMon(uid, openPage = 'info') {
     bond: () => friendPanel(),
     menu: () => (box.rules ? candyPanel() : h('p', { class: 'muted' }, 'Sin datos de la caja.')),
   };
-  const PAGE_NAMES = [['info', 'Info'], ['stats', 'Estadísticas'], ['moves', 'Movimientos'], ['gear', 'Objeto'], ['bond', 'Vínculo'], ['menu', 'Menú']];
+  const PAGE_NAMES = [['info', 'Info'], ['stats', 'Estadísticas'], ['moves', 'Movimientos'], ['gear', 'Equipo'], ['bond', 'Vínculo'], ['menu', 'Entrenar']];
   const body = h('div', { class: 'pc-page' });
   const tabs = h('div', { class: 'tabs pc-tabs' });
   const show = (k) => {

@@ -4,6 +4,7 @@ import { useFx } from '../rewards.js';
 import { burstAt, centerOf } from '../fx.js';
 import { openItem } from './market.js';
 import { openInPc } from './pc.js';
+import { craftFilter } from './workshop.js';
 
 let filter = { q: '', show: null, rarity: [], type: [], gen: [] };
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
@@ -51,7 +52,7 @@ export function openDetail(id) {
       } }, '🎁 Regalar copia'))) : h('div', { class: 'stack' },
     h('p', { class: 'muted' }, '¿Quién es ese Pokémon? Aún no lo has atrapado.'),
     h('button', { class: 'btn primary', onclick: () => { m.close(); openItem({ kind: 'poke', pokeId: id, shiny: false }); } }, '🏪 Comprarlo en el Mercado'),
-    h('a', { class: 'btn', href: '#/shop', onclick: () => m.close() }, `Fabricar por ${fmt(r.craft)} ✦`));
+    h('a', { class: 'btn', href: '#/workshop/craft', onclick: () => { Object.assign(craftFilter, { q: S.dexById.get(id).name, show: 'all' }); m.close(); } }, `Fabricar por ${fmt(r.craft)} ✦`));
   if (lk) {
     const credits = (S.me.lockedProg && S.me.lockedProg.credits) || 0;
     actions = h('div', { class: 'stack' },

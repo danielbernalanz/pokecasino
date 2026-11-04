@@ -1,4 +1,4 @@
-// Gacha de MT (pestaña de la Tienda): tiradas con monedas, revelado con un disco que gira y brilla.
+// Gacha de MT (pestaña del Gacha): tiradas con monedas, revelado con un disco que gira y brilla.
 import { S, h, fmt, act, sfx, toast, itemImg, typeBadge, sleep, TYPE_ES, bus } from '../core.js';
 import { burst, centerOf } from '../fx.js';
 import { moveEs, loadNames } from '../battle-screen.js';
@@ -120,7 +120,7 @@ function reveal(results, { again, againLabel }) {
   });
 }
 
-/** Pestaña «Gacha MT» de la Tienda. */
+/** Pestaña «Gacha MT» del Gacha. */
 export function tmGachaTab() {
   let info = null;
   const stage = h('div', { class: 'stack' });

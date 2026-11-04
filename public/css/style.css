@@ -1663,3 +1663,18 @@ h1 img.pk-emo.mon, h2 img.pk-emo.mon { width: 1.9em; height: 1.9em; vertical-ali
 .ms-foot .btn { min-height: 40px; min-width: 80px; }
 .mkf-f .ms-btn { width: 100%; }
 @media (max-width: 700px) { .ms-btn { font-size: 16px; } }
+
+/* Cabecera: pills que son enlaces, 🎒 Mochila y 🎁 regalo diario */
+a.pill, a.jackpot-pill { text-decoration: none; cursor: pointer; }
+a.pill:hover, a.jackpot-pill:hover { filter: brightness(1.06); }
+.hd-gift .dot { background: #ff4d4d; }
+#bag-btn, #gift-btn { text-decoration: none; }
+/* Menú de usuario: Ajustes plegable, «Cerrar sesión» separado */
+.popover .menu-settings > summary { display: block; list-style: none; cursor: pointer; text-align: center; }
+.popover .menu-settings > summary::-webkit-details-marker { display: none; }
+.popover .menu-settings[open] > summary { margin-bottom: 8px; }
+.popover .menu-sub { padding-left: 8px; border-left: 3px solid var(--ink); }
+.popover .menu-adv > summary { cursor: pointer; padding: 2px 4px 6px; }
+.popover .menu-logout { margin-top: 6px; }
+.gacha-modes { margin-bottom: 8px; }
+.gacha-pane.hidden { display: none; }

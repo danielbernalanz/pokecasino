@@ -73,7 +73,7 @@ for (const f of MEGA_FORMS) {
 for (const [id, m] of Object.entries(tmdata.MATERIALS)) ITEMS[id] = { name: m.name, sprite: m.sprite, price: null, material: true, types: m.types, desc: m.desc };
 for (const t of tmdata.TMS) {
   ITEMS[t.id] = { name: t.name, sprite: 'tm-' + t.type, price: null, tm: t.move, num: t.num, type: t.type, tier: t.tier, craft: [t.coins, { [t.mat]: t.matN }],
-    desc: `Enseña ${ES.moves[t.move]} a un Pokémon compatible. De un solo uso: se fabrica en la Máquina MT (Tienda) o cae como premio.` };
+    desc: `Enseña ${ES.moves[t.move]} a un Pokémon compatible. De un solo uso: se fabrica en la Máquina MT (Taller) o cae como premio.` };
 }
 // Tienda de Combate (Puntos de Batalla): objetos equipables, mentas, Cápsula y Parche de Habilidad (ver bpdata.js y bp.js).
 Object.assign(ITEMS, require('./bpdata').buildItems());

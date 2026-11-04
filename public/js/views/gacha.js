@@ -2,6 +2,7 @@ import { S, h, fmt, emit, act, sfx, toast, art, item, pokeImg, rarityName, typeB
 import { useFx } from '../rewards.js';
 import { centerOf } from '../fx.js';
 import { reveal } from './gacha-reveal.js';
+import { tmGachaTab } from './tm-gacha.js';
 
 let selected = 'kanto';
 const pct = (x) => (x * 100).toFixed(1).replace('.', ',') + ' %';
@@ -130,7 +131,23 @@ export default {
     }
 
     const ev = S.events && S.events.active.find((e) => e.id === 'shiny');
-    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎁 Poké Gacha'), h('p', { class: 'muted' }, 'Lanza Poké Balls y descubre qué Pokémon atrapas.', ev ? h('span', { class: 'event-pill' }, `${ev.icon} ${ev.name}: variocolor ×2`) : null)), tabs, nextLine, stage);
+    // Dos gachas, una pantalla: Pokémon (#/gacha) y MT (#/gacha/tm).
+    let mode = /^#\/gacha\/tm/.test(location.hash) ? 'tm' : 'pk';
+    const pokeWrap = h('div', { class: 'gacha-pane' }, tabs, nextLine, stage);
+    const tmWrap = h('div', { class: 'gacha-pane' });
+    const modes = h('div', { class: 'tabs gacha-modes' });
+    const paintMode = () => {
+      modes.replaceChildren(...[['pk', '🎁 Pokémon'], ['tm', '💿 Gacha MT']].map(([k, l]) => h('button', { class: 'tab' + (mode === k ? ' active' : ''), type: 'button', onclick: () => {
+        mode = k; try { history.replaceState(null, '', k === 'tm' ? '#/gacha/tm' : '#/gacha'); } catch { /* nada */ }
+        sfx('click'); paintMode();
+      } }, l)));
+      pokeWrap.classList.toggle('hidden', mode !== 'pk');
+      tmWrap.classList.toggle('hidden', mode !== 'tm');
+      if (mode === 'tm') tmWrap.replaceChildren(tmGachaTab());
+      else tmWrap.replaceChildren();
+    };
+    root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎁 Poké Gacha'), h('p', { class: 'muted' }, 'Lanza Poké Balls y descubre qué Pokémon atrapas… o qué MT te toca.', ev ? h('span', { class: 'event-pill' }, `${ev.icon} ${ev.name}: variocolor ×2`) : null)), modes, pokeWrap, tmWrap);
+    paintMode();
     loadRotation();
     timer = setInterval(tick, 60000);
     this.stopTimer = () => { gone = true; clearInterval(timer); };
