@@ -145,3 +145,35 @@
 .pc-slot.picked { outline: 3px solid #e3350d; outline-offset: -3px; background-color: #ffe3dc; }
 .pc-slot.picked::after { content: '✔'; position: absolute; right: 3px; bottom: 2px; font-weight: 900; color: #e3350d; }
 .pc-slot:disabled { opacity: .45; }
+
+/* ---------- Progresión como en los juegos: EXP, Caramelos Exp., Chapas, Pokérus ---------- */
+.exp-wrap { display: grid; gap: 3px; min-width: 0; width: 100%; }
+.exp-bar { height: 9px; border-radius: 5px; background: var(--panel2); border: 1px solid var(--ink); overflow: hidden; }
+.exp-bar i { display: block; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); transition: width .5s ease; }
+.exp-wrap.compact .exp-bar { height: 6px; }
+.pc-exp-line { display: grid; gap: 2px; }
+.pkrs-badge { display: inline-block; font: 800 10px/1 var(--body); letter-spacing: .5px; padding: 3px 5px; border-radius: 6px; background: #7c3aed; color: #fff; border: 1px solid var(--ink); vertical-align: middle; }
+.pkrs-badge.cured { background: #64748b; }
+.pc-slot .sl-pkrs { position: absolute; bottom: 0; right: 1px; font: 800 8px/1 var(--body); padding: 1px 2px; border-radius: 3px; background: #7c3aed; color: #fff; }
+.pc-slot .sl-evo { position: absolute; top: 0; right: 1px; font-size: 11px; line-height: 1; }
+.pc-ivcell.hyper .pc-ivbar i { background: linear-gradient(90deg, #f59e0b, #fde047); }
+.hyper-iv { font-weight: 800; color: #b45309; white-space: nowrap; }
+.exp-tiers { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.exp-tier { display: grid; justify-items: center; gap: 1px; padding: 6px 2px; border: 2px solid var(--ink); border-radius: 10px; background: var(--panel2); cursor: pointer; font: inherit; color: inherit; min-width: 0; }
+.exp-tier.on { background: var(--panel); box-shadow: 0 0 0 3px var(--gold, #f5c518); }
+.exp-tier:disabled { opacity: .45; cursor: not-allowed; }
+.exp-tier .item-img { width: 32px; height: 32px; }
+.exp-tier small { font-size: 10px; }
+.exp-qty { width: 84px; padding: 6px; border: 2px solid var(--ink); border-radius: 8px; background: var(--panel); color: inherit; font: inherit; }
+.exp-use { align-items: center; }
+.exp-pick .exp-wrap { width: 100%; }
+.evo-ask { text-align: center; justify-items: center; }
+.evo-ask-art img { width: 140px; height: 140px; object-fit: contain; }
+.evo-ask-btns { justify-content: center; }
+.lvlup-pop { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); z-index: 95; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel); box-shadow: var(--card-sh); animation: lvlup-in .35s ease-out both; max-width: calc(100vw - 32px); }
+.lvlup-pop img { width: 56px; height: 56px; image-rendering: pixelated; }
+.lvlup-pop.out { opacity: 0; transition: opacity .4s; }
+@keyframes lvlup-in { from { transform: translate(-50%, 18px) scale(.9); opacity: 0; } to { transform: translate(-50%, 0) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .lvlup-pop { animation: none; } .exp-bar i { transition: none; } }
+.rw-img { width: 18px; height: 18px; vertical-align: -4px; margin-right: 3px; image-rendering: pixelated; }
+@media (max-width: 420px) { .exp-tiers { gap: 4px; } .exp-tier .item-img { width: 26px; height: 26px; } }

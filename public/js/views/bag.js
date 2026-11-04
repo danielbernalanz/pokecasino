@@ -5,6 +5,7 @@ import { openItem } from './market.js';
 import { openEgg, useFx } from '../rewards.js';
 import { centerOf } from '../fx.js';
 import { useTmDialog } from './tm-ui.js';
+import { useExpCandyDialog, useHyperDialog } from './exp-ui.js';
 
 function timeLeft(until) {
   const ms = until - Date.now();
@@ -16,7 +17,7 @@ export function bagTab() {
   const b = S.me.buffs || {};
   const active = [
     timeLeft(b.amuletUntil) && `🪙 Moneda Amuleto activa (${timeLeft(b.amuletUntil)})`,
-    timeLeft(b.luckyUntil) && `🥚 Huevo Suerte activo (${timeLeft(b.luckyUntil)})`,
+    timeLeft(b.luckyUntil) && `🥚 Huevo Fortuna activo: EXP de entrenador ×2 (${timeLeft(b.luckyUntil)})`,
     b.shinyCharges > 0 && `✨ Amuleto Iris: ${b.shinyCharges} tiradas potenciadas`,
     b.masterBall && '🟣 Master Ball preparada para tu próxima tirada',
   ].filter(Boolean);
@@ -30,6 +31,8 @@ export function bagTab() {
         ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
         : it.tm ? h('button', { class: 'btn primary', onclick: () => useTmDialog(id) }, 'Enseñar')
           : it.shard ? h('a', { class: 'btn', href: '#/pc' }, 'Tutor (Caja PC)')
+          : it.expCandy ? h('button', { class: 'btn primary', 'data-testid': 'bag-use-exp', onclick: () => useExpCandyDialog(id) }, 'Usar')
+          : it.hyper ? h('button', { class: 'btn primary', 'data-testid': 'bag-use-hyper', onclick: () => useHyperDialog(id) }, 'Usar')
           : it.bp || it.ev || it.evo ? h('a', { class: 'btn', href: '#/pc' }, 'Usar en la Caja PC')
           : it.material ? h('a', { class: 'btn', href: '#/workshop/tm' }, 'Máquina MT (Taller)')
         : cos ? h('button', { class: 'btn' + (equipped ? ' active' : ''), disabled: equipped, onclick: async (e) => { if (await act('item:use', { itemId: id }, e.target)) { sfx('click'); toast(`${it.name} equipado`, 'success'); } } }, equipped ? 'Equipado' : 'Equipar')

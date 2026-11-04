@@ -1,6 +1,6 @@
 import { aniImg } from '../anim.js';
-import { S, h, multiSelect, fmt, act, emit, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, hpBar, emptyState, loader, MON } from '../core.js';
-import { evolveAnim, wonderReveal } from './pc-fx.js';
+import { S, h, multiSelect, fmt, act, emit, sfx, toast, sprite, art, itemImg, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, hpBar, emptyState, loader, MON } from '../core.js';
+import { evolveAnim, wonderReveal, expBar, levelUpFx, askEvolution } from './pc-fx.js';
 import { heartsEl, friendLabel, friendTier, movePower, petButton, berryImg, berryCount, berryIds, LOVE_MIN } from './huerto.js';
 import { movesPage, learnPrompt, swapDialog } from './moves-ui.js';
 import { gearPage } from './bp-ui.js';
@@ -9,8 +9,7 @@ import { loadNames, moveEs } from '../battle-screen.js';
 const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
 
 let mons = [];
-let box = { candy: {}, train: {}, wonderLeft: 0, rules: null, tradeTokens: 0, phase: 'day' };
-const TRAIN_STATS = [...STAT_NAMES];
+let box = { wonderLeft: 0, rules: null, tradeTokens: 0, phase: 'day' };
 let filter = { q: '', type: [], rarity: [], shiny: false, fav: false, species: 0, sort: 'recent' };
 let loading = null;
 let render = null;
@@ -22,14 +21,12 @@ const label = (m) => m.nick || S.dexById.get(m.id).name;
 const awayIcon = (m) => (m.away === 'care' ? '🥚' : '🧭');
 const awayText = (m) => (m.away === 'care' ? 'Está en el Criadero' : 'Está de expedición');
 
-const candyOf = (id) => box.candy[S.dexById.get(id).chain] || 0;
-const famNames = new Map();
-const famName = (id) => {
-  if (!famNames.size) for (const x of S.data.dex) if (!x.evolvesFrom && !famNames.has(x.chain)) famNames.set(x.chain, x.name);
-  return famNames.get(S.dexById.get(id).chain) || S.dexById.get(id).name;
-};
-const levelCost = (lv) => Math.ceil(lv / ((box.rules && box.rules.levelDiv) || 50));
-const trainLeft = (m) => (m.uid in box.train ? box.train[m.uid] : box.rules.trainDaily);
+// Caramelos Exp. recibidos: { 'exp-xs': 2 } → «2× Caramelo Exp. XS».
+const givenText = (given) => Object.entries(given || {}).map(([id, q]) => `${q}× ${(S.data.items[id] || {}).name || id}`).join(', ') || 'nada';
+const transferText = (rarity, count = 1) => { const t = box.rules.transfer[rarity]; return `${t.n * count}× ${S.data.items[t.item].name}`; };
+const transferExpOf = (rarity, count = 1) => box.rules.transfer[rarity].exp * count;
+const effIv = (m, i) => (m.hyper && m.hyper[i] ? 31 : m.ivs[i]);
+const pkrsBadge = (m) => (m.pkrs ? h('span', { class: 'pkrs-badge' + (m.pkrs === 'cured' ? ' cured' : ''), title: m.pkrs === 'cured' ? 'Pokérus curado: sigue ganando el doble de EVs, pero ya no contagia' : 'Pokérus: gana el doble de EVs y puede contagiar a su equipo', 'data-testid': 'pkrs' }, 'PKRS') : null);
 const spareCount = (id) => { const c = S.me.collection[id]; return c ? Math.max(0, c.n - (c.cn || 0) - 1) : 0; };
 // Mismo criterio que el servidor: ni favoritos, ni compañero, ni variocolor; si no hay protegidos se conserva el mejor.
 function bulkList(id) {
@@ -43,12 +40,11 @@ async function bulkTransfer(id, btn, after) {
   const p = S.dexById.get(id);
   if (!list.length) return toast('No hay repetidos que transferir: se conservan favoritos, compañero, variocolores y el mejor ejemplar.', 'error');
   const dust = S.data.rarity[p.rarity].dust * list.length;
-  const cdy = box.rules.transfer[p.rarity] * list.length;
   if (!(await confirmRisk('transfer-bulk', { section: 'la Caja PC', title: `¿Transferir ${list.length} ${p.name}?`, danger: 'Transferir', safe: 'Cancelar',
     text: 'Se transferirán al Profesor Oak y no se pueden recuperar. Se conserva el mejor ejemplar y nunca se tocan favoritos, compañero ni variocolores.',
-    details: [`${list.length} ejemplar${list.length > 1 ? 'es' : ''} de ${p.name}`, `+${fmt(dust)} ✦ de polvo estelar`, `+${cdy} 🍬 caramelos de ${famName(id)}`] }))) return;
+    details: [`${list.length} ejemplar${list.length > 1 ? 'es' : ''} de ${p.name}`, `+${fmt(dust)} ✦ de polvo estelar`, `+${transferText(p.rarity, list.length)}`] }))) return;
   const r = await act('pc:transferBulk', { id }, btn);
-  if (r) { sfx('shiny'); toast(`Transferiste ${r.count} ${p.name}: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await load(); if (after) after(); }
+  if (r) { sfx('shiny'); toast(`Transferiste ${r.count} ${p.name}: +${fmt(r.dust)} ✦ y +${givenText(r.given)}`, 'success'); await load(); if (after) after(); }
 }
 
 // Abre la ficha «Datos» de un ejemplar desde otra pantalla (p. ej. el montador de equipos de Combates), sin ir a
@@ -70,7 +66,7 @@ export function openInPc(id) { filter = { ...filter, q: '', species: Number(id) 
 
 function load() {
   if (loading) return loading;
-  loading = Promise.all([emit('pc:box'), loadNames()]).then(([r]) => { mons = r.mons; box = { candy: r.candy || {}, train: r.train || {}, wonderLeft: r.wonderLeft, rules: r.rules, tradeTokens: r.tradeTokens || 0, phase: r.phase || 'day' }; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
+  loading = Promise.all([emit('pc:box'), loadNames()]).then(([r]) => { mons = r.mons; box = { wonderLeft: r.wonderLeft, rules: r.rules, tradeTokens: r.tradeTokens || 0, phase: r.phase || 'day' }; }).catch((e) => toast(e.message, 'error')).finally(() => { loading = null; });
   return loading;
 }
 
@@ -87,7 +83,8 @@ function openMon(uid, openPage = 'info') {
     return h('tr', { class: cls },
       h('th', {}, name + (cls === 'up' ? ' ▲' : cls === 'down' ? ' ▼' : '')),
       h('td', {}, p.stats[i]),
-      h('td', { class: 'pc-ivcell' }, h('span', { class: 'pc-ivbar' }, h('i', { style: { width: (m.ivs[i] / 31 * 100) + '%' } })), h('span', { class: 'small' }, m.ivs[i])),
+      h('td', { class: 'pc-ivcell' + (m.hyper && m.hyper[i] ? ' hyper' : '') }, h('span', { class: 'pc-ivbar' }, h('i', { style: { width: (effIv(m, i) / 31 * 100) + '%' } })),
+        m.hyper && m.hyper[i] ? h('span', { class: 'small hyper-iv', title: `31 (Entrenamiento Extremo): su IV real es ${m.ivs[i]}`, 'data-testid': 'hyper-iv' }, '31⚡') : h('span', { class: 'small' }, m.ivs[i])),
       h('td', { class: 'pc-ivcell pc-evcell' }, h('span', { class: 'pc-ivbar pc-evbar' }, h('i', { style: { width: (m.evs[i] / evMax * 100) + '%' } })), h('span', { class: 'small' }, m.evs[i])),
       h('td', { class: 'pc-final' }, m.stats[i]));
   });
@@ -111,28 +108,29 @@ function openMon(uid, openPage = 'info') {
   };
   const evoRow = (t) => {
     const love = m.friendship >= (ru.loveMin || LOVE_MIN);
-    const viaFriend = love && ru.evoFriend && ru.evoFriend[t.id];
-    const e = viaFriend || ru.evo[t.id];
+    const need = (ru.evoLevel || {})[t.id] || 0;
+    const byFriend = (ru.friendEvo || []).includes(t.id);
     const reasons = [];
-    if (ru.friendOnly && ru.friendOnly.includes(t.id) && !love) reasons.push(`amistad ≥ ${LOVE_MIN}`);
     if (m.away) reasons.push('fuera ahora');
+    if (byFriend && !love) reasons.push(`amistad ≥ ${ru.loveMin || LOVE_MIN}`);
     const needs = evoNeeds(t);
     for (const n of needs) if (!n.ok) reasons.push(n.text);
-    if (m.level < e.level) reasons.push(`Nv. ${e.level}`);
-    if (candyOf(m.id) < e.cost) reasons.push(`${e.cost} 🍬`);
+    if (m.level < need) reasons.push(`Nv. ${need}`);
     if (spareCount(m.id) < 1 && !(ru.evoFirst && ru.evoFirst.includes(t.id))) reasons.push('otra copia');
     const tc = S.me.collection[t.id];
     if (tc && tc.n >= 5) reasons.push('ya tienes 5 estrellas');
-    return h('div', { class: 'pc-evo' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
+    const reqs = [need ? `Nv. ${need}` : null, byFriend ? `amistad ≥ ${ru.loveMin || LOVE_MIN}` : null].filter(Boolean);
+    return h('div', { class: 'pc-evo', 'data-testid': 'evo-row' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
       h('div', { class: 'grow small' }, h('b', {}, t.name),
         needs.length ? h('div', { class: 'pc-evo-needs', 'data-testid': 'evo-needs' }, 'Necesita: ', needs.flatMap((n, i) => [i ? (i === needs.length - 1 ? ' y ' : ', ') : '', h('span', { class: n.ok ? 'good' : 'bad' }, (n.ok ? '✓ ' : '✗ ') + n.text)])) : null,
-        h('div', { class: 'muted' }, (viaFriend ? `💖 Por amistad: ${e.cost} 🍬 · sin nivel mínimo` : `${e.cost} 🍬${e.level ? ` · Nv. ${e.level} mín.` : ''}`) + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ''))),
+        h('div', { class: 'muted' }, (reqs.length ? `Requisitos: ${reqs.join(' · ')}` : 'Sin requisito de nivel') + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ' · ¡Listo!'))),
       h('button', { class: 'btn primary', disabled: reasons.length > 0, onclick: async (ev) => {
         const r = await act('pc:evolve', { id: m.id, uid, to: t.id }, ev.target);
         if (!r) return;
         modalRef.close();
         await evolveAnim(m.id, t.id, m.shiny);
-        toast(`¡Tu ${label(m)} evolucionó a ${t.name}!`, 'success');
+        toast(`¡Tu ${label(m)} evolucionó a ${t.name}!${r.form ? ` (${r.form})` : ''}`, 'success');
+        if (r.evo && r.evo.length) await askEvolution({ id: r.to, uid, shiny: m.shiny, name: label(m), to: r.evo });
         await load(); render && render();
         if (r.pending && r.pending.length) openMon(uid);
       } }, 'Evolucionar'));
@@ -159,28 +157,79 @@ function openMon(uid, openPage = 'info') {
           h('button', { class: 'btn small', type: 'button', 'data-ev': bid, disabled: !nb || m.evs[i] <= 0, onclick: (e) => use(bid, 1, e.currentTarget) }, `−${ev.berry} ${S.data.items[bid].name} ×${nb}`));
       }));
   }
-  function candyPanel() {
-    const have = candyOf(m.id);
-    const lv1 = levelCost(m.level);
-    let lv5 = 0; for (let i = 0; i < 5; i++) lv5 += levelCost(m.level + i);
+  // ⭐ EXP y Caramelos Exp.: elige el tipo y cuántos usar.
+  let candySel = null;
+  let candyQty = 1;
+  function expPanel() {
     const maxed = m.level >= ru.maxLevel;
-    const evos = S.data.dex.filter((x) => x.evolvesFrom === m.id);
-    const statSel = h('select', { 'aria-label': 'Estadística a entrenar' }, TRAIN_STATS.map((n, i) => h('option', { value: i }, `${n} (IV ${m.ivs[i]})`)));
-    const left = trainLeft(m);
-    const spare = spareCount(m.id);
-    const tDust = S.data.rarity[p.rarity].dust;
-    const tCandy = ru.transfer[p.rarity];
+    const tiers = ru.exp.candies;
+    const have = (id) => S.me.items[id] || 0;
+    if (!candySel || !tiers.some((t) => t.id === candySel)) candySel = (tiers.slice().reverse().find((t) => have(t.id) > 0) || tiers[0]).id;
+    const cur = tiers.find((t) => t.id === candySel);
+    const toNext = maxed ? 0 : m.expHi - m.exp;
+    const needNext = Math.max(1, Math.ceil(toNext / cur.exp));
+    const maxUse = Math.min(have(cur.id), maxed ? 0 : Math.ceil((m.expMax - m.exp) / cur.exp));
+    candyQty = Math.max(1, Math.min(candyQty, Math.max(1, have(cur.id))));
+    const qty = h('input', { type: 'number', min: 1, max: Math.max(1, have(cur.id)), value: candyQty, 'aria-label': 'Cantidad de Caramelos Exp.', class: 'exp-qty', 'data-testid': 'exp-qty',
+      oninput: (e) => { candyQty = Math.max(1, Math.min(have(cur.id) || 1, Math.floor(Number(e.target.value)) || 1)); preview.textContent = previewText(); } });
+    const previewText = () => `+${fmt(candyQty * cur.exp)} EXP${maxed ? '' : ` · ${needNext} de este tipo para el siguiente nivel`}`;
+    const preview = h('span', { class: 'small muted' }, previewText());
+    const setQty = (n) => { candyQty = Math.max(1, Math.min(have(cur.id) || 1, n)); qty.value = candyQty; preview.textContent = previewText(); };
+    return h('div', { class: 'pc-box', 'data-testid': 'exp-panel' }, h('h4', {}, `⭐ Nv. ${m.level} · EXP`),
+      expBar(m),
+      m.level < ru.maxLevel ? h('div', { class: 'small muted' }, `Combates contra la CPU y expediciones: hasta ${fmt(m.capLeft)} EXP más hoy para este Pokémon (tope diario por ejemplar). Los Caramelos Exp. no tienen tope.`) : null,
+      h('div', { class: 'exp-tiers', role: 'radiogroup', 'aria-label': 'Tipo de Caramelo Exp.' }, tiers.map((t) => h('button', { class: 'exp-tier' + (t.id === candySel ? ' on' : ''), type: 'button', role: 'radio', 'aria-checked': t.id === candySel ? 'true' : 'false', 'data-exp-item': t.id, disabled: !have(t.id), onclick: () => { candySel = t.id; candyQty = 1; show('menu'); } },
+        itemImg(t.id), h('b', {}, t.tag), h('small', {}, `${fmt(t.exp)} EXP`), h('small', { class: 'exp-own' }, `×${fmt(have(t.id))}`)))),
+      h('div', { class: 'row gap wrap exp-use' },
+        h('button', { class: 'btn small', type: 'button', 'aria-label': 'Menos', disabled: maxed, onclick: () => setQty(candyQty - 1) }, '−'), qty,
+        h('button', { class: 'btn small', type: 'button', 'aria-label': 'Más', disabled: maxed, onclick: () => setQty(candyQty + 1) }, '+'),
+        h('button', { class: 'btn small', type: 'button', disabled: maxed || !have(cur.id), onclick: () => setQty(needNext) }, 'Hasta el siguiente nivel'),
+        h('button', { class: 'btn small', type: 'button', disabled: maxed || !have(cur.id), onclick: () => setQty(maxUse || 1) }, 'Todos'),
+        h('button', { class: 'btn primary', type: 'button', 'data-testid': 'exp-use', disabled: maxed || !have(cur.id) || !!m.away, onclick: async (e) => {
+          const r = await act('pc:expcandy', { id: m.id, uid, itemId: cur.id, qty: candyQty }, e.target);
+          if (!r) return;
+          sfx('click');
+          if (!(r.evo && r.evo.length)) toast(`${r.used}× ${S.data.items[cur.id].name}: +${fmt(r.exp)} EXP${r.to > r.from ? ` · ¡Nv. ${r.to}!` : ''}`, 'success');
+          if (r.to > r.from) levelUpFx({ id: m.id, shiny: m.shiny, name: label(m), from: r.from, to: r.to, learned: r.learned, pending: r.pending });
+          await load();
+          if (r.evo && r.evo.length) { modalRef.close(); await askEvolution({ id: m.id, uid, shiny: m.shiny, name: label(m), to: r.evo }); await load(); openMon(uid, 'menu'); render && render(); return; }
+          modalRef.close(); openMon(uid, 'menu'); render && render();
+        } }, 'Usar')),
+      preview,
+      !tiers.some((t) => have(t.id) > 0) ? h('div', { class: 'small muted' }, 'No tienes Caramelos Exp.: caen de combates, expediciones, Torre, Liga, tiradas y transferencias, o se compran con PB en la Tienda de Combate.') : null);
+  }
+  // 💪 Entrenamiento Extremo (Chapas): IV efectivos a 31 en combate (los reales no cambian).
+  function hyperPanel() {
+    const hy = ru.hyper;
+    const nb = S.me.items[hy.bottle] || 0;
+    const ng = S.me.items[hy.gold] || 0;
+    const locked = m.level < hy.minLevel;
+    const use = async (itemId, stat, btn, what) => {
+      if (!(await confirmRisk('hyper', { section: 'los objetos', title: `¿Usar ${S.data.items[itemId].name}?`, danger: 'Usar', safe: 'Cancelar',
+        text: `${what} No se puede deshacer. Los IV reales de ${label(m)} no cambian (el Criadero sigue heredando los de siempre); en combate cuentan como 31.` }))) return;
+      const r = await act('pc:hyper', { id: m.id, uid, itemId, stat }, btn);
+      if (r) { sfx('win'); toast(`Entrenamiento Extremo: ${r.stats.map((i) => STAT_NAMES[i]).join(', ')} a 31`, 'success'); reopen(true); }
+    };
+    return h('div', { class: 'pc-box', 'data-testid': 'hyper-panel' }, h('h4', {}, '🏋️ Entrenamiento Extremo'),
+      h('div', { class: 'small muted' }, `Chapa de Botella: una estadística a 31 · Chapa Dorada: las seis. Hace falta nivel ${hy.minLevel} o más (tiene ${m.level}). Se compran con PB (${hy.bottleBp} y ${hy.goldBp} PB) y caen de la Torre y la Liga. Tienes ${nb} de Botella y ${ng} Doradas.`),
+      STAT_NAMES.map((name, i) => {
+        const done = m.hyper && m.hyper[i];
+        return h('div', { class: 'row gap wrap pc-evrow' }, h('span', { class: 'pc-evname' }, `${name}: IV ${m.ivs[i]}`),
+          done ? h('span', { class: 'small good' }, '31 (Entrenamiento Extremo)')
+            : m.ivs[i] >= 31 ? h('span', { class: 'small muted' }, 'ya es 31')
+              : h('button', { class: 'btn small', type: 'button', 'data-hyper': i, disabled: locked || !nb || !!m.away, onclick: (e) => use(hy.bottle, i, e.currentTarget, `Pone ${name} a 31 en combate.`) }, 'Chapa de Botella'));
+      }),
+      h('button', { class: 'btn', type: 'button', 'data-testid': 'hyper-gold', disabled: locked || !ng || !!m.away || !m.ivs.some((v, i) => v < 31 && !(m.hyper && m.hyper[i])), onclick: (e) => use(hy.gold, undefined, e.currentTarget, 'Pone todas las estadísticas que aún no son 31 a 31 en combate.') }, 'Chapa Dorada (todas)'));
+  }
+  function trainPanel() {
+    const evos0 = S.data.dex.filter((x) => x.evolvesFrom === m.id);
+    const evos = m.evoForced ? evos0.filter((x) => x.id === m.evoForced) : evos0;
     return h('div', { class: 'stack' },
-      h('div', { class: 'pc-box' }, h('h4', {}, `🍬 Caramelos de ${famName(m.id)}: `, h('span', { class: 'pc-candy' }, fmt(have))),
-        h('div', { class: 'row gap wrap' },
-          h('span', { class: 'small' }, `Nivel ${m.level}/${ru.maxLevel}`),
-          h('button', { class: 'btn', disabled: maxed || have < lv1, onclick: async (e) => { if (await act('pc:levelup', { id: m.id, uid, times: 1 }, e.target)) { sfx('click'); reopen(true); } } }, `Subir nivel (${lv1} 🍬)`),
-          h('button', { class: 'btn', disabled: maxed || have < lv5 || m.level + 5 > ru.maxLevel, onclick: async (e) => { if (await act('pc:levelup', { id: m.id, uid, times: 5 }, e.target)) { sfx('win'); reopen(true); } } }, `+5 (${lv5} 🍬)`))),
-      p.rarity === 'M' || !evos.length ? null : h('div', { class: 'pc-box' }, h('h4', {}, '🌟 Evolución'), evos.map(evoRow)),
-      h('div', { class: 'pc-box' }, h('h4', {}, `💪 Entrenar IV (${ru.trainCost} 🍬 = +1 IV) · quedan ${left}/${ru.trainDaily} hoy`),
-        h('div', { class: 'row gap' }, statSel, h('button', { class: 'btn', disabled: left < 1 || have < ru.trainCost, onclick: async (e) => {
-          const r = await act('pc:train', { id: m.id, uid, stat: Number(statSel.value) }, e.target);
-          if (r) { sfx('click'); toast(`${TRAIN_STATS[Number(statSel.value)]}: IV ${r.iv}/31`, 'success'); reopen(true); } } }, 'Entrenar'))),
+      expPanel(),
+      p.rarity === 'M' || !evos.length ? null : h('div', { class: 'pc-box' }, h('h4', {}, '🌟 Evolución'),
+        m.evoForced ? h('div', { class: 'small muted' }, `Según su personalidad, ${m.nick || p.name} solo puede evolucionar a ${S.dexById.get(m.evoForced).name}.`) : null,
+        evos.map(evoRow)),
+      hyperPanel(),
       evPanel());
   }
   function friendPanel() {
@@ -197,7 +246,7 @@ function openMon(uid, openPage = 'info') {
       h('div', { class: 'row gap wrap' }, h('b', {}, 'Amistad: '), heartsEl(m.friendship), h('span', { class: 'small' }, `${friendLabel(m.friendship)} (${m.friendship}/255)`)),
       h('div', { class: 'row gap wrap' }, petButton({ id: m.id, uid, name: nm, petted: m.petted, maxed: m.friendship >= 255, onDone: () => reopen(true) }),
         h('span', { class: 'small muted' }, 'Una vez al día por Pokémon.')),
-      love ? h('div', { class: 'small good' }, '💖 Te adora: +3 % a todas sus estadísticas en duelos rápidos y +10 % de botín (caramelos, bayas y polvo) en expediciones.') : h('div', { class: 'small muted' }, `A partir de ${LOVE_MIN} te adora: +3 % en duelos, +10 % de botín en expediciones y evoluciones por amistad. Sube con bayas, caricias, apostando con él de compañero y ganando duelos.`),
+      love ? h('div', { class: 'small good' }, '💖 Te adora: +3 % a todas sus estadísticas en duelos rápidos y +10 % de botín (EXP, bayas y polvo) en expediciones.') : h('div', { class: 'small muted' }, `A partir de ${LOVE_MIN} te adora: +3 % en duelos, +10 % de botín en expediciones y evoluciones por amistad. Sube con bayas, caricias, apostando con él de compañero y ganando duelos.`),
       h('div', { class: 'small' }, h('b', {}, 'En combates contra la CPU: '), eff.length ? eff.join(' · ') + '.' : 'a partir de 150 de amistad le salen efectos (aguantar golpes, esquivar, curarse). No actúan en PvP.'),
       h('div', { class: 'bd-moves' }, h('div', { class: 'small bd-feedlbl' }, '💞 Movimientos del vínculo'),
         bondMoves.map(([mv, mvName, ok, why]) => h('div', { class: 'row gap wrap bd-bm' },
@@ -231,19 +280,19 @@ function openMon(uid, openPage = 'info') {
   function openMore() {
     const spare = spareCount(m.id);
     const tDust = S.data.rarity[p.rarity].dust;
-    const tCandy = ru.transfer[p.rarity];
+    const tCandy = transferText(p.rarity);
     const special = [m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ');
     const done = async () => { more.close(); await load(); modalRef.close(); render && render(); };
     const more = modal(h('div', { class: 'stack pc-more' },
       h('p', { class: 'small muted' }, `${label(m)} · Nv. ${m.level}. Estas acciones son definitivas; si el ejemplar es especial te pediremos confirmación.`),
       h('div', { class: 'pc-box' }, h('h4', {}, '🎓 Transferir al Profesor Oak'),
-        h('p', { class: 'small muted' }, `Recibes ${tDust} ✦ de polvo y ${tCandy} 🍬 caramelos de la familia. Hace falta otra copia (se conserva siempre una de cada Pokémon).`),
+        h('p', { class: 'small muted' }, `Recibes ${tDust} ✦ de polvo y ${tCandy}. Hace falta otra copia (se conserva siempre una de cada Pokémon).`),
         h('div', { class: 'row gap wrap' },
           h('button', { class: 'btn', disabled: spare < 1 || !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
             if (special && !(await confirmRisk('release-precious', { title: 'Vas a transferir un ejemplar especial', danger: 'Transferir igualmente', safe: 'Conservarlo',
-              text: `${label(m)} es ${special}. Solo recibes ${tDust} ✦ y ${tCandy} 🍬 y no se puede deshacer.` }))) return;
+              text: `${label(m)} es ${special}. Solo recibes ${tDust} ✦ y ${tCandy} y no se puede deshacer.` }))) return;
             const r = await act('pc:transfer', { id: m.id, uid }, e.target);
-            if (r) { sfx('shiny'); toast(`Transferido: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await done(); } } }, `Transferir (+${tDust} ✦ +${tCandy} 🍬)`),
+            if (r) { sfx('shiny'); toast(`Transferido: +${fmt(r.dust)} ✦ y +${givenText(r.given)}`, 'success'); await done(); } } }, `Transferir (+${tDust} ✦ +${tCandy})`),
           spare > 0 ? h('button', { class: 'btn', onclick: (e) => bulkTransfer(m.id, e.target, () => done()) }, 'Transferir repetidos') : null)),
       h('div', { class: 'pc-box' }, h('h4', {}, '🎁 Intercambio Milagroso'),
         h('p', { class: 'small muted' }, 'Entregas una copia sobrante (no favorita, compañero ni variocolor) y recibes otra de la misma rareza. Sin monedas.'),
@@ -255,7 +304,7 @@ function openMon(uid, openPage = 'info') {
           await load(); render && render();
         } }, `Intercambio Milagroso (${box.wonderLeft}/${ru.wonderDaily})`)),
       h('div', { class: 'pc-box' }, h('h4', {}, '🕊️ Liberar'),
-        h('p', { class: 'small muted' }, `Solo recibes ${S.data.rarity[p.rarity].dust} ✦ de polvo (sin caramelos): casi siempre es mejor Transferir.`),
+        h('p', { class: 'small muted' }, `Solo recibes ${S.data.rarity[p.rarity].dust} ✦ de polvo (sin Caramelos Exp.): casi siempre es mejor Transferir.`),
         h('button', { class: 'btn danger', disabled: !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
           const c = S.me.collection[m.id];
           if (!c || c.n - (c.cn || 0) < 2) return toast('Debes conservar al menos una copia de cada Pokémon.', 'error');
@@ -269,7 +318,11 @@ function openMon(uid, openPage = 'info') {
     info: () => h('div', { class: 'stack' },
       m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}: no se puede liberar, transferir, evolucionar ni llevar a combates hasta que vuelva.`) : null,
       h('div', { class: 'muted small' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level} · Naturaleza ${m.nature}${m.buddy ? ' · 🤝 Compañero' : ''}`),
-      h('div', { class: 'types' }, p.types.map(typeBadge), h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity))),
+      h('div', { class: 'types' }, p.types.map(typeBadge), h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity)), pkrsBadge(m)),
+      h('div', { class: 'pc-exp-line' }, h('b', {}, `Nv. ${m.level}`), expBar(m)),
+      m.form ? h('div', { class: 'small', 'data-testid': 'form' }, h('b', {}, 'Forma: '), m.form) : null,
+      m.pkrs ? h('div', { class: 'small' }, h('b', {}, '🦠 Pokérus: '), m.pkrs === 'cured' ? 'curado (sigue ganando el doble de EVs; ya no contagia)' : 'infectado (gana el doble de EVs y puede contagiar a su equipo)') : null,
+      m.hyper && m.hyper.some(Boolean) ? h('div', { class: 'small' }, h('b', {}, '🏋️ Entrenamiento Extremo: '), m.hyper.map((x, i) => (x ? STAT_NAMES[i] : null)).filter(Boolean).join(', '), ' a 31 en combate') : null,
       h('div', { class: 'small' }, h('b', {}, 'Habilidad: '), m.ability),
       m.eg ? h('div', { class: 'small', title: 'Para criar, dos Pokémon deben compartir grupo huevo (y ser macho y hembra, o uno Ditto)' }, h('b', {}, 'Grupo huevo: '), m.eg.join(' · '), ' · ', m.gender === 'M' ? '♂ macho' : m.gender === 'F' ? '♀ hembra' : 'sin sexo') : null,
       h('div', {}, h('b', {}, `IV total ${total}/186`), ` · ${judge(total)}`, hpBar(total / 186 * 100)),
@@ -279,11 +332,12 @@ function openMon(uid, openPage = 'info') {
       h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Base'), h('th', {}, 'IV'), h('th', { title: 'Puntos de esfuerzo: máx. 252 por estadística y 510 en total' }, 'EV'), h('th', {}, 'Nv. 50'))),
       h('tbody', {}, rows))),
       h('div', { class: 'small', 'data-testid': 'ev-total' }, h('b', {}, `EV total ${m.evTotal}/${evCap}`), ` · ${evCap - m.evTotal > 0 ? `te quedan ${evCap - m.evTotal} por repartir` : 'repartidos al máximo'}`, hpBar(m.evTotal / evCap * 100)),
+      m.hyper && m.hyper.some(Boolean) ? h('div', { class: 'small' }, '⚡ = 31 (Entrenamiento Extremo): ', m.hyper.map((x, i) => (x ? `${STAT_NAMES[i]} (IV real ${m.ivs[i]})` : null)).filter(Boolean).join(', '), '.') : null,
       h('div', { class: 'small muted' }, 'Los EV suben con expediciones, victorias contra la CPU y vitaminas (Entrenar). Cuentan en todos los combates; el Nv. 50 ya los incluye.')),
     moves: () => movesPage(m, async () => { await load(); modalRef.close(); openMon(uid, 'moves'); render && render(); }),
     gear: () => { const box2 = h('div', {}); gearPage(m, async () => { await load(); modalRef.close(); openMon(uid, 'gear'); render && render(); }).then((el) => box2.append(el)); return box2; },
     bond: () => friendPanel(),
-    menu: () => (box.rules ? candyPanel() : h('p', { class: 'muted' }, 'Sin datos de la caja.')),
+    menu: () => (box.rules ? trainPanel() : h('p', { class: 'muted' }, 'Sin datos de la caja.')),
   };
   const PAGE_NAMES = [['info', 'Info'], ['stats', 'Estadísticas'], ['moves', 'Movimientos'], ['gear', 'Equipo'], ['bond', 'Vínculo'], ['menu', 'Entrenar']];
   const body = h('div', { class: 'pc-page' });
@@ -296,7 +350,7 @@ function openMon(uid, openPage = 'info') {
   const modalRef = modal(h('div', { class: 'pc-detail' },
     h('div', { class: 'pc-detail-left r-' + p.rarity }, aniImg(m.id, { shiny: m.shiny, cls: 'detail-art', alt: p.name, fallback: art(m.id, m.shiny) }),
       h('div', { class: 'pc-name-big' }, `${m.shiny ? '✨ ' : ''}${label(m)} ${genderTag(m)}`),
-      h('div', { class: 'small muted' }, `Nv. ${m.level}`)),
+      h('div', { class: 'small muted' }, `Nv. ${m.level}`), expBar(m, { compact: true }), pkrsBadge(m)),
     h('div', { class: 'stack pc-detail-right' }, tabs, body,
       h('div', { class: 'pc-menu' },
         h('button', { class: 'btn', onclick: () => { show('info'); nickRow.style.display = nickRow.style.display === 'none' ? '' : 'none'; nickInput.focus(); } }, '✏️ Mote'),
@@ -346,9 +400,9 @@ export default {
       if (!pre.count) return toast('No tienes repetidos que transferir: se conservan favoritos, compañero, variocolores y el mejor de cada especie.', 'info');
       if (!(await confirmRisk('transfer-all', { section: 'la Caja PC', title: `¿Transferir ${fmt(pre.count)} repetidos?`, danger: 'Transferir todos', safe: 'Cancelar',
         text: 'Se transfieren al Profesor Oak todos los repetidos de todas tus especies. Se conserva siempre el mejor de cada una y nunca se tocan favoritos, compañero ni variocolores.',
-        details: [`${fmt(pre.count)} Pokémon de ${fmt(pre.species)} especies`, `+${fmt(pre.dust)} ✦ de polvo estelar`, `+${fmt(pre.candy)} 🍬 caramelos`] }))) return;
+        details: [`${fmt(pre.count)} Pokémon de ${fmt(pre.species)} especies`, `+${fmt(pre.dust)} ✦ de polvo estelar`, `+${fmt(pre.exp)} EXP en Caramelos Exp.`] }))) return;
       const r = await act('pc:transferAll', {}, btn);
-      if (r) { sfx('shiny'); toast(`Transferiste ${fmt(r.count)} Pokémon: +${fmt(r.dust)} ✦ y +${fmt(r.candy)} 🍬`, 'success'); await load(); render(); }
+      if (r) { sfx('shiny'); toast(`Transferiste ${fmt(r.count)} Pokémon: +${fmt(r.dust)} ✦ y +${givenText(r.given)}`, 'success'); await load(); render(); }
     } }, '🧹 Todos los repetidos');
     function drawPickBar() {
       pickBar.classList.toggle('hidden', !picking);
@@ -356,13 +410,13 @@ export default {
       if (!picking) return;
       const chosen = mons.filter((m) => picking.has(m.uid));
       const dust = chosen.reduce((s, m) => s + S.data.rarity[S.dexById.get(m.id).rarity].dust, 0);
-      const cdy = box.rules ? chosen.reduce((s, m) => s + (box.rules.transfer[S.dexById.get(m.id).rarity] || 0), 0) : 0;
+      const cdy = box.rules ? chosen.reduce((s, m) => s + transferExpOf(S.dexById.get(m.id).rarity), 0) : 0;
       const slice = list.slice(boxIdx * PER_BOX, (boxIdx + 1) * PER_BOX).filter((m) => pickable(m) && !m.fav && !m.shiny);
       // Según los filtros (rareza, tipo, búsqueda…): todos los que se ven en todas las cajas, o solo sus repetidos.
       const filtered = list.filter((m) => pickable(m) && !m.fav && !m.shiny);
       const dupes = filtered.filter((m) => bulkList(m.id).some((x) => x.uid === m.uid));
       pickBar.replaceChildren(
-        h('span', {}, h('b', {}, `${chosen.length} marcados`), chosen.length ? ` · +${fmt(dust)} ✦ · +${fmt(cdy)} 🍬` : ' · toca los Pokémon que quieras transferir'),
+        h('span', {}, h('b', {}, `${chosen.length} marcados`), chosen.length ? ` · +${fmt(dust)} ✦ · +${fmt(cdy)} EXP` : ' · toca los Pokémon que quieras transferir'),
         h('button', { class: 'btn small', type: 'button', title: 'Marca los de esta caja (sin favoritos, variocolores ni compañero)', onclick: () => { for (const m of slice) picking.add(m.uid); render(); } }, 'Marcar la caja'),
         h('button', { class: 'btn small', type: 'button', disabled: !filtered.length, title: 'Marca todos los que cumplen los filtros de 🔍 Buscar (rareza, tipo…), en todas las cajas', onclick: () => { for (const m of filtered) picking.add(m.uid); render(); } }, `Marcar lo filtrado (${filtered.length})`),
         h('button', { class: 'btn small', type: 'button', disabled: !dupes.length, title: 'Solo los repetidos de lo filtrado: se conserva el mejor de cada especie', onclick: () => { for (const m of dupes) picking.add(m.uid); render(); } }, `Repetidos de lo filtrado (${dupes.length})`),
@@ -372,15 +426,15 @@ export default {
           const special = chosen.filter((m) => m.fav || m.shiny).length;
           if (!(await confirmRisk('transfer-many', { section: 'la Caja PC', title: `¿Transferir ${chosen.length} Pokémon?`, danger: 'Transferir', safe: 'Cancelar',
             text: 'Se transfieren al Profesor Oak y no se pueden recuperar. De cada especie se conserva al menos una copia.',
-            details: [`+${fmt(dust)} ✦ de polvo estelar`, `+${fmt(cdy)} 🍬 caramelos`, ...(special ? [`⚠ Incluye ${special} favorito(s) o variocolor(es)`] : [])] }))) return;
+            details: [`+${fmt(dust)} ✦ de polvo estelar`, `+${fmt(cdy)} EXP en Caramelos Exp.`, ...(special ? [`⚠ Incluye ${special} favorito(s) o variocolor(es)`] : [])] }))) return;
           // En tandas (el servidor acepta hasta 300 por llamada).
           let r = null;
           for (let i = 0; i < chosen.length; i += 300) {
             const part = await act('pc:transferMany', { list: chosen.slice(i, i + 300).map((m) => ({ id: m.id, uid: m.uid })) }, btn);
             if (!part) break;
-            r = r ? { count: r.count + part.count, dust: r.dust + part.dust, candy: r.candy + part.candy, skipped: r.skipped + part.skipped, reason: r.reason || part.reason } : part;
+            r = r ? { count: r.count + part.count, dust: r.dust + part.dust, given: Object.entries(part.given || {}).reduce((a, [k, v]) => ({ ...a, [k]: (a[k] || 0) + v }), { ...r.given }), skipped: r.skipped + part.skipped, reason: r.reason || part.reason } : part;
           }
-          if (r) { sfx('shiny'); toast(`Transferiste ${r.count} Pokémon: +${fmt(r.dust)} ✦ y +${fmt(r.candy)} 🍬${r.skipped ? ` · ${r.skipped} no se pudieron (${r.reason})` : ''}`, r.count ? 'success' : 'error'); picking = null; await load(); render(); }
+          if (r) { sfx('shiny'); toast(`Transferiste ${r.count} Pokémon: +${fmt(r.dust)} ✦ y +${givenText(r.given)}${r.skipped ? ` · ${r.skipped} no se pudieron (${r.reason})` : ''}`, r.count ? 'success' : 'error'); picking = null; await load(); render(); }
         } }, '🎓 Transferir'),
         h('button', { class: 'btn small', type: 'button', onclick: () => { picking = null; render(); } }, 'Salir'));
     }
@@ -398,7 +452,8 @@ export default {
         h('div', { class: 'pc-sel-art' }, aniImg(m.id, { shiny: m.shiny, cls: 'pc-sel-img', alt: p.name, fallback: art(m.id, m.shiny) })),
         h('div', { class: 'pc-sel-name' }, `${m.shiny ? '✨ ' : ''}${label(m)} ${genderTag(m)}`),
         h('div', { class: 'small muted' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level}`),
-        h('div', { class: 'types' }, p.types.map(typeBadge)),
+        expBar(m, { compact: true }),
+        h('div', { class: 'types' }, p.types.map(typeBadge), pkrsBadge(m)),
         heartsEl(m.friendship, 'sm'),
         m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}`) : null,
         h('div', { class: 'pc-sel-actions' },
@@ -429,7 +484,7 @@ export default {
       counter.textContent = `${fmt(list.length)} de ${fmt(mons.length)} ejemplares`;
       chip.classList.toggle('hidden', !filter.species);
       chip.classList.add('pc-species-bar');
-      chip.replaceChildren(...(filter.species && box.rules ? [`Solo ${S.dexById.get(filter.species).name} `, h('span', { class: 'pc-candy' }, `🍬 ${fmt(candyOf(filter.species))} de ${famName(filter.species)}`),
+      chip.replaceChildren(...(filter.species && box.rules ? [`Solo ${S.dexById.get(filter.species).name} `,
         h('button', { class: 'btn', disabled: !bulkList(filter.species).length, onclick: (e) => bulkTransfer(filter.species, e.target, () => render()) }, 'Transferir repetidos'),
         h('button', { class: 'btn', onclick: () => { filter.species = 0; boxIdx = 0; render(); } }, 'Ver todos')] : []));
       const wall = WALLPAPERS[boxIdx % WALLPAPERS.length];
@@ -453,6 +508,8 @@ export default {
           m.fav ? h('span', { class: 'sl-fav' }, '★') : null,
           m.buddy ? h('span', { class: 'sl-buddy' }, '🤝') : null,
           m.pending && m.pending.length ? h('span', { class: 'sl-new', title: 'Quiere aprender un movimiento' }, '🆕') : null,
+          m.canEvo && m.canEvo.length ? h('span', { class: 'sl-evo', title: 'Puede evolucionar' }, '🌟') : null,
+          m.pkrs ? h('span', { class: 'sl-pkrs', title: 'Pokérus' }, 'PKRS') : null,
           m.away ? h('span', { class: 'sl-away', title: awayText(m) }, awayIcon(m)) : null,
           h('span', { class: 'sr-only' }, `${label(m)} Nv. ${m.level}${m.away ? ' · ' + awayText(m) : ''}`));
       };

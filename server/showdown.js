@@ -414,8 +414,8 @@ function cpuReward(b, user, side) {
       for (const f of b.sides[1].roster) gain += expMod.foeExp(f.id, f.level, sp.level, part.length, true);
       const from = sp.level;
       const xr = expMod.award(user, r.id, sp, gain, 'battle'); // tope diario por ejemplar y Huevo Suerte
-      out.exp.push({ id: r.id, uid: r.uid, name: sp.nick || (BY_ID.get(r.id) || {}).name, from, to: sp.level, exp: xr.exp, learned: xr.learned, pending: xr.pending });
-      if (xr.evo.length) out.evolve.push({ id: r.id, uid: r.uid, to: xr.evo });
+      out.exp.push({ id: r.id, uid: r.uid, shiny: !!sp.shiny, name: sp.nick || (BY_ID.get(r.id) || {}).name, from, to: sp.level, exp: xr.exp, learned: xr.learned, pending: xr.pending });
+      if (xr.evo.length) out.evolve.push({ id: r.id, uid: r.uid, shiny: !!sp.shiny, name: sp.nick || (BY_ID.get(r.id) || {}).name, to: xr.evo });
       out.friend += bond.addFriend(sp, 2, 'battle');
       out.ev += require('./evs').onWin(sp, foeStats); // EVs: +4 por rival derrotado en su estadística base más alta (tope diario por ejemplar; ×2 con Pokérus)
       members.push({ id: r.id, m: sp });
@@ -908,7 +908,8 @@ function boxForBuilder(user) {
     for (const m of arr) {
       if (m.away) continue; // de expedición o en el criadero
       sd.ensureSd(id, m);
-      out.push({ id, uid: m.uid, nick: m.nick, level: m.level, gender: m.gender, shiny: m.shiny, friendship: m.friendship, nature: m.nature, ability: m.sdAbility, item: m.item || null, moves: m.sdMoves, learned: m.learned.length, pending: m.pending.length, megas: forms, iv: (m.ivs || []).reduce((a, x) => a + x, 0) });
+      const ex = require('./exp'); ex.ensure(id, m);
+      out.push({ id, uid: m.uid, nick: m.nick, level: m.level, exp: m.exp, expLo: ex.expAt(id, m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(id, m.level + 1), gender: m.gender, shiny: m.shiny, friendship: m.friendship, nature: m.nature, ability: m.sdAbility, item: m.item || null, moves: m.sdMoves, learned: m.learned.length, pending: m.pending.length, megas: forms, iv: (m.ivs || []).reduce((a, x) => a + x, 0) });
     }
   }
   db.save();

@@ -5,6 +5,7 @@ import { bpTab } from './bp-ui.js';
 import { leagueTab } from './league-ui.js';
 import { towerTab } from './tower-ui.js';
 import { openSpecimen } from './pc.js';
+import { expBar } from './pc-fx.js';
 import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT, moveDesc } from '../battle-screen.js';
 
 const FORMAT_ES = { singles: 'Individual', doubles: 'Dobles' };
@@ -233,7 +234,7 @@ export default {
           ? 'Dobles: dos Pokémon por bando y objetivos a elegir. Lleva al menos 2 (lo recomendable son 4).'
           : 'Individual: un Pokémon por bando. Llevas todo tu equipo (hasta 6).',
         prefs.level === 'fair' ? ' Todos combaten a nivel 50: gana el mejor equipo, no el más entrenado.' : ' Niveles reales: cada Pokémon pelea con el nivel que tiene.'),
-        h('div', { class: 'bt-wins' }, `🏆 Victorias premiadas hoy: ${st.wins.n}/${st.wins.max}`, h('span', { class: 'small muted' }, ' · Cada victoria da monedas, caramelos de la familia y amistad; perder no cuesta nada.')));
+        h('div', { class: 'bt-wins' }, `🏆 Victorias premiadas hoy: ${st.wins.n}/${st.wins.max}`, h('span', { class: 'small muted' }, ' · Cada victoria da monedas, EXP para tus Pokémon, algún Caramelo Exp. y amistad; perder no cuesta nada.')));
       redraw();
       ctx.searchDraws = [];
       content.replaceChildren(searchCard(), controls, list);
@@ -326,7 +327,8 @@ export default {
             h('img', { class: 'pixel', src: sprite(sp.id, sp.shiny), alt: '' }),
             h('div', { class: 'grow tm-info' },
               h('div', {}, h('b', {}, sp.nick || d.name), sp.shiny ? ' ✨' : '', sp.gender ? h('span', { class: sp.gender === 'M' ? 'gm' : 'gf' }, sp.gender === 'M' ? ' ♂' : ' ♀') : '', h('span', { class: 'muted small' }, ` Nv${sp.level}`), h('span', { class: 'types' }, ' ', d.types.map(typeBadge))),
-              h('div', { class: 'small muted' }, `${abilityEs(sp.ability)}${sp.item ? ' · 🎒 ' + heldName(sp.item) : ''} · ${sp.moves.map(moveName).join(', ')}${sp.pending ? ' · 🆕 movimientos por decidir' : ''}`)),
+              h('div', { class: 'small muted' }, `${abilityEs(sp.ability)}${sp.item ? ' · 🎒 ' + heldName(sp.item) : ''} · ${sp.moves.map(moveName).join(', ')}${sp.pending ? ' · 🆕 movimientos por decidir' : ''}`),
+              expBar(sp, { compact: true })),
             h('div', { class: 'tm-btns' },
               // Megaevolución: sin Mega → primera forma → segunda (Charizard X/Y…) → sin Mega. Solo una por equipo.
               sp.megas.length ? h('button', { class: 'mega-btn small' + (m.mega ? ' on' : ''), type: 'button', 'aria-pressed': String(!!m.mega),

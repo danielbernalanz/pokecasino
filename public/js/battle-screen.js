@@ -1,7 +1,8 @@
 // Pantalla de combate al estilo Pokémon: campo de batalla, cajas de PS, cuadro de texto con escritura y menú de acciones.
 // Recibe líneas del protocolo de Showdown (ver sd-protocol.js) y las ejecuta una a una con pausas y animaciones.
-import { S, h, emit, toast, sfx, TYPE_ES, typeBadge, sprite, modal, rankBadge, RANK_NAMES } from './core.js';
+import { S, h, emit, toast, sfx, TYPE_ES, typeBadge, sprite, modal, rankBadge, RANK_NAMES, itemImg } from './core.js';
 import { aniImg } from './anim.js';
+import { showProgress } from './views/pc-fx.js';
 import { Protocol, STATUS_ES, STATUS_LONG, STAT_ES, toID } from './sd-protocol.js';
 
 let ES = null;
@@ -571,7 +572,8 @@ export class BattleScreen {
       else {
         parts.push(h('div', { class: 'bt2-rewards' },
           h('span', { class: 'rw' }, `🪙 +${r.coins}`),
-          r.candy.length ? h('span', { class: 'rw' }, `🍬 +2 de ${r.candy.slice(0, 3).join(', ')}${r.candy.length > 3 ? '…' : ''}`) : null,
+          ...(r.exp || []).map((x) => h('span', { class: 'rw rw-exp', 'data-testid': 'rw-exp' }, `${x.name} +${Number(x.exp).toLocaleString('es-ES')} EXP${x.to > x.from ? ` (Nv. ${x.from} → ${x.to})` : ''}`)),
+          ...Object.entries(r.candies || {}).map(([id, q]) => h('span', { class: 'rw' }, itemImg(id, 'rw-img'), `+${q} ${(S.data.items[id] || {}).name || id}`)),
           r.friend ? h('span', { class: 'rw' }, `💗 +${r.friend} amistad`) : null,
           r.ev ? h('span', { class: 'rw' }, `💪 +${r.ev} EV`) : null,
           ...Object.entries(r.mats || {}).map(([id, q]) => h('span', { class: 'rw' }, `🧩 +${q} ${(S.data.items[id] || {}).name || id}`)),
@@ -581,6 +583,7 @@ export class BattleScreen {
       }
     }
     if (i.bp) parts.push(h('p', {}, `🎖️ +${i.bp} PB (Puntos de Batalla)`));
+    if (i.reward && !i.reward.capped && i.reward.exp) setTimeout(() => showProgress({ members: i.reward.exp.filter((x) => x.to > x.from), evolve: i.reward.evolve || [], pokerus: i.reward.pokerus || [] }), 700); // subidas de nivel, Pokérus y «¿Quieres que evolucione?»
     if (i.league) {
       const L = i.league;
       parts.push(L.rated
@@ -596,6 +599,7 @@ export class BattleScreen {
           h('span', { class: 'rw muted' }, `Hoy: ${t.bpToday}/${t.bpCap} PB de la Torre`)));
         for (const m of t.medals || []) parts.push(h('p', { class: 'good' }, `🏅 ¡Título «${m.title}» (racha de ${m.at})!`));
         if (t.boss) parts.push(h('p', { class: 'good' }, '¡Has derrotado al Jefe de la Torre!'));
+        for (const [id, q] of Object.entries(t.prize || {})) parts.push(h('p', { class: 'good' }, `🎁 Premio de la Torre: ${q}× ${(S.data.items[id] || {}).name || id}`));
       } else if (t.ended) parts.push(h('p', { class: 'muted' }, `Fin de la carrera: racha final de ${t.streak} (tu mejor: ${Math.max(t.best || 0, t.streak)}).`));
     }
     if (i.wager) {

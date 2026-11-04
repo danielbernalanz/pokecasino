@@ -154,12 +154,12 @@ function claim(u, p) {
     const from = m.level;
     const xr = exp.award(u, t.id, m, lf > 1 ? bond.stochRound(rawExp * lf) : Math.round(rawExp), 'exp'); // con el tope diario por ejemplar y el Huevo Suerte
     out.exp += xr.exp;
-    if (xr.evo.length) out.evolve.push({ id: t.id, uid: t.uid, to: xr.evo });
+    if (xr.evo.length) out.evolve.push({ id: t.id, uid: t.uid, shiny: !!m.shiny, name: m.nick || BY_ID.get(t.id).name, to: xr.evo });
     const ev = evs.gain(m, zone.ev, evs.EXP_PER_HOUR * H, 'exp'); // EVs de la estadística de la zona
     out.ev += ev;
     const fr = bond.addFriend(m, FRIEND_PER_HOUR * H, 'exp');
     out.friend += fr;
-    out.members.push({ id: t.id, uid: t.uid, from, to: m.level, exp: xr.exp, friend: fr, ev, time: timeHit, match: hit, learned: xr.learned, pending: xr.pending });
+    out.members.push({ id: t.id, uid: t.uid, shiny: !!m.shiny, name: m.nick || BY_ID.get(t.id).name, from, to: m.level, exp: xr.exp, friend: fr, ev, time: timeHit, match: hit, learned: xr.learned, pending: xr.pending });
   }
   // Los que ya no están (bloqueados, etc.) no se cuentan; el resto del botín sigue su curso.
   if (n) {

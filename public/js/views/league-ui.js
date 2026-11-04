@@ -70,6 +70,7 @@ function rewardText(r) {
   if (r.bp) parts.push(`🎖️ ${r.bp} PB`);
   if (r.coins) parts.push(`🪙 ${fmt(r.coins)}`);
   if (r.frame && S.data.items[r.frame]) parts.push(S.data.items[r.frame].name);
+  for (const [id, q] of Object.entries(r.items || {})) if (S.data.items[id]) parts.push(`${q}× ${S.data.items[id].name}`);
   if (r.title) parts.push('título');
   return parts.join(' · ') || '—';
 }

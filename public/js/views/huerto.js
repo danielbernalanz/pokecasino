@@ -56,7 +56,7 @@ const hm = (ms) => {
 };
 function findText(r) {
   const out = [];
-  if (r.candy) out.push(`🍬 ${r.candy} caramelos`);
+  if (r.candy) out.push(`${r.candy}× ${S.data.items['exp-xs'].name}`);
   if (r.berry) out.push(`${berries()[r.berry].name} ×${r.berryN}`);
   if (r.dust) out.push(`✦ ${r.dust} de polvo`);
   if (r.ticket) out.push('🎟️ 1 Ticket Gacha');

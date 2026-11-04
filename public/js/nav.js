@@ -176,7 +176,7 @@ const TIPS = [
   { id: 'market', text: 'En el Mercado puedes vender tus repetidos a otros entrenadores.', go: 'Ir al Mercado' },
   { id: 'quiz', text: '¿Sabes quién es ese Pokémon? Demuéstralo en el Desafío.', go: 'Probar' },
   { id: 'criadero', text: 'En el Criadero, dos Pokémon compatibles te dejan un huevo. ¡Juega para que eclosione!', go: 'Ir al Criadero' },
-  { id: 'expediciones', text: 'Tus Pokémon pueden salir de expedición mientras no estás: vuelven con caramelos, bayas y niveles.', go: 'Explorar' },
+  { id: 'expediciones', text: 'Tus Pokémon pueden salir de expedición mientras no estás: vuelven con EXP, Caramelos Exp. y bayas.', go: 'Explorar' },
   { id: 'combates', text: '¡Combates de verdad! Prepara tu equipo y reta a un entrenador.', go: 'A combatir' },
   { id: 'shop', text: 'En la Tienda hay objetos y bayas que te vendrán de maravilla. Los tuyos, en la Mochila.', go: 'Ir a la Tienda' },
   { id: 'roulette', text: 'La Ruleta de Tipos tiene una casilla Poké Ball… ¡cuidado!', go: 'Jugar' },
@@ -209,7 +209,7 @@ export function suggestion() {
   const night = phaseNow() === 'night';
   const timeTip = night ? '🌙 Es de noche en España: en el Gacha salen más Gastly, Zubat, Hoothoot, Murkrow y Misdreavus, y esos Pokémon rinden más en las expediciones que salen ahora.' : '☀️ Es de día en España: en el Gacha salen más Ledyba, Sunkern, Cherubi, Hoppip y Starly, y esos Pokémon rinden más en las expediciones que salen ahora.';
   if (new Date().getDate() % 2 === 0) return { text: timeTip, go: 'Ir al Gacha', link: '#/gacha', id: 'time' };
-  const quips = ['¡Lo has probado casi todo, entrenador! Ahora a por las 8 medallas.', 'Recuerda: juega con cabeza. Las apuestas altas siempre piden confirmación.', 'La Caja PC guarda tus Pokémon: ¿has probado a entrenarlos con caramelos?'];
+  const quips = ['¡Lo has probado casi todo, entrenador! Ahora a por las 8 medallas.', 'Recuerda: juega con cabeza. Las apuestas altas siempre piden confirmación.', 'La Caja PC guarda tus Pokémon: ¿has probado a entrenarlos con Caramelos Exp. o en combate?'];
   return { text: quips[new Date().getDate() % quips.length], go: null, id: 'quip' };
 }
 export function oakSay() {

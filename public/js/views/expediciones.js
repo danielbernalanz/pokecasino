@@ -1,10 +1,11 @@
 // Expediciones AFK (fase B6): envía a tu equipo a una zona y recoge el botín al volver.
-import { S, h, act, emit, sfx, toast, modal, sprite, typeBadge, hpBar, say, emptyState, loader, itemImg, MON } from '../core.js';
+import { S, h, act, emit, fmt, sfx, toast, modal, sprite, typeBadge, hpBar, say, emptyState, loader, itemImg, MON } from '../core.js';
 import { aniImg } from '../anim.js';
 import { burstEl, reduced } from '../fx.js';
 import { clock, loadMons, monPicker } from './afk-common.js';
 import { berryImg } from './huerto.js';
 import { phaseNow, PHASE, timeSpecies } from '../daytime.js';
+import { showProgress } from './pc-fx.js';
 
 const EV_SHORT = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
 const cfg = () => S.data.expedition;
@@ -17,8 +18,9 @@ function estimate(zone, hours, team) {
   const n = team.length || 1;
   const hit = team.filter((m) => matches(zone, m.id)).length;
   const coins = Math.round(hours * 8 * (1 + cfg().matchBonus * hit / n));
-  const levels = Math.floor(hours / cfg().levelEvery);
-  return { coins, levels, candy: team.map((m) => Math.max(1, Math.round(hours * (matches(zone, m.id) ? 1 + cfg().matchBonus : 1) * (1 + m.level / 200)))), wild: hours, hit };
+  // EXP por hora y participante: base + por nivel; ×1,5 si encaja con la zona (aproximado: sin tope diario ni Huevo Suerte).
+  const exp = team.map((m) => Math.round(hours * (cfg().expBase + cfg().expLevel * (m.level || 5)) * (matches(zone, m.id) ? 1 + cfg().matchBonus : 1)));
+  return { coins, exp, hit };
 }
 
 // Camino con el equipo paseando (animación CSS; sin movimiento si el sistema lo pide).
@@ -75,10 +77,11 @@ export default {
         const p = S.dexById.get(m.id);
         rows.push(h('div', { class: 'afk-rw-mon' }, h('img', { class: 'pixel', src: sprite(m.id), alt: '' }),
           h('div', { class: 'grow' }, h('b', {}, p.name + (m.match ? ' ⭐' : '')),
-            h('div', { class: 'small muted' }, `+${m.candy} 🍬 · Nv. ${m.from}${m.to > m.from ? ` → ${m.to}` : ''} · +${m.friend} ♥${m.ev ? ` · +${m.ev} EV ${EV_SHORT[rw.evStat]}` : ''}${m.time ? ' · 🌙☀️ +25 %' : ''}`))));
+            h('div', { class: 'small muted' }, `+${fmt(m.exp)} EXP · Nv. ${m.from}${m.to > m.from ? ` → ${m.to}` : ''} · +${m.friend} ♥${m.ev ? ` · +${m.ev} EV ${EV_SHORT[rw.evStat]}` : ''}${m.time ? ' · 🌙☀️ +25 %' : ''}`))));
       }
       const loot = [];
-      loot.push(h('span', { class: 'afk-rw-chip' }, `🍬 +${rw.wild} comodín`));
+      for (const [c, q] of Object.entries(rw.candies || {})) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg(c), `×${q}`));
+      if (rw.lucky) loot.push(h('span', { class: 'afk-rw-chip gold' }, itemImg('hi-luckyegg'), '¡Huevo Suerte!'));
       for (const [b, q] of Object.entries(rw.berries)) loot.push(h('span', { class: 'afk-rw-chip' }, berryImg(b), `×${q}`));
       if (rw.dust) loot.push(h('span', { class: 'afk-rw-chip' }, `✦ ${rw.dust}`));
       if (rw.coins) loot.push(h('span', { class: 'afk-rw-chip gold' }, `🪙 ${rw.coins}`));
@@ -91,9 +94,10 @@ export default {
         say({ mon: zone.hostId, who: zone.host, text: `¡Qué bien lo hemos pasado en ${zone.name}! Mira lo que hemos traído.`, cls: 'compact' }),
         h('div', { class: 'afk-rw-mons' }, rows),
         h('div', { class: 'afk-rw-loot' }, loot),
-        rw.lovers ? h('p', { class: 'small good' }, `💖 ${rw.lovers === 1 ? 'Un Pokémon que te adora ha traído' : rw.lovers + ' Pokémon que te adoran han traído'} un 10 % más de caramelos, bayas y polvo (las monedas no cambian).`) : null,
-        h('p', { class: 'small muted' }, 'Los caramelos ya están en tu cuenta y los niveles subidos no gastan caramelos.'));
-      const m = modal(body, { title: '🧭 ¡Expedición completada!' });
+        rw.lovers ? h('p', { class: 'small good' }, `💖 ${rw.lovers === 1 ? 'Un Pokémon que te adora ha traído' : rw.lovers + ' Pokémon que te adoran han traído'} un 10 % más de EXP, bayas y polvo (las monedas no cambian).`) : null,
+        h('p', { class: 'small muted' }, `EXP total: ${fmt(rw.exp)} (con tope diario por Pokémon). Los Caramelos Exp. ya están en tu mochila.`));
+      const m = modal(body, { title: '🧭 ¡Expedición completada!', onClose: () => showProgress({ evolve: rw.evolve || [] }) });
+      showProgress({ members: rw.members.filter((x) => x.to > x.from), pokerus: rw.pokerus || [] }); // avisos de nivel y Pokérus al momento; la evolución, al cerrar el resumen
       if (!reduced()) setTimeout(() => { const c = m.el.querySelector('.afk-rw-loot'); if (c) burstEl(c, '#ffd54f', 24, { spread: 150, stars: 0.6 }); }, 150);
     }
 
@@ -120,13 +124,13 @@ export default {
         if (!team.length) { info.replaceChildren('Elige de 1 a 3 Pokémon.'); return; }
         const e = estimate(zone, hours, team);
         info.replaceChildren(h('div', {}, `Con ${e.hit} de ${team.length} que encajan con la zona (+${Math.round(cfg().matchBonus * 100)} % cada uno):`),
-          h('div', {}, `🍬 ≈ ${e.candy.reduce((a, b) => a + b, 0)} de sus familias + ${e.wild} comodín · ⬆️ +${e.levels} niveles cada uno · ♥ amistad`),
+          h('div', {}, `⭐ ≈ ${e.exp.map(fmt).join(' + ')} EXP (con tope diario por Pokémon) · Caramelos Exp. · ♥ amistad`),
           h('div', {}, `🪙 ${e.coins} monedas (máx. ${cfg().caps.coins} al día) · bayas, polvo y, a veces, un objeto raro`));
       }
       const picker = monPicker(mons, { max: cfg().maxTeam, selected: sel, onChange: update,
         can: (m) => (m.away ? (m.away === 'care' ? 'En el Criadero' : 'De expedición') : null),
         mark: (m) => (matches(zone, m.id) ? '⭐' : ''),
-        // Primero los que encajan con la zona (más botín), y entre ellos los de más nivel (más caramelos).
+        // Primero los que encajan con la zona (más botín), y entre ellos los de más nivel (más EXP).
         rank: (m) => (matches(zone, m.id) ? 1000 : 0) + (m.level || 0) });
       const mdl = modal(h('div', { class: 'stack' },
         h('div', { class: 'afk-zone-head' }, h('img', { class: 'pixel afk-host', src: sprite(zone.hostId), alt: '' }), h('div', {}, h('b', {}, zone.name), typesEl(zone), h('div', { class: 'small muted' }, `⭐ = comparte tipo con la zona`))),
@@ -134,12 +138,12 @@ export default {
       update();
     }
 
-    // Pokémon de esta zona que rinden más según la hora de salida (+25 % de caramelos si coincide con su hora).
+    // Pokémon de esta zona que rinden más según la hora de salida (+25 % de EXP si coincide con su hora).
     function timeNote(z) {
       const ph = phaseNow();
       const ids = timeSpecies(ph).filter((id) => matches(z, id)).map((id) => S.dexById.get(id).name);
       if (!ids.length) return null;
-      return h('span', { class: 'small afk-zone-time', 'data-testid': 'zone-time' }, `${PHASE[ph].ico} ${PHASE[ph].label.toLowerCase()} rinden +${Math.round(S.data.daytime.expBonus * 100)} % de caramelos: ${ids.slice(0, 4).join(', ')}${ids.length > 4 ? '…' : ''}`);
+      return h('span', { class: 'small afk-zone-time', 'data-testid': 'zone-time' }, `${PHASE[ph].ico} ${PHASE[ph].label.toLowerCase()} rinden +${Math.round(S.data.daytime.expBonus * 100)} % de EXP: ${ids.slice(0, 4).join(', ')}${ids.length > 4 ? '…' : ''}`);
     }
 
     function zoneCard(z) {
@@ -163,7 +167,7 @@ export default {
 
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '🧭 Expediciones')), intro, running,
       h('h2', { class: 'section-title' }, 'Zonas'), zones,
-      h('p', { class: 'small muted' }, `Recompensas: caramelos, bayas, polvo y objetos; niveles sin gastar caramelos y amistad. Hallazgo de monedas pequeño: tope de ${cfg().caps.coins} al día. Nunca dan Pokémon.`));
+      h('p', { class: 'small muted' }, `Recompensas: EXP (como en los juegos), Caramelos Exp., bayas, polvo y objetos, y amistad. Hallazgo de monedas pequeño: tope de ${cfg().caps.coins} al día. Nunca dan Pokémon.`));
     root.append(loader('Preparando las mochilas…'));
     try { apply(await emit('exp:list')); } catch (e) { toast(e.message, 'error'); } finally { root.querySelector('.loader')?.remove(); }
     tick = setInterval(() => {

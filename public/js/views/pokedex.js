@@ -42,7 +42,7 @@ export function openDetail(id) {
       if (c.s > 0 && c.n - 1 < c.s && !(await confirmRisk('release-precious', { title: 'Vas a liberar una copia variocolor', danger: 'Liberar igualmente', safe: 'Conservarla',
         text: `Tienes ${c.n} copia(s) de ${p.name} y ${c.s} es variocolor ✨. Si liberas una, perderías una versión variocolor (solo recibes ${r.dust} ✦ de polvo), y es mucho más difícil de conseguir.` }))) return;
       if (!(await confirmRisk('release-one', { section: 'la Pokédex', title: `¿Liberar una copia de ${p.name}?`, danger: 'Liberar', safe: 'Cancelar',
-        text: `Solo recibes ${r.dust} ✦ de polvo y no se puede deshacer. Si quieres también caramelos, usa Transferir en la Caja PC.` }))) return;
+        text: `Solo recibes ${r.dust} ✦ de polvo y no se puede deshacer. Si quieres también Caramelos Exp., usa Transferir en la Caja PC.` }))) return;
       const at = centerOf(e.target);
       if (await act('shop:release', { id, count: 1 }, e.target)) { burstAt(...at, '#a5b4fc', 18, { spread: 120, stars: 0.8 }); sfx('shiny'); toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); more.close(); m.close(); openDetail(id); }
     };
@@ -50,7 +50,7 @@ export function openDetail(id) {
       h('div', { class: 'pc-box' }, h('h4', {}, '🎁 Regalar una copia'),
         h('div', { class: 'row gap wrap' }, giftTo, h('datalist', { id: 'gift-users' }, S.online.filter((u) => u.username !== S.me.username).map((u) => h('option', { value: u.username }))),
           h('button', { class: 'btn', type: 'button', onclick: gift }, 'Regalar'))),
-      c.n > 1 ? h('div', { class: 'pc-box' }, h('h4', {}, '🕊️ Liberar una copia'), h('p', { class: 'small muted' }, `Solo recibes ${r.dust} ✦ de polvo (sin caramelos).`),
+      c.n > 1 ? h('div', { class: 'pc-box' }, h('h4', {}, '🕊️ Liberar una copia'), h('p', { class: 'small muted' }, `Solo recibes ${r.dust} ✦ de polvo (sin Caramelos Exp.).`),
         h('button', { class: 'btn danger', type: 'button', onclick: release }, `Liberar 1 copia (+${r.dust} ✦)`)) : h('p', { class: 'small muted' }, 'Solo tienes una copia: se conserva siempre una de cada Pokémon.')),
     { title: `⋯ Más: ${p.name}` });
   }

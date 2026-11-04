@@ -33,7 +33,7 @@ async function hatchAnim(r) {
   requestAnimationFrame(() => mon.classList.add('in'));
   title.textContent = `¡Ha nacido ${r.shiny ? '✨ ' : ''}${p.name}!`;
   if (!fast) { const [x, y] = [innerWidth / 2, innerHeight / 2.4]; burstAt(x, y, r.shiny ? '#ffd54f' : '#ff9ec4', r.shiny ? 40 : 24, { spread: 220, stars: 0.6 }); if (r.shiny) confetti({ count: 50 }); }
-  const bits = [r.isNew ? '¡Nueva entrada en la Pokédex!' : null, `+${r.candy} 🍬 caramelos de su familia`, r.dust ? `Ya tenías 5 estrellas: +${r.dust} ✦` : null, r.nature ? `Naturaleza ${r.nature}` : null].filter(Boolean);
+  const bits = [r.isNew ? '¡Nueva entrada en la Pokédex!' : null, `+1 ${(S.data.items[r.expItem] || {}).name || 'Caramelo Exp. S'}`, r.dust ? `Ya tenías 5 estrellas: +${r.dust} ✦` : null, r.nature ? `Naturaleza ${r.nature}` : null].filter(Boolean);
   const learned = r.moves && r.moves.length ? h('div', { class: 'hatch-moves' }, `¡Nació sabiendo ${r.moves.join(', ')}!`) : null;
   info.replaceChildren(...(learned ? [learned] : []), ...bits.map((t) => h('div', { class: 'small' }, t)), h('button', { class: 'btn primary big', onclick: () => ov.remove() }, '¡Genial!'));
   await new Promise((res) => { const done = new MutationObserver(() => { if (!ov.isConnected) { done.disconnect(); res(); } }); done.observe(document.body, { childList: true }); });
