@@ -37,6 +37,12 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - Los EVs no tienen valor en monedas. Las fuentes gratuitas (Expediciones 60/día, combates CPU 48/día por ejemplar) cuelgan de actividades que ya tienen tope propio. Las vitaminas (1.000) y bayas de EVs (300) son un sumidero de monedas; los NPC las tratan como cualquier objeto de tienda (nunca compran por encima del 60 % ni venden por debajo del precio).
 - Los objetos de evolución (piedras 2.000, objetos raros 5.000) se compran con monedas y se gastan al evolucionar: no hay ciclo comprar → vender que gane monedas (el NPC paga como mucho el 60 % del precio de tienda) y reciclar da solo el 40 % en polvo.
 
+## Torre Batalla
+
+- Solo da PB (tope **40/día**) y títulos; nunca monedas, caramelos ni objetos comerciables, así que no hay nada que convertir. Los PB no se regalan ni se venden (ver arriba).
+- Los equipos son de alquiler y se generan en el servidor (el cliente solo elige índices); el rival lo genera el servidor al empezar cada combate. Empatar, rendirse o abandonar acaba la carrera.
+- Una cuenta secundaria puede sacar como mucho 40 PB al día en la Torre, igual que la principal: no aporta nada a la principal (los PB son intransferibles).
+
 ## Liga Pokémon (clasificatoria)
 
 - Solo puntúan combates contra **otra cuenta**, con las dos cuentas de nivel ≥ 3 y ≥ 3 días (`transfer.young`), de **≥ 3 turnos** y como mucho **5 combates puntuados al día contra el mismo rival** (los dos formatos comparten el cupo; el emparejamiento ya evita al rival con el cupo lleno y la liquidación lo vuelve a comprobar). Quedan fuera de la puntuación, pero siguen siendo combates normales.

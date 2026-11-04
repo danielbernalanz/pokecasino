@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.04-o",
+    "date": "2026-11-04",
+    "title": "Torre Batalla",
+    "items": [
+      "🗼 Nueva pestaña «Torre» en Combates: una carrera de combates seguidos contra la CPU con Pokémon de alquiler (nivel 50). Eliges 3 de 6 (Individual) o 4 de 6 (Dobles), así que no necesitas buenos Pokémon. Tras cada victoria puedes cambiar uno de los tuyos por uno del rival derrotado.",
+      "👑 Cada 7 combates es una ronda y el combate 21 te enfrenta al Jefe de la Torre (Magno). Tu mejor racha por formato queda en la pestaña y en el Ranking («Torre»).",
+      "🎖️ Ganas PB: 1 por victoria al principio, hasta 3 en rachas largas, +10 al completar cada ronda (máx. 40 PB al día en la Torre). Nunca da monedas. Con rachas de 21, 50 y 100 ganas un título. Si se reinicia el casino, tu carrera y tu combate siguen donde estaban."
+    ]
+  },
+  {
     "version": "2026.11.04-n",
     "date": "2026-11-04",
     "title": "Liga Pokémon: clasificatoria por temporadas",
