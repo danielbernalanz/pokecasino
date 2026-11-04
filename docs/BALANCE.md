@@ -571,6 +571,16 @@ Cada combate en curso se guarda en `db.data.sdBattles` (semilla explícita + reg
 * **Sin bucles de monedas:** fabricar es un sumidero (`tm_craft`). Los PNJ **no compran ni venden MT ni materiales** (`inFocus` los excluye) y, aunque algún día se activaran, su tope de compra es ≤ 25 % del coste en monedas (`npc.bounds`, con test sobre las 229). Entre jugadores el Mercado es suma cero menos comisión e impuesto. Los materiales no tienen valor en monedas.
 * Valor máximo diario de botín (referencia): ≤ 27 materiales y ≤ 2 MT por jugador y día.
 
+#### Gacha de MT (server/tmgacha.js · test/tmgacha.test.js)
+* **Es la vía rápida, no la eficiente.** Pestaña «Gacha MT» de la Tienda; la Máquina MT no cambia. `tm:gacha {count}` (1 o 10) cobra monedas (motivo `tm_gacha`), entrega las MT a la mochila y cuenta contra un tope de **30 tiradas al día** (`u.tmDay.gacha`). Sin pity. No da materiales (no toca la economía de fabricación) y no cuenta para misiones del Poké Gacha (evento propio `tm_gacha`).
+* **Precios:** ×1 = **1.500** · ×10 = **13.500** (−10 %, 1.350 por tirada).
+* **Probabilidades por nivel:** Básica 66 % · Buena 23 % · Fuerte 7,5 % · Élite 3 % · Suprema 0,5 %. Dentro del nivel la MT es uniforme, salvo que el **tipo destacado de la semana** (rota cada lunes UTC entre los 18 tipos) pesa ×3: cambia qué MT sale, no el nivel.
+* **Valor esperado (monedas de fabricación de cada nivel: 500 / 1.500 / 4.000 / 6.000 / 8.000):**
+  EV = 0,66·500 + 0,23·1.500 + 0,075·4.000 + 0,03·6.000 + 0,005·8.000 = 330 + 345 + 300 + 180 + 40 = **1.195 monedas** por tirada.
+  Frente al precio: 1.195 / 1.500 = **80 %** (×1) y 1.195 / 1.350 = **89 %** (×10). Además fabricar exige materiales que aquí no se pagan, así que el valor real de fabricar es aún mayor: el gacha pierde ≈ 305 monedas por tirada (≈ 155 en ×10) en MT y no hay forma de tirar → vender para ganar monedas.
+* **Sin bucle de monedas:** los PNJ no compran MT (`inFocus`), y entre jugadores el Mercado es suma cero menos comisión e impuesto. Una MT sacada del gacha nunca vale (en monedas de fabricación) más que lo que se pagó de media. Test: `valor esperado…` (EV < 85 % de ×1 y < 90 % de ×10, también con cada tipo destacado) y una simulación de 40.000 tiradas.
+* Máximo diario: 30 tiradas = 45.000 monedas (hundidas) ≈ 30 MT, con ≈ 0,15 Supremas esperadas.
+
 ### Fase 3 · Puntos de Batalla, objetos, habilidades y mentas (server/bp.js, bpdata.js, abilities.js · test/bp.test.js)
 * **PB (`u.bp`) solo se ganan combatiendo:** victoria CPU 1/1/2/2/3/3 según la fuerza del rival (**tope 30/día**, dentro de las 10 victorias premiadas); PvP: ganar 3, perder 1 (**tope 20/día**, mínimo 3 turnos, máx. 3 combates con PB contra el mismo rival al día). No se regalan, no están en el Mercado ni se cambian por monedas: ninguna operación los convierte.
 * **Tienda de Combate:** 16 objetos equipables (16 PB: Hierba Blanca/Mental, Periscopio · 32: Banda Aguante, Casco Dentado, Lodo Negro, Seguro Debilidad, Cinta Experto, Botas Gruesas · 40: Chaleco Asalto, Mineral Evol · 48: Restos, Vidasfera, Cinta/Gafas/Pañuelo Elección), 21 mentas (50 PB; cambian el efecto de la naturaleza, la original sigue figurando), Cápsula Habilidad (50) y Parche Habilidad (200). Máximo 50 PB/día ≈ un objeto o una menta al día.

@@ -5,6 +5,7 @@ import { openItem } from './market.js';
 import { openEgg, useFx } from '../rewards.js';
 import { burstAt, coinRain, centerOf } from '../fx.js';
 import { machineTab, useTmDialog } from './tm-ui.js';
+import { tmGachaTab } from './tm-gacha.js';
 import { bpTab } from './bp-ui.js';
 
 let tab = 'items';
@@ -23,7 +24,7 @@ export default {
     const tabs = h('div', { class: 'tabs' });
 
     function renderTabs() {
-      tabs.replaceChildren(...[['items', '🏬 Tienda Poké'], ['bag', '🎒 Mochila'], ['craft', '✦ Fabricar'], ['tm', '💿 Máquina MT'], ['bp', '🎖️ Tienda de Combate'], ['exchange', '💱 Cambio'], ['recycle', '♻️ Reciclaje']].map(([k, l]) =>
+      tabs.replaceChildren(...[['items', '🏬 Tienda Poké'], ['bag', '🎒 Mochila'], ['craft', '✦ Fabricar'], ['tm', '💿 Máquina MT'], ['tmg', '🎰 Gacha MT'], ['bp', '🎖️ Tienda de Combate'], ['exchange', '💱 Cambio'], ['recycle', '♻️ Reciclaje']].map(([k, l]) =>
         h('button', { class: 'tab' + (tab === k ? ' active' : ''), onclick: () => { tab = k; renderTabs(); render(); } }, l)));
     }
 
@@ -186,12 +187,12 @@ export default {
     }
 
     function render() {
-      body.replaceChildren(tab === 'items' ? itemsTab() : tab === 'bag' ? bagTab() : tab === 'craft' ? craftTab() : tab === 'tm' ? machineTab() : tab === 'bp' ? bpTab() : tab === 'recycle' ? recycleTab() : exchangeTab());
+      body.replaceChildren(tab === 'items' ? itemsTab() : tab === 'bag' ? bagTab() : tab === 'craft' ? craftTab() : tab === 'tm' ? machineTab() : tab === 'tmg' ? tmGachaTab() : tab === 'bp' ? bpTab() : tab === 'recycle' ? recycleTab() : exchangeTab());
     }
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '🎒 Tienda y Mochila'), h('div', { class: 'pill dust' }, '✦ ', h('b', {}, fmt(S.me.dust)))), say({ mon: MON.kecleon, who: 'Kecleon', text: '¡Bienvenido! Mira sin miedo… aunque no me veas.', cls: 'compact' }), tabs, body);
     renderTabs();
     render();
-    this.off = bus.on('me', () => { if (tab !== 'tm' && (!document.activeElement || document.activeElement.tagName !== 'INPUT')) render(); }); // la Máquina MT se refresca sola
+    this.off = bus.on('me', () => { if (tab !== 'tm' && tab !== 'tmg' && (!document.activeElement || document.activeElement.tagName !== 'INPUT')) render(); }); // la Máquina MT y el Gacha MT se refrescan solos
   },
   unmount() { this.off(); },
 };

@@ -581,6 +581,8 @@ io.on('connection', (socket) => {
   on('tm:targets', require('./tm').targets, { push: false });
   on('tm:owned', require('./tm').owned, { push: false });
   on('tm:compat', require('./tm').compat, { push: false });
+  on('tm:gacha', require('./tmgacha').pull);
+  on('tm:gachainfo', require('./tmgacha').info, { push: false });
   on('pc:learn', require('./moves').learn);
   on('pc:fav', specimen.fav);
   on('pc:release', specimen.release);
