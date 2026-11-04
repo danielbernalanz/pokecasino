@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.04-a",
+    "date": "2026-11-04",
+    "title": "Expediciones y megapiedras",
+    "items": [
+      "🧭 Expediciones: al elegir equipo salen primero los Pokémon que mejor encajan con la zona (comparten tipo ⭐) y, entre ellos, los de más nivel.",
+      "💠 Megapiedras comerciables: en Evento Mega → Megas, «Recuperar la megapiedra» devuelve la piedra a tu mochila (la Mega deja de estar disponible hasta que vuelvas a usarla) para venderla en el Mercado.",
+      "🏪 Mercado: nuevo filtro Objetos → «Megapiedras»."
+    ]
+  },
+  {
     "version": "2026.11.03-a",
     "date": "2026-11-03",
     "title": "Premios a su tiempo y Video Póker más cómodo",

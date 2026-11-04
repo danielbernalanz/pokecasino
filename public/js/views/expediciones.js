@@ -121,7 +121,9 @@ export default {
       }
       const picker = monPicker(mons, { max: cfg().maxTeam, selected: sel, onChange: update,
         can: (m) => (m.away ? (m.away === 'care' ? 'En el Criadero' : 'De expedición') : null),
-        mark: (m) => (matches(zone, m.id) ? '⭐' : '') });
+        mark: (m) => (matches(zone, m.id) ? '⭐' : ''),
+        // Primero los que encajan con la zona (más botín), y entre ellos los de más nivel (más caramelos).
+        rank: (m) => (matches(zone, m.id) ? 1000 : 0) + (m.level || 0) });
       const mdl = modal(h('div', { class: 'stack' },
         h('div', { class: 'afk-zone-head' }, h('img', { class: 'pixel afk-host', src: sprite(zone.hostId), alt: '' }), h('div', {}, h('b', {}, zone.name), typesEl(zone), h('div', { class: 'small muted' }, `⭐ = comparte tipo con la zona`))),
         h('h4', {}, 'Duración'), hoursRow, h('h4', {}, 'Equipo (1 a 3)'), picker.el, info, sendBtn), { title: `Enviar a ${zone.name}`, wide: true });

@@ -272,3 +272,20 @@ test('Mercado: las megapiedras se pueden publicar y comprar entre jugadores', ()
   assert.ok(r);
   assert.strictEqual(b.items['stone-gengarite'], 1);
 });
+
+test('megapiedras: se puede recuperar la piedra de una Mega desbloqueada para venderla', () => {
+  const mega = require('../server/mega');
+  const f = [...mega.BY_FORM.values()][0];
+  const u = { id: 'mg-unuse', username: 'mgunuse', items: { [f.stone]: 1 }, collection: { [f.species]: { n: 1, s: 0 } }, buddy: { id: f.species, shiny: false }, btTeams: [{ name: 'E', members: [{ id: f.species, uid: 'x', mega: f.formId }] }], stats: {}, progress: { badges: [], sets: [], titles: [], counters: {} } };
+  mega.useStone(u, f.stone);
+  assert.ok(mega.megasOf(u)[f.formId]);
+  assert.ok(!u.items[f.stone]);
+  mega.setBuddyMega(u, { formId: f.formId });
+  const r = mega.unuseStone(u, { formId: f.formId });
+  assert.strictEqual(r.stone, f.stone);
+  assert.strictEqual(u.items[f.stone], 1, 'la piedra vuelve a la mochila');
+  assert.ok(!mega.megasOf(u)[f.formId], 'la Mega deja de estar desbloqueada');
+  assert.ok(!u.buddy.mega, 'el compañero vuelve a su forma normal');
+  assert.strictEqual(u.btTeams[0].members[0].mega, 0);
+  assert.throws(() => mega.unuseStone(u, { formId: f.formId }), /No tienes desbloqueada/);
+});

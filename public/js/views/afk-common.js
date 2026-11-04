@@ -30,7 +30,8 @@ export function monTile(m, { cls = '', mark = '' } = {}) {
  * Selector de ejemplares de la Caja con búsqueda. `can(m)` → null (elegible) o motivo (deshabilitado).
  * `selected`: Set de uid. Devuelve { el, get() }.
  */
-export function monPicker(mons, { max = 3, can = () => null, selected = new Set(), onChange = () => {}, mark = () => '' } = {}) {
+// `rank(m)`: puntuación para ordenar (los más adecuados primero); por defecto, el nivel.
+export function monPicker(mons, { max = 3, can = () => null, selected = new Set(), onChange = () => {}, mark = () => '', rank = (m) => m.level } = {}) {
   const list = h('div', { class: 'afk-pick' });
   const search = h('input', { type: 'search', placeholder: 'Buscar nombre, mote o nº…', 'aria-label': 'Buscar Pokémon', oninput: draw });
   function draw() {
@@ -39,7 +40,7 @@ export function monPicker(mons, { max = 3, can = () => null, selected = new Set(
       if (selected.has(m.uid)) return true;
       const p = S.dexById.get(m.id);
       return !q || p.name.toLowerCase().includes(q) || (m.nick || '').toLowerCase().includes(q) || String(m.id) === q.replace('#', '');
-    }).sort((a, b) => (selected.has(b.uid) - selected.has(a.uid)) || b.level - a.level || a.id - b.id).slice(0, 60);
+    }).sort((a, b) => (selected.has(b.uid) - selected.has(a.uid)) || (!can(a) - !can(b)) * -1 || rank(b) - rank(a) || a.id - b.id).slice(0, 60);
     list.replaceChildren(...rows.map((m) => {
       const why = can(m);
       const on = selected.has(m.uid);

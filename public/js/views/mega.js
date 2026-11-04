@@ -465,7 +465,14 @@ export default {
               : h('button', { class: 'btn', disabled: !owned, onclick: async (e) => {
                 if (!(await act('buddy:set', { id: f.species, shiny: false }, e.target))) return;
                 await evolve(f, e);
-              } }, owned ? `💠 Hacer compañero a ${S.dexById.get(f.species).name} y megaevolucionar` : `Te falta ${S.dexById.get(f.species).name}`));
+              } }, owned ? `💠 Hacer compañero a ${S.dexById.get(f.species).name} y megaevolucionar` : `Te falta ${S.dexById.get(f.species).name}`),
+          // Como en los juegos, la megapiedra se puede pasar a otro: se recupera y se puede vender en el Mercado.
+          h('button', { class: 'btn small', title: 'La Mega deja de estar disponible y la piedra vuelve a tu mochila para venderla o regalarla en el Mercado', onclick: async (e) => {
+            const btn = e.currentTarget;
+            if (!(await confirmRisk('mega-unuse', { title: `Recuperar la ${f.stoneName}`, text: `Perderás ${f.name} (podrás volver a desbloquearla usando la piedra) y la ${f.stoneName} volverá a tu mochila para venderla en el Mercado.`, danger: 'Recuperar la piedra', safe: 'Cancelar', section: 'el evento Megaevolución' }))) return;
+            const r = await act('mega:unuse', { formId: f.formId }, btn);
+            if (r) { toast(`La ${f.stoneName} está en tu mochila: ya puedes venderla en el Mercado.`, 'success'); load(); }
+          } }, `♻️ Recuperar la ${f.stoneName}`));
       };
       return h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('h3', {}, '🧬 Tu compañero'),

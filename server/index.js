@@ -614,6 +614,7 @@ io.on('connection', (socket) => {
   on('mega:spin', mega.spin);
   on('mega:pick', mega.pickStone);
   on('mega:use', (u, { stone }) => mega.useStone(u, stone));
+  on('mega:unuse', mega.unuseStone);
   on('item:buy', items.buy);
   on('item:use', items.use);
   on('equip', items.equip);

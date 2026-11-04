@@ -299,6 +299,22 @@ function useStone(user, itemId) {
   return { used: itemId, formId: f.formId, species: f.species };
 }
 
+// Recuperar la megapiedra de una megaevolución desbloqueada (como en los juegos, la piedra es un objeto que se
+// puede pasar a otro): la Mega deja de estar disponible y la piedra vuelve a la mochila, lista para el Mercado.
+function unuseStone(user, { formId }) {
+  const f = BY_FORM.get(Number(formId));
+  if (!f) throw new Error('Megaevolución desconocida.');
+  const megas = megasOf(user);
+  if (!megas[f.formId]) throw new Error(`No tienes desbloqueada a ${f.name}.`);
+  delete megas[f.formId];
+  if (user.buddy && user.buddy.mega === f.formId) delete user.buddy.mega;
+  // Los equipos de combate guardados dejan de llevar esa Mega.
+  for (const t of user.btTeams || []) if (t) for (const m of t.members || []) if (Number(m.mega) === f.formId) m.mega = 0;
+  items.give(user, f.stone, 1);
+  db.save();
+  return { stone: f.stone, formId: f.formId };
+}
+
 // Megaevolucionar (o volver a la forma normal) al compañero.
 function setBuddyMega(user, { formId }) {
   if (formId === null || formId === undefined || formId === 0) {
@@ -587,6 +603,6 @@ function expectedFrags() { return OUTCOMES.reduce((s, o) => s + (o.w / TOTAL_W) 
 
 module.exports = {
   MISSION_BONUS, CFG, FORMS, BY_FORM, BY_STONE, OUTCOMES, MILESTONES, MISSIONS, STREAK, PODIUM, SYMBOLS, STATIC, TOTAL_W,
-  isActive, currentHour, dayId, onBet, onEvent, checkin, claim, craft, pickStone, useStone, setBuddyMega, buddyMegaOk, megasOf,
+  isActive, currentHour, dayId, onBet, onEvent, checkin, claim, craft, pickStone, useStone, unuseStone, setBuddyMega, buddyMegaOk, megasOf,
   spin, giveFrags, leaderboard, finalize, startEdition, tick, start, admin, publicState, privateView, full, formBaseStats, expectedFrags, state: S, U,
 };
