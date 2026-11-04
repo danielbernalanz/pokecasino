@@ -166,23 +166,12 @@ test('al subir de nivel se ofrece evolucionar («¿Quieres que evolucione?»): c
   assert.ok(m.level >= 16 && u.mons[b][0].uid === m.uid);
 });
 
-test('evolucionar y transferir no es una máquina de polvo: el suelo de EXP por polvo ganado', () => {
-  // La EXP para llegar al nivel de evolución (desde el 5) ≥ EVO_EXP_PER_DUST × el polvo que gana el resultado al liberarlo (evoluciones «de nivel»).
-  // Y la EXP que da transferir (por polvo) × ese cociente es ≪ 1: ni siquiera reinvirtiendo la EXP de las transferencias hay bucle.
-  const maxExpPerDust = Math.max(...Object.keys(candy.TRANSFER_EXP).map((r) => candy.transferExp(r) / RARITY[r].dust));
-  const ratioCap = 1 / candy.EVO_EXP_PER_DUST;
-  let worst = 0; let edges = 0;
-  for (const p of DEX) {
-    if (!p.evolvesFrom || !require('../server/evoreq').isLevelUp(p.id)) continue;
-    edges++;
-    const from = BY_ID.get(p.evolvesFrom);
-    const gain = Math.max(0, RARITY[p.rarity].dust - RARITY[from.rarity].dust);
-    const need = exp.expAt(from.id, Math.max(5, candy.evoLevel(p.id))) - exp.expAt(from.id, 5);
-    if (gain) { assert.ok(need >= candy.EVO_EXP_PER_DUST * gain, `${from.name}→${p.name}: ${need} EXP para +${gain} ✦`); worst = Math.max(worst, gain / need); }
-    assert.ok(gain === 0 || gain / need <= ratioCap + 1e-9);
-  }
-  assert.ok(edges > 350);
-  assert.ok(worst * maxExpPerDust < 0.15, `factor del bucle ${(worst * maxExpPerDust).toFixed(3)}`);
+test('las evoluciones ocurren en su nivel REAL de los juegos (sin suelos inventados)', () => {
+  const real = require('../server/evoreq');
+  for (const p of DEX) if (p.evolvesFrom) assert.strictEqual(candy.evoLevel(p.id), real.levelOf(p.id), p.name);
+  assert.strictEqual(candy.evoLevel(byName('Gyarados').id), 20);
+  assert.strictEqual(candy.evoLevel(byName('Charmeleon').id), 16);
+  assert.strictEqual(candy.evoLevel(byName('Pikachu').id), 0, 'amistad, sin nivel');
 });
 
 test('los objetos de evolución (piedras, Cordón Unión) cuestan más monedas que el polvo que ganan', () => {

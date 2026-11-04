@@ -150,29 +150,28 @@ test('evolución por amistad: la tabla coincide con la Pokédex', () => {
   }
 });
 
-test('evolución por amistad: hace falta amistad ≥ 220 (como en los juegos) y el nivel mínimo; no cuesta caramelos', () => {
+test('evolución por amistad: hace falta amistad ≥ 160 (juegos actuales) y el nivel real de los juegos; no cuesta caramelos', () => {
   const from = DEX.find((p) => p.name === 'Pichu').id;
   const to = DEX.find((p) => p.name === 'Pikachu').id;
-  assert.ok(candy.evoLevel(to) > 0 && candy.evoLevel(to) <= 20, 'nivel de evolución de Pikachu: ' + candy.evoLevel(to));
+  assert.strictEqual(bond.FRIEND_EVO_MIN, 160);
+  assert.strictEqual(candy.evoLevel(to), 0, 'Pikachu: solo amistad, sin nivel (como en los juegos)');
   const u = user({ collection: { [from]: { n: 2, s: 0 } } });
   sp.syncAll(u);
   const m = u.mons[from][0];
   m.level = 50;
   assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /mucha amistad/);
-  m.friendship = 219;
+  m.friendship = 159;
   assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /mucha amistad/);
-  m.friendship = 220;
-  m.level = candy.evoLevel(to) - 1;
-  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /nivel/);
-  m.level = candy.evoLevel(to);
+  m.friendship = 160;
+  m.level = 5;
   const r = candy.evolve(u, { id: from, uid: m.uid, to });
   assert.strictEqual(r.to, to);
-  assert.strictEqual(m.level, candy.evoLevel(to));
-  assert.strictEqual(m.friendship, 220, 'conserva la amistad');
+  assert.strictEqual(m.level, 5);
+  assert.strictEqual(m.friendship, 160, 'conserva la amistad');
   assert.strictEqual(u.mons[to][0], m);
 });
 
-test('Eevee: Espeon y Umbreon solo con amistad ≥ 220; el resto de evoluciones, por piedra', () => {
+test('Eevee: Espeon y Umbreon solo con amistad ≥ 160; el resto de evoluciones, por piedra', () => {
   const eevee = DEX.find((p) => p.name === 'Eevee').id;
   const espeon = DEX.find((p) => p.name === 'Espeon').id;
   const vaporeon = DEX.find((p) => p.name === 'Vaporeon').id;
@@ -181,7 +180,7 @@ test('Eevee: Espeon y Umbreon solo con amistad ≥ 220; el resto de evoluciones,
   const [a, b] = u.mons[eevee];
   a.level = 60;
   assert.throws(() => candy.evolve(u, { id: eevee, uid: a.uid, to: espeon }), /amistad/);
-  a.friendship = 220;
+  a.friendship = 160;
   // Espeon solo de día (hora de España) y Vaporeon con Piedra Agua (evoluciones especiales: test/evoreq.test.js)
   const realNow = Date.now;
   Date.now = () => Date.parse('2026-11-04T11:00:00Z');

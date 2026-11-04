@@ -107,19 +107,18 @@ function openMon(uid, openPage = 'info') {
     return out;
   };
   const evoRow = (t) => {
-    const love = m.friendship >= (ru.loveMin || LOVE_MIN);
     const need = (ru.evoLevel || {})[t.id] || 0;
     const byFriend = (ru.friendEvo || []).includes(t.id);
     const reasons = [];
     if (m.away) reasons.push('fuera ahora');
-    if (byFriend && !love) reasons.push(`amistad ≥ ${ru.loveMin || LOVE_MIN}`);
+    if (byFriend && m.friendship < ru.friendEvoMin) reasons.push(`amistad ≥ ${ru.friendEvoMin}`);
     const needs = evoNeeds(t);
     for (const n of needs) if (!n.ok) reasons.push(n.text);
     if (m.level < need) reasons.push(`Nv. ${need}`);
     if (spareCount(m.id) < 1 && !(ru.evoFirst && ru.evoFirst.includes(t.id))) reasons.push('otra copia');
     const tc = S.me.collection[t.id];
     if (tc && tc.n >= 5) reasons.push('ya tienes 5 estrellas');
-    const reqs = [need ? `Nv. ${need}` : null, byFriend ? `amistad ≥ ${ru.loveMin || LOVE_MIN}` : null].filter(Boolean);
+    const reqs = [need ? `Nv. ${need}` : null, byFriend ? `amistad ≥ ${ru.friendEvoMin}` : null].filter(Boolean);
     return h('div', { class: 'pc-evo', 'data-testid': 'evo-row' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
       h('div', { class: 'grow small' }, h('b', {}, t.name),
         needs.length ? h('div', { class: 'pc-evo-needs', 'data-testid': 'evo-needs' }, 'Necesita: ', needs.flatMap((n, i) => [i ? (i === needs.length - 1 ? ' y ' : ', ') : '', h('span', { class: n.ok ? 'good' : 'bad' }, (n.ok ? '✓ ' : '✗ ') + n.text)])) : null,

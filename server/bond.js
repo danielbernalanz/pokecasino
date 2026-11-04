@@ -12,6 +12,7 @@ const affection = require('./affection');
 // ---- Amistad ----
 const FRIEND_MAX = 255;
 const LOVE_MIN = 220; // «Te adora»: +3 % a todas las estadísticas en duelos y evolución por amistad
+const FRIEND_EVO_MIN = 160; // evolución por amistad como en los juegos actuales (Gen 8+/Escarlata-Púrpura); «Te adora» (220) es solo el nivel de afecto en combate
 const LOVE_BONUS = 0.03;
 const CAP = { buddy: 30, feed: 100, duel: 15, battle: 10, exp: 40, pet: 2 }; // por ejemplar y día (duel = 5 victorias × 3; battle = 5 victorias de combate × 2; pet = una caricia al día)
 const PET_GAIN = 2; // «Acariciar»: una vez al día por ejemplar
@@ -341,7 +342,7 @@ function harvest(u, p) {
 }
 
 module.exports = {
-  FRIEND_MAX, LOVE_MIN, LOVE_BONUS, CAP, BET_STEP, DUEL_WIN, FRIEND_EVO, FRIEND_ONLY, FIND_MS, FIND_MAX, COIN_DAY_CAP, DUST_DAY_CAP, TICKET_DAY_CAP, PLOTS, WATER_SPEEDUP, YIELD,
+  FRIEND_MAX, LOVE_MIN, FRIEND_EVO_MIN, LOVE_BONUS, CAP, BET_STEP, DUEL_WIN, FRIEND_EVO, FRIEND_ONLY, FIND_MS, FIND_MAX, COIN_DAY_CAP, DUST_DAY_CAP, TICKET_DAY_CAP, PLOTS, WATER_SPEEDUP, YIELD,
   PET_GAIN, LOVE_LOOT, PHRASES, BOND_MOVES, tierOf, tiersView, phraseFor, petted, pet, teachBondMove, bondMovePower, lootFactor, stochRound,
   BERRY_CAP, berriesOf, giveBerry, takeBerry, isFriendEvo, friendOf, loves, loveFactor, hearts, stageName, addFriend, dayCounters, buddySpecimen, onBet, onDuelWin, feed,
   findState, findsView, buddyStatus, buddyBondView, collect, gardenOf, gardenView, plant, water, harvest,

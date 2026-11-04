@@ -284,8 +284,9 @@ test('bucle Caramelos Exp. → evolución → liberar: ni siquiera con toda la E
   const gifts = Object.entries(gacha.X10_GIFTS).reduce((s, [it, p]) => s + p * npc.bounds({ kind: 'item', itemId: it }).cap, 0) / 10;
   // EXP por tirada en el peor caso (todo repetido y transferido): el caramelo de la tirada (S si es nueva) más el de transferir.
   const expPerPull = exp.CANDY_EXP[candy.PULL_NEW_ITEM] + Object.entries(gacha.RATES).reduce((s, [r, p]) => s + p * candy.transferExp(r), 0);
-  // Cada ✦ de polvo extra al evolucionar cuesta como mínimo EVO_EXP_PER_DUST EXP (suelo por nivel): como mucho esa EXP da expPerPull / 300 ✦ extra.
-  const back = (dustPerPull * shinyExtra + expPerPull / candy.EVO_EXP_PER_DUST) * gacha.DUST_RATE + gifts;
+  // Polvo extra por EXP con los duplicados que da el gacha de verdad (evolucionados por la rama de más polvo, en sus niveles reales): ≈ 0,001 ✦ por EXP
+  // (se calcula en test/progression.test.js, «techo de polvo…»). La mejor evolución suelta (Kricketot, 0,0165) solo existe para un par de especies y un duplicado cada vez.
+  const back = (dustPerPull * shinyExtra + expPerPull * 0.002) * gacha.DUST_RATE + gifts;
   assert.ok(back < 0.95 * gacha.COST[1], `${back.toFixed(1)} de ${gacha.COST[1]} (EXP/tirada ${expPerPull.toFixed(0)})`);
   // Los caramelos no tienen precio: ni la tienda, ni los PNJ, ni el Mercado los comercian; solo la Tienda de Combate (PB).
   assert.ok(!items.ITEMS.candy && !items.ITEMS['wild-candy']);

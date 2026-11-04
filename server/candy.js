@@ -54,26 +54,8 @@ function onPull(u, id, isNew) {
 const EVOS = new Map();
 for (const p of DEX) if (p.evolvesFrom) (EVOS.get(p.evolvesFrom) || EVOS.set(p.evolvesFrom, []).get(p.evolvesFrom)).push(p);
 const evolutionsOf = (id) => EVOS.get(Number(id)) || [];
-// Nivel mínimo para evolucionar a `to`: el de los juegos (evodata.json) y, en las evoluciones «de nivel» que SUBEN la rareza, un suelo para que la EXP
-// que cuesta llegar (desde el nivel 5 del grupo de experiencia de la preevolución) sea ≥ EVO_EXP_PER_DUST × el polvo que gana el resultado al liberarlo.
-// Así evolucionar y transferir no es una máquina de polvo: la EXP viene de fuentes con tope diario (ver docs/BALANCE.md). Afecta a 38 de ~380 evoluciones.
-const EVO_EXP_PER_DUST = 300;
-const LVL_CACHE = new Map();
-function evoLevel(to) {
-  to = Number(to);
-  if (LVL_CACHE.has(to)) return LVL_CACHE.get(to);
-  let L = evoreq.levelOf(to);
-  const t = BY_ID.get(to);
-  if (t && t.evolvesFrom && evoreq.isLevelUp(to)) {
-    const from = BY_ID.get(t.evolvesFrom);
-    const gain = Math.max(0, RARITY[t.rarity].dust - RARITY[from.rarity].dust);
-    let need = Math.max(5, L);
-    while (need < exp.MAX_LEVEL && exp.expAt(from.id, need) - exp.expAt(from.id, 5) < EVO_EXP_PER_DUST * gain) need++;
-    if (gain) L = Math.max(L, need);
-  }
-  LVL_CACHE.set(to, L);
-  return L;
-}
+// Nivel mínimo para evolucionar a `to`: el REAL de los juegos (evodata.json; 30 / 40 por fase si el dato es «pasos, críticos, lugares…»).
+const evoLevel = (to) => evoreq.levelOf(to);
 
 // Comprueba TODO lo que hace falta para que el ejemplar `m` (especie `id`) evolucione a `to` sin tocar nada; lanza un error en español si falta algo.
 // Devuelve el plan de requisitos especiales (`consume()` gasta el objeto o intercambio) y si es la primera evolución a esa especie.
@@ -85,7 +67,7 @@ function evoCheck(u, m, id, to) {
   const forced = forms.forcedTarget(id, m); // Wurmple: Silcoon o Cascoon según el propio ejemplar
   if (forced && forced !== to) throw new Error(`${m.nick || BY_ID.get(id).name} solo puede evolucionar a ${BY_ID.get(forced).name}.`);
   const bond = require('./bond');
-  if (bond.isFriendEvo(id, to) && !bond.loves(bond.friendOf(m))) throw new Error(`${target.name} solo evoluciona con mucha amistad (≥ ${bond.LOVE_MIN}).`);
+  if (bond.isFriendEvo(id, to) && bond.friendOf(m) < bond.FRIEND_EVO_MIN) throw new Error(`${target.name} solo evoluciona con mucha amistad (≥ ${bond.FRIEND_EVO_MIN}).`);
   exp.ensure(id, m);
   const need = evoLevel(to);
   if (m.level < need) throw new Error(`Necesita nivel ${need} (ahora ${m.level}).`);
@@ -326,13 +308,13 @@ function boxExtra(u) {
     rules: { transfer: Object.fromEntries(Object.keys(TRANSFER_EXP).map((r) => [r, { item: TRANSFER_EXP[r][0], n: TRANSFER_EXP[r][1], exp: transferExp(r) }])),
       evoFirst: DEX.filter((x) => x.evolvesFrom && isFirstEvo(u, x.id)).map((x) => x.id), evoLevel: Object.fromEntries(DEX.filter((x) => x.evolvesFrom && evoLevel(x.id)).map((x) => [x.id, evoLevel(x.id)])),
       feedCap: bond.CAP.feed, betStep: bond.BET_STEP, wonderDaily: WONDER_DAILY, maxLevel: MAX_LEVEL, recycleDaily: RECYCLE_DAILY_DUST, recycle: Object.fromEntries(recycleList()),
-      loveMin: bond.LOVE_MIN, friendEvo: [...bond.FRIEND_EVO.keys()], friendOnly: [...bond.FRIEND_ONLY], exp: exp.STATIC, hyper: require('./hyper').STATIC, forms: forms.STATIC },
+      loveMin: bond.LOVE_MIN, friendEvoMin: bond.FRIEND_EVO_MIN, friendEvo: [...bond.FRIEND_EVO.keys()], friendOnly: [...bond.FRIEND_ONLY], exp: exp.STATIC, hyper: require('./hyper').STATIC, forms: forms.STATIC },
   };
 }
 
 module.exports = {
   transferMany, transferAllDupes, MANY_MAX,
   TRANSFER_EXP, PULL_ITEM, PULL_NEW_ITEM, MIN_LEVEL, MAX_LEVEL, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST, RECYCLE_BERRY_DAILY, RECYCLE_BERRY_DUST,
-  EVO_EXP_PER_DUST, transferExp, giveExp, evoCheck, evoOptions, canEvolveTo, evoLevel, isFirstEvo, evolutionsOf, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
+  transferExp, giveExp, evoCheck, evoOptions, canEvolveTo, evoLevel, isFirstEvo, evolutionsOf, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
   transfer, transferBulk, evolve, wonder, recycle,
 };

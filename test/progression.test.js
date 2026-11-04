@@ -235,18 +235,26 @@ test('techo de polvo al día evolucionando y transfiriendo: acotado por los tope
   const capExp = specimens * exp.CAP_MIN;
   const items = exp.BATTLE_DROP_DAY + expedition.CANDY_DAY_CAP * 3000 + 10000 + 90 * 100 + 4 * 3000 + 22 * 800;
   const EXT = capExp + items;
-  // Dust ganado por EXP: en cada evolución «de nivel» que sube rareza hay un suelo de EVO_EXP_PER_DUST EXP por ✦ ganado.
-  const bound = EXT / candy.EVO_EXP_PER_DUST;
-  // ¿Y reinvirtiendo la EXP que da transferir? Cada ✦ de polvo transferido da ≤ 26,7 EXP: el factor del bucle es ≪ 1.
-  const maxExpPerDust = Math.max(...Object.keys(candy.TRANSFER_EXP).map((r) => candy.transferExp(r) / RARITY[r].dust));
-  const loop = maxExpPerDust / candy.EVO_EXP_PER_DUST;
-  assert.ok(loop < 0.1, `factor del bucle ${loop.toFixed(3)}`);
-  const total = bound / (1 - loop);
-  if (process.env.SHOW) console.log('EXP externa máxima/día', EXT, 'polvo/día', total.toFixed(0), 'monedas', (total * gacha.DUST_RATE).toFixed(0));
-  assert.ok(total * gacha.DUST_RATE <= 7000, `techo teórico ${total.toFixed(0)} ✦ = ${(total * gacha.DUST_RATE).toFixed(0)} monedas al día`);
+  // Sin suelos inventados (las evoluciones ocurren en su nivel real), la mejor relación polvo/EXP de una evolución «de nivel» es la de Kricketot (+7 ✦ por 425 EXP).
+  let rMax = 0; let gMax = 0;
+  for (const p of DEX) {
+    if (!p.evolvesFrom) continue;
+    const from = BY_ID.get(p.evolvesFrom);
+    const gain = Math.max(0, RARITY[p.rarity].dust - RARITY[from.rarity].dust);
+    gMax = Math.max(gMax, gain);
+    const need = exp.expAt(from.id, Math.max(5, candy.evoLevel(p.id))) - exp.expAt(from.id, 5);
+    if (need > 0 && evoreq.isLevelUp(p.id)) rMax = Math.max(rMax, gain / need);
+  }
+  // Cota 1 (EXP): toda la EXP externa del día en la evolución más rentable. Cota 2 (suministro): cada evolución necesita un duplicado, y un día da ≈ 30
+  // (22 tiradas + 5 Milagrosos + huevos), cada uno con como mucho gMax ✦ de ganancia. Vale el mínimo de las dos (las evoluciones por amistad, piedra o intercambio
+  // tienen además su propio tope: amistad diaria por ejemplar, objetos que cuestan más monedas que el polvo, 2 intercambios al día).
+  const DUPES = 30;
+  const total = Math.min(EXT * rMax, DUPES * gMax);
+  if (process.env.SHOW) console.log('EXP externa máxima/día', EXT, 'rMax', rMax.toFixed(4), 'gMax', gMax, 'polvo/día', total.toFixed(0), 'monedas', (total * gacha.DUST_RATE).toFixed(0));
   assert.ok(EXT <= 600000);
+  assert.ok(total * gacha.DUST_RATE <= 9500, `techo teórico ${total.toFixed(0)} ✦ = ${(total * gacha.DUST_RATE).toFixed(0)} monedas al día`);
   // Caso típico (sin elegir especies): cada Pokémon tirado, evolucionado del todo por la rama de más polvo, da ≈ 25 ✦ a cambio de ≈ 26.000 EXP (≈ 0,001 ✦ por EXP):
-  // 100 veces menos que el suelo. Con TODA la EXP de un casual en eso (≈ 150.000 al día) son ≈ 144 ✦ ≈ 580 monedas; con el máximo teórico de EXP, ≈ 1.700.
+  // mucho menos que el techo. Con TODA la EXP de un casual en eso (≈ 150.000 al día) son ≈ 144 ✦ ≈ 580 monedas; con el máximo teórico de EXP, ≈ 1.700.
   const kids = EVOS;
   const best = (p, lvl) => {
     let b = { g: 0, e: 0 };
@@ -268,7 +276,7 @@ test('techo de polvo al día evolucionando y transfiriendo: acotado por los tope
   }
   const typical = G / E;
   if (process.env.SHOW) console.log('típico: ✦ por EXP', typical.toFixed(5), '✦ por tirada', G.toFixed(1), 'EXP por tirada', E.toFixed(0));
-  assert.ok(typical < 1 / candy.EVO_EXP_PER_DUST / 2, 'el caso típico queda muy por debajo del suelo');
+  assert.ok(typical < rMax / 5, 'el caso típico queda muy por debajo de la mejor evolución posible');
   const casual = (DEX_EXP_DAY + 10000) * typical;
   assert.ok(casual * gacha.DUST_RATE < 800, `casual: ${casual.toFixed(0)} ✦ ≈ ${(casual * gacha.DUST_RATE).toFixed(0)} monedas al día (antes, con caramelos: ≈ 770)`);
   assert.ok(EXT * typical * gacha.DUST_RATE < 2000, `máximo teórico típico ${(EXT * typical * gacha.DUST_RATE).toFixed(0)} monedas`);
