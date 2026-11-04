@@ -6,10 +6,15 @@ import { Protocol, STATUS_ES, STATUS_LONG, STAT_ES, toID } from './sd-protocol.j
 
 let ES = null;
 let ESP = null;
+let DESC = null;
 export function loadNames() {
-  if (ES) return Promise.resolve(ES);
-  return (ESP ||= fetch('/data/sd-es.json').then((r) => r.json()).then((j) => { ES = j; return j; }).catch(() => { ES = { moves: {}, abilities: {}, items: {}, meta: {} }; return ES; }));
+  if (ES && DESC) return Promise.resolve(ES);
+  // Nombres y descripciones en español (las descripciones se cargan a la vez; si fallan, solo se pierde el texto).
+  const desc = fetch('/data/move-desc-es.json').then((r) => r.json()).then((j) => { DESC = j; }).catch(() => { DESC = {}; });
+  return (ESP ||= Promise.all([fetch('/data/sd-es.json').then((r) => r.json()).then((j) => { ES = j; return j; }).catch(() => { ES = { moves: {}, abilities: {}, items: {}, meta: {} }; return ES; }), desc]).then(() => ES));
 }
+/** Descripción en español del movimiento (vacía si no se ha cargado o no existe). */
+export const moveDesc = (id) => (DESC && DESC[id]) || '';
 export const moveEs = (id) => (ES && ES.moves[id]) || id;
 export const abilityEs = (id) => (ES && ES.abilities[id]) || id;
 export const moveMeta = (id) => { const m = ES && ES.meta[id]; return m ? { type: m[0], cat: m[1], bp: m[2], acc: m[3], pp: m[4] } : null; };
@@ -752,7 +757,7 @@ export class BattleScreen {
       const moves = h('div', { class: 'mv-grid' }, act.moves.map((mv, mi) => {
         const meta = moveMeta(mv.id) || { type: 'normal', cat: 'p', bp: 0, acc: 0, pp: mv.maxpp };
         const dis = mv.disabled || mv.pp === 0;
-        return h('button', { class: `mv t-${meta.type}`, type: 'button', disabled: dis, onclick: () => {
+        return h('button', { class: `mv t-${meta.type}`, type: 'button', disabled: dis, title: moveDesc(mv.id), oncontextmenu: (e) => { if (moveDesc(mv.id)) { e.preventDefault(); toast(`${moveEs(mv.id)}: ${moveDesc(mv.id)}`, 'info', 5000); } }, onclick: () => {
           const tk = mv.target || 'normal';
           const mg = canMega && mega.checked ? ' mega' : '';
           const done = (t) => { if (canMega && mega.checked) megaUsed = true; picks[s] = `move ${mi + 1}${t !== null ? ' ' + t : ''}${mg}`; step(s + 1); };

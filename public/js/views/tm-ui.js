@@ -1,6 +1,6 @@
 // Máquina MT (pestaña de la Tienda) y uso de MT: fabricar con monedas + materiales, enseñar a un Pokémon compatible.
 import { S, h, multiSelect, fmt, act, emit, toast, sfx, modal, sprite, TYPE_ES, itemImg, typeBadge, bus } from '../core.js';
-import { loadNames, moveEs, moveMeta, CAT } from '../battle-screen.js';
+import { loadNames, moveEs, moveMeta, moveDesc, CAT } from '../battle-screen.js';
 import { pickPokemon } from '../picker.js';
 import { swapDialog } from './moves-ui.js';
 
@@ -82,6 +82,7 @@ export function machineTab() {
       h('div', { class: 'grow' },
         h('b', {}, it.name), h('div', { class: 'types' }, typeBadge(it.type), h('span', { class: 'small muted' }, ` ${TIER_ES[it.tier]}`)),
         h('div', { class: 'small muted' }, statLine(it.tm)),
+        moveDesc(it.tm) ? h('div', { class: 'small tm-desc' }, moveDesc(it.tm)) : null,
         h('div', { class: 'tm-cost' }, h('span', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(coins)), Object.entries(mats).map(([m, q]) => matChip(m, q))),
         n ? h('div', { class: 'small good' }, `En tu mochila: ${n}`) : null),
       h('div', { class: 'stack tm-btns2' },

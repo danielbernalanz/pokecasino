@@ -1,6 +1,6 @@
 // Movimientos de un ejemplar (Caja PC): los 4 equipados, cambiarlos entre los aprendidos y aprender los nuevos al subir de nivel.
 import { S, h, act, modal, sfx, toast, TYPE_ES } from '../core.js';
-import { loadNames, moveEs, moveMeta, CAT } from '../battle-screen.js';
+import { loadNames, moveEs, moveMeta, moveDesc, CAT } from '../battle-screen.js';
 import { movePower } from './huerto.js';
 
 const nameOf = (m) => m.nick || (S.dexById.get(m.id) || {}).name || '#' + m.id;
@@ -10,10 +10,11 @@ export function moveRow(id, { sel = false, onclick = null, tag = null, friendshi
   const mt = { ...(moveMeta(id) || { type: 'normal', cat: 'x', bp: 0, acc: 0, pp: 0 }) };
   const pw = friendship === null ? null : movePower(id, friendship); // Retribución / Frustración: potencia según la amistad
   if (pw !== null) mt.bp = pw;
-  const attrs = { class: 'mvrow t-' + mt.type + (sel ? ' sel' : '') + (onclick ? '' : ' static'), type: 'button' };
+  const attrs = { class: 'mvrow t-' + mt.type + (sel ? ' sel' : '') + (onclick ? '' : ' static'), type: 'button', title: moveDesc(id) };
   if (onclick) attrs.onclick = onclick; else attrs.tabindex = -1;
   return h('button', attrs, h('b', {}, moveEs(id), tag ? h('span', { class: 'mv-tag' }, tag) : null), h('span', { class: 'mvr-ty' }, TYPE_ES[mt.type]), h('span', { title: CAT[mt.cat][0] }, CAT[mt.cat][1]),
-    h('span', {}, mt.bp ? `Pot. ${mt.bp}` : '—'), h('span', {}, mt.acc ? `Prec. ${mt.acc}` : 'Prec. —'), h('span', { class: 'muted' }, `PP ${mt.pp}`));
+    h('span', {}, mt.bp ? `Pot. ${mt.bp}` : '—'), h('span', {}, mt.acc ? `Prec. ${mt.acc}` : 'Prec. —'), h('span', { class: 'muted' }, `PP ${mt.pp}`),
+    moveDesc(id) ? h('span', { class: 'mvr-desc' }, moveDesc(id)) : '');
 }
 
 /** Pantalla «Cambiar»: elige de 1 a 4 entre todos los movimientos aprendidos. */

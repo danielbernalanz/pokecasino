@@ -1,7 +1,7 @@
 // Combates al estilo Pokémon Showdown (individuales y dobles): Liga de entrenadores, retos PvP, equipos e historial.
 import { S, h, fmt, act, emit, toast, sfx, bus, modal, sprite, typeBadge, TYPE_ES, confirmBet } from '../core.js';
 import { refreshPvp } from '../nav.js';
-import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT } from '../battle-screen.js';
+import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT, moveDesc } from '../battle-screen.js';
 
 const FORMAT_ES = { singles: 'Individual', doubles: 'Dobles' };
 const LEVEL_ES = { fair: 'Nivel 50 (justo)', real: 'Niveles reales' };
@@ -392,12 +392,13 @@ export default {
       const meta = (id) => r.learnset.find((m) => m.id === id) || { id, ...(moveMeta(id) || { type: 'normal', cat: 'x', bp: 0, acc: 0, pp: 0 }) };
       const row = (id, sel) => {
         const m = meta(id);
-        return h('button', { class: 'mvrow t-' + m.type + (sel ? ' sel' : ''), type: 'button', onclick: () => {
+        return h('button', { class: 'mvrow t-' + m.type + (sel ? ' sel' : ''), type: 'button', title: moveDesc(id), onclick: () => {
           if (sel) moves = moves.filter((x) => x !== id);
           else if (moves.length < 4) moves.push(id);
           else { toast('Ya tienes 4 movimientos: quita uno primero.', 'error'); return; }
           draw();
-        } }, h('b', {}, moveEs(id)), h('span', { class: 'mvr-ty' }, TYPE_ES[m.type]), h('span', { title: CAT[m.cat][0] }, CAT[m.cat][1]), h('span', {}, m.bp ? `Pot. ${m.bp}` : '—'), h('span', {}, m.acc ? `Prec. ${m.acc}` : 'Prec. —'), h('span', { class: 'muted' }, `PP ${m.pp}`));
+        } }, h('b', {}, moveEs(id)), h('span', { class: 'mvr-ty' }, TYPE_ES[m.type]), h('span', { title: CAT[m.cat][0] }, CAT[m.cat][1]), h('span', {}, m.bp ? `Pot. ${m.bp}` : '—'), h('span', {}, m.acc ? `Prec. ${m.acc}` : 'Prec. —'), h('span', { class: 'muted' }, `PP ${m.pp}`),
+          moveDesc(id) ? h('span', { class: 'mvr-desc' }, moveDesc(id)) : '');
       };
       filter.addEventListener('input', draw);
       const body = h('div', { class: 'stack' },

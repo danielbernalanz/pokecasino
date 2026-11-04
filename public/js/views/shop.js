@@ -117,7 +117,7 @@ export default {
         }).sort(f.sort === 'id' ? (a, b) => a.id - b.id
           : f.sort === 'cheap' ? (a, b) => S.data.rarity[a.rarity].craft - S.data.rarity[b.rarity].craft || a.id - b.id
             : f.sort === 'name' ? (a, b) => a.name.localeCompare(b.name, 'es') || a.id - b.id
-              : (a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || a.id - b.id);
+              : (a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.id - b.id);
         count.textContent = `${fmt(items.length)} Pokémon`;
         let shown = Math.min(60, items.length);
         list.replaceChildren(...items.slice(0, shown).map(card));

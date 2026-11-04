@@ -312,3 +312,6 @@
 .pvp-toast::after { display: none; }
 .pvp-toast .t-txt { flex: 1 1 200px; }
 .online-row .seeking { font-size: 13px; }
+/* Descripción del movimiento bajo su ficha (Caja PC, equipos, Tutor…). */
+.mvrow .mvr-desc { grid-column: 1 / -1; font: 600 12px/1.35 Nunito, sans-serif; opacity: .92; white-space: normal; }
+@media (max-width: 700px) { .mvrow > .mvr-desc { display: block; } }

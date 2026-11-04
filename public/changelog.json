@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.04-i",
+    "date": "2026-11-04",
+    "title": "Descripciones de los movimientos",
+    "items": [
+      "📖 Todos los movimientos tienen descripción en español: en la Caja PC (Movimientos, cambiar, aprender), en el Tutor, en la Máquina MT y en el montador de equipos de Combates.",
+      "⚔️ En combate, pasa el ratón por un ataque (o mantenlo pulsado en el móvil) para leer qué hace.",
+      "🛠️ Fabricar: el orden «rareza» muestra primero los más raros."
+    ]
+  },
+  {
     "version": "2026.11.04-h",
     "date": "2026-11-04",
     "title": "Filtros con selección múltiple",
