@@ -4,6 +4,7 @@ import { refreshPvp } from '../nav.js';
 import { bpTab } from './bp-ui.js';
 import { leagueTab } from './league-ui.js';
 import { towerTab } from './tower-ui.js';
+import { openSpecimen } from './pc.js';
 import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT, moveDesc } from '../battle-screen.js';
 
 const FORMAT_ES = { singles: 'Individual', doubles: 'Dobles' };
@@ -336,6 +337,8 @@ export default {
                   m.mega = next;
                   drawRows();
                 } }, h('span', { class: 'mega-btn-ico' }, '💠'), h('span', { class: 'mega-btn-t' }, h('b', {}, m.mega ? `${form ? form.name : 'Mega'} ✓` : 'Llevar Mega'), h('small', {}, m.mega ? (sp.megas.length > 1 ? 'Toca: otra forma / quitar' : 'Toca para quitar') : 'Megaevoluciona en combate'))) : null,
+              // Ficha completa (subir de nivel, entrenar, evolucionar, objeto…) sin ir a la Caja PC.
+              h('button', { class: 'btn small', type: 'button', title: 'Subir de nivel, entrenar, evolucionar, objeto…', onclick: () => openSpecimen(sp.uid, 'menu', () => drawTeams()) }, '📋 Datos'),
               h('button', { class: 'btn small', type: 'button', onclick: () => editMoves(sp, () => { drawRows(); drawPc(); }) }, '⚙️ Movs.'),
               h('button', { class: 'btn small', type: 'button', disabled: i === 0, 'aria-label': 'Subir', onclick: () => { [e.members[i - 1], e.members[i]] = [e.members[i], e.members[i - 1]]; drawRows(); } }, '▲'),
               h('button', { class: 'btn small', type: 'button', disabled: i === e.members.length - 1, 'aria-label': 'Bajar', onclick: () => { [e.members[i + 1], e.members[i]] = [e.members[i], e.members[i + 1]]; drawRows(); } }, '▼'),

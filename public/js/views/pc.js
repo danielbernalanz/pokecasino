@@ -51,6 +51,21 @@ async function bulkTransfer(id, btn, after) {
   if (r) { sfx('shiny'); toast(`Transferiste ${r.count} ${p.name}: +${fmt(r.dust)} ✦ y +${r.candy} 🍬`, 'success'); await load(); if (after) after(); }
 }
 
+// Abre la ficha «Datos» de un ejemplar desde otra pantalla (p. ej. el montador de equipos de Combates), sin ir a
+// la Caja PC. `onDone` se llama al cerrarla del todo (no cuando la ficha se recarga a sí misma tras una acción).
+let afterClose = null;
+export async function openSpecimen(uid, page = 'info', onDone = null) {
+  await load();
+  afterClose = onDone;
+  openMon(uid, page);
+}
+function detailClosed() {
+  setTimeout(() => {
+    if (document.querySelector('.pc-detail') || !afterClose) return;
+    const f = afterClose; afterClose = null; f();
+  }, 0);
+}
+
 export function openInPc(id) { filter = { ...filter, q: '', species: Number(id) }; boxIdx = 0; location.hash = '#/pc'; }
 
 function load() {
@@ -288,7 +303,7 @@ function openMon(uid, openPage = 'info') {
         h('button', { class: 'btn', onclick: async (e) => { reopen(await act('pc:fav', { id: m.id, uid, fav: !m.fav }, e.target)); } }, m.fav ? '★ Quitar favorito' : '☆ Favorito'),
         h('button', { class: 'btn primary', disabled: m.buddy, onclick: async (e) => { if (await act('pc:buddy', { id: m.id, uid }, e.target)) { toast(`${label(m)} es tu compañero`, 'success'); sfx('win'); reopen(true); } } }, '🤝 Compañero'),
         h('button', { class: 'btn', type: 'button', title: 'Transferir, Intercambio Milagroso y Liberar', onclick: () => openMore() }, '⋯ Más'))
-    )), { title: 'Datos', wide: true });
+    )), { title: 'Datos', wide: true, onClose: detailClosed });
   // Movimientos nuevos por decidir (subida de nivel, evolución…): se preguntan al abrir la ficha.
   if (m.pending && m.pending.length && openPage !== 'moves') learnPrompt(m, async () => { await load(); modalRef.close(); openMon(uid, openPage); render && render(); });
 }

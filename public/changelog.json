@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.11.04-p",
+    "date": "2026-11-04",
+    "title": "Equipos más cómodos",
+    "items": [
+      "📋 Combates → Mis equipos: cada Pokémon del equipo tiene «Datos», que abre su ficha completa (subir de nivel, entrenar, evolucionar, objeto, vínculo…) sin ir a la Caja PC; al cerrarla, el equipo se actualiza."
+    ]
+  },
+  {
     "version": "2026.11.04-o",
     "date": "2026-11-04",
     "title": "Torre Batalla",
