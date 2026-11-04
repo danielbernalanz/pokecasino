@@ -1,5 +1,22 @@
 [
   {
+    "version": "2026.11.04-j",
+    "date": "2026-11-04",
+    "title": "Botones y menús más fáciles de encontrar",
+    "items": [
+      "🎒 La Mochila está ahora en Entrenador (y con el icono 🎒 arriba, siempre a mano). La Tienda es solo para comprar.",
+      "🔨 Nuevo Taller en Mercado: Fabricar Pokémon, Máquina MT, Cambio de polvo y Reciclaje (también las bayas, que antes se reciclaban en el Huerto).",
+      "💿 El Gacha MT vive ahora dentro del Poké Gacha (pestaña «Gacha MT») y la 🎖️ Tienda de Combate dentro de Combates, donde se ganan los PB. Los enlaces antiguos siguen funcionando.",
+      "🎁 Un 🎁 en la cabecera te avisa mientras no hayas reclamado el regalo diario. Las cifras de BOTE, polvo ✦ y nivel de arriba ahora se pueden pulsar.",
+      "⚙️ El menú de tu usuario agrupa las opciones en «Ajustes» (con «Avanzado»); Admin está ahí si eres anfitrión.",
+      "🖥️ Caja PC: «Liberar», «Transferir», «Intercambio Milagroso» y «Transferir repetidos» están ahora en «⋯ Más», lejos de los botones de uso diario. Las pestañas «Menú» y «Objeto» se llaman «Entrenar» y «Equipo». En la Pokédex, «Liberar 1 copia» y «Regalar copia» también están en «⋯ Más» (y regalar pide confirmación). En el Criadero, «Retirar» va en «⋯ Más».",
+      "🏠 Inicio: las Misiones de hoy, el compañero (Acariciar, hallazgos) y la Ruta están a la vista; la enfermera Joy sale arriba solo si tienes pocas monedas. «Fabricar» del Evento Mega se llama «Megapiedras».",
+      "🥚 Criadero como en los juegos: hace falta un macho y una hembra del mismo grupo huevo (o un Ditto); los Pokémon sin sexo solo crían con Ditto y los bebés, legendarios y míticos no crían. Nidoran♀ da ♀ o ♂ e Illumise da Volbeat o Illumise. Los grupos huevo se ven en la ficha de la Caja PC y al elegir padres.",
+      "♂♀ Los Pokémon de sexo fijo (Tauros, Chansey…) y los que no tienen sexo ya lo respetan.",
+      "🥚 Ahora se ve qué movimientos huevo heredará la cría («La cría heredará: …») y al eclosionar sale «¡Nació sabiendo …!»."
+    ]
+  },
+  {
     "version": "2026.11.04-i",
     "date": "2026-11-04",
     "title": "Descripciones de los movimientos",
