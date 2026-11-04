@@ -387,7 +387,7 @@ function participants(b, side) {
 function cpuReward(b, user, side) {
   const t = b.trainer;
   const d = dayWins(user);
-  const out = { coins: 0, candy: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null, bp: 0 };
+  const out = { coins: 0, candy: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null, bp: 0, ev: 0 };
   if (d.wins >= trainers.WINS_PER_DAY) { out.capped = true; return out; }
   d.wins++;
   out.winsLeft = trainers.WINS_PER_DAY - d.wins;
@@ -398,10 +398,15 @@ function cpuReward(b, user, side) {
   const bond = require('./bond');
   const specimen = require('./specimen');
   const fams = new Set();
+  const foeStats = b.sides[1].roster.map((r) => (BY_ID.get(r.id) || { stats: [0, 0, 0, 0, 0, 0] }).stats);
   for (const r of participants(b, side)) {
     const p = BY_ID.get(r.id);
     if (p && !fams.has(p.chain)) { fams.add(p.chain); candy.addCandy(user, r.id, 2); out.candy.push(p.name); }
-    try { const sp = specimen.find(user, { id: r.id, uid: r.uid }); out.friend += bond.addFriend(sp, 2, 'battle'); } catch { /* el ejemplar ya no está */ }
+    try {
+      const sp = specimen.find(user, { id: r.id, uid: r.uid });
+      out.friend += bond.addFriend(sp, 2, 'battle');
+      out.ev += require('./evs').onWin(sp, foeStats); // EVs: +4 por rival derrotado en su estadística base más alta (tope diario por ejemplar)
+    } catch { /* el ejemplar ya no está */ }
   }
   hub.addXp(user, 15, { flat: true });
   hub.track(user, 'battle_win');

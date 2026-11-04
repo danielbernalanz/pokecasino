@@ -11,6 +11,7 @@ const items = require('./items');
 const bond = require('./bond');
 const specimen = require('./specimen');
 const gacha = require('./gacha');
+const evs = require('./evs');
 const { BY_ID } = require('./pokedex');
 const { rand, randInt, pick } = require('./rng');
 
@@ -37,15 +38,16 @@ const BERRY_CAP = bond.BERRY_CAP;
 
 // Zona → tipos favorecidos y anfitrión (Pokémon amable que te despide y te recibe).
 const ZONES = [
-  { id: 'bosque', name: 'Bosque Verde', host: 'Caterpie', hostId: 10, types: ['bug', 'grass'], tone: 'g', desc: 'Hojas, setas y mucho zumbido.' },
-  { id: 'cueva', name: 'Cueva Celeste', host: 'Geodude', hostId: 74, types: ['rock', 'ground', 'ghost'], tone: 'b', desc: 'Cristales azules y ecos misteriosos.' },
-  { id: 'mar', name: 'Mar Espuma', host: 'Lapras', hostId: 131, types: ['water', 'ice'], tone: 'b', desc: 'Olas tranquilas y témpanos flotando.' },
-  { id: 'volcan', name: 'Volcán Canela', host: 'Slugma', hostId: 218, types: ['fire'], tone: 'r', desc: 'Rocas tibias que huelen a canela.' },
-  { id: 'central', name: 'Central Energía', host: 'Pikachu', hostId: 25, types: ['electric', 'steel'], tone: 'y', desc: 'Zumbidos eléctricos y engranajes.' },
-  { id: 'torre', name: 'Torre Dragón', host: 'Dratini', hostId: 147, types: ['dragon', 'flying'], tone: 'p', desc: 'Una torre entre las nubes.' },
-  { id: 'jardin', name: 'Jardín Hada', host: 'Clefairy', hostId: 35, types: ['fairy', 'psychic'], tone: 'p', desc: 'Luz de luna, flores y polvo brillante.' },
-  { id: 'barrio', name: 'Barrio Oscuro', host: 'Meowth', hostId: 52, types: ['dark', 'fighting', 'poison'], tone: 'r', desc: 'Callejones, dojos y charcos raros.' },
+  { id: 'bosque', name: 'Bosque Verde', host: 'Caterpie', hostId: 10, types: ['bug', 'grass'], ev: 0, tone: 'g', desc: 'Hojas, setas y mucho zumbido.' },
+  { id: 'cueva', name: 'Cueva Celeste', host: 'Geodude', hostId: 74, types: ['rock', 'ground', 'ghost'], ev: 2, tone: 'b', desc: 'Cristales azules y ecos misteriosos.' },
+  { id: 'mar', name: 'Mar Espuma', host: 'Lapras', hostId: 131, types: ['water', 'ice'], ev: 4, tone: 'b', desc: 'Olas tranquilas y témpanos flotando.' },
+  { id: 'volcan', name: 'Volcán Canela', host: 'Slugma', hostId: 218, types: ['fire'], ev: 3, tone: 'r', desc: 'Rocas tibias que huelen a canela.' },
+  { id: 'central', name: 'Central Energía', host: 'Pikachu', hostId: 25, types: ['electric', 'steel'], ev: 5, tone: 'y', desc: 'Zumbidos eléctricos y engranajes.' },
+  { id: 'torre', name: 'Torre Dragón', host: 'Dratini', hostId: 147, types: ['dragon', 'flying'], ev: 1, tone: 'p', desc: 'Una torre entre las nubes.' },
+  { id: 'jardin', name: 'Jardín Hada', host: 'Clefairy', hostId: 35, types: ['fairy', 'psychic'], ev: 4, tone: 'p', desc: 'Luz de luna, flores y polvo brillante.' },
+  { id: 'barrio', name: 'Barrio Oscuro', host: 'Meowth', hostId: 52, types: ['dark', 'fighting', 'poison'], ev: 1, tone: 'r', desc: 'Callejones, dojos y charcos raros.' },
 ];
+// `ev`: estadística que entrena la zona (+4 EV por hora y participante, tope diario por ejemplar: ver evs.js). 0 PS · 1 Ataque · 2 Defensa · 3 At. Esp. · 4 Def. Esp. · 5 Velocidad.
 const ZONE_BY_ID = new Map(ZONES.map((z) => [z.id, z]));
 
 const STATIC = {
@@ -121,7 +123,7 @@ function claim(u, p) {
   const H = e.hours;
   const d = dayOf(u);
   const candy = require('./candy');
-  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null, lovers: 0 };
+  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null, lovers: 0, ev: 0, evStat: zone.ev };
   // Participantes que siguen existiendo (si una especie se bloqueó, simplemente no cuenta).
   const live = e.team.map((t) => ({ t, m: lookup(u, t) })).filter((x) => x.m);
   const n = live.length;
@@ -144,9 +146,11 @@ function claim(u, p) {
     m.level += lv;
     xd.n += lv;
     if (lv) require('./moves').onLevel(t.id, m, from, m.level);
+    const ev = evs.gain(m, zone.ev, evs.EXP_PER_HOUR * H, 'exp'); // EVs de la estadística de la zona
+    out.ev += ev;
     const fr = bond.addFriend(m, FRIEND_PER_HOUR * H, 'exp');
     out.friend += fr;
-    out.members.push({ id: t.id, uid: t.uid, from, to: m.level, friend: fr, match: hit, candy: c });
+    out.members.push({ id: t.id, uid: t.uid, from, to: m.level, friend: fr, ev, match: hit, candy: c });
     delete m.away;
   }
   // Los que ya no están (bloqueados, etc.) no se cuentan; el resto del botín sigue su curso.

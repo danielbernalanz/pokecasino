@@ -30,7 +30,7 @@ export function bagTab() {
         ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
         : it.tm ? h('button', { class: 'btn primary', onclick: () => useTmDialog(id) }, 'Enseñar')
           : it.shard ? h('a', { class: 'btn', href: '#/pc' }, 'Tutor (Caja PC)')
-          : it.bp ? h('a', { class: 'btn', href: '#/pc' }, 'Usar en la Caja PC')
+          : it.bp || it.ev || it.evo ? h('a', { class: 'btn', href: '#/pc' }, 'Usar en la Caja PC')
           : it.material ? h('a', { class: 'btn', href: '#/workshop/tm' }, 'Máquina MT (Taller)')
         : cos ? h('button', { class: 'btn' + (equipped ? ' active' : ''), disabled: equipped, onclick: async (e) => { if (await act('item:use', { itemId: id }, e.target)) { sfx('click'); toast(`${it.name} equipado`, 'success'); } } }, equipped ? 'Equipado' : 'Equipar')
         : h('button', { class: 'btn primary', onclick: async (e) => {

@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.04-k",
+    "date": "2026-11-04",
+    "title": "EVs como en los juegos",
+    "items": [
+      "💪 Los Pokémon tienen ahora puntos de esfuerzo (EV): máximo 252 por estadística y 510 en total. En la Caja PC → Datos → Estadísticas ves las barras de EV, el total y las estadísticas finales.",
+      "🧭 Las expediciones entrenan: +4 EV por hora en la estadística de cada zona (por ejemplo, Volcán Canela entrena At. Esp.), hasta 60 al día por Pokémon. Ganar combates contra la CPU da +4 EV por rival derrotado en su estadística más alta (hasta 48 al día).",
+      "💊 Nuevas vitaminas (Más PS, Proteína, Hierro, Calcio, Zinc y Carburante: +10 EV, 1.000 monedas) y bayas Grana, Algama, Ispero, Meluce, Uvav y Tamate (−10 EV, 300 monedas) en la Tienda Poké. Se usan en Caja PC → Datos → Entrenar.",
+      "⚖️ Sin sustos: los Pokémon que ya tenías conservan 84 EV en cada estadística (lo que usaban hasta ahora), así que sus combates no cambian. Los nuevos empiezan en 0. Los EV cuentan en todos los combates, también en Nivel 50."
+    ]
+  },
+  {
     "version": "2026.11.04-j",
     "date": "2026-11-04",
     "title": "Botones y menús más fáciles de encontrar",

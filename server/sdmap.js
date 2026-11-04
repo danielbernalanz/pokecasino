@@ -4,8 +4,9 @@
 // (`ps()`); sin combates el servidor no lo toca.
 //
 // Decisiones documentadas:
-//  - EVs: 84 en cada estadística (504 en total), igual que los combates aleatorios de Showdown. Los ejemplares
-//    no tienen EVs propios todavía; así nadie arrastra una ventaja oculta y las IVs/naturaleza siguen mandando.
+//  - EVs: los reales del ejemplar (`m.evs`, ver evs.js; máx. 252 por estadística y 510 en total) en TODOS los modos, también
+//    en «Nivel 50 (justo)», como en el VGC: el entrenamiento es parte del equipo. Los ejemplares anteriores al sistema
+//    tienen 84 en cada estadística (lo que valía antes), así que sus combates no cambian; los nuevos empiezan en 0.
 //  - Nivel: «Nivel 50 (justo)» por defecto (todos a 50) o «Niveles reales» (el nivel del ejemplar).
 //  - Habilidad (`sdAbility`) y movimientos (`sdMoves`) se guardan en el ejemplar la primera vez que hacen falta
 //    (perezoso, sin romper campos antiguos); `sdFor` guarda la especie para recalcular si evoluciona.
@@ -30,7 +31,7 @@ const NATURE_EN = {
   Serena: 'Calm', Amable: 'Gentle', Grosera: 'Sassy', Cauta: 'Careful', Rara: 'Quirky',
 };
 const STAT = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
-const EV_ALL = 84;
+const EV_ALL = 84; // EVs de los ejemplares anteriores al sistema de EVs (evs.LEGACY)
 
 // ---- Especies ----
 let SPECIES = null;
@@ -186,7 +187,8 @@ function toSet(id, m, { level = 'fair', mega = 0, doubles = false, usedNames = n
   const ivs = {};
   STAT.forEach((s, i) => { ivs[s] = Math.max(0, Math.min(31, Number.isInteger(m.ivs && m.ivs[i]) ? m.ivs[i] : 31)); });
   const evs = {};
-  for (const s of STAT) evs[s] = EV_ALL;
+  const own = require('./evs').ensure(m);
+  STAT.forEach((s, i) => { evs[s] = own[i]; });
   const lvl = level === 'real' ? Math.max(1, Math.min(100, Math.floor(m.level) || 5)) : 50;
   let gender = m.gender === 'F' ? 'F' : m.gender === 'M' ? 'M' : '';
   if (sp.gender) gender = sp.gender === 'N' ? '' : sp.gender; // especies de sexo fijo o sin sexo

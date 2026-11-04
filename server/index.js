@@ -159,6 +159,7 @@ const STATIC = {
   daily: { base: BAL.DAILY_BASE, step: BAL.DAILY_STEP, max: BAL.DAILY_MAX_STREAK },
   mega: mega.STATIC,
   expedition: expedition.STATIC,
+  evs: require('./evs').STATIC,
   daycare: daycare.STATIC,
   quiz: quiz.STATIC,
 };
@@ -578,6 +579,7 @@ io.on('connection', (socket) => {
   on('bp:buy', require('./bp').buy);
   on('pc:item', require('./bp').hold);
   on('pc:use', require('./bp').useOn);
+  on('pc:ev', require('./evs').use);
   on('tutor:list', require('./tutor').list, { push: false });
   on('tutor:learn', require('./tutor').learn);
   on('tm:craft', require('./tm').craft);

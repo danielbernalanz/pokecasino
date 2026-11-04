@@ -65,12 +65,15 @@ function openMon(uid, openPage = 'info') {
   const p = S.dexById.get(m.id);
   const total = ivTotal(m);
     const reopen = async (ok) => { if (ok) { await load(); modalRef.close(); openMon(uid, tabs.querySelector('.tab.active')?.dataset.page || openPage); render && render(); } };
+  const evMax = (S.data.evs && S.data.evs.max) || 252;
+  const evCap = (S.data.evs && S.data.evs.total) || 510;
   const rows = STAT_NAMES.map((name, i) => {
     const cls = m.up === i ? 'up' : m.down === i ? 'down' : '';
     return h('tr', { class: cls },
       h('th', {}, name + (cls === 'up' ? ' ▲' : cls === 'down' ? ' ▼' : '')),
       h('td', {}, p.stats[i]),
       h('td', { class: 'pc-ivcell' }, h('span', { class: 'pc-ivbar' }, h('i', { style: { width: (m.ivs[i] / 31 * 100) + '%' } })), h('span', { class: 'small' }, m.ivs[i])),
+      h('td', { class: 'pc-ivcell pc-evcell' }, h('span', { class: 'pc-ivbar pc-evbar' }, h('i', { style: { width: (m.evs[i] / evMax * 100) + '%' } })), h('span', { class: 'small' }, m.evs[i])),
       h('td', { class: 'pc-final' }, m.stats[i]));
   });
   const ru = box.rules;
@@ -98,6 +101,28 @@ function openMon(uid, openPage = 'info') {
         if (r.pending && r.pending.length) openMon(uid);
       } }, 'Evolucionar'));
   };
+  // Vitaminas (+10 EV) y bayas (−10 EV) de la mochila.
+  function evPanel() {
+    const ev = S.data.evs;
+    const byStat = (kind) => Object.entries(S.data.items).filter(([, it]) => it.cat === kind).sort((a, b) => a[1].ev.stat - b[1].ev.stat);
+    const vit = byStat('vitamin');
+    const ber = byStat('evberry');
+    const use = async (itemId, qty, btn) => {
+      const r = await act('pc:ev', { id: m.id, uid, itemId, qty }, btn);
+      if (r) { sfx('click'); toast(`${S.data.items[itemId].name}: ${STAT_NAMES[r.stat]} ${r.delta >= 0 ? '+' : ''}${r.delta} EV (${r.evs[r.stat]}/${ev.max})`, 'success'); reopen(true); }
+    };
+    return h('div', { class: 'pc-box', 'data-testid': 'ev-panel' }, h('h4', {}, `💊 EVs: ${m.evTotal}/${ev.total}`),
+      h('div', { class: 'small muted' }, `Vitaminas: +${ev.vitamin} EV (hasta ${ev.max} por estadística). Bayas: −${ev.berry} EV. Se compran en la `, h('a', { href: '#/shop', onclick: () => modalRef.close() }, 'Tienda Poké'), '.'),
+      STAT_NAMES.map((name, i) => {
+        const [vid] = vit.find(([, it]) => it.ev.stat === i) || [];
+        const [bid] = ber.find(([, it]) => it.ev.stat === i) || [];
+        const nv = (S.me.items[vid] || 0);
+        const nb = (S.me.items[bid] || 0);
+        return h('div', { class: 'row gap wrap pc-evrow' }, h('span', { class: 'pc-evname' }, `${name}: ${m.evs[i]}`),
+          h('button', { class: 'btn small', type: 'button', 'data-ev': vid, disabled: !nv || m.evs[i] >= ev.max || m.evTotal >= ev.total, onclick: (e) => use(vid, 1, e.currentTarget) }, `+${ev.vitamin} ${S.data.items[vid].name} ×${nv}`),
+          h('button', { class: 'btn small', type: 'button', 'data-ev': bid, disabled: !nb || m.evs[i] <= 0, onclick: (e) => use(bid, 1, e.currentTarget) }, `−${ev.berry} ${S.data.items[bid].name} ×${nb}`));
+      }));
+  }
   function candyPanel() {
     const have = candyOf(m.id);
     const lv1 = levelCost(m.level);
@@ -119,7 +144,8 @@ function openMon(uid, openPage = 'info') {
       h('div', { class: 'pc-box' }, h('h4', {}, `💪 Entrenar IV (${ru.trainCost} 🍬 = +1 IV) · quedan ${left}/${ru.trainDaily} hoy`),
         h('div', { class: 'row gap' }, statSel, h('button', { class: 'btn', disabled: left < 1 || have < ru.trainCost, onclick: async (e) => {
           const r = await act('pc:train', { id: m.id, uid, stat: Number(statSel.value) }, e.target);
-          if (r) { sfx('click'); toast(`${TRAIN_STATS[Number(statSel.value)]}: IV ${r.iv}/31`, 'success'); reopen(true); } } }, 'Entrenar'))));
+          if (r) { sfx('click'); toast(`${TRAIN_STATS[Number(statSel.value)]}: IV ${r.iv}/31`, 'success'); reopen(true); } } }, 'Entrenar'))),
+      evPanel());
   }
   function friendPanel() {
     const love = m.friendship >= LOVE_MIN;
@@ -213,9 +239,11 @@ function openMon(uid, openPage = 'info') {
       h('div', {}, h('b', {}, `IV total ${total}/186`), ` · ${judge(total)}`, hpBar(total / 186 * 100)),
       h('div', { class: 'small muted' }, 'Obtenido: ' + new Date(m.at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })),
       nickRow),
-    stats: () => h('div', { class: 'pc-table-wrap' }, h('table', { class: 'pc-stats' },
-      h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Base'), h('th', {}, 'IV'), h('th', {}, 'Nv. 50'))),
+    stats: () => h('div', { class: 'stack' }, h('div', { class: 'pc-table-wrap' }, h('table', { class: 'pc-stats' },
+      h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Base'), h('th', {}, 'IV'), h('th', { title: 'Puntos de esfuerzo: máx. 252 por estadística y 510 en total' }, 'EV'), h('th', {}, 'Nv. 50'))),
       h('tbody', {}, rows))),
+      h('div', { class: 'small', 'data-testid': 'ev-total' }, h('b', {}, `EV total ${m.evTotal}/${evCap}`), ` · ${evCap - m.evTotal > 0 ? `te quedan ${evCap - m.evTotal} por repartir` : 'repartidos al máximo'}`, hpBar(m.evTotal / evCap * 100)),
+      h('div', { class: 'small muted' }, 'Los EV suben con expediciones, victorias contra la CPU y vitaminas (Entrenar). Cuentan en todos los combates; el Nv. 50 ya los incluye.')),
     moves: () => movesPage(m, async () => { await load(); modalRef.close(); openMon(uid, 'moves'); render && render(); }),
     gear: () => { const box2 = h('div', {}); gearPage(m, async () => { await load(); modalRef.close(); openMon(uid, 'gear'); render && render(); }).then((el) => box2.append(el)); return box2; },
     bond: () => friendPanel(),
