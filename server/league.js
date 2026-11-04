@@ -28,13 +28,14 @@ const BOARD_N = 20;
 const HIST_KEEP = 12;
 const FORMATS = ['singles', 'doubles'];
 // Premios por rango más alto alcanzado (PB sin tope diario: es un premio de temporada).
+// `items`: Caramelos Exp. y Chapas del Entrenamiento Extremo (máx. 1 temporada al mes: no hay forma de granjearlos).
 const REWARDS = [
-  { bp: 20 },
-  { bp: 40, frame: 'frame-liga-super', title: 'liga-super' },
-  { bp: 80, frame: 'frame-liga-ultra', title: 'liga-ultra' },
-  { bp: 150, frame: 'frame-liga-master', title: 'liga-master', coins: 1000 },
+  { bp: 20, items: { 'exp-s': 3 } },
+  { bp: 40, frame: 'frame-liga-super', title: 'liga-super', items: { 'exp-m': 3, 'bottle-cap': 1 } },
+  { bp: 80, frame: 'frame-liga-ultra', title: 'liga-ultra', items: { 'exp-l': 2, 'bottle-cap': 2 } },
+  { bp: 150, frame: 'frame-liga-master', title: 'liga-master', coins: 1000, items: { 'exp-xl': 1, 'exp-l': 2, 'gold-bottle-cap': 1 } },
 ];
-const TOP_REWARD = { frame: 'frame-liga-top', title: 'liga-top', coins: 2000 }; // el Top 3 cobra 2.000 en total (no se suman)
+const TOP_REWARD = { frame: 'frame-liga-top', title: 'liga-top', coins: 2000, items: { 'gold-bottle-cap': 1 } }; // el Top 3 cobra 2.000 en total (no se suman)
 const MAX_COINS = 2000;
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -171,7 +172,7 @@ function record(players, format, winner, turns) {
 function rewardFor(best, top) {
   const base = REWARDS[best];
   if (!top) return { ...base };
-  return { ...base, frame: TOP_REWARD.frame, title: TOP_REWARD.title, coins: TOP_REWARD.coins, top: true };
+  return { ...base, frame: TOP_REWARD.frame, title: TOP_REWARD.title, coins: TOP_REWARD.coins, items: { ...base.items, 'gold-bottle-cap': (base.items['gold-bottle-cap'] || 0) + 1 }, top: true };
 }
 
 function finalize(oldSeason, newSeason) {
@@ -195,10 +196,12 @@ function finalize(oldSeason, newSeason) {
       u.bp = Math.max(0, Math.floor(u.bp || 0)) + (rw.bp || 0);
       if (rw.coins) { u.coins += rw.coins; hub.ledger(u, rw.coins, 'reward', `Liga Pokémon ${labelOf(L.season)}`); }
       if (rw.frame) items.give(u, rw.frame, 1);
+      for (const [it, q] of Object.entries(rw.items || {})) items.give(u, it, q);
       if (rw.title && u.progress && u.progress.titles && !u.progress.titles.includes(rw.title)) u.progress.titles.push(rw.title);
       const parts = [`🎖️ +${rw.bp} PB`];
       if (rw.coins) parts.push(`🪙 +${rw.coins}`);
       if (rw.frame) parts.push(items.ITEMS[rw.frame].name);
+      for (const [it, q] of Object.entries(rw.items || {})) parts.push(`${q}× ${items.ITEMS[it].name}`);
       if (rw.title) parts.push(`título «${progress.titleText(rw.title)}»`);
       hub.emitUser(u.id, 'toast', { kind: 'quest', text: `🏆 Liga ${labelOf(L.season)} terminada (${TIERS[best].name}${top ? ' · Top 3' : ''}): ${parts.join(', ')}` });
     }

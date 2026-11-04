@@ -248,7 +248,7 @@ function collect(u) {
   if (kind === 'dust' && f.dust >= DUST_DAY_CAP) kind = 'candy';
   if (kind === 'candy') {
     const n = randInt(2, 5);
-    require('./candy').addCandy(u, id, n);
+    require('./candy').giveExp(u, 'exp-xs', n); // Caramelos Exp. XS
     out.candy = n;
   } else if (kind === 'berry') {
     const berry = pick(Object.keys(items.BERRIES));

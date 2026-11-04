@@ -329,7 +329,7 @@ test('frases: varias por nivel, estables en el día y distintas entre días/cont
 });
 
 // ---------- Expediciones ----------
-test('expedición: «Te adora» trae +10 % de caramelos/bayas/polvo y las monedas no cambian', () => {
+test('expedición: «Te adora» trae +10 % de EXP/bayas/polvo y las monedas no cambian', () => {
   const ck = clock();
   try {
     const run = (friend) => {
@@ -345,9 +345,8 @@ test('expedición: «Te adora» trae +10 % de caramelos/bayas/polvo y las moneda
     assert.ok(lover.coins > 0);
     assert.strictEqual(lover.lovers, 1);
     assert.strictEqual(plain.lovers, 0);
-    assert.ok(lover.candy[4] > plain.candy[4], `caramelos ${lover.candy[4]} > ${plain.candy[4]}`);
-    assert.ok(lover.candy[4] <= Math.ceil(plain.candy[4] * 1.1) + 1);
-    assert.ok(lover.wild >= plain.wild);
+    assert.ok(lover.exp > plain.exp, `EXP ${lover.exp} > ${plain.exp}`);
+    assert.ok(lover.exp <= Math.ceil(plain.exp * 1.1) + 1);
     // El factor es exactamente +10 % solo para «Te adora».
     assert.strictEqual(bond.lootFactor({ friendship: 219 }), 1);
     assert.strictEqual(bond.lootFactor({ friendship: 220 }), 1.1);

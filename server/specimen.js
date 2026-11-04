@@ -11,6 +11,7 @@ const movesMod = require('./moves');
 const abilities = require('./abilities');
 const eggroups = require('./eggroups');
 const evs = require('./evs');
+const hyper = require('./hyper');
 
 // [nombre, +stat, −stat] sobre el orden hp, atk, def, spa, spd, spe (índices 1..5; null = neutra).
 const NATURES = [
@@ -58,7 +59,7 @@ function movesFor(p) {
 function make(id, shiny = false) {
   const p = BY_ID.get(id);
   const m = {
-    uid: makeUid(), nature: pick(NATURES).name, ivs: Array.from({ length: 6 }, () => randInt(0, 31)), level: 5, exp: 0, friendship: 70,
+    uid: makeUid(), nature: pick(NATURES).name, ivs: Array.from({ length: 6 }, () => randInt(0, 31)), level: 5, exp: require('./exp').expAt(id, 5), friendship: 70,
     gender: isFixed(p) ? null : eggroups.rollGender(id, rand()), ability: ABILITIES[p.types[0]] || GENERIC_ABILITY, moves: movesFor(p),
     nick: '', fav: false, shiny: !!shiny, at: Date.now(), evs: [0, 0, 0, 0, 0, 0], // EVs: los ejemplares nuevos empiezan en 0 (ver evs.js)
   };
@@ -136,8 +137,9 @@ function natureMult(natureName, i) {
 function computeStats(id, m, level = 50) {
   const b = BY_ID.get(id).stats;
   const ev = evs.ensure(m);
+  const iv = hyper.effIvs(m); // IV efectivos: los reales, con 31 en lo entrenado con Chapas (Entrenamiento Extremo)
   return b.map((base, i) => {
-    const core = Math.floor(((2 * base + m.ivs[i] + Math.floor(ev[i] / 4)) * level) / 100);
+    const core = Math.floor(((2 * base + iv[i] + Math.floor(ev[i] / 4)) * level) / 100);
     return i === 0 ? core + level + 10 : Math.floor((core + 5) * natureMult(natureOf(m), i));
   });
 }
@@ -148,7 +150,12 @@ function boxView(u) {
   const mons = [];
   for (const [id, arr] of Object.entries(u.mons)) {
     for (const m of arr) { movesMod.ensure(Number(id), m); abilities.resolve(Number(id), m); }
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, exp: m.exp, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
+    const ex = require('./exp');
+    const cd = require('./candy');
+    const pk = require('./pokerus');
+    const fm = require('./forms');
+    for (const m of arr) ex.ensure(Number(id), m);
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
   }
   db.save();
   return { mons };

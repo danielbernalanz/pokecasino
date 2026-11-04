@@ -167,6 +167,24 @@ const FIXES = [
       return out;
     },
   },
+  {
+    // Los caramelos de familia y comodín desaparecen: cada uno se convierte en Caramelos Exp. por lo que valía subir de nivel con él
+    // (EXP de 5 a 100 en el grupo de su familia ÷ 144 caramelos, redondeado hacia arriba). Los niveles y los IV ya conseguidos no se tocan.
+    id: 'caramelos-exp-2026-11-04',
+    apply() {
+      const exp = require('./exp');
+      const out = [];
+      for (const u of Object.values(db.data.users)) {
+        const before = u.candy ? Object.values(u.candy).reduce((a, b) => a + (b > 0 ? b : 0), 0) : 0;
+        const r = exp.migrate(u);
+        if (r) out.push(`${u.username}: ${r.candies} caramelos → ${Object.entries(r.items).map(([k, v]) => `${v}× ${k}`).join(', ')} (${r.exp} EXP)`);
+        else if (before) out.push(`${u.username}: sin conversión`);
+      }
+      db.data.adminLog ||= [];
+      db.data.adminLog.push({ at: Date.now(), by: 'sistema', action: 'fix', target: 'todos', detail: ('Caramelos → Caramelos Exp.: ' + (out.join(' · ') || 'nadie tenía caramelos')).slice(0, 400) });
+      return out.length ? out : ['nadie tenía caramelos'];
+    },
+  },
 ];
 
 // Copia de seguridad y después las correcciones pendientes.

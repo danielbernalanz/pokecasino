@@ -150,50 +150,38 @@ test('evolución por amistad: la tabla coincide con la Pokédex', () => {
   }
 });
 
-test('evolución por amistad: sin nivel mínimo y con la mitad de caramelos', () => {
+test('evolución por amistad: hace falta amistad ≥ 220 (como en los juegos) y el nivel mínimo; no cuesta caramelos', () => {
   const from = DEX.find((p) => p.name === 'Pichu').id;
   const to = DEX.find((p) => p.name === 'Pikachu').id;
-  const normal = candy.evoCost(from, to, false, true); // primera evolución (la normal a repetición lleva el suelo anti-arbitraje)
-  const friend = candy.evoCost(from, to, true, true);
-  assert.strictEqual(friend.level, 0);
-  assert.ok(friend.cost < normal.cost);
-  assert.ok(friend.cost >= Math.ceil(normal.cost / 2));
-  // Nunca por debajo del suelo que evita el arbitraje de polvo, para todas las evoluciones por amistad.
-  const { RARITY } = require('../server/pokedex');
-  for (const [t, f] of bond.FRIEND_EVO) {
-    const c = candy.evoCost(f, t, true);
-    const gain = Math.max(0, RARITY[BY_ID.get(t).rarity].dust - RARITY[BY_ID.get(f).rarity].dust);
-    assert.ok(gain / c.cost <= candy.EVO_GAIN_PER_CANDY + 1e-9, BY_ID.get(t).name);
-    assert.ok(c.cost <= candy.evoCost(f, t).cost);
-  }
+  assert.ok(candy.evoLevel(to) > 0 && candy.evoLevel(to) <= 20, 'nivel de evolución de Pikachu: ' + candy.evoLevel(to));
   const u = user({ collection: { [from]: { n: 2, s: 0 } } });
   sp.syncAll(u);
   const m = u.mons[from][0];
-  u.candy = { [BY_ID.get(from).chain]: friend.cost };
-  // Con amistad baja cuesta el coste normal (el doble) y no alcanza.
-  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /caramelos/);
+  m.level = 50;
+  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /mucha amistad/);
   m.friendship = 219;
-  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /caramelos/);
+  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /mucha amistad/);
   m.friendship = 220;
+  m.level = candy.evoLevel(to) - 1;
+  assert.throws(() => candy.evolve(u, { id: from, uid: m.uid, to }), /nivel/);
+  m.level = candy.evoLevel(to);
   const r = candy.evolve(u, { id: from, uid: m.uid, to });
-  assert.strictEqual(r.cost, friend.cost);
-  assert.strictEqual(m.level, 5);
+  assert.strictEqual(r.to, to);
+  assert.strictEqual(m.level, candy.evoLevel(to));
   assert.strictEqual(m.friendship, 220, 'conserva la amistad');
-  assert.ok(!u.candy || !u.candy[BY_ID.get(from).chain]);
   assert.strictEqual(u.mons[to][0], m);
 });
 
-test('Eevee: Espeon y Umbreon solo con amistad ≥ 220; el resto de evoluciones, por la vía normal', () => {
+test('Eevee: Espeon y Umbreon solo con amistad ≥ 220; el resto de evoluciones, por piedra', () => {
   const eevee = DEX.find((p) => p.name === 'Eevee').id;
   const espeon = DEX.find((p) => p.name === 'Espeon').id;
   const vaporeon = DEX.find((p) => p.name === 'Vaporeon').id;
-  const u = user({ collection: { [eevee]: { n: 3, s: 0 } }, candy: { [BY_ID.get(eevee).chain]: 500 } });
+  const u = user({ collection: { [eevee]: { n: 3, s: 0 } } });
   sp.syncAll(u);
   const [a, b] = u.mons[eevee];
   a.level = 60;
   assert.throws(() => candy.evolve(u, { id: eevee, uid: a.uid, to: espeon }), /amistad/);
   a.friendship = 220;
-  a.level = 5;
   // Espeon solo de día (hora de España) y Vaporeon con Piedra Agua (evoluciones especiales: test/evoreq.test.js)
   const realNow = Date.now;
   Date.now = () => Date.parse('2026-11-04T11:00:00Z');

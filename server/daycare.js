@@ -28,7 +28,7 @@ const INHERIT_IVS = 3;
 const NATURE_INHERIT = 0.5;
 const SHINY_BASE = 1 / 128;
 const SHINY_PARENT = 1 / 64; // «Método Masuda» simplificado: algún padre variocolor
-const BABY_CANDY = 3;
+const BABY_ITEM = 'exp-s'; // al eclosionar: 1 Caramelo Exp. S
 const FEE_MIN = 200;
 const FEE_MARGIN = 1.2;
 const HA_INHERIT = 0.6; // como en los juegos: si la madre (el padre no Ditto) tiene habilidad oculta, el bebé la hereda el 60 % de las veces
@@ -245,12 +245,12 @@ function hatch(u, p) {
     if (egg.ha) { baby.ha = true; ab.resolve(id, baby); } // habilidad oculta heredada
     for (const mvId of egg.moves || []) { try { require('./moves').teach(id, baby, mvId); } catch { /* ya lo conocía */ } } // movimientos huevo
   }
-  require('./candy').addCandy(u, id, BABY_CANDY);
+  require('./candy').giveExp(u, BABY_ITEM, 1);
   care.eggs.splice(i, 1);
   const rarity = BY_ID.get(id).rarity;
   if (egg.shiny && rarity !== 'C') hub.feed('gacha', `🥚✨ ${u.username} sacó un ${BY_ID.get(id).name} VARIOCOLOR del Criadero`, { pokeId: id, shiny: true });
   db.save();
-  return { ...view(u), hatched: { id, uid: baby ? baby.uid : null, shiny: !!egg.shiny, isNew: g.isNew, dust: g.dust, candy: BABY_CANDY, nature: baby ? baby.nature : null, ivs: baby ? baby.ivs : null, moves: namesEs(egg.moves || []) } };
+  return { ...view(u), hatched: { id, uid: baby ? baby.uid : null, shiny: !!egg.shiny, isNew: g.isNew, dust: g.dust, expItem: BABY_ITEM, nature: baby ? baby.nature : null, ivs: baby ? baby.ivs : null, moves: namesEs(egg.moves || []) } };
 }
 
 // Movimientos huevo que heredaría el bebé de una pareja ya depositada (con los movimientos que saben ahora los padres).
@@ -279,6 +279,6 @@ const STATIC = { hours: [HOURS_MIXED, HOURS_SAME], maxEggs: MAX_EGGS, pair2Level
 
 module.exports = {
   HA_INHERIT, motherOf, inheritsHa, inheritedEggMoves,
-  STATIC, DITTO, HOURS_MIXED, HOURS_SAME, MAX_EGGS, PAIR2_LEVEL, WAGER_PER_STEP, FALLBACK_MS, NEED_STEPS, INHERIT_IVS, NATURE_INHERIT, SHINY_BASE, SHINY_PARENT, BABY_CANDY, FEE_MIN, FEE_MARGIN,
+  STATIC, DITTO, HOURS_MIXED, HOURS_SAME, MAX_EGGS, PAIR2_LEVEL, WAGER_PER_STEP, FALLBACK_MS, NEED_STEPS, INHERIT_IVS, NATURE_INHERIT, SHINY_BASE, SHINY_PARENT, BABY_ITEM, FEE_MIN, FEE_MARGIN,
   feeFor, expectedResale, resaleCap, needFor, baseOf, check: (u, p) => preview(u, p), checkPair: check, maxPairs, view, deposit, withdraw, collect, hatch, onBet,
 };

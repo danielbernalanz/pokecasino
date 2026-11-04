@@ -15,6 +15,7 @@ const gacha = require('../server/gacha');
 const market = require('../server/market');
 const showdown = require('../server/showdown');
 const exp = require('../server/expedition');
+const xp = require('../server/exp');
 const { BY_ID, RARITY } = require('../server/pokedex');
 
 let n = 0;
@@ -69,14 +70,22 @@ test('reclamar: no antes de tiempo; recompensas, tipo coincidente y niveles', ()
     assert.throws(() => exp.claim(u, { id: e.id }), /Todavía/);
     ck.advance(1000);
     const r = exp.claim(u, { id: e.id }).reward;
-    assert.ok(r.candy[1] > r.candy[4], `coincide con la zona: ${r.candy[1]} > ${r.candy[4]}`);
-    assert.ok(u.candy[BY_ID.get(1).chain] >= r.candy[1]);
-    assert.strictEqual(u.candy['*'], 8);
-    assert.strictEqual(bulb.level, 5 + 4);
-    assert.strictEqual(char.level, 5 + 4);
+    const mb = r.members.find((m) => m.id === 1); const mc = r.members.find((m) => m.id === 4);
+    // EXP por hora y participante: H × (300 + 8 × nivel) × 1,5 si coincide con la zona (Bulbasaur sí, Charmander no)
+    assert.strictEqual(mb.exp, Math.round(8 * (exp.EXP_BASE + exp.EXP_LEVEL * 5) * 1.5));
+    assert.strictEqual(mc.exp, 8 * (exp.EXP_BASE + exp.EXP_LEVEL * 5));
+    assert.ok(mb.exp > mc.exp);
+    assert.strictEqual(bulb.exp, xp.expAt(1, 5) + mb.exp);
+    assert.strictEqual(bulb.level, xp.levelAt(1, bulb.exp));
+    assert.ok(bulb.level > 5 && char.level > 5);
+    assert.strictEqual(mb.to, bulb.level);
+    assert.strictEqual(r.exp, mb.exp + mc.exp);
+    const got = Object.values(r.candies).reduce((a, b) => a + b, 0);
+    assert.ok(got >= 2 && got <= exp.CANDY_DAY_CAP + 1, 'Caramelos Exp. de botín: ' + got);
+    assert.strictEqual(['exp-xs', 'exp-s', 'exp-m', 'exp-l'].reduce((a, k) => a + (u.items[k] || 0), 0), got);
+    assert.ok(!u.candy, 'ya no hay caramelos de familia');
     assert.strictEqual(bulb.away, undefined);
     assert.strictEqual(u.expeditions.length, 0);
-    assert.ok(r.members.every((m) => m.to - m.from === 4));
     assert.ok(bulb.friendship > 70 && bulb.friendship <= 70 + 40, 'amistad con tope diario');
     // coins: 8 × 8 × (1 + 0,5 × 1/2) = 80
     assert.strictEqual(u.coins - c0, 80);
@@ -108,10 +117,14 @@ test('topes diarios: monedas ≤ 300, polvo ≤ 20, un objeto raro; valor máxim
     assert.ok((u.items.ticket || 0) + (u.items['mystery-egg'] || 0) <= exp.RARE_DAY_CAP);
     // ni un solo movimiento positivo del libro que no sea 'expedition'
     assert.ok(hub.history(u).log.every((x) => x.r === 'expedition'));
-    for (const m of [1, 2, 3].map((id) => u.mons[id][0])) {
-      assert.ok(m.level <= 5 + exp.LEVEL_DAY_CAP, `niveles al día ${m.level}`);
+    for (const id of [1, 2, 3]) {
+      const m = u.mons[id][0];
+      assert.ok(m.xc.n <= xp.dayCap(id, m), `EXP de hoy ${m.xc.n} ≤ tope ${xp.dayCap(id, m)}`);
+      assert.ok(m.xc.n >= 0.9 * xp.dayCap(id, m), 'doce expediciones de 12 h llegan al tope diario por ejemplar');
       assert.ok(m.friendship <= 70 + 40);
     }
+    assert.ok(Object.entries(u.items).filter(([k]) => k.startsWith('exp-') && k !== 'exp-l').reduce((a, [, v]) => a + v, 0) <= exp.CANDY_DAY_CAP, 'Caramelos Exp. de expedición con tope diario');
+    assert.ok((u.items['exp-l'] || 0) <= 1);
   } finally { ck.restore(); }
   assert.ok(exp.dailyMaxValue() <= 600, `valor máximo diario ${exp.dailyMaxValue()}`);
   assert.strictEqual(exp.dailyMaxValue(), 300 + 20 * gacha.DUST_RATE + 172);
@@ -122,7 +135,7 @@ test('nunca da Pokémon ni a nivel 100 sube más; recompensas crecen con la dura
   try {
     const u = user({ 25: { n: 1, s: 0 } });
     const m = u.mons[25][0];
-    m.level = 99;
+    m.level = 99; m.exp = xp.expAt(25, 100) - 100;
     const base = u.coins;
     const col = JSON.stringify(Object.keys(u.collection));
     const e = exp.send(u, { zone: 'central', hours: 12, team: [ref(m, 25)] }).exps[0];
@@ -143,7 +156,6 @@ test('guardas: un ejemplar de expedición no se libera, transfiere, vende, regal
     for (const id of [1, 25]) for (const m of u.mons[id]) m.level = 20;
     const [a, b] = u.mons[1];
     const [p1, p2] = u.mons[25];
-    candy.addWild(u, 5000);
     exp.send(u, { zone: 'bosque', hours: 4, team: [ref(a, 1), ref(p1, 25)] });
     // liberar / transferir
     assert.throws(() => sp.release(u, ref(a, 1)), /fuera/);

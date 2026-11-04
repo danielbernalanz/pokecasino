@@ -392,27 +392,38 @@ function participants(b, side) {
 function cpuReward(b, user, side) {
   const t = b.trainer;
   const d = dayWins(user);
-  const out = { coins: 0, candy: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null, bp: 0, ev: 0 };
+  const out = { coins: 0, exp: [], candies: {}, evolve: [], pokerus: [], friend: 0, capped: false, winsLeft: 0, mats: {}, tm: null, bp: 0, ev: 0 };
   if (d.wins >= trainers.WINS_PER_DAY) { out.capped = true; return out; }
   d.wins++;
   out.winsLeft = trainers.WINS_PER_DAY - d.wins;
   out.coins = trainers.COINS[t.tier] || 20;
   user.coins += out.coins;
   hub.ledger(user, out.coins, 'battle', `Combate contra ${t.cls} ${t.name}`);
-  const candy = require('./candy');
   const bond = require('./bond');
   const specimen = require('./specimen');
-  const fams = new Set();
+  const expMod = require('./exp');
   const foeStats = b.sides[1].roster.map((r) => (BY_ID.get(r.id) || { stats: [0, 0, 0, 0, 0, 0] }).stats);
-  for (const r of participants(b, side)) {
-    const p = BY_ID.get(r.id);
-    if (p && !fams.has(p.chain)) { fams.add(p.chain); candy.addCandy(user, r.id, 2); out.candy.push(p.name); }
+  const part = participants(b, side);
+  const members = [];
+  for (const r of part) {
     try {
       const sp = specimen.find(user, { id: r.id, uid: r.uid });
+      expMod.ensure(Number(r.id), sp);
+      // EXP (fórmula escalada de 5.ª gen.): cada rival derrotado reparte su EXP entre los participantes; ×1,5 por ser entrenador.
+      let gain = 0;
+      for (const f of b.sides[1].roster) gain += expMod.foeExp(f.id, f.level, sp.level, part.length, true);
+      const from = sp.level;
+      const xr = expMod.award(user, r.id, sp, gain, 'battle'); // tope diario por ejemplar y Huevo Suerte
+      out.exp.push({ id: r.id, uid: r.uid, name: sp.nick || (BY_ID.get(r.id) || {}).name, from, to: sp.level, exp: xr.exp, learned: xr.learned, pending: xr.pending });
+      if (xr.evo.length) out.evolve.push({ id: r.id, uid: r.uid, to: xr.evo });
       out.friend += bond.addFriend(sp, 2, 'battle');
-      out.ev += require('./evs').onWin(sp, foeStats); // EVs: +4 por rival derrotado en su estadística base más alta (tope diario por ejemplar)
+      out.ev += require('./evs').onWin(sp, foeStats); // EVs: +4 por rival derrotado en su estadística base más alta (tope diario por ejemplar; ×2 con Pokérus)
+      members.push({ id: r.id, m: sp });
     } catch { /* el ejemplar ya no está */ }
   }
+  out.pokerus = require('./pokerus').roll(user, members); // Pokérus: muy raro; se contagia dentro del equipo
+  const drop = expMod.battleDrop(d, t.tier, require('./rng').rand);
+  if (drop) { require('./candy').giveExp(user, drop, 1); out.candies[drop] = 1; }
   hub.addXp(user, 15, { flat: true });
   hub.track(user, 'battle_win');
   // Materiales de MT de los tipos de los rivales derrotados y, contra líderes y campeón, a veces una MT.
@@ -957,5 +968,5 @@ module.exports = {
   undo: afterRestore(undo),
   MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu: afterRestore(startCpu), challenge: afterRestore(challenge), cancel, accept: afterRestore(accept), choose: afterRestore(choose),
   forfeit: afterRestore(forfeitAction), resume: afterRestore(resume), restoreAll, ABANDON_MS, RESTORE_GRACE_MS, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
-  startTowerBattle, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
+  startTowerBattle, cpuReward, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
 };

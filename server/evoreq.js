@@ -1,5 +1,5 @@
 'use strict';
-// Evoluciones especiales como en los juegos (ver scripts/build-evo.js y server/evodata.json). Se AÑADEN al coste normal en caramelos:
+// Evoluciones como en los juegos (ver scripts/build-evo.js y server/evodata.json): nivel mínimo (`levelOf`) y requisitos especiales. Ya no cuestan caramelos:
 //   item (piedra u objeto: se gasta 1) · trade («Intercambio»: se gasta un Cordón Unión o un intercambio real pendiente) ·
 //   gender (el destino es de un solo sexo: Gallade ♂, Froslass ♀…) · time (de día / de noche, hora de España) ·
 //   stat (Hitmonlee/Hitmonchan/Hitmontop: Ataque frente a Defensa) · move (debe conocer ese movimiento).
@@ -7,7 +7,10 @@
 // Expediciones largas. Se comercian entre jugadores, pero los PNJ no los compran ni los reciclan (son botín gratuito: ver npc.js y candy.js).
 // Intercambio real: cada Pokémon que RECIBES de otro jugador (regalo o Mercado) te da un «intercambio pendiente» (máx. 3 guardados y
 // 2 nuevos al día) que sirve igual que un Cordón Unión.
-const DATA = require('./evodata.json').req;
+const EVODATA = require('./evodata.json');
+const DATA = EVODATA.req;
+const LVL = EVODATA.lvl || {}; // destino → nivel mínimo (scripts/build-evo.js)
+const LU = new Set(EVODATA.lu || []); // evoluciones «al subir de nivel»: las que se ofrecen con el aviso «¿Quieres que evolucione?»
 const daytime = require('./daytime');
 const eggroups = require('./eggroups');
 const { BY_ID } = require('./pokedex');
@@ -49,6 +52,8 @@ function buildItems() {
 }
 
 const reqOf = (to) => DATA[Number(to)] || null;
+const levelOf = (to) => LVL[Number(to)] || 0;
+const isLevelUp = (to) => LU.has(Number(to));
 const tokensOf = (u) => Math.max(0, Math.min(TOKEN_MAX, Math.floor(u.tradeTokens || 0)));
 
 // Un Pokémon recibido de otro jugador (regalo o Mercado) vale como un intercambio.
@@ -100,6 +105,6 @@ function plan(u, m, from, to, now = Date.now()) {
   };
 }
 
-const STATIC = { req: DATA, link: LINK, phase: daytime.STATIC, tokenMax: TOKEN_MAX, tokenDaily: TOKEN_DAILY };
+const STATIC = { req: DATA, lvl: LVL, lu: [...LU], link: LINK, phase: daytime.STATIC, tokenMax: TOKEN_MAX, tokenDaily: TOKEN_DAILY };
 
-module.exports = { DATA, CATALOG, STONES, RARES, LINK, STONE, RARE, CORD, TOKEN_MAX, TOKEN_DAILY, STATIC, buildItems, reqOf, tokensOf, noteTrade, plan };
+module.exports = { DATA, levelOf, isLevelUp, CATALOG, STONES, RARES, LINK, STONE, RARE, CORD, TOKEN_MAX, TOKEN_DAILY, STATIC, buildItems, reqOf, tokensOf, noteTrade, plan };

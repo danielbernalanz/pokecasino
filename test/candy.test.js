@@ -12,6 +12,7 @@ const gacha = require('../server/gacha');
 const sp = require('../server/specimen');
 const candy = require('../server/candy');
 const items = require('../server/items');
+const exp = require('../server/exp');
 const battle = require('../server/games/battle');
 const { DEX, BY_ID, RARITY } = require('../server/pokedex');
 
@@ -25,7 +26,7 @@ function user(extra = {}) {
 const byName = (name) => DEX.find((p) => p.name === name);
 const fam = (id) => BY_ID.get(id).chain;
 
-test('transferir da el mismo polvo que liberar más caramelos de la familia', () => {
+test('transferir da el mismo polvo que liberar más Caramelos Exp. (sin caramelos de familia)', () => {
   const pid = DEX.find((p) => p.rarity === 'R' && p.stage === 1).id;
   const a = user({ collection: { [pid]: { n: 3, s: 0 } } });
   const b = user({ collection: { [pid]: { n: 3, s: 0 } } });
@@ -34,19 +35,21 @@ test('transferir da el mismo polvo que liberar más caramelos de la familia', ()
   const tr = candy.transfer(b, { id: pid, uid: b.mons[pid][0].uid });
   assert.strictEqual(tr.dust, rel.dust);
   assert.strictEqual(b.dust, a.dust);
-  assert.strictEqual(tr.candy, 6 + candy.WILD_TRANSFER.R, 'familia + comodín');
-  assert.strictEqual(b.candy[fam(pid)], 6);
-  assert.strictEqual(b.candy[candy.WILD], candy.WILD_TRANSFER.R);
+  assert.deepStrictEqual(tr.given, { 'exp-s': 1 });
+  assert.strictEqual(tr.exp, 800);
+  assert.strictEqual(b.items['exp-s'], 1);
+  assert.ok(!b.candy, 'ya no hay caramelos de familia');
   assert.strictEqual(b.collection[pid].n, 2);
   assert.throws(() => candy.transfer(user({ collection: { [pid]: { n: 1, s: 0 } } }), { id: pid, uid: 'zzzz' }));
   const solo = user({ collection: { [pid]: { n: 1, s: 0 } } });
   sp.syncAll(solo);
   assert.throws(() => candy.transfer(solo, { id: pid, uid: solo.mons[pid][0].uid }), /conservar/);
-  assert.ok(!solo.candy);
+  assert.ok(!solo.items['exp-s']);
 });
 
-test('rendimiento de caramelos por rareza', () => {
-  assert.deepStrictEqual(candy.TRANSFER_CANDY, { C: 3, U: 4, R: 6, E: 10, L: 20, M: 25 });
+test('Caramelos Exp. por transferir: XS para C/U, S para R/E, M para L/M', () => {
+  assert.deepStrictEqual(candy.TRANSFER_EXP, { C: ['exp-xs', 1], U: ['exp-xs', 2], R: ['exp-s', 1], E: ['exp-s', 2], L: ['exp-m', 1], M: ['exp-m', 2] });
+  assert.deepStrictEqual(Object.fromEntries(Object.keys(candy.TRANSFER_EXP).map((r) => [r, candy.transferExp(r)])), { C: 100, U: 200, R: 800, E: 1600, L: 3000, M: 6000 });
 });
 
 test('transferir repetidos conserva favorito, compañero, variocolor y el mejor', () => {
@@ -61,7 +64,7 @@ test('transferir repetidos conserva favorito, compañero, variocolor y el mejor'
   others[2].ivs = Array(6).fill(31); // el mejor de los que quedan
   others[3].ivs = Array(6).fill(0);
   const plan = candy.bulkPlan(u, pid);
-  assert.strictEqual(plan.length, 2); // dos candidatos (mejor y peor), se conservan fav, compañero y shiny -> keepers>0 -> ambos se transfieren
+  assert.strictEqual(plan.length, 2);
   const before = u.dust;
   const r = candy.transferBulk(u, { id: pid });
   assert.strictEqual(r.count, 2);
@@ -69,8 +72,9 @@ test('transferir repetidos conserva favorito, compañero, variocolor y el mejor'
   assert.strictEqual(u.collection[pid].n, 3);
   const left = sp.sync(u, pid).map((m) => m.uid);
   assert.ok(left.includes(shiny.uid) && left.includes(others[0].uid) && left.includes(others[1].uid));
-  assert.strictEqual(u.candy[fam(pid)], candy.TRANSFER_CANDY[BY_ID.get(pid).rarity] * 2);
-  assert.strictEqual(u.candy[candy.WILD], candy.WILD_TRANSFER[BY_ID.get(pid).rarity] * 2);
+  const [it, per] = candy.TRANSFER_EXP[BY_ID.get(pid).rarity];
+  assert.strictEqual(u.items[it], per * 2);
+  assert.strictEqual(r.exp, per * 2 * exp.CANDY_EXP[it]);
   assert.throws(() => candy.transferBulk(u, { id: pid }), /No hay repetidos/);
 
   // Sin protegidos: se queda el mejor.
@@ -83,83 +87,32 @@ test('transferir repetidos conserva favorito, compañero, variocolor y el mejor'
   assert.deepStrictEqual(sp.sync(v, pid).map((m) => m.uid), [best]);
 });
 
-test('el gacha da caramelos de la familia (2, o 5 si la especie es nueva) más comodín por tirada', () => {
+test('el gacha da 1 Caramelo Exp. XS por tirada (S si la especie es nueva)', () => {
   const u = user();
-  const pid = 25;
-  assert.strictEqual(candy.onPull(u, pid, true), candy.PULL_NEW_CANDY + candy.WILD_PULL);
-  assert.strictEqual(candy.onPull(u, pid, false), candy.PULL_CANDY + candy.WILD_PULL);
-  assert.strictEqual(u.candy[fam(pid)], candy.PULL_NEW_CANDY + candy.PULL_CANDY);
-  assert.strictEqual(u.candy[candy.WILD], 2 * candy.WILD_PULL);
-  assert.strictEqual(candy.candyOf(u, pid), u.candy[fam(pid)] + u.candy[candy.WILD]);
+  assert.strictEqual(candy.onPull(u, 25, true), 'exp-s');
+  assert.strictEqual(candy.onPull(u, 25, false), 'exp-xs');
+  assert.deepStrictEqual(u.items, { 'exp-s': 1, 'exp-xs': 1 });
   const r = gacha.pull(u, { banner: 'kanto', count: 10, free: false });
-  assert.ok(r.results.every((x) => x.candy === candy.PULL_CANDY + candy.WILD_PULL || x.candy === candy.PULL_NEW_CANDY + candy.WILD_PULL));
-  assert.strictEqual(u.candy[candy.WILD], 12 * candy.WILD_PULL);
+  assert.ok(r.results.every((x) => x.expItem === 'exp-xs' || x.expItem === 'exp-s'));
+  assert.strictEqual(r.results.filter((x) => x.expItem === 'exp-s').length + 1, u.items['exp-s']);
+  assert.ok(!u.candy);
 });
 
-test('los caramelos comodín se gastan después de los de la familia y valen para cualquier familia', () => {
-  const pid = 4;
-  const u = user({ collection: { [pid]: { n: 1, s: 0 } }, candy: { [fam(pid)]: 3, [candy.WILD]: 10 } });
-  sp.syncAll(u);
-  assert.strictEqual(candy.levelUp(u, { id: pid, uid: u.mons[pid][0].uid, times: 5 }).cost, 5);
-  assert.strictEqual(u.candy[fam(pid)], undefined);
-  assert.strictEqual(u.candy[candy.WILD], 8);
-  assert.strictEqual(candy.boxExtra(u).candy[fam(1)], 8, 'el cliente ve familia + comodín en cada familia');
-});
-
-test('subir de nivel: coste por nivel, tope 100 y validación', () => {
-  assert.strictEqual(candy.levelCost(5), 1);
-  assert.strictEqual(candy.levelCost(50), 1);
-  assert.strictEqual(candy.levelCost(51), 2);
-  assert.strictEqual(candy.levelCost(99), 2);
-  let to50 = 0; for (let l = 5; l < 50; l++) to50 += candy.levelCost(l);
-  assert.strictEqual(to50, 45);
-  let to100 = 0; for (let l = 5; l < 100; l++) to100 += candy.levelCost(l);
-  assert.ok(to100 >= 140 && to100 <= 200, 'Nv5→100 ≈ 144 caramelos: ' + to100);
-  const pid = 4;
-  const u = user({ collection: { [pid]: { n: 1, s: 0 } }, candy: { [fam(pid)]: 1000 } });
-  sp.syncAll(u);
-  const uid = u.mons[pid][0].uid;
-  assert.strictEqual(candy.levelUp(u, { id: pid, uid, times: 1 }).cost, 1);
-  assert.strictEqual(u.mons[pid][0].level, 6);
-  assert.strictEqual(candy.levelUp(u, { id: pid, uid, times: 5 }).level, 11);
-  assert.throws(() => candy.levelUp(u, { id: pid, uid, times: 0 }));
-  assert.throws(() => candy.levelUp(u, { id: pid, uid, times: 1.5 }));
-  assert.throws(() => candy.levelUp(u, { id: pid, uid: 'nope', times: 1 }));
-  u.mons[pid][0].level = 98;
-  assert.strictEqual(candy.levelUp(u, { id: pid, uid, times: 5 }).level, 100);
-  assert.throws(() => candy.levelUp(u, { id: pid, uid, times: 1 }), /máximo/);
-  const poor = user({ collection: { [pid]: { n: 1, s: 0 } }, candy: { [fam(pid)]: 2 } });
-  sp.syncAll(poor);
-  assert.throws(() => candy.levelUp(poor, { id: pid, uid: poor.mons[pid][0].uid, times: 5 }), /Necesitas/);
-  assert.strictEqual(poor.candy[fam(pid)], 2);
-});
-
-test('el nivel mejora ligeramente los duelos y el nivel 5 no cambia nada', () => {
-  const base = { id: 6, shiny: false, stars: 1, owner: 'x', ivs: Array(6).fill(15), nature: 'Seria' };
-  const f5 = battle.fighter({ ...base, level: 5 });
-  const f100 = battle.fighter({ ...base, level: 100 });
-  const fNone = battle.fighter({ ...base });
-  assert.strictEqual(f5.hp, fNone.hp);
-  assert.ok(Math.abs(f100.atk / f5.atk - 1.095) < 1e-9);
-  assert.strictEqual(battle.fighter({ id: 6, shiny: false, stars: 1, owner: 'x' }).hp, battle.fighter({ id: 6, shiny: false, stars: 1, owner: 'x', level: 100 }).hp);
-});
-
-test('evolucionar: requisitos, datos del ejemplar, variocolor y compañero', () => {
+test('evolucionar no cuesta caramelos: requisitos de nivel, datos del ejemplar, variocolor y compañero', () => {
   const charm = byName('Charmander').id;
   const charme = byName('Charmeleon').id;
-  const u = user({ collection: { [charm]: { n: 2, s: 1 } }, candy: { [fam(charm)]: 500 } });
+  const u = user({ collection: { [charm]: { n: 2, s: 1 } } });
   sp.syncAll(u);
   const shinyMon = u.mons[charm].find((m) => m.shiny);
   const plain = u.mons[charm].find((m) => !m.shiny);
   shinyMon.level = 20; shinyMon.nick = 'Brasas'; shinyMon.friendship = 120; shinyMon.fav = true; shinyMon.ivs = [1, 2, 3, 4, 5, 6]; shinyMon.nature = 'Audaz';
   u.buddy = { id: charm, shiny: true, uid: shinyMon.uid };
   assert.throws(() => candy.evolve(u, { id: charm, uid: shinyMon.uid, to: 1 }), /no puede/);
-  const { cost } = candy.evoCost(charm, charme, false, true);
-  assert.strictEqual(cost, candy.EVO[2].cost, 'primera evolución: solo el coste base');
+  assert.strictEqual(candy.evoLevel(charme), 16);
+  assert.throws(() => candy.evolve(u, { id: charm, uid: plain.uid, to: charme }), /nivel 16/, 'un Nv. 5 no evoluciona');
   const coinsBefore = u.coins; const dustBefore = u.dust;
   const r = candy.evolve(u, { id: charm, uid: shinyMon.uid, to: charme });
-  assert.strictEqual(r.cost, cost);
-  assert.strictEqual(u.candy[fam(charm)], 500 - cost);
+  assert.strictEqual(r.cost, undefined, 'sin coste');
   assert.strictEqual(u.collection[charm].n, 2, 'la primera evolución a una especie nueva no gasta la copia de origen');
   assert.strictEqual(u.collection[charm].s, 0);
   assert.strictEqual(u.collection[charme].n, 1);
@@ -168,6 +121,7 @@ test('evolucionar: requisitos, datos del ejemplar, variocolor y compañero', () 
   assert.strictEqual(moved.uid, shinyMon.uid);
   assert.ok(moved.shiny && moved.fav && moved.level === 20 && moved.nick === 'Brasas' && moved.friendship === 120 && moved.nature === 'Audaz');
   assert.deepStrictEqual(moved.ivs, [1, 2, 3, 4, 5, 6]);
+  assert.ok(moved.exp >= exp.expAt(charme, 20) && moved.exp < exp.expAt(charme, 21), 'la EXP se recoloca dentro de su nivel');
   assert.deepStrictEqual(u.buddy, { id: charme, shiny: true, uid: shinyMon.uid });
   assert.strictEqual(u.mons[charm].length, 2);
   assert.ok(u.mons[charm].some((m) => m.uid === plain.uid) && !u.mons[charm].some((m) => m.uid === shinyMon.uid));
@@ -180,55 +134,67 @@ test('evolucionar: requisitos, datos del ejemplar, variocolor y compañero', () 
   assert.throws(() => candy.evolve(u, { id: charm, uid: plain.uid, to: charme }), /otra copia/);
 });
 
-test('evolucionar: ya tienes 5 del destino y sin caramelos', () => {
+test('evolucionar: ya tienes 5 del destino y nivel', () => {
   const a = byName('Charmeleon').id; const b = byName('Charizard').id;
-  const u = user({ collection: { [a]: { n: 2, s: 0 }, [b]: { n: 5, s: 0 } }, candy: { [fam(a)]: 1000 } });
+  const u = user({ collection: { [a]: { n: 2, s: 0 }, [b]: { n: 5, s: 0 } } });
   sp.syncAll(u);
   u.mons[a][0].level = 40;
   assert.throws(() => candy.evolve(u, { id: a, uid: u.mons[a][0].uid, to: b }), /5 estrellas/);
   u.collection[b].n = 1; sp.syncAll(u);
-  u.candy[fam(a)] = 5;
-  assert.throws(() => candy.evolve(u, { id: a, uid: u.mons[a][0].uid, to: b }), /Necesitas/);
-  u.candy[fam(a)] = 1000;
+  u.mons[a][0].level = 35;
+  assert.throws(() => candy.evolve(u, { id: a, uid: u.mons[a][0].uid, to: b }), /nivel 36/);
+  u.mons[a][0].level = 36;
   candy.evolve(u, { id: a, uid: u.mons[a][0].uid, to: b });
   assert.strictEqual(u.collection[b].n, 2);
   assert.strictEqual(u.mons[b].length, 2);
-  assert.ok(candy.evoCost(a, b).cost >= 100);
 });
 
-test('evolucionar nunca da más polvo por caramelo gastado que transferir las copias que los dan', () => {
-  // Transferir da ≥ 5/3 ≈ 1,67 de polvo por caramelo (el peor caso son los Comunes).
-  const minDustPerCandy = Math.min(...Object.keys(candy.TRANSFER_CANDY).map((r) => RARITY[r].dust / candy.TRANSFER_CANDY[r]));
-  assert.ok(minDustPerCandy > candy.EVO_GAIN_PER_CANDY);
-  let edges = 0;
+test('al subir de nivel se ofrece evolucionar («¿Quieres que evolucione?»): cancelar no cambia nada y se puede después', () => {
+  const a = byName('Charmander').id; const b = byName('Charmeleon').id;
+  const u = user({ collection: { [a]: { n: 2, s: 0 } }, items: { 'exp-s': 1, 'exp-m': 3 } });
+  sp.syncAll(u);
+  const m = u.mons[a][0];
+  const r1 = exp.useCandy(u, { id: a, uid: m.uid, itemId: 'exp-s', qty: 1 });
+  assert.ok(r1.to < 16 && r1.evo.length === 0);
+  const r2 = exp.useCandy(u, { id: a, uid: m.uid, itemId: 'exp-m', qty: 1 });
+  assert.ok(m.level >= 16);
+  assert.deepStrictEqual(r2.evo, [{ to: b, name: 'Charmeleon' }]);
+  assert.strictEqual(sp.boxView(u).mons.find((x) => x.uid === m.uid).canEvo[0], b, 'la Caja PC lo sigue ofreciendo');
+  assert.strictEqual(u.collection[a].n, 2, 'cancelar = no pasa nada');
+  const ev = candy.evolve(u, { id: a, uid: m.uid, to: b });
+  assert.strictEqual(ev.to, b);
+  assert.ok(m.level >= 16 && u.mons[b][0].uid === m.uid);
+});
+
+test('evolucionar y transferir no es una máquina de polvo: el suelo de EXP por polvo ganado', () => {
+  // La EXP para llegar al nivel de evolución (desde el 5) ≥ EVO_EXP_PER_DUST × el polvo que gana el resultado al liberarlo (evoluciones «de nivel»).
+  // Y la EXP que da transferir (por polvo) × ese cociente es ≪ 1: ni siquiera reinvirtiendo la EXP de las transferencias hay bucle.
+  const maxExpPerDust = Math.max(...Object.keys(candy.TRANSFER_EXP).map((r) => candy.transferExp(r) / RARITY[r].dust));
+  const ratioCap = 1 / candy.EVO_EXP_PER_DUST;
+  let worst = 0; let edges = 0;
   for (const p of DEX) {
-    if (!p.evolvesFrom) continue;
+    if (!p.evolvesFrom || !require('../server/evoreq').isLevelUp(p.id)) continue;
     edges++;
     const from = BY_ID.get(p.evolvesFrom);
-    const { cost } = candy.evoCost(from.id, p.id);
     const gain = Math.max(0, RARITY[p.rarity].dust - RARITY[from.rarity].dust);
-    assert.ok(gain <= cost * candy.EVO_GAIN_PER_CANDY, `${from.name}→${p.name}: +${gain} polvo por ${cost} caramelos`);
-    assert.ok(gain <= cost * minDustPerCandy, `${from.name}→${p.name}`);
+    const need = exp.expAt(from.id, Math.max(5, candy.evoLevel(p.id))) - exp.expAt(from.id, 5);
+    if (gain) { assert.ok(need >= candy.EVO_EXP_PER_DUST * gain, `${from.name}→${p.name}: ${need} EXP para +${gain} ✦`); worst = Math.max(worst, gain / need); }
+    assert.ok(gain === 0 || gain / need <= ratioCap + 1e-9);
   }
-  assert.ok(edges > 400);
+  assert.ok(edges > 350);
+  assert.ok(worst * maxExpPerDust < 0.15, `factor del bucle ${(worst * maxExpPerDust).toFixed(3)}`);
 });
 
-test('entrenar IVs: coste, máximo 31 y tope diario por ejemplar', () => {
-  const pid = 1;
-  const u = user({ collection: { [pid]: { n: 1, s: 0 } }, candy: { [fam(pid)]: 100 } });
-  sp.syncAll(u);
-  const m = u.mons[pid][0];
-  m.ivs = Array(6).fill(0);
-  for (let i = 0; i < candy.TRAIN_DAILY; i++) candy.train(u, { id: pid, uid: m.uid, stat: i % 6 });
-  assert.deepStrictEqual(m.ivs, Array(6).fill(candy.TRAIN_DAILY / 6));
-  assert.strictEqual(u.candy[fam(pid)], 100 - candy.TRAIN_COST * candy.TRAIN_DAILY);
-  assert.throws(() => candy.train(u, { id: pid, uid: m.uid, stat: 3 }), /entrenamientos/);
-  m.train.day = '2000-01-01';
-  assert.strictEqual(candy.train(u, { id: pid, uid: m.uid, stat: 3 }).left, candy.TRAIN_DAILY - 1);
-  m.ivs[4] = 31; m.train.n = 0;
-  assert.throws(() => candy.train(u, { id: pid, uid: m.uid, stat: 4 }), /máximo/);
-  assert.throws(() => candy.train(u, { id: pid, uid: m.uid, stat: 6 }));
-  assert.throws(() => candy.train(u, { id: pid, uid: m.uid, stat: 'x' }));
+test('los objetos de evolución (piedras, Cordón Unión) cuestan más monedas que el polvo que ganan', () => {
+  const evoreq = require('../server/evoreq');
+  for (const p of DEX) {
+    if (!p.evolvesFrom || evoreq.isLevelUp(p.id)) continue;
+    const r = evoreq.reqOf(p.id);
+    if (!r) continue;
+    const gain = Math.max(0, RARITY[p.rarity].dust - RARITY[BY_ID.get(p.evolvesFrom).rarity].dust) * gacha.DUST_RATE;
+    const cost = (r.item ? items.ITEMS[r.item].price : 0) + (r.trade ? 0 : 0);
+    if (r.item) assert.ok(cost >= gain, `${p.name}: objeto ${cost} < ${gain} monedas de polvo ganado`);
+  }
 });
 
 test('Intercambio Milagroso: misma rareza, restricciones y límite diario', () => {
@@ -298,12 +264,13 @@ test('reciclaje: siempre vale menos que el precio de compra y tiene tope diario'
 
 test('ninguna acción de B2 crea monedas y el polvo de transferir ≤ el de liberar + nada más', () => {
   const pid = DEX.find((p) => p.rarity === 'E' && p.stage === 1).id;
-  const u = user({ collection: { [pid]: { n: 5, s: 0 } }, candy: { [fam(pid)]: 200 }, items: { 'lucky-egg': 1 } });
+  const u = user({ collection: { [pid]: { n: 5, s: 0 } }, items: { 'lucky-egg': 1, 'exp-m': 3, 'bottle-cap': 1 } });
   sp.syncAll(u);
   u.mons[pid][0].ivs = Array(6).fill(0);
-  const coins = u.coins;
-  candy.levelUp(u, { id: pid, uid: u.mons[pid][0].uid, times: 5 });
-  candy.train(u, { id: pid, uid: u.mons[pid][0].uid, stat: 0 });
+  u.mons[pid][0].level = 50;
+  exp.useCandy(u, { id: pid, uid: u.mons[pid][0].uid, itemId: 'exp-m', qty: 3 });
+  require('../server/hyper').use(u, { id: pid, uid: u.mons[pid][0].uid, itemId: 'bottle-cap', stat: 0 });
+  const coins = u.coins; // (usar un objeto cuenta para la misión «usa un objeto»: eso ya existía)
   candy.wonder(u, { id: pid, uid: u.mons[pid][1].uid });
   candy.transferBulk(u, { id: pid });
   candy.recycle(u, { item: 'lucky-egg', qty: 1 });
@@ -323,7 +290,7 @@ test('transferir varios de una vez: suma polvo y caramelos, salta al compañero 
   assert.strictEqual(u.collection[1].n, 1);
   assert.strictEqual(u.collection[4].n, 1);
   assert.strictEqual(u.dust - dust0, r.dust);
-  assert.ok(r.candy > 0);
+  assert.ok(r.exp > 0 && Object.keys(r.given).length);
 });
 
 test('transferir todos los repetidos: la vista previa coincide con lo que se hace', () => {

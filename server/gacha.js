@@ -219,8 +219,8 @@ function pull(user, { banner: bannerId, count, free, ticket }, now = Date.now())
     if (charm) user.buffs.shinyCharges--;
     const shiny = rand() < SHINY_RATE * (charm ? 4 : 1) * (require('./events').has('shiny') ? 2 : 1);
     const g = grant(user, poke.id, shiny, { unlock: true });
-    const candy = require('./candy').onPull(user, poke.id, g.isNew);
-    results.push({ id: poke.id, name: poke.name, rarity, shiny, masterBall, candy, ...g });
+    const expItem = require('./candy').onPull(user, poke.id, g.isNew); // 1 Caramelo Exp. XS (S si es especie nueva)
+    results.push({ id: poke.id, name: poke.name, rarity, shiny, masterBall, expItem, ...g });
     if (rarity === 'L' || rarity === 'M' || (shiny && rarity !== 'C')) {
       hub.feed('gacha', `✨ ${user.username} obtuvo ${shiny ? 'un ' + poke.name + ' VARIOCOLOR' : poke.name} (${RARITY[rarity].name}) en "${banner.name}"`, { pokeId: poke.id, shiny });
     }

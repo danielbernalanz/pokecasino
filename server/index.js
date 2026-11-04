@@ -161,6 +161,10 @@ const STATIC = {
   mega: mega.STATIC,
   expedition: expedition.STATIC,
   evs: require('./evs').STATIC,
+  exp: require('./exp').STATIC,
+  hyper: require('./hyper').STATIC,
+  pokerus: require('./pokerus').STATIC,
+  forms: require('./forms').STATIC,
   evo: require('./evoreq').STATIC,
   daytime: require('./daytime').STATIC,
   daycare: daycare.STATIC,
@@ -611,9 +615,9 @@ io.on('connection', (socket) => {
   on('pc:transferBulk', candy.transferBulk);
   on('pc:transferMany', candy.transferMany);
   on('pc:transferAll', candy.transferAllDupes);
-  on('pc:levelup', candy.levelUp);
+  on('pc:expcandy', (u, p) => require('./exp').useCandy(u, p));
   on('pc:evolve', candy.evolve);
-  on('pc:train', candy.train);
+  on('pc:hyper', (u, p) => require('./hyper').use(u, p));
   on('pc:wonder', candy.wonder);
   on('shop:recycle', candy.recycle);
   on('pc:buddy', (u, p) => { const m = specimen.find(u, p); const r = setBuddy(u, { id: Number(p.id), shiny: m.shiny }); u.buddy.uid = m.uid; db.save(); return r; });

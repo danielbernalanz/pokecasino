@@ -54,8 +54,8 @@ test('PB: topes diarios, PvP con turnos mínimos y límite por rival; no hay for
 });
 
 test('Tienda de Combate: precios en PB, compra y falta de saldo', () => {
-  for (const [id, it] of Object.entries(items.ITEMS)) if (it.bp) assert.ok(it.price === null && ((it.held && it.bp >= 16 && it.bp <= 48) || (it.mint && it.bp === 50) || (it.capsule && it.bp === 50) || (it.patch && it.bp === 200)), id);
-  assert.strictEqual(Object.values(items.ITEMS).filter((i) => i.held).length, 16);
+  for (const [id, it] of Object.entries(items.ITEMS)) if (it.bp) assert.ok(it.price === null && ((it.held && it.bp >= 16 && it.bp <= 64) || (it.mint && it.bp === 50) || (it.capsule && it.bp === 50) || (it.patch && it.bp === 200) || (it.hyper && [40, 200].includes(it.bp)) || (it.expCandy && it.bp === it.expCandy / 100)), id);
+  assert.strictEqual(Object.values(items.ITEMS).filter((i) => i.held).length, 17);
   assert.strictEqual(Object.values(items.ITEMS).filter((i) => i.mint).length, 21);
   const u = user({}, { bp: 47 });
   assert.throws(() => bp.buy(u, { itemId: 'hi-leftovers' }), /48 PB/);

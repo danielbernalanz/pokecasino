@@ -249,7 +249,7 @@ test('pasos: 1 por cada 100 monedas apostadas, sin duelos; eclosión por pasos o
   } finally { ck.restore(); }
 });
 
-test('eclosión: bebé nuevo, +3 caramelos, Pokédex, herencia de 3 IV y naturaleza', () => {
+test('eclosión: bebé nuevo, +1 Caramelo Exp. S, Pokédex, herencia de 3 IV y naturaleza', () => {
   const ck = clock();
   try {
     const u = user({ 1: { n: 1, s: 0 }, 2: { n: 1, s: 0 } });
@@ -266,10 +266,11 @@ test('eclosión: bebé nuevo, +3 caramelos, Pokédex, herencia de 3 IV y natural
     stored.steps = stored.need;
     const sid = stored.species;
     const had = u.collection[sid] ? u.collection[sid].n : 0;
-    const c0 = (u.candy || {})[BY_ID.get(sid).chain] || 0;
+    const s0 = u.items['exp-s'] || 0;
     const r = care.hatch(u, { id: egg0.id });
     assert.strictEqual(u.collection[sid].n, Math.min(5, had + 1));
-    assert.strictEqual((u.candy[BY_ID.get(sid).chain] || 0) - c0, 3);
+    assert.strictEqual((u.items['exp-s'] || 0) - s0, 1, '1 Caramelo Exp. S al eclosionar');
+    assert.strictEqual(r.hatched.expItem, 'exp-s');
     const baby = u.mons[sid].find((m) => m.uid === r.hatched.uid);
     assert.ok(baby);
     assert.strictEqual(baby.level, 5);
@@ -420,5 +421,26 @@ test('movimientos huevo en la comprobación de la pareja, el Criadero y el huevo
     ck.advance(13 * H);
     const h = care.hatch(u, { id: v2.eggs[0].id });
     assert.deepStrictEqual(h.hatched.moves, [mv.name(egg[0])]);
+  } finally { ck.restore(); }
+});
+
+test('Entrenamiento Extremo: el Criadero hereda los IV reales, no los efectivos (Chapas)', () => {
+  const ck = clock();
+  try {
+    const u = user({ 1: { n: 1, s: 0 }, 2: { n: 1, s: 0 } });
+    const [a, b] = [u.mons[1][0], u.mons[2][0]];
+    a.ivs = [0, 0, 0, 0, 0, 0]; b.ivs = [0, 0, 0, 0, 0, 0];
+    a.hyper = Array(6).fill(true); b.hyper = Array(6).fill(true);
+    assert.deepStrictEqual(require('../server/hyper').effIvs(a), Array(6).fill(31));
+    pair(u, 1, 2);
+    ck.advance(6 * H);
+    const egg0 = care.collect(u, { slot: 0 }).eggs[0];
+    const stored = u.daycare.eggs[0];
+    assert.ok(Object.values(stored.ivs).every((v) => v === 0), 'IV heredados: los reales');
+    stored.steps = stored.need;
+    const r = care.hatch(u, { id: egg0.id });
+    const baby = u.mons[r.hatched.id].find((m) => m.uid === r.hatched.uid);
+    for (const i of Object.keys(stored.ivs)) assert.strictEqual(baby.ivs[Number(i)], 0);
+    assert.ok(!baby.hyper, 'el bebé no hereda las Chapas');
   } finally { ck.restore(); }
 });

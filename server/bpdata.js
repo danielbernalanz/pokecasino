@@ -4,12 +4,14 @@
 // Precios en PB: objetos 16–48 · mentas 50 · Cápsula Habilidad 50 · Parche Habilidad 200.
 const ES = require('./sd-es.json');
 
+const NAME_FALLBACK = { luckyegg: 'Huevo Suerte' };
 // [id de Showdown, PB, sprite de PokeAPI]
 const HELD = [
   ['leftovers', 48, 'leftovers'], ['lifeorb', 48, 'life-orb'], ['choiceband', 48, 'choice-band'], ['choicespecs', 48, 'choice-specs'], ['choicescarf', 48, 'choice-scarf'],
   ['assaultvest', 40, 'assault-vest'], ['eviolite', 40, 'eviolite'],
   ['focussash', 32, 'focus-sash'], ['rockyhelmet', 32, 'rocky-helmet'], ['blacksludge', 32, 'black-sludge'], ['weaknesspolicy', 32, 'weakness-policy'], ['expertbelt', 32, 'expert-belt'], ['heavydutyboots', 32, 'heavy-duty-boots'],
   ['whiteherb', 16, 'white-herb'], ['mentalherb', 16, 'mental-herb'], ['scopelens', 16, 'scope-lens'],
+  ['luckyegg', 64, 'lucky-egg'],
 ];
 const HELD_DESC = {
   leftovers: 'Recupera 1/16 de los PS cada turno.', lifeorb: '+30 % de daño, pero pierde 1/10 de los PS al atacar.', choiceband: '+50 % de Ataque, pero solo usa un movimiento.',
@@ -18,6 +20,7 @@ const HELD_DESC = {
   blacksludge: 'Restaura PS si es de tipo Veneno; hace daño a los demás.', weaknesspolicy: 'Sube el Ataque y At. Esp. al recibir un golpe supereficaz (un solo uso).',
   expertbelt: '+20 % de daño en los golpes supereficaces.', heavydutyboots: 'Ignora el daño de las trampas de entrada (Trampa Rocas, Púas…).', whiteherb: 'Restaura las estadísticas bajadas (un solo uso).',
   mentalherb: 'Cura el enamoramiento y otras trabas (un solo uso).', scopelens: 'Sube la probabilidad de golpe crítico.',
+  luckyegg: 'Su portador gana un 50 % más de EXP en combates contra la CPU y expediciones (no afecta a los Caramelos Exp.). No tiene efecto en combate.',
 };
 // Bayas del Huerto que también se llevan en combate (id del Huerto → objeto de Showdown).
 const BERRY_HOLD = { 'berry-aranja': 'oranberry', 'berry-zidra': 'sitrusberry', 'berry-frambu': 'lumberry', 'berry-latano': 'chestoberry', 'berry-pinia': 'leppaberry' };
@@ -45,7 +48,7 @@ const PVP_PER_OPPONENT = 3; // combates con PB contra el mismo rival al día
 function buildItems() {
   const out = {};
   for (const [hold, bp, sprite] of HELD) {
-    out['hi-' + hold] = { name: ES.items[hold], sprite, price: null, bp, held: hold, desc: `Objeto equipable (uno por Pokémon). ${HELD_DESC[hold]} Se compra con Puntos de Batalla.` };
+    out['hi-' + hold] = { name: ES.items[hold] || NAME_FALLBACK[hold], sprite, price: null, bp, held: hold, desc: `Objeto equipable (uno por Pokémon). ${HELD_DESC[hold]} Se compra con Puntos de Batalla.` };
   }
   for (const [en, es] of MINTS) {
     out['mint-' + en] = { name: `Menta ${es}`, sprite: en + '-mint', price: null, bp: PRICES.mint, mint: es,

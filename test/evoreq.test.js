@@ -26,7 +26,7 @@ function user(extra = {}) {
   db.addUser(u);
   return u;
 }
-// Un ejemplar de `name` con sexo y caramelos de sobra.
+// Un ejemplar de `name` con sexo y nivel de sobra.
 function mon(name, { gender, friendship } = {}) {
   const p = byName(name);
   const u = user({ collection: { [p.id]: { n: 1, s: 0 } } });
@@ -34,7 +34,7 @@ function mon(name, { gender, friendship } = {}) {
   const m = u.mons[p.id][0];
   if (gender) m.gender = gender;
   if (friendship !== undefined) m.friendship = friendship;
-  candy.addCandy(u, p.id, 500);
+  m.level = 100; // las evoluciones de estas pruebas son de requisito especial, no de nivel
   return { u, m, p };
 }
 const clock = (iso) => { const real = Date.now; Date.now = () => Date.parse(iso); return () => { Date.now = real; }; };
@@ -61,13 +61,11 @@ test('Kirlia ♀ no puede ser Gallade; Kirlia ♂ con Piedra Alba sí y la gasta
   const m = mon('Kirlia', { gender: 'M' });
   assert.throws(() => candy.evolve(m.u, { id: m.p.id, uid: m.m.uid, to: gallade }), /Piedra Alba/);
   items.give(m.u, 'dawn-stone', 1);
-  const before = candy.candyOf(m.u, m.p.id);
   const r = candy.evolve(m.u, { id: m.p.id, uid: m.m.uid, to: gallade });
   assert.strictEqual(r.to, gallade);
   assert.strictEqual(m.u.items['dawn-stone'], undefined, 'Piedra Alba consumida');
-  assert.strictEqual(candy.candyOf(m.u, m.p.id), before - r.cost, 'el coste en caramelos sigue siendo el normal');
   assert.strictEqual(m.u.mons[gallade][0].uid, m.m.uid);
-  // Gardevoir sigue siendo solo por caramelos
+  // Gardevoir sigue siendo solo por nivel (sin requisito especial)
   const g = mon('Kirlia', { gender: 'F' });
   assert.strictEqual(candy.evolve(g.u, { id: g.p.id, uid: g.m.uid, to: byName('Gardevoir').id }).to, byName('Gardevoir').id);
 });
@@ -168,13 +166,18 @@ test('Tyrogue: Hitmonlee/Hitmonchan según Ataque y Defensa', () => {
   assert.strictEqual(candy.evolve(t.u, { id: t.p.id, uid: t.m.uid, to: lee }).to, lee);
 });
 
-test('los costes en caramelos no cambian: las evoluciones sin requisito siguen igual', () => {
+test('evolucionar ya no cuesta caramelos: solo nivel y requisitos', () => {
   const m = mon('Charmander');
-  const before = candy.candyOf(m.u, m.p.id);
+  m.m.level = 15;
+  assert.throws(() => candy.evolve(m.u, { id: m.p.id, uid: m.m.uid, to: byName('Charmeleon').id }), /nivel 16/);
+  m.m.level = 16;
   const r = candy.evolve(m.u, { id: m.p.id, uid: m.m.uid, to: byName('Charmeleon').id });
-  assert.strictEqual(r.cost, candy.evoCost(m.p.id, byName('Charmeleon').id, false, true).cost);
-  assert.strictEqual(candy.candyOf(m.u, m.p.id), before - r.cost);
+  assert.strictEqual(r.to, byName('Charmeleon').id);
+  assert.strictEqual(r.cost, undefined);
   assert.strictEqual(evoreq.reqOf(byName('Charmeleon').id), null);
+  assert.strictEqual(evoreq.levelOf(byName('Charmeleon').id), 16);
+  assert.strictEqual(evoreq.levelOf(byName('Charizard').id), 36);
+  assert.strictEqual(evoreq.levelOf(byName('Alakazam').id), 0, 'por intercambio: sin nivel');
 });
 
 test('datos: todos los objetos existen, cuestan 2.000/5.000, los movimientos se pueden aprender y los PNJ/reciclaje los ignoran', () => {

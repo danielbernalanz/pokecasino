@@ -185,7 +185,8 @@ function toSet(id, m, { level = 'fair', mega = 0, doubles = false, usedNames = n
   while (usedNames.has(name.toLowerCase())) name = `${Array.from(base).slice(0, 10).join('')} ${k++}`;
   usedNames.add(name.toLowerCase());
   const ivs = {};
-  STAT.forEach((s, i) => { ivs[s] = Math.max(0, Math.min(31, Number.isInteger(m.ivs && m.ivs[i]) ? m.ivs[i] : 31)); });
+  const eff = require('./hyper').effIvs({ ivs: Array.isArray(m.ivs) ? m.ivs : [], hyper: m.hyper }); // con Chapas (Entrenamiento Extremo) los IV efectivos son 31
+  STAT.forEach((s, i) => { ivs[s] = Math.max(0, Math.min(31, Number.isInteger(eff[i]) ? eff[i] : 31)); });
   const evs = {};
   const own = require('./evs').ensure(m);
   STAT.forEach((s, i) => { evs[s] = own[i]; });
@@ -202,8 +203,9 @@ function toSet(id, m, { level = 'fair', mega = 0, doubles = false, usedNames = n
     megaForm = Number(mega);
     if (ms.move && !moves.includes(ms.move)) moves = [...moves.slice(0, 3), ms.move];
   }
+  const formName = require('./forms').showdownName(id, m); // Dudunsparce de tres segmentos · Maushold familia de cuatro
   const set = {
-    name, species: sp.name, item, ability: m.sdAbility, moves, nature: NATURE_EN[m.mint || m.nature] || 'Serious',
+    name, species: formName && ps().Dex.species.get(formName).exists ? formName : sp.name, item, ability: m.sdAbility, moves, nature: NATURE_EN[m.mint || m.nature] || 'Serious',
     gender, evs, ivs, level: lvl, shiny: !!m.shiny, happiness: Math.max(0, Math.min(255, Number.isFinite(m.friendship) ? m.friendship : 70)),
     pokeball: 'pokeball',
   };

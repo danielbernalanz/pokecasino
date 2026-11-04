@@ -262,7 +262,8 @@ test('contra CPU: tope de combates simultáneos, recompensas y tope diario de vi
   b1.forfeit(b1.sides[1]);
   await b1.done;
   assert.strictEqual(u1.coins, c0 + trainers.COINS[1]);
-  assert.ok(u1.candy && Object.values(u1.candy).some((x) => x >= 2), 'caramelos de las familias');
+  assert.ok(Object.values(u1.mons).flat().some((m) => m.xc && m.xc.n > 0 && m.exp > 0), 'EXP para los participantes');
+  assert.ok(!u1.candy, 'ya no hay caramelos de familia');
   assert.strictEqual(u1.btHist[0].won, true);
   const b2 = sdw.battles.get(v2.battle.id);
   b2.forfeit(b2.sides[0]);

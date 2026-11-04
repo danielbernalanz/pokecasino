@@ -298,6 +298,11 @@ function onEnd(u, b, won) {
   T.best[run.format] = Math.max(prevBest, run.streak);
   const want = bpForWin(n) + (n % ROUND === 0 ? ROUND_BONUS : 0);
   const got = require('./bp').award(u, 'tower', want);
+  // Premios del Entrenamiento: al cerrar una ronda con PB (o sea, dentro del tope diario de la Torre) un Caramelo Exp. M; al ganar a un Jefe, una Chapa de Botella
+  // (una al día como mucho). Nunca monedas.
+  const prize = {};
+  if (got > 0 && n % ROUND === 0) { require('./candy').giveExp(u, 'exp-m', 1); prize['exp-m'] = 1; }
+  if (b.tower.boss && got > 0 && T.chapaDay !== hub.dayKey()) { T.chapaDay = hub.dayKey(); require('./items').give(u, 'bottle-cap', 1); prize['bottle-cap'] = 1; }
   const medals = [];
   for (const [at, id] of MEDALS) {
     if (T.best[run.format] >= at && !T.medals[id]) {
@@ -313,7 +318,7 @@ function onEnd(u, b, won) {
   if (n % ROUND === 0) hub.feed('tower', `🗼 ${u.username} ha completado la ronda ${roundOf(n)} de la Torre Batalla (racha de ${n})`);
   return {
     won: true, n, streak: run.streak, round: roundOf(n), roundDone: n % ROUND === 0, boss: !!b.tower.boss, bp: got, bpWanted: want, capped: got < want,
-    bpToday: dayBp(u), bpCap: DAY_CAP, best: T.best[run.format], newBest: run.streak > prevBest, medals, format: run.format,
+    prize, bpToday: dayBp(u), bpCap: DAY_CAP, best: T.best[run.format], newBest: run.streak > prevBest, medals, format: run.format,
   };
 }
 

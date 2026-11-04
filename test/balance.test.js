@@ -276,18 +276,20 @@ test('bucle gacha → liberar/vender a PNJ: una tirada devuelve como mucho ≈66
   for (const r of Object.keys(dex.RARITY)) assert.ok(npc.maxBid(r) <= dex.RARITY[r].dust * gacha.DUST_RATE);
 });
 
-test('bucle caramelos → evolución → liberar: ni siquiera con todos los caramelos de una tirada sale a cuenta', () => {
+test('bucle Caramelos Exp. → evolución → liberar: ni siquiera con toda la EXP de una tirada sale a cuenta', () => {
   const candy = require('../server/candy');
+  const exp = require('../server/exp');
   const dustPerPull = Object.entries(gacha.RATES).reduce((s, [r, p]) => s + p * dex.RARITY[r].dust, 0);
   const shinyExtra = 1 + 3 * gacha.SHINY_RATE * 4;
   const gifts = Object.entries(gacha.X10_GIFTS).reduce((s, [it, p]) => s + p * npc.bounds({ kind: 'item', itemId: it }).cap, 0) / 10;
-  // Caramelos por tirada en el peor caso: todo repetido y transferido, más los de la tirada (especie nueva: el máximo).
-  const candyPerPull = candy.PULL_NEW_CANDY + candy.WILD_PULL
-    + Object.entries(gacha.RATES).reduce((s, [r, p]) => s + p * (candy.TRANSFER_CANDY[r] + candy.WILD_TRANSFER[r]), 0);
-  const back = (dustPerPull * shinyExtra + candyPerPull * candy.EVO_GAIN_PER_CANDY) * gacha.DUST_RATE + gifts;
-  assert.ok(back < 0.95 * gacha.COST[1], `${back.toFixed(1)} de ${gacha.COST[1]} (caramelos/tirada ${candyPerPull.toFixed(1)})`);
-  // Los caramelos no tienen precio: ni la tienda, ni los PNJ, ni el Mercado los comercian.
+  // EXP por tirada en el peor caso (todo repetido y transferido): el caramelo de la tirada (S si es nueva) más el de transferir.
+  const expPerPull = exp.CANDY_EXP[candy.PULL_NEW_ITEM] + Object.entries(gacha.RATES).reduce((s, [r, p]) => s + p * candy.transferExp(r), 0);
+  // Cada ✦ de polvo extra al evolucionar cuesta como mínimo EVO_EXP_PER_DUST EXP (suelo por nivel): como mucho esa EXP da expPerPull / 300 ✦ extra.
+  const back = (dustPerPull * shinyExtra + expPerPull / candy.EVO_EXP_PER_DUST) * gacha.DUST_RATE + gifts;
+  assert.ok(back < 0.95 * gacha.COST[1], `${back.toFixed(1)} de ${gacha.COST[1]} (EXP/tirada ${expPerPull.toFixed(0)})`);
+  // Los caramelos no tienen precio: ni la tienda, ni los PNJ, ni el Mercado los comercian; solo la Tienda de Combate (PB).
   assert.ok(!items.ITEMS.candy && !items.ITEMS['wild-candy']);
+  for (const id of exp.CANDY_IDS) { assert.strictEqual(items.ITEMS[id].price, null, id); assert.strictEqual(candy.recycleValue(id), 0, id); }
 });
 
 test('bucle Huevo Misterioso → cosméticos: abrirlo vale menos que comprarlo a un PNJ', () => {

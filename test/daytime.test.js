@@ -70,7 +70,7 @@ test('pull inyecta la hora: tira a las 12:00 y a las 23:30 sin errores y sin cam
   assert.strictEqual(b.results.length, 10);
 });
 
-test('expediciones: quien sale a su hora da un 25 % más de caramelos; el resto, igual', () => {
+test('expediciones: quien sale a su hora da un 25 % más de EXP; el resto, igual', () => {
   const real = Date.now;
   let t = NIGHT;
   Date.now = () => t;
@@ -87,7 +87,7 @@ test('expediciones: quien sale a su hora da un 25 % más de caramelos; el resto,
     assert.strictEqual(r1.time, true);
     assert.strictEqual(r2.time, false);
     // Gastly (fantasma) coincide con la Cueva Celeste además de la hora; Ledyba (bicho) no coincide con la zona
-    assert.ok(r1.candy > r2.candy, `${r1.candy} vs ${r2.candy}`);
+    assert.ok(r1.exp > r2.exp, `${r1.exp} vs ${r2.exp}`);
     // misma hora para un ejemplar sin afinidad: sin bonus
     const p = user({ 74: { n: 1, s: 0 } });
     const geo = p.mons[74][0];

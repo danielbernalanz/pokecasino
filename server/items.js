@@ -10,7 +10,7 @@ const ES = require('./sd-es.json');
 const ITEMS = {
   ticket: { name: 'Ticket Gacha', sprite: 'pass', price: 150, desc: 'Una tirada en cualquier banner.' },
   'rare-candy': { name: 'Caramelo Raro', sprite: 'rare-candy', price: 900, desc: 'Da una estrella a un Pokémon que ya tengas. Es una estrella "ligada": no se puede vender, regalar ni liberar.' },
-  'lucky-egg': { name: 'Huevo Suerte', sprite: 'lucky-egg', price: 300, desc: 'Experiencia doble durante 1 hora.' },
+  'lucky-egg': { name: 'Huevo Fortuna', sprite: 'lucky-egg', price: 300, desc: 'Experiencia de entrenador doble durante 1 hora (para tu nivel de entrenador, no para la EXP de tus Pokémon; esa la da el Huevo Suerte que se equipa).' },
   'amulet-coin': { name: 'Moneda Amuleto', sprite: 'amulet-coin', price: 400, desc: '+10 % sobre tus ganancias netas durante 1 hora y más margen de bonus (el tope sube del 30 % al 45 % de la ventaja de la casa de lo que apuestas).' },
   'shiny-charm': { name: 'Amuleto Iris', sprite: 'shiny-charm', price: null, desc: 'Las próximas 10 tiradas tienen 4 veces más probabilidad de variocolor. Solo como premio.' },
   'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada es legendaria seguro y, si el banner tiene destacadas, una de ellas. Solo como premio o en el Mercado.' },
@@ -88,6 +88,8 @@ Object.assign(ITEMS, require('./bpdata').buildItems());
 for (const [id, sh] of Object.entries(require('./tutor').SHARDS)) ITEMS[id] = { name: sh.name, sprite: sh.sprite, price: null, shard: true, desc: 'Se gasta en el Tutor de movimientos (Caja PC → Movimientos). Cae, poco a poco, en las Expediciones largas.' };
 // Vitaminas y bayas de EVs (ver evs.js): se compran con monedas en la Tienda Poké.
 Object.assign(ITEMS, require('./evs').buildItems());
+// Caramelos Exp. (ver exp.js) y Chapas del Entrenamiento Extremo (ver hyper.js).
+Object.assign(ITEMS, require('./exp').buildItems(), require('./hyper').buildItems());
 // Piedras, objetos de evolución y Cordón Unión (ver evoreq.js).
 Object.assign(ITEMS, require('./evoreq').buildItems());
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
@@ -185,6 +187,8 @@ function use(user, { itemId, pokeId }) {
     throw new Error('Una MT se usa desde la Máquina MT o desde los Movimientos de un Pokémon (Caja PC).');
   } else if (ITEMS[itemId] && (ITEMS[itemId].held || ITEMS[itemId].mint || ITEMS[itemId].capsule || ITEMS[itemId].patch)) {
     throw new Error('Este objeto se usa desde la Caja PC → Datos → Objeto y habilidad de un Pokémon.');
+  } else if (ITEMS[itemId] && (ITEMS[itemId].expCandy || ITEMS[itemId].hyper)) {
+    throw new Error('Esto se usa desde la Caja PC → Datos → Entrenar o desde la Mochila con «Usar».');
   } else if (ITEMS[itemId] && (ITEMS[itemId].ev || ITEMS[itemId].evo)) {
     throw new Error('Esto se usa desde la Caja PC → Datos → Entrenar.');
   } else if (ITEMS[itemId] && ITEMS[itemId].shard) {

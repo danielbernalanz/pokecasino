@@ -1,7 +1,7 @@
 'use strict';
 // Fase B6 «Expediciones AFK»: envía de 1 a 3 Pokémon de la Caja PC a una zona durante 1, 4, 8 o 12 horas reales.
-// Al volver dan caramelos (de la familia de cada participante y comodín), bayas, polvo, algún objeto raro, EXP (niveles sin
-// caramelos), amistad y un hallazgo PEQUEÑO de monedas. Nunca dan Pokémon. Los ejemplares fuera llevan `away = 'exp:<id>'`
+// Al volver dan EXP (como en los juegos; con el tope diario por ejemplar de exp.js), Caramelos Exp., bayas, polvo, algún objeto raro,
+// amistad y un hallazgo PEQUEÑO de monedas. Nunca dan Pokémon. Los ejemplares fuera llevan `away = 'exp:<id>'`
 // y no se pueden liberar, transferir, vender, regalar, intercambiar, evolucionar ni llevar a combates (ver specimen.assertFree).
 // Valor máximo diario por jugador (ver docs/BALANCE.md): monedas ≤ 300 + polvo ≤ 20 ✦ (= 80 monedas) + 1 objeto raro (≤ 172) = 552.
 const crypto = require('crypto');
@@ -14,20 +14,23 @@ const gacha = require('./gacha');
 const evs = require('./evs');
 const daytime = require('./daytime');
 const { BY_ID } = require('./pokedex');
-const { rand, randInt, pick } = require('./rng');
+const { rand, randInt, pick, weighted } = require('./rng');
 
 const HOUR = 3600 * 1000;
 const HOURS = [1, 4, 8, 12];
 const MAX_TEAM = 3;
 const SLOTS = 2;
 const SLOT3_LEVEL = 15; // nivel de entrenador para la tercera expedición simultánea
-const MAX_LEVEL = 100;
 
 const MATCH_BONUS = 0.5; // +50 % de recompensas del ejemplar si comparte tipo con la zona
-const CANDY_PER_HOUR = 1; // caramelos de su familia por hora y participante
-const WILD_PER_HOUR = 1; // caramelos comodín por hora (por expedición, no por participante)
-const LEVEL_EVERY = 2; // +1 nivel cada 2 h de expedición, por participante
-const LEVEL_DAY_CAP = 8; // niveles por ejemplar y día (ganados fuera: sin caramelos)
+// EXP por hora y participante: EXP_BASE + EXP_LEVEL × nivel (a Nv. 50 ≈ 700/h; una expedición de 12 h ≈ 8.400). Se suma al tope diario por ejemplar (exp.js).
+const EXP_BASE = 300;
+const EXP_LEVEL = 8;
+// Caramelos Exp. como botín: ⌈H/4⌉ tiradas por expedición (XS 60 % · S 30 % · M 10 %, 1-2 cada vez) con tope diario; en las largas, a veces uno L.
+const CANDY_WEIGHTS = [['exp-xs', 60], ['exp-s', 30], ['exp-m', 10]];
+const CANDY_DAY_CAP = 8; // caramelos Exp. al día por jugador desde expediciones
+const BIG_CHANCE = { 8: 0.05, 12: 0.12 }; // un Caramelo Exp. L (10.000 EXP), máx. 1 al día
+const LUCKY_CHANCE = { 8: 0.01, 12: 0.03 }; // un Huevo Suerte (objeto equipable), máx. 1 al día
 const FRIEND_PER_HOUR = 5; // con tope diario `bond.CAP.exp` por ejemplar
 const COIN_PER_HOUR = 8; // × (1 + 0,5 × proporción de participantes que coinciden con la zona)
 const COIN_DAY_CAP = 300;
@@ -63,8 +66,8 @@ const ZONE_BY_ID = new Map(ZONES.map((z) => [z.id, z]));
 
 const STATIC = {
   zones: ZONES, evoChance: EVO_CHANCE, zoneEvo: ZONE_EVO, hours: HOURS, maxTeam: MAX_TEAM, slots: SLOTS, slot3Level: SLOT3_LEVEL,
-  caps: { coins: COIN_DAY_CAP, dust: DUST_DAY_CAP, rare: RARE_DAY_CAP, levels: LEVEL_DAY_CAP }, matchBonus: MATCH_BONUS,
-  levelEvery: LEVEL_EVERY, friendPerHour: FRIEND_PER_HOUR,
+  caps: { coins: COIN_DAY_CAP, dust: DUST_DAY_CAP, rare: RARE_DAY_CAP, candies: CANDY_DAY_CAP }, matchBonus: MATCH_BONUS,
+  expBase: EXP_BASE, expLevel: EXP_LEVEL, friendPerHour: FRIEND_PER_HOUR, bigChance: BIG_CHANCE, luckyChance: LUCKY_CHANCE,
 };
 
 const maxSlots = (u) => (u.level >= SLOT3_LEVEL ? SLOTS + 1 : SLOTS);
@@ -72,7 +75,7 @@ const expsOf = (u) => (u.expeditions ||= []);
 
 function dayOf(u) {
   const k = hub.dayKey();
-  if (!u.expDay || u.expDay.day !== k) u.expDay = { day: k, coins: 0, dust: 0, rare: 0, evo: 0 };
+  if (!u.expDay || u.expDay.day !== k) u.expDay = { day: k, coins: 0, dust: 0, rare: 0, evo: 0, candy: 0, big: 0, lucky: 0 };
   return u.expDay;
 }
 // Valor máximo teórico por día en monedas (polvo a 4 monedas y el objeto raro más valioso al tope de compra de un PNJ).
@@ -133,45 +136,44 @@ function claim(u, p) {
   const zone = ZONE_BY_ID.get(e.zone);
   const H = e.hours;
   const d = dayOf(u);
-  const candy = require('./candy');
-  const out = { zone: zone.id, hours: H, members: [], candy: {}, wild: 0, berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null, lovers: 0, evoItem: null, ev: 0, evStat: zone.ev };
+  const exp = require('./exp');
+  const out = { zone: zone.id, hours: H, members: [], exp: 0, candies: {}, evolve: [], pokerus: [], berries: {}, dust: 0, coins: 0, item: null, friend: 0, mats: {}, tm: null, lovers: 0, evoItem: null, ev: 0, evStat: zone.ev };
   // Participantes que siguen existiendo (si una especie se bloqueó, simplemente no cuenta).
   const live = e.team.map((t) => ({ t, m: lookup(u, t) })).filter((x) => x.m);
   const n = live.length;
   let matched = 0;
   const loveF = new Map(live.map((x) => [x.m, bond.lootFactor(x.m)])); // antes de subir la amistad con esta misma expedición
   for (const { t, m } of live) {
+    delete m.away; // vuelve a la Caja (antes de repartir EXP: así ya puede evolucionar)
     const hit = matches(zone, t.id);
     if (hit) matched++;
-    const avgBoost = 1 + m.level / 200; // hasta +50 % a Nv. 100
-    const timeHit = daytime.affinity(t.id) === (e.phase || daytime.phase(e.start)); // Pokémon de día/noche que salen a su hora: +25 % de caramelos
-    const rawCandy = H * CANDY_PER_HOUR * (hit ? 1 + MATCH_BONUS : 1) * (timeHit ? 1 + daytime.EXP_BONUS : 1) * avgBoost;
-    const lf = loveF.get(m); // «Te adora»: +10 % de caramelos (nunca de monedas)
+    const timeHit = daytime.affinity(t.id) === (e.phase || daytime.phase(e.start)); // Pokémon de día/noche que salen a su hora: +25 % de EXP
+    const rawExp = H * (EXP_BASE + EXP_LEVEL * m.level) * (hit ? 1 + MATCH_BONUS : 1) * (timeHit ? 1 + daytime.EXP_BONUS : 1);
+    const lf = loveF.get(m); // «Te adora»: +10 % de EXP (nunca de monedas)
     if (lf > 1) out.lovers++;
-    const c = Math.max(1, lf > 1 ? bond.stochRound(rawCandy * lf) : Math.round(rawCandy));
-    candy.addCandy(u, t.id, c);
-    out.candy[t.id] = (out.candy[t.id] || 0) + c;
-    // EXP: niveles sin caramelos (tope diario por ejemplar y nivel 100).
     const from = m.level;
-    const xd = (m.xd && m.xd.day === hub.dayKey()) ? m.xd : (m.xd = { day: hub.dayKey(), n: 0 });
-    const lv = Math.max(0, Math.min(Math.floor(H / LEVEL_EVERY), LEVEL_DAY_CAP - xd.n, MAX_LEVEL - m.level));
-    m.level += lv;
-    xd.n += lv;
-    if (lv) require('./moves').onLevel(t.id, m, from, m.level);
+    const xr = exp.award(u, t.id, m, lf > 1 ? bond.stochRound(rawExp * lf) : Math.round(rawExp), 'exp'); // con el tope diario por ejemplar y el Huevo Suerte
+    out.exp += xr.exp;
+    if (xr.evo.length) out.evolve.push({ id: t.id, uid: t.uid, to: xr.evo });
     const ev = evs.gain(m, zone.ev, evs.EXP_PER_HOUR * H, 'exp'); // EVs de la estadística de la zona
     out.ev += ev;
     const fr = bond.addFriend(m, FRIEND_PER_HOUR * H, 'exp');
     out.friend += fr;
-    out.members.push({ id: t.id, uid: t.uid, from, to: m.level, friend: fr, ev, time: timeHit, match: hit, candy: c });
-    delete m.away;
+    out.members.push({ id: t.id, uid: t.uid, from, to: m.level, exp: xr.exp, friend: fr, ev, time: timeHit, match: hit, learned: xr.learned, pending: xr.pending });
   }
   // Los que ya no están (bloqueados, etc.) no se cuentan; el resto del botín sigue su curso.
   if (n) {
     const teamF = live.reduce((a, x) => a + loveF.get(x.m), 0) / n; // +10 % por cada ejemplar que te adora, repartido entre el equipo
     const boost = (x) => (teamF > 1 ? bond.stochRound(x * teamF) : x);
-    out.wild = teamF > 1 ? bond.stochRound(H * WILD_PER_HOUR * teamF) : Math.round(H * WILD_PER_HOUR);
-    candy.addWild(u, out.wild);
     const rolls = Math.ceil(H / 4);
+    for (let k = 0; k < rolls; k++) { // Caramelos Exp. (tope diario)
+      const it = weighted(CANDY_WEIGHTS, (x) => x[1])[0];
+      const q = Math.min(boost(randInt(1, 2)), CANDY_DAY_CAP - (d.candy || 0));
+      if (q > 0) { require('./candy').giveExp(u, it, q); d.candy = (d.candy || 0) + q; out.candies[it] = (out.candies[it] || 0) + q; }
+    }
+    if (BIG_CHANCE[H] && (d.big || 0) < 1 && rand() < BIG_CHANCE[H]) { require('./candy').giveExp(u, 'exp-l', 1); d.big = 1; out.candies['exp-l'] = (out.candies['exp-l'] || 0) + 1; }
+    if (LUCKY_CHANCE[H] && (d.lucky || 0) < 1 && rand() < LUCKY_CHANCE[H]) { items.give(u, 'hi-luckyegg', 1); d.lucky = 1; out.lucky = true; }
+    out.pokerus = require('./pokerus').roll(u, live.map((x) => ({ id: x.t.id, m: x.m }))); // Pokérus (muy raro; se contagia dentro del equipo)
     for (let k = 0; k < rolls; k++) {
       const b = pick(Object.keys(items.BERRIES));
       const q = boost(randInt(1, 2));
@@ -207,6 +209,6 @@ function claim(u, p) {
 }
 
 module.exports = {
-  ZONES, ZONE_BY_ID, STATIC, HOURS, MAX_TEAM, SLOTS, SLOT3_LEVEL, MATCH_BONUS, CANDY_PER_HOUR, WILD_PER_HOUR, LEVEL_EVERY, LEVEL_DAY_CAP, FRIEND_PER_HOUR,
+  ZONES, ZONE_BY_ID, STATIC, HOURS, MAX_TEAM, SLOTS, SLOT3_LEVEL, MATCH_BONUS, EXP_BASE, EXP_LEVEL, CANDY_DAY_CAP, BIG_CHANCE, LUCKY_CHANCE, FRIEND_PER_HOUR,
   COIN_PER_HOUR, COIN_DAY_CAP, DUST_DAY_CAP, RARE_DAY_CAP, RARE_CHANCE, RARE_VALUE, BERRY_CAP, maxSlots, dailyMaxValue, view, send, claim,
 };

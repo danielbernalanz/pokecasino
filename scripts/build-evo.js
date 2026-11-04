@@ -37,11 +37,22 @@ const toID = moves.toID;
 const canLearn = (from, mv) => moves.levelMoves(from).some((x) => x.move === mv) || moves.tmCompat(from, mv) || moves.eggMoves(from).includes(mv) || moves.tutorMoves(from).includes(mv);
 
 const req = {};
+const lvl = {}; // nivel mínimo de evolución por especie destino (ausente = sin nivel: piedra, intercambio, amistad)
+const lu = []; // evoluciones «al subir de nivel» (nivel, amistad, objeto equipado, movimiento…): las que ofrece el aviso «¿Quieres que evolucione?»
+const DEFAULT_LEVEL = { 2: 30, 3: 40 }; // «otro» sin nivel en los datos (pasos, golpes críticos, lugares…): un nivel razonable por fase
 for (const p of DEX) {
   if (!p.evolvesFrom) continue;
   const s = sp.get(p.id);
   const prev = sp.get(p.evolvesFrom);
-  if (!s || !prev || s.prevo !== prev.name) continue; // formas regionales: se quedan solo por caramelos
+  if (s && prev && s.prevo === prev.name) {
+    const t0 = s.evoType || 'level';
+    if (t0 !== 'useItem' && t0 !== 'trade') {
+      lu.push(p.id);
+      if (s.evoLevel) lvl[p.id] = s.evoLevel;
+      else if (t0 === 'levelMove' || t0 === 'levelExtra' || t0 === 'other') lvl[p.id] = DEFAULT_LEVEL[p.stage >= 3 ? 3 : 2];
+    }
+  } else { lu.push(p.id); lvl[p.id] = DEFAULT_LEVEL[p.stage >= 3 ? 3 : 2]; } // formas regionales y similares
+  if (!s || !prev || s.prevo !== prev.name) continue; // formas regionales: sin requisito especial
   const r = {};
   const cond = s.evoCondition || '';
   const time = /during the day/.test(cond) ? 'day' : /at night/.test(cond) ? 'night' : null;
@@ -59,5 +70,5 @@ for (const p of DEX) {
   if (Object.keys(r).length) req[p.id] = r;
 }
 const out = path.join(__dirname, '..', 'server', 'evodata.json');
-fs.writeFileSync(out, JSON.stringify({ req }, null, 0) + '\n');
+fs.writeFileSync(out, JSON.stringify({ req, lvl, lu }, null, 0) + '\n');
 console.log(Object.keys(req).length, 'evoluciones con requisito especial →', out);

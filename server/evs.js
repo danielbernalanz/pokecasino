@@ -74,8 +74,9 @@ function add(m, stat, n) {
 function gain(m, stat, n, kind) {
   const k = hub.dayKey();
   if (!m.evd || m.evd.day !== k) m.evd = { day: k, exp: 0, bat: 0 };
-  const g = add(m, stat, Math.min(n, CAPS[kind] - (m.evd[kind] || 0)));
-  m.evd[kind] = (m.evd[kind] || 0) + g;
+  const base = Math.max(0, Math.min(n, CAPS[kind] - (m.evd[kind] || 0)));
+  const g = add(m, stat, base * require('./pokerus').evMult(m)); // Pokérus: el doble de EVs (el tope diario cuenta lo «base»)
+  m.evd[kind] = (m.evd[kind] || 0) + Math.min(base, g);
   return g;
 }
 

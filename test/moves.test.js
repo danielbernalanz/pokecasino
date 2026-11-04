@@ -17,6 +17,7 @@ const sdw = require('../server/showdown');
 const sd = require('../server/sdmap');
 const trainers = require('../server/trainers');
 const exp = require('../server/expedition');
+const xp = require('../server/exp');
 
 let n = 0;
 function user(collection = {}, extra = {}) {
@@ -26,6 +27,8 @@ function user(collection = {}, extra = {}) {
   specimen.syncAll(u);
   return u;
 }
+// Sube al ejemplar hasta el nivel `to` dándole justo la EXP que falta (como un Caramelo Exp.).
+const levelTo = (u, id, to) => { const m = u.mons[id][0]; return xp.award(u, id, m, xp.expAt(id, to) - m.exp, 'item'); };
 const ref = (u, id, i = 0) => ({ id, uid: u.mons[id][i].uid });
 
 test('ejemplares nuevos nacen con los movimientos por nivel de su nivel (últimos 4)', () => {
@@ -63,13 +66,13 @@ test('migración B: ejemplares antiguos se reinician a los 4 últimos movimiento
 test('subir de nivel: hueco libre = aprende solo; con 4 equipados, cola de pendientes', () => {
   const u = user({ 1: { n: 1, s: 0 } });
   const m = u.mons[1][0];
-  const r = candy.levelUp(u, { ...ref(u, 1), times: 5 }); // 5 → 10: Drenadoras 6… Látigo cepa ya, Desarrollo 6, Drenadoras 9
+  const r = levelTo(u, 1, 10); // 5 → 10: Drenadoras 6… Látigo cepa ya, Desarrollo 6, Drenadoras 9
   assert.strictEqual(m.level, 10);
   assert.deepStrictEqual(r.learned, ['growth'], 'ocupa el 4º hueco');
   assert.deepStrictEqual(r.pending, ['leechseed']);
   assert.deepStrictEqual(m.pending, ['leechseed']);
   assert.ok(!m.learned.includes('leechseed'));
-  candy.levelUp(u, { ...ref(u, 1), times: 5 }); // 10 → 15
+  levelTo(u, 1, 15); // 10 → 15
   assert.deepStrictEqual(m.pending, ['leechseed', 'razorleaf', 'poisonpowder', 'sleeppowder']);
   // Aprender reemplazando.
   const before = m.sdMoves.slice();
