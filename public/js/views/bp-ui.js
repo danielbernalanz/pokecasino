@@ -19,7 +19,7 @@ export function bpTab() {
   return h('div', { class: 'stack' },
     h('div', { class: 'card' }, h('h3', {}, `🎖️ Tienda de Combate · ${fmt(bp)} PB`),
       h('p', { class: 'small muted' }, 'Los Puntos de Batalla (PB) solo se ganan combatiendo: victorias contra la CPU (1–3 PB, máx. 30 al día) combates contra jugadores (3 si ganas, 1 si pierdes, máx. 20 al día) y la Torre Batalla (1–3 por victoria y +10 por ronda, máx. 40 al día). No se pueden regalar, vender ni cambiar por monedas. Aquí se gastan en objetos para llevar en combate, mentas y habilidades. Se equipan desde Caja PC → Datos → Equipo.')),
-    group('Objetos para llevar', (it) => it.held), group('Mentas (cambian el efecto de la naturaleza)', (it) => it.mint), group('Habilidades', (it) => it.capsule || it.patch));
+    group('Objetos para llevar', (it) => it.held), group('Mentas (cambian el efecto de la naturaleza)', (it) => it.mint), group('Habilidades', (it) => it.capsule || it.patch), group('Entrenamiento: Chapas (Entrenamiento Extremo) y Caramelos Exp.', (it) => it.hyper || it.expCandy));
 }
 
 /** Página «Objeto» de la ficha: objeto equipado, habilidad, mentas. `m` viene de pc:box. */

@@ -191,7 +191,7 @@ function migrate(u) {
   const give = candiesFor(total);
   u.items ||= {};
   for (const [id, q] of Object.entries(give)) u.items[id] = (u.items[id] || 0) + q;
-  u.candyOld = { n, exp: total, at: u.expMig }; // constancia de lo convertido (los caramelos viejos desaparecen del jugador)
+  u.candyOld = { n, exp: total, at: u.expMig, map: candy }; // constancia de lo convertido (por si hubiera que revertir): los caramelos viejos desaparecen del jugador
   delete u.candy;
   return { candies: n, exp: total, items: give };
 }
