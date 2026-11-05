@@ -33,6 +33,7 @@ import quiz from './views/quiz.js';
 import crash from './views/crash.js';
 import poker from './views/poker.js';
 import market from './views/market.js';
+import gts from './views/gts.js';
 import trainer from './views/trainer.js';
 import megaView from './views/mega.js';
 import news from './views/news.js';
@@ -43,7 +44,7 @@ import { buildSidebar, buildTabbar, markNav, refreshNew, markVisited, resetVisit
 installEmoji(); // emojis genéricos → iconos de Pokémon (pkicons.js)
 
 duels.title = 'Duelos rápidos'; // los duelos de siempre (1 Pokémon a ciegas) pasan a llamarse así junto a los nuevos Combates
-const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, captura, raids, criadero, shop, bag, workshop, megaView, market, ranking, admin, ...hubs];
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, captura, raids, criadero, shop, bag, workshop, megaView, market, gts, ranking, admin, ...hubs];
 
 // ---------- Autenticación ----------
 let mode = 'login';

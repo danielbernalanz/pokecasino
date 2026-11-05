@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.05-aa",
+    "date": "2026-11-05",
+    "title": "GTS: intercambia Pokémon por Pokémon",
+    "items": [
+      "🌐 Nuevo apartado «GTS» (Mercado → Comercio), como la Global Trade Station de los juegos: depositas un Pokémon de tu Caja y dices qué pides: una especie que hayas visto, sexo (cualquiera, macho o hembra) y rango de nivel (cualquiera, 1-10, 11-20… 91-100). Pestañas Depositar, Buscar y Mis depósitos.",
+      "🔁 En Buscar eliges el Pokémon que quieres y ves los depósitos con lo que piden; si tienes un ejemplar que lo cumple, el intercambio es inmediato. Se cambian los ejemplares exactos con su nivel, EXP, movimientos, objeto, Ball, marca, tamaño, IV, naturaleza, Teratipo y entrenador original (no EVs ni amistad). Es un 1×1 sin monedas, y cuenta como intercambio real para las evoluciones por intercambio de los dos.",
+      "🧾 Depositar cuesta 150 monedas (no se devuelven), hasta 3 depósitos por jugador, caducan a los 7 días y vuelven a tu Caja intactos, y puedes retirarlos cuando quieras. Lo que recibes cuando alguien cambia contigo pasa solo a tu Caja (o espera en la GTS si no te cabe) y te llega un aviso.",
+      "🛡️ Mismos topes que los regalos: hace falta nivel 3 y 3 días de cuenta (y no haber sido ayudado por la Enfermera Joy hace menos de 24 h), 10 Pokémon y 2 legendarios o míticos recibidos al día y, además, 5 intercambios al día por cuenta. No se pueden depositar tu compañero ni Pokémon que estén de expedición, en el Criadero o en un combate."
+    ]
+  },
+  {
     "version": "2026.11.05-z",
     "date": "2026-11-05",
     "title": "Teraincursiones cooperativas",

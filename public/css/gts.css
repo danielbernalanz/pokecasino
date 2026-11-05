@@ -1,0 +1,58 @@
+/* GTS: intercambio de Pokémon por Pokémon (views/gts.js) */
+.view-gts { min-width: 0; }
+.view-gts > .tabs { margin-bottom: 8px; }
+.gts-body { min-width: 0; }
+.gts-tabs .tab { position: relative; }
+.gts-tabs .new-dot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); }
+.gts-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.gts-col { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.gts-col .section-title { margin: 0; }
+.gts-col h4 { margin: 4px 0 0; font-size: 13px; }
+.gts-form { background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 10px 12px; }
+.gts-species { width: 100%; min-width: 0; }
+.gts-form select { width: 100%; }
+.gts-sum { background: var(--panel2); border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px; min-height: 38px; }
+.gts-note { margin: 0; line-height: 1.35; }
+.gts-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; min-width: 0; }
+.gts-card { background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 10px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.gts-card.can { border-color: var(--gold); }
+.gts-card.done { border-color: var(--gold); box-shadow: var(--card-sh), 0 0 14px #ffcb0555; }
+.gts-card .btn { min-height: 40px; }
+.gts-card-in { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; min-width: 0; }
+.gts-arrow { font: 700 22px var(--pixel); color: var(--gold); }
+.gts-mon { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.gts-mon img { width: 56px; height: 56px; flex: none; image-rendering: pixelated; }
+.gts-mon.want img { opacity: .9; filter: drop-shadow(0 0 4px #ffcb05aa); }
+.gts-mon-txt { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
+.gts-mon-txt b, .gts-mon-txt .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gts-mon-txt .types { justify-content: flex-start; flex-wrap: wrap; }
+.gts-mon-txt .types .type { font-size: 9px; padding: 1px 5px; }
+.gts-state { min-width: 0; }
+.gts-log ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.gts-only { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.gts-only input { width: 18px; height: 18px; min-width: 0; padding: 0; flex: none; accent-color: var(--gold); }
+.gts-search .row { align-items: center; }
+.gts-search .gts-species { flex: 1 1 220px; width: auto; }
+@media (max-width: 640px) {
+  .gts-grid { grid-template-columns: minmax(0, 1fr); }
+  .gts-list { grid-template-columns: minmax(0, 1fr); }
+  .gts-card-in { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; }
+  .gts-card-in .gts-arrow { grid-column: 2; grid-row: 1; }
+  .gts-card-in .gts-mon.want { grid-column: 1 / -1; }
+  .gts-tabs .tab { padding: 6px 4px; font-size: 12px; }
+  .gts-tabs .tab-ico { display: none; }
+  .gts-mon img { width: 48px; height: 48px; }
+}
+/* Escritorio: cabecera y pestañas fijas; el contenido se desplaza dentro de su panel */
+@media (min-width: 641px) {
+  .main.view-gts { display: flex; flex-direction: column; overflow: hidden; }
+  .view-gts > * { flex: none; }
+  .view-gts > .gts-body { flex: 1 1 0; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  .view-gts .say.compact { margin-bottom: 4px; }
+  .view-gts .say-av { width: 40px; height: 40px; }
+  .view-gts .say-box { padding: 4px 24px 4px 12px; }
+  .view-gts .say-who { display: none; }
+  .view-gts .tabs { margin-bottom: 4px; flex-wrap: wrap; gap: 4px; }
+  .view-gts .tabs .tab { padding: 6px 10px 5px; font-size: 13px; }
+  .gts-grid .afk-pick { max-height: calc(var(--av) - 230px); min-height: 120px; }
+}

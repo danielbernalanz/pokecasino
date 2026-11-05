@@ -29,6 +29,7 @@ export const META = {
   duels: { t: 'Duelos rápidos', d: 'Un Pokémon a ciegas contra otro entrenador', art: 68, tone: 'r', ico: '🥊' },
   mega: { t: 'Evento Mega', d: 'Megapiedras y bote Mega', art: 6, tone: 'y', ico: '💠' },
   market: { t: 'Mercado', d: 'Compra y vende Pokémon y objetos', art: 53, tone: 'y', ico: '🏪' },
+  gts: { t: 'GTS', d: 'Intercambia Pokémon por Pokémon con otros entrenadores', art: 202, tone: 'b', ico: '🌐' },
   shop: { t: 'Tienda', d: 'Compra objetos y bayas', art: 352, tone: 'g', ico: '🛍️' },
   workshop: { t: 'Taller', d: 'Fabrica Pokémon y MT, cambia polvo y recicla', art: 68, tone: 'p', ico: '🔨' },
   bag: { t: 'Mochila', d: 'Tus objetos: usar, equipar, enseñar y vender', art: 113, tone: 'y', ico: '🎒' },
@@ -49,7 +50,7 @@ export const SECTIONS = [
     { name: 'Tu equipo', items: ['gacha', 'pc', 'pokedex', 'huerto', 'criadero'] },
     { name: 'Aventura', items: ['captura', 'combates', 'raids', 'expediciones', 'duels', 'mega'] }] },
   { id: 'mercado', label: 'Mercado', ico: { item: 'nugget' }, say: { mon: 352, who: 'Kecleon', text: 'Compra, vende y haz buenos negocios con otros entrenadores.' }, groups: [
-    { name: 'Comercio', items: ['market', 'shop'] },
+    { name: 'Comercio', items: ['market', 'gts', 'shop'] },
     { name: 'Taller', items: ['workshop'] }] },
   { id: 'entrenador', label: 'Entrenador', ico: { badge: 1 }, say: { mon: 25, who: 'Pikachu', text: '¡Pika! Tus medallas, tu ranking y las novedades.' }, groups: [
     { name: 'Tú', items: ['bag', 'trainer', 'ranking', 'news'] }] },
@@ -182,6 +183,7 @@ const TIPS = [
   { id: 'captura', text: 'En Captura te esperan Pokémon salvajes: debilítalos, duérmelos y lanza una Ball. ¡Hay legendarios!', go: 'A la hierba' },
   { id: 'expediciones', text: 'Tus Pokémon pueden salir de expedición mientras no estás: vuelven con EXP, Caramelos Exp. y bayas.', go: 'Explorar' },
   { id: 'combates', text: '¡Combates de verdad! Prepara tu equipo y reta a un entrenador.', go: 'A combatir' },
+  { id: 'gts', text: 'En la GTS puedes cambiar un Pokémon tuyo por otro que te falte: deposítalo, di cuál quieres y otro entrenador te lo cambia.', go: 'Ir a la GTS' },
   { id: 'shop', text: 'En la Tienda hay objetos y bayas que te vendrán de maravilla. Los tuyos, en la Mochila.', go: 'Ir a la Tienda' },
   { id: 'roulette', text: 'La Ruleta de Tipos tiene una casilla Poké Ball… ¡cuidado!', go: 'Jugar' },
   { id: 'plinko', text: 'Plinko: suelta una Poké Ball y que ruede la suerte.', go: 'Jugar' },

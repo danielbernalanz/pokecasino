@@ -882,3 +882,28 @@ Con el tope de 10 al día lo máximo que se podría «sacar» liberando son ≤ 
 
 ### Dificultad (simulación, `test/raid.test.js` «equilibrio»)
 Con un Pokémon sin entrenar (Nv. 50, 0 EV, sus movimientos por nivel), jugando siempre el movimiento de más daño y teracristalizando si coincide el tipo, en solitario con 3 aliados: **1★ ≈ 100 % · 2★ ≈ 100 % · 3★ ≈ 95 % · 4★ ≈ 55-80 % · 5★ ≈ 30-50 %** (según tipos), 4-15 turnos. Con EV, buenos tipos y compañeros reales sube bastante.
+
+## GTS: intercambio de Pokémon por Pokémon (server/gts.js · test/gts.test.js) — 05-11-2026
+
+Como la Global Trade Station de Platino / Blanco y Negro. Está en **Mercado → Comercio → 🌐 GTS**. Es un trueque de **ejemplares exactos**: ni entran ni salen monedas entre jugadores, así que no hay precio ni bucle de monedas posible.
+
+| Pieza | Regla |
+|---|---|
+| **Depositar** | Un ejemplar de la Caja (el mismo que eliges) sale de tu Caja y se guarda entero. Se indica qué se pide: **especie** (solo las «vistas»: la Pokédex no lleva un registro de vistos, así que cuenta lo que tienes, lo que tienes con candado y lo que has llegado a tener, `u.dexSeen`), **sexo** (cualquiera / ♂ / ♀; una especie de sexo fijo o sin sexo solo admite lo que es) y **nivel** (cualquiera, 1-10, 11-20 … 91-100) |
+| **Bloqueos** | Los mismos que para vender/regalar (el ejemplar fuera de expedición o Criadero) y los de uso: compañero, combate en curso, carrera del Alto Mando o Teraincursión con ese ejemplar |
+| **Comisión** | **150 monedas** por depósito, no reembolsables (si retiras o caduca tampoco). Es un sumidero (`gts_fee` en el historial y el panel de economía). Se ha elegido por ser ≈ la comisión de publicar una orden de 10.000 en el Mercado (1,5 %): lo bastante para que no se use como almacén gratis ni se publiquen y retiren depósitos en bucle, y casi nada frente a los ≈ 2.500 monedas al día sin apostar |
+| **Límites** | 3 depósitos por jugador (abiertos, caducados sin recoger o con intercambio pendiente) · caducidad a los **7 días** (el ejemplar vuelve intacto a la Caja; si ya tienes 5 de la especie y no cabe, espera guardado y se recoge cuando haya sitio) |
+| **Intercambiar** | Quien tiene un ejemplar que cumple lo pedido lo ofrece y el intercambio es **inmediato**, sin esperas ni aceptación. Los dos reciben un ejemplar nuevo con los rasgos del otro (`traitsOf/applyTraits`: Ball, marca, tamaño, IV, naturaleza, Teratipo, habilidad oculta, entrenador original) **y, como en los juegos, su nivel, EXP, movimientos, objeto y mote**. **No viajan EVs ni amistad** (empiezan a cero, como en los regalos) |
+| **Lo que recibe el dueño** | Pasa **directo a su Caja** con un aviso (toast); si no cabe (ya tiene 5 de esa especie), el depósito queda «hecho» y lo recibido **espera en la GTS** hasta que haya sitio (al entrar en la GTS o cada 10 min se entrega solo) |
+| **Evolución por intercambio** | El sistema evoluciona a mano (Caja PC → Evolución) y las evoluciones por intercambio gastan un «intercambio pendiente» o un Cordón Unión (`evoreq.noteTrade`). La GTS reutiliza lo mismo que los regalos y el Mercado: cada intercambio da **un intercambio pendiente a cada parte** (máx. 3 guardados y 2 nuevos al día), así Kadabra, Machoke, Graveler, Haunter… y los de objeto (Roca del Rey, Revestimiento Metálico…) evolucionan después exactamente igual. No existe la Piedra Eterna en el juego, así que no hay excepción que aplicar |
+
+### ¿El nivel que viaja abre un bucle de EXP entre cuentas?
+Al regalar, el nivel/EXP no viaja precisamente para que una cuenta secundaria no pueda subir Pokémon y pasarlos a la principal. En la GTS sí viaja (como en los juegos) porque es un **1 por 1**: cada parte entrega su propio ejemplar y recibe el de la otra, así que la EXP que gana una cuenta la pierde la otra; no se crea EXP. Lo que sí podría hacer una cuenta secundaria es «entrenar» en paralelo y mover ese trabajo a la principal, y eso se acota así (decisión: **mantener el nivel y poner topes**, en vez de quitarlo):
+- Solo cuentas con nivel 3 y 3 días, sin ayuda de la Enfermera Joy en 24 h (`transfer.canGift`), como al regalar.
+- **5 intercambios al día por cuenta** (como oferente o como dueño del depósito) → como mucho 5 ejemplares con nivel entran por día, y cada uno cuesta un Pokémon propio (con su nivel) a quien lo recibe.
+- Los topes de regalos compartidos: **10 Pokémon y 2 legendarios o míticos recibidos al día** (`pokeInCheck/notePokeIn`), para el que ofrece y para el dueño.
+- La EXP por combate y expedición ya tiene un tope diario por ejemplar, y a cuentas nuevas se les cierra la GTS. Lo que no se puede evitar (y ya pasaba con regalos y Mercado) es que dos amigos se pasen Pokémon entre sí; el valor que se mueve queda acotado por esos topes.
+- No se obtiene nada que no se pudiera obtener: el nivel de un ejemplar vale como mucho el de uno que ya existe en el casino.
+
+### Cómo se mide (`test/gts.test.js`, < 1 s)
+Depositar/retirar (intacto, comisión no reembolsable), máximo de depósitos, comisión, caducidad (vuelve a la Caja o espera si no cabe), requisitos de especie/sexo/nivel, carrera de dos ofertas al mismo depósito (solo gana una y la otra no pierde nada), rasgos y nivel conservados sin EVs ni amistad, topes de `transfer.js` (cuentas nuevas, 2 legendarios, 10 recibidos al día), 5 intercambios al día, evolución por intercambio y que no se duplica ni se pierde ningún ejemplar.

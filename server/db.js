@@ -14,6 +14,7 @@ const empty = () => ({
   feed: [],
   state: { jackpot: 10000 },
   market: { orders: [], trades: [], history: {}, nextId: 1 },
+  gts: { deps: [], log: [], nextId: 1 },
   escrow: {},
 });
 
@@ -38,6 +39,7 @@ function load(raw) {
   Object.assign(data, empty(), raw || {});
   data.market = Object.assign({ orders: [], trades: [], history: {}, nextId: 1 }, data.market);
   data.escrow ||= {};
+  data.gts = Object.assign({ deps: [], log: [], nextId: 1 }, data.gts);
   byName.clear();
   for (const [id, u] of Object.entries(data.users)) {
     // Una cuenta corrupta (sin nombre de texto) no debe tumbar la carga de todas las demás.

@@ -32,6 +32,7 @@ const { MOVES } = require('./games/battle');
 const items = require('./items');
 const healer = require('./heal');
 const market = require('./market');
+const gts = require('./gts');
 const events = require('./events');
 const blackjack = require('./games/blackjack');
 const videopoker = require('./games/videopoker');
@@ -173,6 +174,7 @@ const STATIC = {
   quiz: quiz.STATIC,
   capture: capture.STATIC,
   tera: require('./tera').STATIC,
+  gts: gts.STATIC,
   raid: require('./raid').STATIC,
   balls: balls.STATIC,
 };
@@ -718,6 +720,12 @@ io.on('connection', (socket) => {
   on('poker:action', holdem.action);
   on('gift:coins', giftCoins);
   on('gift:poke', giftPoke);
+  on('gts:state', (u) => gts.state(u), { push: false });
+  on('gts:search', gts.search, { push: false });
+  on('gts:deposit', gts.deposit);
+  on('gts:cancel', gts.cancel);
+  on('gts:offer', gts.offer);
+  on('gts:claim', gts.claim);
   on('chat:send', chat, { push: false });
   on('leaderboard', leaderboard, { push: false });
   on('player:view', viewPlayer, { push: false });
@@ -769,6 +777,7 @@ db.init().then(() => {
   if (stopping) return;
   // Lo que quedó en juego si la versión anterior se apagó de golpe vuelve a sus dueños.
   market.init();
+  gts.init();
   npc.start();
   const back = db.refundEscrow();
   if (back.n) console.log(`  ↩️  Devueltas ${back.total} monedas en juego a ${back.n} apuesta(s)/mesa(s) pendientes`);
