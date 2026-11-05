@@ -752,3 +752,59 @@ Fijas por ejemplar (se derivan de su `uid`): **Wurmple** → Silcoon o Cascoon (
 * **Día de Pago:** cada uso que acierta esparce **5 × el nivel** de quien lo usa (nivel del combate); se cuenta del **registro del combate** (`|move|p1a: …|Pay Day|…`, sin los usos que fallan, los del rival ni los de los Pokémon que lo usan contra un objetivo inmune) al **ganar** y cuenta para el mismo tope diario (y se duplica con la Moneda Amuleto). Meowth, Persian y Perrserker lo aprenden por nivel (datos de Escarlata/Púrpura).
 * **Recogida:** tras **cada victoria premiada**, cada Pokémon del equipo con la habilidad tiene un **10 %** de encontrar un objeto de una tabla por nivel (1-24 / 25-49 / 50-74 / 75-100): Bayas del Huerto, Caramelos Exp. XS/S, y raros (≤ 6 %): Huevo Fortuna, Piedra de evolución al azar y, a niveles altos, Caramelo Raro (1-2 %). **Tope: 5 hallazgos al día.** Se muestra en la pantalla final como «¡Meowth encontró …!».
 * Sin creación de monedas por encima de los topes documentados: Recogida no da monedas, el Día de Pago y la Moneda Amuleto trabajan dentro de las 800 diarias, y el EXP y las demás recompensas siguen con sus topes (10 victorias, EXP por ejemplar, 12.000 EXP en caramelos, 30 PB).
+
+## Captura de Pokémon salvajes (server/capture.js, capzones.js, balls.js, catchdata.json · test/capture.test.js) — 05-11-2026
+
+Apartado nuevo **🌿 Captura** (Pokémon → Aventura). Reproduce los juegos (Gen. 8/9) con RNG de casino y **sin ningún bucle de monedas rentable**: capturar nunca da monedas y cada captura cuesta, de media, más de lo que vale el Pokémon. Todo se calcula en el servidor (`crypto`); el cliente solo pide «buscar», «atacar», «lanzar Ball» o «huir».
+
+### Cómo funciona
+| Pieza | Regla |
+|---|---|
+| **Rutas** (`capzones.js`) | 13 zonas de Kanto con tablas de encuentros como las de los juegos: `[especie, nivel mín., nivel máx., peso, hora]`. Pesos = % de la tabla de los juegos (aproximado); hay Pokémon de día y de noche (`daytime.js`, hora de España). Las zonas se abren con medallas (0–8). Estructura `REGIONS[]` lista para más regiones |
+| **Tope diario** | **30 encuentros por jugador y día** (día UTC como el resto de topes). Gastar uno es buscar, no capturar: huir o que el salvaje escape también lo gasta. Un solo encuentro abierto a la vez (se conserva si se recarga la página) |
+| **Ratio real** | `catchdata.json` sale de `scripts/gen-catch.js` (PokeAPI `pokemon_species.csv`: `capture_rate` y `base_happiness`; pokemon-showdown no los trae). Pikachu 190, Magikarp 255, Onix 45, Chansey 30, legendarios 3 |
+| **Fórmula** | `a = ((3·PSmáx − 2·PSact) · ratio · nivel · Ball · estado) / (3·PSmáx)`; nivel = `(30 − nivel)/10` por debajo del 20 (8.ª gen.). Si `a ≥ 255`, captura segura; si no, 4 comprobaciones de sacudida con `b = 65536 / (255/a)^0,1875`. Estados: dormido/congelado ×2,5; paralizado/envenenado/quemado ×1,5 |
+| **Captura crítica** | `C = ⌊a·m/6⌋` sobre 256, con `m` según las especies registradas en tu Pokédex: >600 → 2,5 · >450 → 2 · >300 → 1,5 · >150 → 1 · >30 → 0,5 · ≤30 → 0. Una sola sacudida y una sola comprobación |
+| **Debilitar** | Atacas con cualquier Pokémon libre de tu Caja (daño de 5.ª gen. con sus estadísticas reales, STAB y tipos) o le pones un estado (dormir, paralizar, quemar, envenenar, congelar; con la precisión y las inmunidades del movimiento). Falso Tortazo nunca lo debilita (deja 1 PS). Veneno y quemadura bajan PS sin rematarlo. El salvaje **no contraataca** (simplificación: no hay PS del equipo) pero puede **huir** (6 % por turno; nunca dormido ni congelado; 60 turnos como máximo) y puede **debilitarse** (encuentro perdido) |
+| **Aparición masiva** | Cada tramo de 4 h hay una (6 al día, determinista por tramo y igual para todos) en una zona al aire libre: 40 % de los encuentros de esa zona son de esa especie |
+| **Clima** | Despejado 55 % · lluvia 25 % · niebla 20 %, por zona y tramo de 6 h (sin clima en cuevas ni torres). Con lluvia los Pokémon de Agua pesan ×1,5 |
+| **Marcas** (`m.mark`) | Una por encuentro como mucho: **Rara** 1/1000 · **Mini** (tamaño 0) · **Jumbo** (tamaño 255) · Aparición masiva 1/10 (solo en ella) · Lluvia/Niebla 1/50 con ese clima · Amanecer/Mediodía/Atardecer/Noche 1/50 en esa franja. Se ven en la ficha de la Caja PC con su título |
+| **Tamaño** (`m.size`) | 0–255 (suma de dos dados: campana con extremos rarísimos, ≈ 1/16.000 cada uno); etiqueta Minúsculo / Diminuto / Pequeño / Normal / Grande / Enorme / Gigante |
+| **Variocolor / habilidad oculta** | Variocolor 1/1024 por encuentro (×2 con el evento de fin de semana); habilidad oculta 2 % si la especie la tiene; IV 0–31, naturaleza y género al azar como en los juegos |
+| **Legendarios de encuentro** | Articuno, Zapdos y Moltres (Nv. 50, 5 medallas) y Mewtwo (Nv. 70, 8 medallas y ser Campeón), ratio real 3. **Una sola captura por jugador y especie**; no huyen; cada intento gasta un encuentro y solo hay uno al día por legendario, así que si escapa o se debilita se puede repetir otro día |
+| **Ejemplar capturado** | Entra con `gacha.grant` como cualquier ejemplar: Pokédex, Caja PC, colecciones. Guarda `level`/`exp` reales, `ivs`, `nature`, `ha`, `friendship` (la base de la especie, 150 con Amigo Ball), `ball`, `mark`, `size` y `caught` (zona, nivel). Con 5 estrellas la captura se convierte en polvo (como el Gacha). Los movimientos son los de su nivel |
+
+### Poké Balls (Tienda Poké → ⚪ Poké Balls)
+Precios ≈ 0,6 × el precio en yenes de los juegos (sumidero de monedas). La **Master Ball** es la del Gacha (premios y Mercado): en Captura vale 100 %; no se compra.
+
+| Ball | Precio | Efecto real |
+|---|---|---|
+| Poké | 120 | ×1 |
+| Super | 360 | ×1,5 |
+| Ultra | 480 | ×2 |
+| Ocaso | 600 | ×3 de noche |
+| Rápida | 600 | ×5 en el primer turno |
+| Turno | 600 | `1 + turnos·1229/4096`, máx. ×4 (turno 10) |
+| Red | 600 | ×3,5 contra Agua y Bicho |
+| Nido | 600 | `(41 − nivel)/10` hasta el nivel 29 |
+| Acopio | 600 | ×3,5 si ya tienes la especie |
+| Lujo | 600 | ×1; la amistad sube ×1,5 (`bond.addFriend`, mismos topes diarios) |
+| Amigo | 180 | ×1; llega con 150 de amistad |
+| Sanación | 180 | ×1 |
+| Master | — | 100 % |
+
+**Herencia de la Ball en el Criadero** (`balls.inherit`, regla de los juegos): el bebé nace en la Ball de la madre (la hembra, o el que no es Ditto); si los padres son de la misma especie, en la de uno de los dos al azar; Master Ball y ejemplares sin Ball (Gacha, huevos antiguos) dan Poké Ball. Se ve en el huevo y en el bebé. Regalar o vender un ejemplar no conserva su Ball, marca ni tamaño (igual que los IV: la copia nueva es un ejemplar nuevo).
+
+### Economía (por qué no es rentable)
+El valor máximo de un Pokémon capturado es lo que se saca liberándolo (polvo × 4; los PNJ pagan menos): **Común 20 · Poco común 48 · Rara 120 · Épica 320 · Legendaria 680**, ×3 si es variocolor (1/1024). Las rutas solo tienen Comunes, Poco comunes y unas pocas Raras (Onix, Kangaskhan, Rhydon). Los ataques son gratis, así que el jugador ideal baja a 1 PS, duerme (×2,5) y lanza **una** Ball barata: aun así **el precio de la Ball dividido entre la probabilidad de captura supera siempre el valor de reventa**:
+
+| Caso | Valor de reventa | Coste esperado de capturarlo (jugador ideal) |
+|---|---|---|
+| Común (Pidgey nv. 3, 1 PS dormido, Poké Ball) | 20 | 120 (captura segura) |
+| Rara con poco ratio (Onix nv. 13, 1 PS dormido, Poké Ball) | 120 | ≈ 150 (peor caso de todas las rutas: valor / coste ≈ 0,85) |
+| Rara sin debilitar (Kangaskhan nv. 26, PS llenos, Poké Ball) | 120 | ≈ 1.000; con 50 % de PS y sin estado ≈ 600; 1 PS dormido ≈ 220 |
+| Legendario (Articuno, 1 PS dormido) | 680 (y solo una vez) | ≈ 1.700 con Poké Ball (≈ 4.000 con Ultra; 18.000 sin debilitar) |
+
+`test/capture.test.js` lo comprueba para **cada especie y nivel de cada ruta** (con la mejor Ball posible de cada tipo, 601+ especies para críticas, Ocaso de noche, Nido, Red y Acopio activos, Turno a ×4, etc.) y con una **simulación de 3.000 encuentros por zona** con el jugador ideal (el valor devuelto es siempre < 90 % del gasto). Si una especie pudiera evolucionar por nivel dentro de su rango de encuentro, se cuenta el valor de su evolución (por eso no hay Chansey, Golbat ni Primeape: sus evoluciones por amistad o nivel valen más que capturarlos; el test lo detectaría). Como mucho un día entero da 30 capturas, es decir, ≥ 3.600 monedas en Balls para ≤ 600 de reventa.
+
+Lo que sí da la captura es **objetivo** (elegir qué especie, Ball, marca o tamaño) y progreso de colección: una Pokédex de comunes sale a ≈ 150-250 monedas por especie dirigida en lugar de las 150 por tirada al azar del Gacha, pero los Pokémon salen con el nivel y la amistad de la ruta (y sin ventajas de monedas). Los **legendarios de encuentro** abaratan el camino a las Aves y a Mewtwo para las colecciones (una sola vez por cuenta, con medallas y la Liga como filtro y ≈ 1.700 monedas de Balls de media en lugar de ≈ 51.000 de Gacha): es el único «atajo» y está limitado a 4 Pokémon por cuenta. Master Ball: sin cambios (se sigue ganando cada 25 niveles, como Campeón y en el Mercado).

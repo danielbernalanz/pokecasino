@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026.11.05-w",
+    "date": "2026-11-05",
+    "title": "Captura de Pokémon salvajes",
+    "items": [
+      "🌿 Nuevo apartado «Captura» (Pokémon → Aventura): 13 rutas de Kanto con las tablas de encuentros de los juegos, distintas de día y de noche (hora de España), y 30 encuentros al día por jugador. Debilita al salvaje con cualquier Pokémon de tu Caja (Falso Tortazo nunca lo debilita), duérmelo o paralízalo y lanza la Ball: puede huir o debilitarse, y entonces se pierde el encuentro.",
+      "⚪ Fórmula de captura real de los juegos: ratio de cada especie, PS restantes, estado (dormido ×2,5), Ball, bonus de nivel bajo, cuatro sacudidas y captura crítica según las especies de tu Pokédex. Animación de la Ball con 1–3 sacudidas, escape o captura (la crítica es una sola sacudida).",
+      "🛍️ 12 Poké Balls con sus efectos reales en la Tienda Poké: Poké, Super, Ultra, Ocaso, Rápida, Turno, Red, Nido, Acopio, Lujo, Amigo y Sanación. La Master Ball del Gacha captura al 100 %. La Ball queda guardada en el Pokémon y se hereda en el Criadero (la de la madre, o la del que no es Ditto).",
+      "👥 Apariciones masivas cada 4 horas, clima por ruta, marcas (Rara 1/1000, hora, clima, aparición masiva, Mini y Jumbo) y tamaños de 0 a 255, visibles en la ficha de la Caja PC. Los legendarios (Articuno, Zapdos, Moltres y Mewtwo) se pueden capturar una sola vez, con medallas; si escapan o se debilitan, vuelves a intentarlo otro día.",
+      "⚖️ Capturar no da monedas: la Ball cuesta más de lo que vale el Pokémon, incluso debilitándolo gratis. Detalle en BALANCE.md y ANTIABUSO.md."
+    ]
+  },
+  {
     "version": "2026.11.05-u",
     "date": "2026-11-05",
     "title": "Medallas de gimnasio, Alto Mando y dinero de combate",
