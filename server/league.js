@@ -138,12 +138,13 @@ function eloDelta(ra, rb, score) { return Math.round(K * (score - expected(ra, r
  * @param {number} turns
  * @returns {{rated: boolean, why?: string, side?: object[]}}
  */
-function record(players, format, winner, turns) {
+function record(players, format, winner, turns, forfeit = false) {
   if (!FORMATS.includes(format)) return { rated: false, why: 'formato' };
   const [a, b] = players;
   if (!a || !b || a.id === b.id) return { rated: false, why: 'misma cuenta' };
   if (!ok(a) || !ok(b)) return { rated: false, why: 'cuenta nueva' };
-  if (turns < MIN_TURNS) return { rated: false, why: `menos de ${MIN_TURNS} turnos` };
+  // Rendirse o abandonar antes de tiempo cuenta como derrota puntuada (flag `forfeit`): si no, rendirse al instante evitaría perder puntos.
+  if (turns < MIN_TURNS && !forfeit) return { rated: false, why: `menos de ${MIN_TURNS} turnos` };
   const La = ensure(a), Lb = ensure(b);
   const day = dayOf();
   for (const [L] of [[La], [Lb]]) if (!L.vs || L.vs.day !== day) L.vs = { day, n: {} };

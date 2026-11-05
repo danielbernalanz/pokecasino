@@ -97,12 +97,13 @@ test('Clasificatoria por la cola: nivel 50, sin apuesta ni amistad; solo con otr
   assert.ok(bat.ranked && bat.mode === 'pvp' && bat.wager === 0 && bat.affection === false && bat.level === 'fair');
   assert.strictEqual(r.battle.ranked, true);
   assert.strictEqual(sdw.listPublic().length, 0, 'no aparece en retos abiertos');
-  // Se rinde antes de 3 turnos: no puntúa.
+  // Se rinde antes de 3 turnos: cuenta como derrota puntuada (si no, rendirse al instante evitaría perder puntos).
   sdw.forfeit(x, { id: bat.id });
   await bat.done;
-  assert.strictEqual((x.league || {}).played || 0, 0);
+  assert.strictEqual(x.league.played, 1);
+  assert.strictEqual(x.league.singles.l, 1);
   assert.strictEqual(x.btHist[0].ranked, true);
-  assert.strictEqual(x.btHist[0].dr, undefined);
+  assert.ok(x.btHist[0].dr < 0, 'pierde puntos');
 });
 
 test('Clasificatoria: rendirse tras 3 turnos puntúa como derrota y se ve en el emblema, el historial y la tabla', async () => {

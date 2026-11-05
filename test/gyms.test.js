@@ -501,3 +501,20 @@ test('reinicio del servidor a mitad de la carrera: el combate se reconstruye con
   b2.forfeit(b2.sides[0]);
   await b2.done;
 });
+
+test('Alto Mando: si un miembro evoluciona entre combates, la carrera lo sigue por su uid', () => {
+  const candy = require('../server/candy');
+  const exp = require('../server/exp');
+  const u = withBadges(strong([4, 6], 100), 8);
+  const m = u.mons[4][0];
+  m.level = 20; m.exp = exp.expAt(4, 20);
+  const E = elite.stateOf(u);
+  E.run = { stage: 1, members: [{ id: 4, uid: m.uid }], carry: { [m.uid]: { hp: 50, max: 60, s: '', pp: {} } }, at: Date.now() };
+  assert.strictEqual(candy.evolve(u, { id: 4, uid: m.uid, to: 5 }).name, 'Charmeleon');
+  assert.doesNotThrow(() => elite.view(u));
+  assert.strictEqual(E.run.members[0].id, 5, 'la vista actualiza la especie del miembro');
+  E.run.members[0].id = 4; // como si no se hubiera mirado
+  const b = elite.next(u).battle; // empieza el siguiente combate sin romper la carrera
+  assert.ok(b && E.run && E.run.members[0].id === 5);
+  sdw.byUser.get(u.id) && sdw.byUser.get(u.id).forfeit(sdw.byUser.get(u.id).sides[0]);
+});

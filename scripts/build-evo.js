@@ -57,7 +57,9 @@ for (const p of DEX) {
   const cond = s.evoCondition || '';
   const time = /during the day/.test(cond) ? 'day' : /at night/.test(cond) ? 'night' : null;
   const t = s.evoType;
-  if (t === 'useItem' && s.evoItem) { if (!ITEM_ID[s.evoItem]) throw new Error('Objeto sin id: ' + s.evoItem); r.item = ITEM_ID[s.evoItem]; }
+  // Kleavor trae el objeto en `evoCondition` («Black Augurite») y no en `evoItem`.
+  const useItem = s.evoItem || (t === 'useItem' && ITEM_ID[s.evoCondition] ? s.evoCondition : null);
+  if (t === 'useItem' && useItem) { if (!ITEM_ID[useItem]) throw new Error('Objeto sin id: ' + useItem); r.item = ITEM_ID[useItem]; }
   else if (t === 'trade') { r.trade = 1; if (s.evoItem) { if (!ITEM_ID[s.evoItem]) throw new Error('Objeto sin id: ' + s.evoItem); r.item = ITEM_ID[s.evoItem]; } }
   else if (t === 'levelHold' && s.evoItem) { r.item = ITEM_ID[s.evoItem]; if (time) r.time = time; }
   else if (t === 'levelFriendship') { if (FRIEND_TIME[p.id]) r.time = FRIEND_TIME[p.id]; }

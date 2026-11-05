@@ -608,3 +608,49 @@ test('invitar a una sala de incursión: solo el anfitrión, con tope, avisa con 
   assert.throws(() => raid.invite(host, { to: g.username }), /Máximo 6/);
   void solo;
 });
+
+// ---- Auditoría ----
+test('reclamar con 5 copias del jefe: se rechaza antes de gastar la Ball y la captura sigue disponible', () => {
+  clean();
+  const u = user([6]);
+  const b = raid.bossOf(raid.dayKey(DAY), 1, 0);
+  u.collection[b.id] = { n: 5, s: 0 };
+  sp.syncAll(u);
+  u.items['poke-ball'] = 3;
+  const d = raid.dayState(u, DAY);
+  d.claims.push({ id: 'abc', rid: 'x', star: 1, boss: b.id, tera: b.tera, level: 20, at: DAY });
+  assert.throws(() => raid.claim(u, { claim: 'abc', ball: 'poke-ball' }, DAY), /Ya tienes 5/);
+  assert.strictEqual(u.items['poke-ball'], 3, 'la Ball no se gasta');
+  assert.strictEqual(d.claims.length, 1, 'el claim sigue');
+});
+
+test('una incursión abandonada por todos se limpia (tiene endedAt)', () => {
+  clean();
+  const u = user([6]);
+  mk(u, 1, 'solo');
+  const r = raid.raidOf(u.id);
+  raid.leave(u);
+  assert.strictEqual(r.state, 'abandoned');
+  assert.ok(r.endedAt > 0);
+  raid.tick(Date.now() + raid.KEEP_MS + 1000);
+  assert.ok(!raid.store()[r.id]);
+});
+
+test('elegir en la incursión: el movimiento debe ser un entero y la Tera solo con true', () => {
+  clean();
+  const u = user([6]);
+  mk(u, 1, 'solo');
+  for (const bad of ['0', 1.5, null, undefined, {}, [0], NaN]) assert.throws(() => raid.choose(u, { move: bad }, DAY), /Movimiento no válido/, String(bad));
+  raid.choose(u, { move: 0, tera: 'false' }, DAY); // «false» (texto) no es true: no teracristaliza
+  const r = raid.raidOf(u.id);
+  const p = r.players.find((x) => x.userId === u.id);
+  assert.ok(!p.mon.teraUsed && !p.mon.teraOn);
+});
+
+test('invitaciones a Teraincursión: tope diario por usuario', () => {
+  clean();
+  const h = user([6]); const g = user([6]);
+  mk(h, 1, 'open');
+  h.invDay = { d: new Date().toISOString().slice(0, 10), n: require('../server/transfer').INVITES_DAILY };
+  assert.throws(() => raid.invite(h, { to: g.username }), /invitaciones/);
+});

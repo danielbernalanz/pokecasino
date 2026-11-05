@@ -347,6 +347,7 @@ function invite(u, { to } = {}) {
   if (!t || t.npc || t.id === u.id) throw new Error('Jugador no encontrado.');
   if (humans(raid).some((x) => x.userId === t.id)) throw new Error(`${t.username} ya está en la sala.`);
   if ((raid.inv || 0) >= 6) throw new Error('Máximo 6 invitaciones por sala: comparte el código.');
+  require('./transfer').noteInvite(u);
   raid.inv = (raid.inv || 0) + 1;
   save();
   require('./notify').push(t, { kind: 'raid', text: `💎 ${u.username} te invita a una Teraincursión de ${raid.star}★ (código ${raid.code})`, link: '#/raids', toast: true });
@@ -370,7 +371,7 @@ function leave(u) {
   }
   p.human = false; p.left = true; p.dismissed = true; p.choice = null;
   logLine(raid, `${u.username} ha abandonado la incursión: su Pokémon sigue con la CPU.`);
-  if (!humans(raid).length) { raid.state = 'abandoned'; raid.over = true; raid.why = 'Todos los jugadores se han ido.'; } else maybeResolve(raid);
+  if (!humans(raid).length) { raid.state = 'abandoned'; raid.over = true; raid.endedAt = Date.now(); raid.why = 'Todos los jugadores se han ido.'; } else maybeResolve(raid);
   save(); push(raid);
   return { raid: null };
 }
@@ -381,11 +382,10 @@ function choose(u, { move, tera: wantTera } = {}, now = Date.now()) {
   if (!raid || raid.state !== 'battle') throw new Error('No estás en una incursión en curso.');
   const p = raid.players.find((x) => x.userId === u.id && x.human);
   if (p.mon.ko) throw new Error('Tu Pokémon está debilitado: volverá enseguida.');
-  move = Number(move);
-  const mv = p.mon.moves[move];
-  if (!Number.isInteger(move) || !mv) throw new Error('Movimiento no válido.');
+  const mv = Number.isInteger(move) ? p.mon.moves[move] : null;
+  if (!mv) throw new Error('Movimiento no válido.');
   let t = false;
-  if (wantTera) {
+  if (wantTera === true) {
     if (!tera().hasOrb(u)) throw new Error('Necesitas el Orbe Teracristal (se consigue con la primera medalla).');
     if (p.mon.teraUsed) throw new Error('Ya has teracristalizado en esta incursión.');
     t = true;
@@ -512,7 +512,8 @@ function tick(now = Date.now()) {
   let changed = false;
   for (const raid of Object.values(store())) {
     if (raid.over) {
-      if (now - (raid.endedAt || now) > KEEP_MS) { delete store()[raid.id]; changed = true; }
+      if (!raid.endedAt) raid.endedAt = now; // (partidas antiguas sin marca: empiezan a contar ahora)
+      if (now - raid.endedAt > KEEP_MS) { delete store()[raid.id]; changed = true; }
       continue;
     }
     if (raid.state === 'lobby' && now >= raid.deadline) { startBattle(raid, now); changed = true; continue; }
@@ -582,6 +583,8 @@ function claim(u, { claim: cid, ball } = {}, now = Date.now()) {
   const d = dayState(u, now);
   const c = d.claims.find((x) => x.id === String(cid));
   if (!c) throw new Error('Esa captura ya no está disponible (se puede reclamar durante 24 h).');
+  const have = u.collection[c.boss];
+  if (have && have.n >= 5) throw new Error(`Ya tienes 5 ${BY_ID.get(c.boss).name} en la Caja: libera o transfiere uno para poder capturar a este (la captura sigue disponible 24 h). No se ha gastado ninguna Ball.`);
   const balls = require('./balls');
   ball = String(ball || '');
   if (!ballOk(c.star, ball)) throw new Error(`Para capturar a un jefe de ${c.star}★ necesitas una ${balls.BALLS[MIN_BALL[c.star]].name} o mejor.`);

@@ -208,3 +208,22 @@ test('Tienda: comprar una piedra cuesta 2.000 y sirve para evolucionar', () => {
   assert.strictEqual(m.u.coins, 100000 - 2000);
   assert.strictEqual(candy.evolve(m.u, { id: m.p.id, uid: m.m.uid, to: byName('Ninetales').id }).to, byName('Ninetales').id);
 });
+
+test('todas las evoluciones tienen un requisito (nivel, evento de nivel, amistad u objeto): ninguna es gratis; Kleavor pide Augurita Negra', () => {
+  const bond = require('../server/bond');
+  const sinReq = [];
+  for (const p of DEX) {
+    if (!p.evolvesFrom) continue;
+    const ok = evoreq.reqOf(p.id) || evoreq.levelOf(p.id) || evoreq.isLevelUp(p.id) || bond.FRIEND_EVO.get(p.id) === p.evolvesFrom;
+    if (!ok) sinReq.push(`${p.id} ${p.name}`);
+  }
+  assert.deepStrictEqual(sinReq, [], 'evoluciones sin requisito');
+  assert.deepStrictEqual(evoreq.reqOf(900), { item: 'black-augurite' });
+  assert.match(items.ITEMS['black-augurite'].desc, /Kleavor/, 'la descripción ya nombra a quien la usa');
+  // Sin el objeto no evoluciona.
+  const u = user({ collection: { 123: { n: 1, s: 0 } } });
+  sp.syncAll(u);
+  const m = u.mons[123][0];
+  m.level = 10;
+  assert.throws(() => candy.evolve(u, { id: 123, uid: m.uid, to: 900 }), /Augurita Negra/);
+});

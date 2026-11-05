@@ -1,5 +1,21 @@
 [
   {
+    "version": "2026.11.05-ag",
+    "date": "2026-11-05",
+    "title": "Revisión de seguridad, Mercado y combates",
+    "items": [
+      "🏪 Mercado: al vender un Pokémon se guarda ese ejemplar concreto. Si cancelas la orden o caduca, te vuelve el mismo (con su nivel, EVs y amistad) y no uno nuevo de nivel 5; quien lo compra lo recibe con sus rasgos, nivel y EXP. El objeto que llevaba vuelve a tu mochila.",
+      "🎒 Al transferir, liberar, vender o regalar un Pokémon que lleva un objeto, el objeto ya no se pierde: vuelve a tu mochila. Los regalos de Pokémon no permiten dar uno que está en uso (compañero, expedición, Criadero, sala de intercambio, Alto Mando o incursión).",
+      "🧬 Al intercambiar o regalar, el Pokémon conserva también su menta, sus Chapas de Entrenamiento Extremo y su habilidad, y no se reinician sus topes diarios de EXP y amistad.",
+      "⚔️ Duelos y combates con apuesta: las cuentas nuevas o recién ayudadas por la Enfermera Joy solo pueden jugar amistosos, hay un tope diario de ganancia entre dos mismas cuentas (5.000) y, si alguien se rinde antes de 3 turnos, se devuelven las apuestas. En la Clasificatoria, rendirse pronto cuenta como derrota.",
+      "🏥 La Enfermera Joy tiene en cuenta lo apostado en partidas abiertas (Blackjack, Minas, Video Póker, Desafío y Voltorb Flip).",
+      "🏆 Torneos: se arreglan combates que se quedaban atascados tras un reinicio, el plazo no se agota mientras el casino estaba caído y el cuadro de equipos ya no se cierra solo cada segundo. Tras un reinicio tampoco se te castiga por el tiempo que estuvo apagado el combate.",
+      "🧩 Kleavor ahora necesita la Augurita Negra para evolucionar. Si evolucionas a un Pokémon de tu carrera del Alto Mando entre combates, la carrera ya no se rompe.",
+      "💎 Teraincursiones: no se puede reclamar la captura con 5 copias del jefe (y no se gasta la Ball), la Teracristalización elegida se mantiene mientras dura el turno y las salas abandonadas se limpian. El Teratipo y la megaevolución del rival en un combate PvP solo se ven al usarlos.",
+      "✉️ Máximo 30 invitaciones al día (Teraincursiones y torneos) para evitar el acoso."
+    ]
+  },
+  {
     "version": "2026.11.05-af",
     "date": "2026-11-05",
     "title": "Ficha pública y centro de notificaciones",

@@ -72,14 +72,16 @@ export default {
     }
 
     // ---------- Torneo ----------
+    const mClock = (m) => `⏳ ${clock(m.left)}`;
+    const meTitle = (t) => { const me = t.me; return `${roundName(me.r, t.rounds)}: ${(me.ready ? `✅ Listo: esperando a ${me.foe}` : `Te toca contra ${me.foe}`)} · quedan ${clock(me.left)}`; };
     function bracket(t) {
       const cols = [];
       for (let r = 1; r <= t.rounds; r++) {
         const ms = t.matches.filter((m) => m.r === r);
         cols.push(h('div', { class: 'trn-col' }, h('div', { class: 'trn-colh' }, roundName(r, t.rounds)), ms.map((m) => {
           const side = (name, pend, win) => h('div', { class: 'trn-side' + (win ? ' win' : '') + (m.state === 'done' && !win && name ? ' lose' : '') + (name === S.me.username ? ' me' : '') }, pend ? '…' : name || h('i', { class: 'muted' }, 'libre'));
-          const status = m.state === 'live' ? '⚔️ en juego' : m.state === 'wait' ? `⏳ ${clock(m.left)}` : m.state === 'done' ? (m.how === 'bye' ? 'pasa directo' : m.how === 'wo' ? 'incomparecencia' : m.how === 'dq' ? 'nadie se presentó' : '') : '';
-          return h('div', { class: `trn-match st-${m.state}` + (m.mine ? ' mine' : '') }, side(m.a, m.pa, m.winner && m.winner === m.a), side(m.b, m.pb, m.winner && m.winner === m.b), status ? h('div', { class: 'trn-st small muted' }, status) : null);
+          const status = m.state === 'live' ? '⚔️ en juego' : m.state === 'wait' ? mClock(m) : m.state === 'done' ? (m.how === 'bye' ? 'pasa directo' : m.how === 'wo' ? 'incomparecencia' : m.how === 'dq' ? 'nadie se presentó' : '') : '';
+          return h('div', { class: `trn-match st-${m.state}` + (m.mine ? ' mine' : '') }, side(m.a, m.pa, m.winner && m.winner === m.a), side(m.b, m.pb, m.winner && m.winner === m.b), status ? h('div', { class: 'trn-st small muted', 'data-clk': `${m.r}:${m.i}` }, status) : null);
         })));
       }
       return h('div', { class: 'trn-bracket' }, cols);
@@ -91,9 +93,8 @@ export default {
         return null;
       }
       if (me.state === 'live') return h('div', { class: 'card trn-me hot' }, h('b', {}, `⚔️ Tu combate contra ${me.foe} está en marcha`), h('a', { class: 'btn primary', href: '#/combates' }, 'Ir al combate'));
-      const lbl = (me.ready ? `✅ Listo: esperando a ${me.foe}` : `Te toca contra ${me.foe}`) + ` · quedan ${clock(me.left)}`;
       const pick = h('select', { 'aria-label': 'Equipo', onchange: (e) => { slot = e.target.value; } }, h('option', { value: 'auto' }, '⚡ Equipo automático (mis mejores)'), teams.map((x) => h('option', { value: String(x.i), selected: String(x.i) === slot }, `🎒 ${x.name} (${x.n})`)));
-      return h('div', { class: 'card trn-me hot stack' }, h('b', {}, `${roundName(me.r, t.rounds)}: ${lbl}`),
+      return h('div', { class: 'card trn-me hot stack' }, h('b', { 'data-me': '1' }, meTitle(t)),
         me.ready ? h('p', { class: 'small muted' }, 'Cuando tu rival pulse «Listo» empezará el combate. Si no se presenta en el plazo, ganas tú.')
           : h('div', { class: 'row gap wrap' }, pick, h('button', { class: 'btn primary', type: 'button', onclick: async (e) => { const r = await act('tourney:ready', { id: t.id, slot }, e.currentTarget); if (r) { sfx('click'); st = r; draw(); } } }, '✅ Listo')));
     }
@@ -133,13 +134,20 @@ export default {
       else body.replaceChildren(h('div', { class: 'trn-home' }, createCard(), listCard()));
     }
 
-    // Cuenta atrás de los plazos (sin volver a pedir nada al servidor).
+    // Cuenta atrás de los plazos: solo se actualiza el texto de los relojes (reconstruir todo cada segundo cerraba el desplegable de equipo).
+    // Cuando un plazo llega a 0 se pide el estado al servidor (que es quien decide qué pasa).
     const tick = setInterval(() => {
       if (!st || !st.current) return;
-      let any = false;
-      for (const m of st.current.matches) if (m.left > 0) { m.left = Math.max(0, m.left - 1000); any = true; }
-      if (st.current.me && st.current.me.left > 0) { st.current.me.left = Math.max(0, st.current.me.left - 1000); any = true; }
-      if (any && !document.hidden) draw();
+      const t = st.current;
+      let expired = false;
+      for (const m of t.matches) if (m.left > 0) { m.left = Math.max(0, m.left - 1000); if (!m.left) expired = true; }
+      if (t.me && t.me.left > 0) { t.me.left = Math.max(0, t.me.left - 1000); if (!t.me.left) expired = true; }
+      if (!document.hidden) {
+        for (const el of body.querySelectorAll('[data-clk]')) { const [r, i] = el.dataset.clk.split(':').map(Number); const m = t.matches.find((x) => x.r === r && x.i === i); if (m && m.state === 'wait') el.textContent = mClock(m); }
+        const mine = body.querySelector('[data-me]');
+        if (mine && t.me) mine.textContent = meTitle(t);
+      }
+      if (expired) load();
     }, 1000);
     let t0 = 0;
     const offs = [bus.on('tourney:changed', (p) => { if (!alive) return; clearTimeout(t0); t0 = setTimeout(() => { if (!selected || (p && p.id === selected) || !st || !st.current) load(); }, 250); }), bus.on('battle:end', () => setTimeout(() => load(), 1200))];

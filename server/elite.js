@@ -25,7 +25,16 @@ const trainerOf = (stage) => trainers.BY_TRAINER.get(IDS[stage]);
 const unlocked = (u) => trainers.badgeCount(u) >= NEED_BADGES;
 const bonusFor = (u) => Math.min(BONUS_MAX, BONUS_PER_CLEAR * stateOf(u).clears);
 
+// Un miembro se identifica por su uid: si evoluciona entre combates cambia de especie, así que se busca en la Caja y se actualiza `m.id`.
+function relocate(u, m) {
+  const mons = require('./specimen').syncAll(u);
+  const arr = mons[m.id];
+  if (arr && arr.some((x) => x.uid === m.uid)) return;
+  for (const [id, list] of Object.entries(mons)) if (list.some((x) => x.uid === m.uid)) { m.id = Number(id); return; }
+}
+
 function monView(u, m, carry) {
+  relocate(u, m);
   let name = (BY_ID.get(m.id) || {}).name || '#' + m.id;
   let level = 0;
   let shiny = false;
@@ -50,6 +59,7 @@ function view(u) {
 
 function begin(u, run) {
   const showdown = require('./showdown');
+  for (const m of run.members) relocate(u, m);
   const alive = run.members.filter((m) => !(run.carry[m.uid] && run.carry[m.uid].hp <= 0));
   if (!alive.length) throw new Error('Todos tus Pokémon están debilitados: la carrera ha terminado.');
   let mine;

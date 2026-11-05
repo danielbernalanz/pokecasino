@@ -21,6 +21,7 @@ export default {
     let cur = null; // la incursión en la que estoy (vista del servidor)
     let prev = null;
     let busy = false;
+    const teraSel = { on: false, turn: -1, id: null }; // Teracristalizar: se recuerda mientras dure el turno (los avisos de otros jugadores repintan la pantalla) y se reinicia al cambiar de turno
     let timers = [];
     const body = h('div', { class: 'raid-body' });
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '💎 Teraincursiones'), h('p', { class: 'muted' }, 'Jefes teracristalizados de 1★ a 5★: solo con 3 aliados o con hasta 4 jugadores. Capturas al jefe con su Teratipo.')), body);
@@ -202,9 +203,11 @@ export default {
       const left = h('span', { class: 'raid-count' }, '');
       const tick = () => { left.textContent = mmss(r.deadline - Date.now()); };
       tick(); timers.push(setInterval(tick, 500));
-      const tera = { on: false };
-      const tl = h('b', {}, `Teracristalizar (${TYPE_ES[mon.tera]})`);
-      const teraBtn = !mon.teraUsed && me.orb ? h('button', { class: 'tera-btn', type: 'button', 'aria-pressed': 'false', 'data-testid': 'raid-tera', style: '--tc:' + (TYPE_COLOR[mon.tera] || '#9be9f5'), onclick: () => {
+      if (teraSel.turn !== r.turn || teraSel.id !== r.id) { teraSel.on = false; teraSel.turn = r.turn; teraSel.id = r.id; }
+      if (mon.teraUsed || !me.orb) teraSel.on = false;
+      const tera = teraSel;
+      const tl = h('b', {}, tera.on ? `¡${mon.name} se teracristalizará!` : `Teracristalizar (${TYPE_ES[mon.tera]})`);
+      const teraBtn = !mon.teraUsed && me.orb ? h('button', { class: 'tera-btn' + (tera.on ? ' on' : ''), type: 'button', 'aria-pressed': String(tera.on), 'data-testid': 'raid-tera', style: '--tc:' + (TYPE_COLOR[mon.tera] || '#9be9f5'), onclick: () => {
         tera.on = !tera.on; teraBtn.classList.toggle('on', tera.on); teraBtn.setAttribute('aria-pressed', String(tera.on));
         tl.textContent = tera.on ? `¡${mon.name} se teracristalizará!` : `Teracristalizar (${TYPE_ES[mon.tera]})`;
       } }, h('span', { class: 'tera-btn-ico' }, '💎'), h('span', { class: 'tera-btn-t' }, tl, h('small', {}, 'Una vez por incursión: STAB reforzado y su tipo pasa a ser ese')))
