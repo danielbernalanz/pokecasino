@@ -22,7 +22,7 @@ const ES = require('../server/sd-es.json');
 let n = 0;
 function user(extra = {}) {
   const name = 'sd' + ++n;
-  const u = { id: 'id-' + name, username: name, coins: 50000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: {}, stats: { pulls: 0, wagered: 0, won: 0, biggestWin: 0, duelsWon: 0, duelsLost: 0 }, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 1, createdAt: Date.now() - 9 * 864e5, ...extra };
+  const u = { id: 'id-' + name, username: name, coins: 50000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: {}, stats: { pulls: 0, wagered: 0, won: 0, biggestWin: 0, duelsWon: 0, duelsLost: 0 }, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 3, createdAt: Date.now() - 9 * 864e5, ...extra };
   db.addUser(u);
   return u;
 }
@@ -187,6 +187,7 @@ test('PvP: cancelar devuelve la apuesta; ganar paga el bote menos la comisión; 
   assert.ok(bat);
   assert.strictEqual(Object.values(db.data.escrow).filter((e) => [a.id, b.id].includes(e.userId)).length, 2);
   assert.throws(() => sdw.challenge(a, { format: 'singles', level: 'fair', wager: 0, team: t(a) }), /Ya estás en un combate/);
+  bat.turn = 3; // con menos de 3 turnos la apuesta se devolvería (ver el test de rendición temprana)
   sdw.forfeit(a, { id: bat.id });
   const res = await bat.done;
   assert.strictEqual(res.winner, 1);
@@ -472,4 +473,98 @@ test('PvP: se puede cancelar la elección mientras el rival no ha elegido', asyn
   assert.ok(bat.inputLog.includes('>p1 undo'), 'queda en el registro para reconstruir el combate');
   sdw.forfeit(a, { id: bat.id });
   await bat.done;
+});
+
+// ---- Auditoría ----
+test('claves de prototipo: ni el formato ni la banda de apuesta aceptan constructor / __proto__ / toString', () => {
+  const ids = [25, 6, 9];
+  const a = withMons(ids);
+  for (const k of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    assert.throws(() => sdw.challenge(a, { format: k, level: 'fair', wager: 500, team: members(a, ids) }), /Formato no válido/, k);
+    assert.throws(() => sdw.enqueue(a, { format: 'singles', level: 'fair', band: k, team: members(a, ids) }), /Apuesta no válida/, k);
+    assert.throws(() => sdw.resolveTeam(a, members(a, ids), { format: k, level: 'fair' }), /Formato no válido/, k);
+  }
+  assert.strictEqual(a.coins, 50000);
+  assert.strictEqual(Object.values(db.data.escrow).filter((e) => e.userId === a.id).length, 0);
+});
+
+test('rendición antes de 3 turnos con apuesta: se devuelven las apuestas enteras, sin comisión ni pago', async () => {
+  const ids = [25, 6, 9];
+  const a = withMons(ids), b = withMons(ids);
+  const c = sdw.challenge(a, { format: 'singles', level: 'fair', wager: 1000, team: members(a, ids) });
+  const acc = sdw.accept(b, { id: c.challenge, team: members(b, ids) });
+  const bat = sdw.battles.get(acc.battle.id);
+  const [ca, cb] = [a.coins, b.coins];
+  assert.deepStrictEqual([ca, cb], [49000, 49000]);
+  sdw.forfeit(a, { id: bat.id });
+  await bat.done;
+  assert.strictEqual(a.coins, 50000);
+  assert.strictEqual(b.coins, 50000, 'el rival no cobra por una rendición temprana');
+  assert.strictEqual(Object.values(db.data.escrow).filter((e) => [a.id, b.id].includes(e.userId)).length, 0);
+  assert.strictEqual(a.btHist[0].coins, 0);
+  assert.strictEqual(b.btHist[0].coins, 0);
+});
+
+test('las cuentas nuevas o ayudadas por la Enfermera Joy no apuestan (los amistosos sí) y hay tope diario de ganancia por pareja', async () => {
+  const ids = [25, 6, 9];
+  const young = withMons(ids); young.level = 1;
+  const vet = withMons(ids);
+  assert.throws(() => sdw.challenge(young, { format: 'singles', level: 'fair', wager: 500, team: members(young, ids) }), /no pueden apostar/);
+  assert.throws(() => sdw.enqueue(young, { format: 'singles', level: 'fair', band: 'small', team: members(young, ids) }), /no pueden apostar/);
+  assert.ok(sdw.challenge(young, { format: 'singles', level: 'fair', wager: 0, team: members(young, ids) }).challenge, 'amistoso');
+  const healed = withMons(ids); healed.lastHeal = Date.now();
+  assert.throws(() => sdw.challenge(healed, { format: 'singles', level: 'fair', wager: 500, team: members(healed, ids) }), /Enfermera Joy/);
+  // Un reto con apuesta aceptado por una cuenta nueva no se acepta.
+  const open = sdw.challenge(vet, { format: 'singles', level: 'fair', wager: 500, team: members(vet, ids) });
+  assert.throws(() => sdw.accept(young, { id: open.challenge, team: members(young, ids) }), /no pueden apostar/);
+  sdw.cancel(vet, { id: open.challenge });
+  // Tope diario por pareja.
+  const tr = require('../server/transfer');
+  const x = withMons(ids), y = withMons(ids);
+  tr.pairCheck(x, y, tr.PAIR_BET_DAILY); // exactamente el tope: cabe
+  tr.notePair(x, y, 4000);
+  assert.strictEqual(tr.pairNet(x, y), 4000);
+  assert.strictEqual(tr.pairNet(y, x), -4000);
+  assert.throws(() => tr.pairCheck(y, x, 2000), /solo se admiten apuestas de hasta 1\.?000/);
+  tr.pairCheck(y, x, 1000);
+  tr.notePair(x, y, 1000);
+  const r = sdw.challenge(x, { format: 'singles', level: 'fair', wager: 0, team: members(x, ids), target: y.username });
+  assert.ok(r.challenge, 'los amistosos siguen permitidos');
+  assert.throws(() => sdw.challenge(x, { format: 'singles', level: 'fair', wager: 500, team: members(x, ids), target: y.username }), /tope diario/);
+  sdw.cancel(x, { id: r.challenge });
+});
+
+test('PvP: el rival no revela teratipo, megaevolución ni uid en el roster (vista y repetición)', async () => {
+  const ids = [25, 6, 9];
+  const a = withMons(ids), b = withMons(ids);
+  const c = sdw.challenge(a, { format: 'singles', level: 'fair', wager: 0, team: members(a, ids) });
+  const acc = sdw.accept(b, { id: c.challenge, team: members(b, ids) });
+  const bat = sdw.battles.get(acc.battle.id);
+  const va = bat.view(bat.sides[0]);
+  assert.ok(va.roster.p1.every((r) => r.uid && 'tera' in r), 'lo propio se ve entero');
+  assert.ok(va.roster.p2.every((r) => !('uid' in r) && !('tera' in r) && !('mega' in r)), 'lo del rival no');
+  sdw.forfeit(b, { id: bat.id });
+  await bat.done;
+  const rp = sdw.replay(a, { id: bat.id }).replay;
+  assert.ok(rp.roster.p1.every((r) => r.uid) && rp.roster.p2.every((r) => !('uid' in r) && !('tera' in r) && !('mega' in r)));
+  const rb = sdw.replay(b, { id: bat.id }).replay;
+  assert.ok(rb.roster.p2.every((r) => r.uid) && rb.roster.p1.every((r) => !('uid' in r)));
+});
+
+test('reinicio: la cuenta atrás de la petición empieza al restaurar (la caída no castiga a nadie)', async () => {
+  const ids = [25, 6, 9];
+  const a = withMons(ids), b = withMons(ids);
+  const c = sdw.challenge(a, { format: 'singles', level: 'fair', wager: 0, team: members(a, ids) });
+  const acc = sdw.accept(b, { id: c.challenge, team: members(b, ids) });
+  const bat = sdw.battles.get(acc.battle.id);
+  await waitFor(() => asking(bat.sides[0]) && asking(bat.sides[1]));
+  sdw.refundAll(); sdw._dropMemory();
+  for (const s of db.data.sdBattles[bat.id].sides) s.askedAt = Date.now() - 3600e3;
+  await sdw.restoreAll();
+  await wait(200);
+  const b2 = sdw.battles.get(bat.id);
+  assert.ok(b2 && !b2.finished, 'no se pierde por abandono nada más restaurar');
+  assert.ok(Date.now() - b2.sides[0].askedAt < 10000);
+  b2.forfeit(b2.sides[0]);
+  await b2.done;
 });

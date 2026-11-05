@@ -214,7 +214,7 @@ test('el bonus de un día nunca supera la fracción de ventaja de lo apostado, j
 });
 
 test('los duelos no dan XP al crear ni cancelar retos y la XP fija tiene tope diario', () => {
-  const u = user('cultivador', { coins: 1e6, collection: { 6: { n: 1, s: 0 } } });
+  const u = user('cultivador', { coins: 1e6, collection: { 6: { n: 1, s: 0 } }, level: 3 });
   for (let i = 0; i < 20; i++) {
     const r = duel.create(u, { pokeId: 6, wager: 10000 });
     duel.cancel(u, { id: r.duel.id });

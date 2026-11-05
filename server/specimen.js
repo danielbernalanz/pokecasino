@@ -81,7 +81,11 @@ function sync(u, id) {
   u.mons ||= {};
   const c = u.collection[id];
   const want = c && BY_ID.has(id) ? Math.max(0, c.n - (c.cn || 0)) : 0;
-  if (!want) { delete u.mons[id]; return []; }
+  if (!want) {
+    for (const m of u.mons[id] || []) if (m.item && !m.carry) require('./bp').giveBack(u, m.item); // se queda sin ninguno: el objeto equipado vuelve a la mochila
+    delete u.mons[id];
+    return [];
+  }
   const arr = (u.mons[id] ||= []);
   const buddyUid = u.buddy && u.buddy.id === id ? u.buddy.uid : null;
   const wantShiny = Math.min(c.s || 0, want);
@@ -96,7 +100,9 @@ function sync(u, id) {
       const d = rank(arr[i]) - rank(arr[worst]);
       if (d < 0 || (d === 0 && byValue(arr[i], arr[worst]) < 0)) worst = i;
     }
-    arr.splice(worst, 1);
+    const [gone] = arr.splice(worst, 1);
+    // El objeto equipado de un ejemplar que se va (transferir, liberar, vender, regalar…) vuelve a la mochila; solo se queda con él si viaja con el ejemplar (`carry`, ver gts.pull).
+    if (gone.item && !gone.carry) require('./bp').giveBack(u, gone.item);
   }
   // Variocolores: se ajustan quitando/poniendo la marca a los menos valiosos (determinista).
   let have = arr.filter((m) => m.shiny).length;
@@ -109,9 +115,25 @@ function sync(u, id) {
   return arr;
 }
 
+// El ejemplar menos valioso de la especie (el que quitaría `sync`) entre los que cumplen `ok`; `null` si no hay ninguno.
+function leastValuable(u, id, shiny, ok = () => true) {
+  const buddyUid = u.buddy && u.buddy.id === id ? u.buddy.uid : null;
+  const rank = (m) => (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
+  let best = null;
+  for (const m of sync(u, id)) {
+    if (!!m.shiny !== !!shiny || !ok(m)) continue;
+    if (!best || rank(m) < rank(best) || (rank(m) === rank(best) && byValue(m, best) < 0)) best = m;
+  }
+  return best;
+}
+
 function syncAll(u) {
   u.mons ||= {};
-  for (const id of Object.keys(u.mons)) if (!u.collection[id]) delete u.mons[id];
+  for (const id of Object.keys(u.mons)) {
+    if (u.collection[id]) continue;
+    for (const m of u.mons[id]) if (m.item && !m.carry) require('./bp').giveBack(u, m.item); // la especie ya no está en la colección: el objeto vuelve a la mochila
+    delete u.mons[id];
+  }
   for (const id of Object.keys(u.collection)) sync(u, Number(id));
   return u.mons;
 }
@@ -165,11 +187,18 @@ function boxView(u) {
 
 // Rasgos que viajan con el ejemplar al regalarlo (como al intercambiar en los juegos): ID del entrenador original (y su nombre), IV, naturaleza, habilidad oculta, Ball, marca, tamaño y lugar de captura.
 // No viajan nivel, EXP, EVs ni amistad (la EXP no se transfiere: ver docs/ANTIABUSO.md).
-const traitsOf = (m, from) => ({ tera: m.tera, ot: from ? lot().otOf(from, m) : m.ot, otn: from ? (lot().otNameOf(from, m) || from.username) : m.otn, ivs: m.ivs.slice(), nature: m.nature, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined });
+// También viajan la menta (naturaleza efectiva), las Chapas de Entrenamiento Extremo (IV a 31), la casilla de habilidad normal y los contadores
+// del día (tope de EXP `xc` y de amistad `fd`): así traspasar un ejemplar no reinicia sus topes diarios (ver docs/ANTIABUSO.md).
+const traitsOf = (m, from) => ({ tera: m.tera, ot: from ? lot().otOf(from, m) : m.ot, otn: from ? (lot().otNameOf(from, m) || from.username) : m.otn, ivs: m.ivs.slice(), nature: m.nature, mint: m.mint || undefined, hyper: hyper.hyperOf(m) ? m.hyper.slice() : undefined, abSlot: Number.isInteger(m.abSlot) ? m.abSlot : undefined, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined, xc: m.xc ? { ...m.xc } : undefined, fd: m.fd ? { ...m.fd } : undefined });
 function applyTraits(id, m, t) {
   m.ivs = t.ivs.slice(); m.nature = t.nature;
+  if (t.mint) m.mint = t.mint;
+  if (Array.isArray(t.hyper) && t.hyper.length === 6) m.hyper = t.hyper.slice();
+  if (Number.isInteger(t.abSlot)) m.abSlot = t.abSlot;
   abilities.resolve(id, m);
   if (t.ha) { m.ha = true; abilities.resolve(id, m); }
+  if (t.xc) m.xc = { ...t.xc };
+  if (t.fd) m.fd = { ...t.fd };
   for (const k of ['ot', 'otn', 'tera', 'ball', 'mark', 'size', 'caught']) { if (t[k] !== undefined && t[k] !== null) m[k] = t[k]; }
 }
 
@@ -226,4 +255,4 @@ function release(u, p) {
   return res;
 }
 
-module.exports = { traitsOf, applyTraits, NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };
+module.exports = { leastValuable, traitsOf, applyTraits, NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };

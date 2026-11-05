@@ -42,10 +42,13 @@ function create(user, { pokeId, shiny, wager, target, mega }) {
   if ([...open.values()].filter((d) => d.creatorId === user.id).length >= 3) throw new Error('Máximo 3 retos abiertos.');
   const poke = ownedPick(user, { pokeId, shiny, mega });
   wager = Number(wager) || 0;
+  const tr = require('../transfer');
+  if (wager !== 0) tr.canBet(user);
   if (target) {
     const t = db.userByName(target);
     if (!t || t.npc || t.id === user.id) throw new Error('Rival no encontrado.');
     target = t.username;
+    if (wager !== 0) tr.pairCheck(user, t, wager);
   }
   // Se cobra al final de las comprobaciones: si algo falla no se pierde la apuesta.
   if (wager !== 0) hub.takeBet(user, wager, 'duel', { quiet: true, noXp: true });
@@ -82,10 +85,15 @@ function accept(user, { id, pokeId, shiny, mega }) {
   if (d.creatorId === user.id) throw new Error('No puedes aceptar tu propio reto.');
   if (d.target && d.target !== user.username) throw new Error('Este reto es para otro entrenador.');
   const poke = ownedPick(user, { pokeId, shiny, mega });
-  if (d.wager) hub.takeBet(user, d.wager, 'duel', { quiet: true, noXp: true });
+  const creator = db.userById(d.creatorId);
+  if (!creator) throw new Error('Ese reto ya no existe.');
+  if (d.wager) { // cuentas nuevas o ayudadas por Joy no apuestan, y entre dos cuentas hay un tope diario de ganancia neta (transfer.js)
+    const tr = require('../transfer');
+    tr.canBet(user); tr.canBet(creator); tr.pairCheck(creator, user, d.wager);
+    hub.takeBet(user, d.wager, 'duel', { quiet: true, noXp: true });
+  }
   open.delete(id);
   db.escrowDel('duel:' + d.id);
-  const creator = db.userById(d.creatorId);
   const result = simulate(d.poke, poke);
   const players = [creator, user];
   const winner = players[result.winner];
@@ -94,6 +102,7 @@ function accept(user, { id, pokeId, shiny, mega }) {
   if (d.wager) {
     prize = Math.floor(d.wager * 2 * (1 - (require('../events').has('duels') ? 0 : RAKE)));
     hub.pay(winner, prize, d.wager, 'duel', { noBonus: true });
+    require('../transfer').notePair(winner, loser, d.wager);
   }
   winner.stats.duelsWon++;
   loser.stats.duelsLost++;

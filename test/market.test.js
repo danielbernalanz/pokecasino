@@ -246,3 +246,87 @@ test('mercado: cada jugador guarda su propio historial de operaciones', () => {
   assert.strictEqual(b.tradeLog[0].seller, 'hist-vend');
   assert.strictEqual(require('../server/hub').privateUser(b).trades.length, 1);
 });
+
+// ---- Auditoría: claves de prototipo y Pokémon concretos en las órdenes ----
+const PROTO_KEYS = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf'];
+
+test('mercado: las claves de prototipo no son objetos (ni se venden, ni se compran, ni crean objetos de la nada)', () => {
+  const s = user('proto-v', { coins: 1e6 });
+  const b = user('proto-c', { coins: 1e6 });
+  for (const k of PROTO_KEYS) {
+    assert.throws(() => market.sell(s, { kind: 'item', itemId: k, qty: 5, price: 1000 }), /desconocido/, k);
+    assert.throws(() => market.buy(b, { kind: 'item', itemId: k, qty: 5, price: 1000, instant: true }), /desconocido/, k);
+    assert.throws(() => market.history(b, { kind: 'item', itemId: k }), /desconocido/, k);
+  }
+  assert.throws(() => market.sell(s, null), /no válido/);
+  assert.deepStrictEqual(s.items, {});
+  assert.deepStrictEqual(b.items, {});
+});
+
+test('mercado: un Pokémon vendido se guarda entero en la orden y vuelve intacto al cancelar (con el objeto devuelto a la mochila)', () => {
+  const sp = require('../server/specimen');
+  const exp = require('../server/exp');
+  const u = user('ej-vende', { coins: 1e6, collection: { 25: { n: 1, s: 0 } } });
+  sp.syncAll(u);
+  const m = u.mons[25][0];
+  m.level = 80; m.exp = exp.expAt(25, 80); m.evs = [252, 0, 0, 0, 0, 0]; m.friendship = 200; m.mint = 'Audaz'; m.hyper = [true, false, false, false, false, false]; m.item = 'leftovers';
+  const r = market.sell(u, { kind: 'poke', pokeId: 25, qty: 1, price: 50000 });
+  assert.strictEqual(r.order.snaps.length, 1);
+  assert.strictEqual(u.items['hi-leftovers'], 1, 'el objeto equipado vuelve a la mochila');
+  assert.ok(!market.state().orders.some((o) => o.snaps), 'la vista pública no lleva los ejemplares');
+  market.cancel(u, { id: r.order.id });
+  sp.syncAll(u);
+  const back = u.mons[25][0];
+  assert.strictEqual(back.level, 80);
+  assert.deepStrictEqual(back.evs, [252, 0, 0, 0, 0, 0]);
+  assert.strictEqual(back.friendship, 200);
+  assert.strictEqual(back.mint, 'Audaz');
+  assert.deepStrictEqual(back.hyper, [true, false, false, false, false, false]);
+  assert.strictEqual(back.item, undefined);
+});
+
+test('mercado: el comprador recibe el ejemplar concreto (nivel, rasgos y topes de EXP), una lista si hay varias unidades', () => {
+  const sp = require('../server/specimen');
+  const exp = require('../server/exp');
+  const s = user('ej-s2', { coins: 1e6, collection: { 4: { n: 3, s: 0 } } });
+  const b = user('ej-b2', { coins: 1e6 });
+  sp.syncAll(s);
+  s.mons[4].forEach((m, i) => { m.level = 30 + i * 10; m.exp = exp.expAt(4, m.level); });
+  exp.award(s, 4, s.mons[4][0], 10 ** 9, 'exp'); // agota su tope diario de EXP
+  const lvls = s.mons[4].map((m) => m.level).sort((x, y) => x - y);
+  const r = market.sell(s, { kind: 'poke', pokeId: 4, qty: 2, price: 1000 });
+  assert.strictEqual(r.order.snaps.length, 2);
+  market.buy(b, { kind: 'poke', pokeId: 4, qty: 1, price: 1000, instant: true });
+  sp.syncAll(b);
+  assert.strictEqual(b.mons[4].length, 1);
+  assert.ok(b.mons[4][0].level >= 30, 'nivel conservado, no un nivel 5 nuevo');
+  assert.ok(b.mons[4][0].xc, 'el contador diario de EXP viaja con el ejemplar');
+  const o = market.state().orders.find((x) => x.id === r.order.id);
+  assert.strictEqual(o.qty, 1);
+  assert.ok(lvls.length === 3);
+  // Órdenes antiguas (sin ejemplares): comportamiento de siempre.
+  const old = user('ej-old', { coins: 1e6, collection: { 4: { n: 2, s: 0 } } });
+  const ro = market.sell(old, { kind: 'poke', pokeId: 4, qty: 1, price: 900 });
+  const ord = require('../server/db').data.market.orders.find((x) => x.id === ro.order.id);
+  delete ord.snaps;
+  market.cancel(old, { id: ro.order.id });
+  assert.strictEqual(old.collection[4].n, 2);
+});
+
+test('Enfermera Joy: las apuestas de partidas abiertas cuentan como monedas en juego', () => {
+  const hub = require('../server/hub');
+  const healer = require('../server/heal');
+  const u = user('joy-abierta', { coins: 5000 });
+  mines.start(u, { bet: 4900, mines: 3 });
+  assert.strictEqual(u.coins, 100);
+  assert.strictEqual(hub.lockedCoins(u), 4900);
+  assert.match(healer.reason(u, hub.lockedCoins(u)) || '', /en juego/, 'con la partida abierta Joy no ayuda');
+  const v = user('joy-bj', { coins: 5000 });
+  blackjack.deal(v, { bet: 4900 });
+  if (!v.games.blackjack.done) assert.ok(hub.lockedCoins(v) >= 4900);
+  const w = user('joy-vp', { coins: 5000 });
+  videopoker.deal(w, { bet: 4900 });
+  assert.strictEqual(hub.lockedCoins(w), 4900);
+  const z = user('joy-sin', { coins: 100 });
+  assert.strictEqual(healer.reason(z, hub.lockedCoins(z)), null, 'sin nada en juego sí');
+});

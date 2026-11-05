@@ -17,7 +17,7 @@ const DURATIONS = [1, 3, 7, 14]; // días que puede durar una orden (por defecto
 const MAX_ORDERS = 30;
 const MAX_PRICE = 10_000_000;
 const MY_TRADES = 150; // operaciones que guarda cada jugador en su historial
-const MAX_QTY = { poke: 20, item: 999, dust: 1_000_000 };
+const MAX_QTY = Object.freeze({ __proto__: null, poke: 20, item: 999, dust: 1_000_000 });
 const M = () => db.data.market;
 // Comerciantes NPC (carga diferida: npc.js usa este módulo).
 const npc = () => require('./npc');
@@ -25,6 +25,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 // ---- Artículos ----
 function parseRef(o) {
+  if (!o || typeof o !== 'object') throw new Error('Artículo no válido.');
   const kind = o.kind;
   if (kind === 'poke') {
     const pokeId = Number(o.pokeId);
@@ -33,7 +34,7 @@ function parseRef(o) {
   }
   if (kind === 'item') {
     const itemId = String(o.itemId);
-    if (!items.ITEMS[itemId]) throw new Error('Objeto desconocido.');
+    if (!Object.hasOwn(items.ITEMS, itemId)) throw new Error('Objeto desconocido.');
     return { kind, itemId, ref: `item:${itemId}` };
   }
   if (kind === 'dust') return { kind, ref: 'dust' };
@@ -60,17 +61,45 @@ function owned(user, a) {
   if (a.kind === 'item') return user.items[a.itemId] || 0;
   return user.dust;
 }
+// Los Pokémon que se venden son ejemplares concretos (el menos valioso libre de cada especie): salen con todo lo suyo (nivel, EXP,
+// rasgos, topes del día…) y quedan guardados en la orden, para devolverlos intactos si se cancela o caduca, o entregárselos al comprador.
+// El objeto equipado vuelve a la mochila del vendedor. Devuelve la lista de ejemplares (una por unidad) o null si no es un Pokémon.
 function takeGoods(user, a, qty) {
   if (owned(user, a) < qty) throw new Error(`No tienes ${describe(a, qty)}.`);
-  if (a.kind === 'poke') for (let i = 0; i < qty; i++) gacha.takePoke(user, a.pokeId, a.shiny);
-  else if (a.kind === 'item') items.take(user, a.itemId, qty);
+  if (a.kind === 'poke') {
+    const gts = require('./gts');
+    const sp = require('./specimen');
+    const snaps = [];
+    for (let i = 0; i < qty; i++) {
+      const m = user.npc ? null : sp.leastValuable(user, a.pokeId, a.shiny, (x) => !gts.busyReason(user, a.pokeId, x, 'el Mercado')) || sp.leastValuable(user, a.pokeId, a.shiny, (x) => !x.away);
+      if (!m) { gacha.takePoke(user, a.pokeId, a.shiny); continue; } // sin ejemplar concreto (comerciantes NPC): como antes
+      const snap = gts.snapOf(user, a.pokeId, m);
+      snap.item = null; // el objeto equipado vuelve a la mochila (lo hace sync al quitar el ejemplar)
+      snap.own = { evs: Array.isArray(m.evs) ? m.evs.slice() : undefined, friendship: m.friendship, fav: !!m.fav }; // solo para devolverlo a su dueño
+      gts.pull(user, a.pokeId, m, false);
+      snaps.push(snap);
+    }
+    return snaps;
+  }
+  if (a.kind === 'item') items.take(user, a.itemId, qty);
   else user.dust -= qty;
+  return null;
 }
-// Entrega artículos; devuelve el polvo extra si un Pokémon supera las 5 copias.
-function giveGoods(user, a, qty) {
+// Entrega artículos; devuelve el polvo extra si un Pokémon supera las 5 copias. `snaps`: los ejemplares guardados al vender
+// (órdenes antiguas sin ellos reciben un Pokémon nuevo de nivel 5). `back`: se devuelven a su dueño (conserva EVs y amistad).
+function giveGoods(user, a, qty, snaps = null, back = false) {
   let dust = 0;
-  if (a.kind === 'poke') for (let i = 0; i < qty; i++) dust += gacha.grant(user, a.pokeId, a.shiny).dust;
-  else if (a.kind === 'item') user.items[a.itemId] = (user.items[a.itemId] || 0) + qty;
+  if (a.kind === 'poke') {
+    const gts = require('./gts');
+    for (let i = 0; i < qty; i++) {
+      const s = Array.isArray(snaps) && snaps[i];
+      let got = null;
+      if (s && !user.npc && gts.room(user, a.pokeId)) { try { got = gts.receive(user, s); } catch { got = null; } }
+      if (got) {
+        if (back && s.own) { if (s.own.evs) got.evs = s.own.evs.slice(); if (Number.isFinite(s.own.friendship)) got.friendship = s.own.friendship; if (s.own.fav) got.fav = true; }
+      } else dust += gacha.grant(user, a.pokeId, a.shiny).dust;
+    }
+  } else if (a.kind === 'item') user.items[a.itemId] = (user.items[a.itemId] || 0) + qty;
   else user.dust += qty;
   return dust;
 }
@@ -117,7 +146,7 @@ function record(a, qty, price, seller, buyer, npcFlags = {}) {
 }
 
 // Paga al vendedor (menos impuesto) y avisa a ambas partes.
-function settle(a, qty, price, seller, buyer) {
+function settle(a, qty, price, seller, buyer, snaps = null) {
   const gross = qty * price;
   const tax = Math.floor(gross * salesTax());
   seller.coins += gross - tax;
@@ -125,7 +154,7 @@ function settle(a, qty, price, seller, buyer) {
   if (tax) hub.ledger(seller, -tax, 'market_tax', `${qty} × ${a.ref}`);
   seller.stats.sold = (seller.stats.sold || 0) + qty;
   buyer.stats.bought = (buyer.stats.bought || 0) + qty;
-  const dust = giveGoods(buyer, a, qty);
+  const dust = giveGoods(buyer, a, qty, snaps);
   if (a.kind === 'poke') require('./evoreq').noteTrade(buyer, seller); // intercambio real: vale como un Cordón Unión
   const t = record(a, qty, price, seller.username, buyer.username, { sellerNpc: seller.npc, buyerNpc: buyer.npc });
   // Historial propio de cada jugador (el del mercado solo guarda las últimas operaciones de todos).
@@ -182,9 +211,9 @@ function sell(user, payload) {
       q = Math.min(q, npc().cap(user, buyer, a, o.price));
       if (q <= 0) { why ||= npc().whyBlocked(user, buyer, a); continue; }
     }
-    takeGoods(user, a, q);
+    const snaps = takeGoods(user, a, q);
     o.qty -= q; // las monedas ya estaban en depósito en la orden de compra
-    settle(a, q, o.price, user, buyer);
+    settle(a, q, o.price, user, buyer, snaps);
     earned += q * o.price;
     left -= q;
   }
@@ -192,8 +221,8 @@ function sell(user, payload) {
   if (left && !instant) {
     user.coins -= fee(left * price);
     hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
-    takeGoods(user, a, left);
-    order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}) };
+    const snaps = takeGoods(user, a, left);
+    order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}), ...(snaps && snaps.length ? { snaps } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');
   }
@@ -236,7 +265,7 @@ function buy(user, payload) {
     user.coins -= q * o.price;
     hub.ledger(user, -q * o.price, 'market_buy', `${q} × ${a.ref}`);
     o.qty -= q; // los artículos ya estaban en depósito en la orden de venta
-    settle(a, q, o.price, seller, user);
+    settle(a, q, o.price, seller, user, Array.isArray(o.snaps) ? o.snaps.splice(0, q) : null);
     spent += q * o.price;
     left -= q;
   }
@@ -260,7 +289,7 @@ function buy(user, payload) {
 function refundOrder(o) {
   const u = db.userById(o.userId);
   if (!u || o.qty <= 0) return;
-  if (o.side === 'sell') giveGoods(u, o, o.qty);
+  if (o.side === 'sell') giveGoods(u, o, o.qty, o.snaps, true);
   else { u.coins += o.qty * o.price; hub.ledger(u, o.qty * o.price, 'market_refund', `${o.qty} × ${o.ref}`); }
   hub.pushMe(u);
 }

@@ -25,7 +25,7 @@ const CANDIES = [
 ];
 // Precio en Puntos de Batalla (Tienda de Combate): 100 EXP por PB, así que con el tope de 90 PB al día son ≤ 9.000 EXP al día. Nunca con monedas.
 const CANDY_BP = { 'exp-s': 8, 'exp-m': 30, 'exp-l': 100 };
-const CANDY_EXP = Object.fromEntries(CANDIES.map(([id, , exp]) => [id, exp]));
+const CANDY_EXP = Object.assign(Object.create(null), Object.fromEntries(CANDIES.map(([id, , exp]) => [id, exp])));
 const CANDY_IDS = CANDIES.map((x) => x[0]);
 
 // Entradas de `items.ITEMS` (sin precio en monedas: no se compran ni se reciclan ni los compra ningún PNJ).

@@ -14,6 +14,7 @@ const SHARDS = {
   'shard-yellow': { name: 'Fragmento Amarillo', sprite: 'yellow-shard', types: ['electric', 'psychic', 'normal', 'fairy'] },
   'shard-green': { name: 'Fragmento Verde', sprite: 'green-shard', types: ['grass', 'bug', 'poison', 'ghost', 'dark', 'steel'] },
 };
+Object.setPrototypeOf(SHARDS, null);
 const COST = 4; // fragmentos del color del tipo del movimiento
 const DAY_CAP = 3; // fragmentos por día desde expediciones
 const CHANCE = { 4: 0.35, 8: 0.6, 12: 1 }; // por reclamación (horas)

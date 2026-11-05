@@ -600,3 +600,11 @@ test('NPC: el plan diario tiene 3-6 encargos y 1-2 ofertas flash', () => {
   assert.ok(plan.enc.length >= 3 && plan.enc.length <= 6 && plan.flash.length >= 1 && plan.flash.length <= 2, JSON.stringify([plan.enc.length, plan.flash.length]));
   n.plan = null;
 });
+
+test('claves de prototipo: los límites de los comerciantes NPC no existen para constructor / __proto__ / toString', () => {
+  const npc = require('../server/npc');
+  for (const k of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    assert.strictEqual(npc.bounds({ kind: 'item', itemId: k }), null, k);
+    assert.strictEqual(npc.inFocus({ focus: 'all' }, { kind: 'item', itemId: k }) || false, false, k);
+  }
+});

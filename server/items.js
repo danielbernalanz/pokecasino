@@ -27,6 +27,8 @@ const BERRIES = {
   'berry-latano': { name: 'Baya Atania', sprite: 'chesto-berry', grow: 10, friend: 15 },
   'berry-pinia': { name: 'Baya Zanama', sprite: 'leppa-berry', grow: 12, friend: 20 },
 };
+Object.setPrototypeOf(ITEMS, null); // sin prototipo: ITEMS['constructor'] / ['__proto__'] no existen (claves que manda el cliente)
+Object.setPrototypeOf(BERRIES, null);
 const BERRY_HOLD = require('./bpdata').BERRY_HOLD;
 for (const [id, b] of Object.entries(BERRIES)) {
   b.hold = BERRY_HOLD[id]; // objeto de Showdown equivalente: también se lleva en combate
@@ -66,6 +68,7 @@ Object.assign(COSMETICS, {
 // Premio de los torneos entre amigos (tourney.js): tampoco sale de los Huevos Misteriosos.
 for (const r of require('./regions').REGIONS) COSMETICS[r.frame] = { slot: 'frame', rarity: 'E', name: `Marco Diploma ${r.name}`, sprite: 'rare-candy', event: true }; // Diploma del Game Freak (regions.js)
 COSMETICS['frame-torneo'] = { slot: 'frame', rarity: 'E', name: 'Marco Trofeo', sprite: 'rare-candy', event: true };
+Object.setPrototypeOf(COSMETICS, null);
 const SLOT_NAMES = { frame: 'marco', cardback: 'dorso de carta', title: 'título' };
 for (const [id, c] of Object.entries(COSMETICS)) {
   ITEMS[id] = { ...c, price: null, cosmetic: true, desc: `Cosmético (${SLOT_NAMES[c.slot]}). Equípalo en «Mi Entrenador»: los demás jugadores lo verán.` };
@@ -109,7 +112,7 @@ function give(user, itemId, qty = 1, reason) {
 }
 
 function take(user, itemId, qty = 1) {
-  if (!ITEMS[itemId]) throw new Error('Objeto desconocido.');
+  if (typeof itemId !== 'string' || !Object.hasOwn(ITEMS, itemId)) throw new Error('Objeto desconocido.');
   if ((user.items[itemId] || 0) < qty) throw new Error(`No tienes suficientes ${ITEMS[itemId].name}.`);
   user.items[itemId] -= qty;
   if (!user.items[itemId]) {
@@ -134,7 +137,7 @@ function equip(user, { slot, id }) {
   if (!['frame', 'cardback', 'title'].includes(slot)) throw new Error('Hueco no válido.');
   user.equip ||= { frame: null, cardback: null, title: null };
   if (!id) { user.equip[slot] = null; db.save(); return {}; }
-  const c = COSMETICS[id];
+  const c = typeof id === 'string' && Object.hasOwn(COSMETICS, id) ? COSMETICS[id] : null;
   const earned = slot === 'title' && user.progress && user.progress.titles.includes(id);
   if (!earned) {
     if (!c || c.slot !== slot) throw new Error('Ese cosmético no va en ese hueco.');
@@ -146,7 +149,7 @@ function equip(user, { slot, id }) {
 }
 
 function buy(user, { itemId, qty }) {
-  const it = ITEMS[itemId];
+  const it = typeof itemId === 'string' && Object.hasOwn(ITEMS, itemId) ? ITEMS[itemId] : null;
   qty = qty === undefined ? 1 : Number(qty);
   if (!it || !it.price) throw new Error('Ese objeto no está a la venta.');
   if (!Number.isInteger(qty) || qty < 1 || qty > 99) throw new Error('Cantidad no válida.');
@@ -159,6 +162,7 @@ function buy(user, { itemId, qty }) {
 }
 
 function use(user, { itemId, pokeId }) {
+  if (typeof itemId !== 'string' || !Object.hasOwn(ITEMS, itemId)) throw new Error('Objeto desconocido.');
   const now = Date.now();
   if (itemId === 'rare-candy') {
     const c = user.collection[Number(pokeId)];

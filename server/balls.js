@@ -22,8 +22,9 @@ const BALLS = {
   'heal-ball': { name: 'Sanación Ball', price: 180, sprite: 'heal-ball', desc: 'Sin bonus de captura: el Pokémon llega perfectamente curado (y con la Ball más bonita).', bonus: () => 1 },
   [MASTER]: { name: 'Master Ball', price: null, sprite: 'master-ball', desc: 'Captura segura (100 %). Es la misma Master Ball del Gacha: solo sale como premio o en el Mercado.', bonus: () => Infinity, master: true },
 };
+Object.setPrototypeOf(BALLS, null);
 const IDS = Object.keys(BALLS);
-const isBall = (id) => Object.prototype.hasOwnProperty.call(BALLS, id);
+const isBall = (id) => typeof id === 'string' && Object.hasOwn(BALLS, id);
 const nameOf = (id) => (BALLS[id] || BALLS[DEFAULT]).name;
 
 // Objetos de la Tienda Poké para `items.js` (la Master Ball ya existe allí).

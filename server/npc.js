@@ -51,10 +51,12 @@ const NOSHOP = {
 };
 // Megapiedras: los NPC NO las compran ni las venden (inFocus las excluye). Los límites existen para que el
 // invariante cap < floor valga para todos los objetos y por si algún día se activan.
+Object.setPrototypeOf(NOSHOP, null);
 const MEGASTONE = { cap: 1725, floor: 9000 };
 const COSMETIC = { // por rareza
   C: { cap: 69, floor: 150 }, U: { cap: 172, floor: 350 }, R: { cap: 450, floor: 900 }, E: { cap: 1350, floor: 2700 }, L: { cap: 4500, floor: 9000 },
 };
+Object.setPrototypeOf(COSMETIC, null);
 const ASK_MAX_MULT = 8; // el precio de venta nunca pasa de 8 × el suelo (si los jugadores comercian a precios absurdos)
 const SHINY_ASK_DEFAULT = 3; // sin referencia de mercado, un variocolor se pide a 3 × su suelo
 
@@ -73,7 +75,7 @@ function bounds(a) {
     const cap = Math.max(1, DUST_RATE - 1); // nunca el tipo de cambio exacto (sería un bucle con el cambio de polvo)
     return { cap, floor: Math.max(2 * cap, 2 * DUST_RATE) };
   }
-  const it = items.ITEMS[a.itemId];
+  const it = typeof a.itemId === 'string' && Object.hasOwn(items.ITEMS, a.itemId) ? items.ITEMS[a.itemId] : null;
   if (!it) return null;
   if (it.price) { const cap = Math.max(1, Math.floor(it.price * SHOP_BID)); return { cap, floor: Math.max(it.price, 2 * cap) }; } // nunca por debajo de la tienda
   if (NOSHOP[a.itemId]) return NOSHOP[a.itemId];

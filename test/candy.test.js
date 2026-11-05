@@ -294,3 +294,33 @@ test('transferir todos los repetidos: la vista previa coincide con lo que se hac
   assert.deepStrictEqual([u.collection[1].n, u.collection[7].n, u.collection[25].n], [1, 1, 1]);
   assert.throws(() => candy.transferAllDupes(u), /No tienes repetidos/);
 });
+
+// ---- Auditoría: claves de prototipo y objetos equipados ----
+test('reciclar: las claves de prototipo no son objetos ni bayas', () => {
+  const u = user({ collection: { 25: { n: 1, s: 0 } } });
+  for (const k of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    assert.throws(() => candy.recycle(u, { item: k, qty: 20 }), /no se puede reciclar/, k);
+    assert.throws(() => items.take(u, k, 1), /desconocido/, k);
+    assert.throws(() => items.buy(u, { itemId: k, qty: 1 }), /no está a la venta/, k);
+    assert.throws(() => items.use(u, { itemId: k }), /desconocido/, k);
+  }
+  assert.strictEqual(u.dust, 0);
+  assert.deepStrictEqual(u.items, {});
+});
+
+test('transferir, liberar o el objeto equipado vuelve a la mochila', () => {
+  const u = user({ collection: { 25: { n: 2, s: 0 } }, items: { 'hi-leftovers': 1 } });
+  sp.syncAll(u);
+  const m = u.mons[25][0];
+  require('../server/bp').hold(u, { id: 25, uid: m.uid, item: 'leftovers' });
+  assert.strictEqual(u.items['hi-leftovers'], undefined);
+  candy.transfer(u, { id: 25, uid: m.uid });
+  assert.strictEqual(u.items['hi-leftovers'], 1, 'transferir un ejemplar con objeto lo devuelve');
+  // Liberar un ejemplar concreto.
+  const w = user({ collection: { 25: { n: 2, s: 0 } }, items: { 'hi-leftovers': 1 } });
+  sp.syncAll(w);
+  require('../server/bp').hold(w, { id: 25, uid: w.mons[25][0].uid, item: 'leftovers' });
+  sp.release(w, { id: 25, uid: w.mons[25][0].uid });
+  sp.syncAll(w);
+  assert.strictEqual(w.items['hi-leftovers'], 1, 'liberar también lo devuelve');
+});

@@ -40,3 +40,18 @@ test('tope diario de Pokémon regalados recibidos', () => {
   for (let i = tr.POKE_IN_RARE; i < tr.POKE_IN_DAILY; i++) tr.notePokeIn(t, false);
   assert.throws(() => tr.pokeInCheck(t, false));
 });
+
+test('invitaciones: tope diario por usuario', () => {
+  const u = { username: 'invitador' };
+  for (let i = 0; i < tr.INVITES_DAILY; i++) tr.noteInvite(u);
+  assert.throws(() => tr.noteInvite(u), /invitaciones/);
+  assert.doesNotThrow(() => tr.noteInvite(u, Date.now() + DAY), 'al día siguiente se renueva');
+});
+
+test('apostar entre jugadores: cuentas nuevas o ayudadas por Joy no; tope diario de ganancia neta por pareja', () => {
+  const now = Date.now();
+  assert.throws(() => tr.canBet({ level: 1, createdAt: now - 10 * DAY }, now), /no pueden apostar/);
+  assert.throws(() => tr.canBet({ level: 5, createdAt: now - 10 * DAY, lastHeal: now - 1000 }, now), /Enfermera Joy/);
+  assert.doesNotThrow(() => tr.canBet({ level: 5, createdAt: now - 10 * DAY }, now));
+  assert.doesNotThrow(() => tr.canBet({ level: 1, isAdmin: true }, now));
+});

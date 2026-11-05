@@ -86,13 +86,13 @@ const SETS = [
 ];
 
 // Títulos ganados (no se pueden comerciar).
-const TITLES = {
+const TITLES = Object.assign(Object.create(null), {
   novato: 'Entrenador de Kanto', campeon: 'Campeón de la Liga',
   // Liga Pokémon (premios de temporada, league.js) y Torre Batalla (rachas, tower.js).
   'liga-super': 'Aspirante Super Ball', 'liga-ultra': 'Élite Ultra Ball', 'liga-master': 'Maestro de la Liga', 'liga-top': 'Top 3 de la Liga',
   'torneo-campeon': 'Campeón de Torneo',
   'torre-21': 'Aspirante de la Torre', 'torre-50': 'Maestro de la Torre', 'torre-100': 'Leyenda de la Torre',
-};
+});
 for (const s of SETS) TITLES['set-' + s.id] = s.title;
 for (const b of BADGES) TITLES['badge-' + b.id] = `Vencedor de ${b.leader}`;
 

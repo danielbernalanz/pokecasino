@@ -285,3 +285,59 @@ test('no se puede preparar un combate sin tenerlo y el equipo inválido se recha
   assert.throws(() => trn.ready(none, { id: t.id }), /ningún combate/, 'sin Pokémon tampoco');
   assert.ok(m.state === 'pend');
 });
+
+// ---- Auditoría ----
+test('crear: las claves de prototipo no son un formato', () => {
+  const h = player();
+  for (const f of ['constructor', '__proto__', 'toString', 'hasOwnProperty', {}, ['singles']]) assert.throws(() => trn.create(h, { size: 4, entry: 1000, format: f }), /Formato no válido/, String(f));
+  assert.strictEqual(trn.activeOf(h), null);
+  assert.strictEqual(h.coins, 20000, 'no se cobró nada');
+});
+
+test('partidas «live» huérfanas: se repiten (no mientras se restauran combates) y los plazos se amplían al arrancar', async () => {
+  const [h, a, b, c] = [player(), player(), player(), player()];
+  const t = full(h, [a, b, c], { wait: 5 });
+  const m = t.matches.find((x) => x.r === 1 && x.state === 'wait');
+  const ua = db.userById(m.a); const ub = db.userById(m.b);
+  trn.ready(ua, { id: t.id }); trn.ready(ub, { id: t.id });
+  assert.strictEqual(m.state, 'live');
+  // El combate desaparece (ni en memoria ni guardado): el torneo no se queda atascado.
+  const bat = sdw.battles.get(m.battle);
+  const id = m.battle;
+  bat.noPersist = true; bat.finished = true; bat.over = true;
+  for (const s of bat.sides) if (s.timer) { clearTimeout(s.timer); s.timer = null; }
+  sdw.battles.delete(id);
+  for (const s of bat.sides) sdw.byUser.delete(s.userId);
+  if (db.data.sdBattles) delete db.data.sdBattles[id];
+  trn.tick(Date.now() + 1000);
+  assert.strictEqual(m.state, 'wait', 'vuelve a preparación');
+  assert.strictEqual(m.battle, null);
+  // Plazos: tras una caída larga, begin() amplía el plazo en vez de dar la partida por perdida.
+  const other = t.matches.find((x) => x.r === 1 && x !== m);
+  other.deadline = Date.now() - 10 * 60e3;
+  trn.begin();
+  assert.ok(other.deadline >= Date.now() + 5 * 60e3 - 1000, 'plazo ampliado');
+  assert.strictEqual(other.state, 'wait');
+});
+
+test('invitaciones a torneos: tope diario por usuario', () => {
+  const h = player();
+  const guests = Array.from({ length: 4 }, () => player());
+  const tr = require('../server/transfer');
+  h.invDay = { d: new Date().toISOString().slice(0, 10), n: tr.INVITES_DAILY };
+  const r = trn.create(h, { size: 4 });
+  assert.throws(() => trn.invite(h, { id: r.id, to: guests[0].username }), /invitaciones/);
+});
+
+test('si falla algo al liquidar el combate (p. ej. el feed), el torneo se entera igualmente y no se atasca', async () => {
+  const hub = require('../server/hub');
+  const [h, a, b, c] = [player(), player(), player(), player()];
+  const t = full(h, [a, b, c]);
+  const m = t.matches.find((x) => x.r === 1 && x.state === 'wait');
+  const orig = hub.feed;
+  hub.feed = () => { throw new Error('feed roto'); };
+  const log = console.error; console.error = () => {};
+  try { await play(t, m); } finally { hub.feed = orig; console.error = log; }
+  assert.strictEqual(m.state, 'done', 'el cuadro avanza');
+  assert.ok(m.winner);
+});

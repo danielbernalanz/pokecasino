@@ -50,7 +50,8 @@ function summary(owner, id, m) {
   };
 }
 // Firma de lo que el otro ve: si cambia, hay que volver a confirmar.
-const sigOf = (owner, id, m) => JSON.stringify(gts.snapOf(owner, id, m));
+// Huella del ejemplar para detectar cambios a escondidas: sin los contadores del día (EXP y amistad), que cambian solos.
+const sigOf = (owner, id, m) => { const s = gts.snapOf(owner, id, m); delete s.tr.xc; delete s.tr.fd; return JSON.stringify(s); };
 
 // ---- Salas ----
 const sideOf = (r, u) => (r.a.userId === u.id ? r.a : r.b.userId === u.id ? r.b : null);

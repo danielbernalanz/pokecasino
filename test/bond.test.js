@@ -366,3 +366,16 @@ test('el estado público trae los hallazgos y las bayas', () => {
   assert.strictEqual(me.buddyFinds.max, 3);
   assert.deepStrictEqual(me.berries, { 'berry-zidra': 2 });
 });
+
+test('bayas: las claves de prototipo no son bayas (dar, plantar, cosechar, quitar)', () => {
+  const u = user({ collection: { 25: { n: 1, s: 0 } } });
+  sp.syncAll(u);
+  const m = u.mons[25][0];
+  for (const k of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    assert.throws(() => bond.feed(u, { berry: k, id: 25, uid: m.uid }), /no existe/, k);
+    assert.throws(() => bond.plant(u, { berry: k, plot: 0 }), /no se puede plantar/, k);
+    assert.throws(() => bond.takeBerry(u, k, 1), /no existe/, k);
+  }
+  assert.strictEqual(m.friendship, 70);
+  assert.ok(Object.keys(u.berries || {}).every((k) => k.startsWith('berry-')), 'no se creó ninguna baya falsa');
+});

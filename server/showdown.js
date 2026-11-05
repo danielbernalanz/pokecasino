@@ -27,6 +27,7 @@ const FORMATS = {
   singles: { id: 'gen9customgame', doubles: false, cap: 6, min: 1, label: 'Individual' },
   doubles: { id: 'gen9doublescustomgame', doubles: true, cap: 4, min: 2, label: 'Dobles' },
 };
+Object.setPrototypeOf(FORMATS, null); // claves que manda el cliente: sin 'constructor' ni '__proto__'
 const LEVELS = new Set(['fair', 'real']);
 const RESTORE_GRACE_MS = 60 * 1000;
 const ABANDON_MS = 15 * 60 * 1000;
@@ -49,7 +50,7 @@ function validChoice(choice) {
 // ---- Equipo del jugador ----
 // `itemClause` (solo PvP): no se pueden llevar dos Pokémon con el mismo objeto.
 function resolveTeam(user, members, { format, level, itemClause = false }) {
-  const F = FORMATS[format];
+  const F = typeof format === 'string' && Object.hasOwn(FORMATS, format) ? FORMATS[format] : null;
   if (!F) throw new Error('Formato no válido.');
   if (!LEVELS.has(level)) throw new Error('Regla de nivel no válida.');
   if (!Array.isArray(members) || members.length < F.min || members.length > 6) {
@@ -391,11 +392,15 @@ class Battle {
       tower: this.tower ? { n: this.tower.n, round: Math.floor((this.tower.n - 1) / 7) + 1, boss: !!this.tower.boss } : undefined,
       ranks: this.mode === 'pvp' ? this.sides.map((s) => require('./league').emblem(db.userById(s.userId), this.ranked ? this.format : undefined)) : undefined,
       you: side.name, foe: this.sides[1 - side.n].name, trainer: this.trainer ? { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls } : null,
-      roster: { p1: this.sides[0].roster, p2: this.sides[1].roster },
+      roster: this.mode === 'pvp' ? rosterFor(side.n, this.sides[0].roster, this.sides[1].roster) : { p1: this.sides[0].roster, p2: this.sides[1].roster },
       log: side.log, request: side.req || null, chosen: side.chosen, deadline: side.chosen || !side.req || side.req.wait ? 0 : side.deadline, turnMs: TURN_MS, over: this.over,
     };
   }
 }
+
+// En PvP el rival no revela su teratipo ni su megaevolución (solo se ven al usarlos, en el registro) ni los uid de sus ejemplares.
+const hideFoe = (roster) => roster.map(({ tera, mega, uid, ...pub }) => pub);
+const rosterFor = (n, r1, r2) => ({ p1: n === 0 ? r1 : hideFoe(r1), p2: n === 1 ? r2 : hideFoe(r2) });
 
 // ---- Liquidación ----
 const escKey = (b, n) => `btl:${b.id}:${n}`;
@@ -494,7 +499,13 @@ function cpuReward(b, user, side) {
   return out;
 }
 
+// El torneo se entera SIEMPRE de cómo acabó el combate, aunque falle algo al liquidarlo (p. ej. el feed): si no, el cuadro se quedaría atascado.
 function settle(b) {
+  try { return settleCore(b); } finally {
+    if (b.tn && b.mode !== 'cpu' && b.mode !== 'sim') { try { require('./tourney').onBattleEnd(b); } catch (e) { console.error('Torneo: error al cerrar el combate', e); } }
+  }
+}
+function settleCore(b) {
   const humans = b.humans();
   const res = { id: b.id, at: Date.now(), mode: b.mode, format: b.format, level: b.level, wager: b.wager, turns: b.turn, players: b.sides.map((s) => s.name), winner: b.winner === null || b.winner === undefined ? null : b.winner, trainer: b.trainer ? b.trainer.id : null };
   if (b.mode === 'sim') return res;
@@ -532,17 +543,21 @@ function settle(b) {
   let prize = 0;
   const bpGain = [0, 0];
   const tie = b.winner === null || b.winner === undefined;
+  // Rendición o abandono antes de PVP_MIN_TURNS turnos con apuesta: no se paga a nadie (sería un canal de monedas entre cuentas); se devuelven las apuestas enteras, sin comisión.
+  const voided = !tie && !!b.wager && !!b.forfeited && b.turn < require('./bpdata').PVP_MIN_TURNS;
   // Clasificatoria: puntuación Elo (solo si cumple las reglas anti-abuso de league.js).
-  const lg = b.ranked ? require('./league').record(players, b.format, tie ? null : b.winner, b.turn) : null;
+  const lg = b.ranked ? require('./league').record(players, b.format, tie ? null : b.winner, b.turn, !!b.forfeited) : null;
   if (lg && lg.rated && queueHook) queueHook(); // refresca la lista de conectados (los emblemas de rango)
   if (tie) {
     players.forEach((u) => refundOne(u, b.wager));
   } else {
     const winner = players[b.winner];
     const loser = players[1 - b.winner];
-    if (b.wager && winner) {
+    if (voided) players.forEach((u) => refundOne(u, b.wager));
+    else if (b.wager && winner) {
       prize = Math.floor(b.wager * 2 * (1 - (require('./events').has('duels') ? 0 : RAKE)));
       hub.pay(winner, prize, b.wager, 'duel', { noBonus: true });
+      if (loser) require('./transfer').notePair(winner, loser, b.wager); // tope diario de ganancia neta entre dos cuentas
     }
     // Puntos de Batalla: 3 al ganar y 1 al perder (con tope diario, mínimo de turnos y límite por rival).
     if (winner && loser) { bpGain[b.winner] = require('./bp').pvp(winner, true, loser.id, b.turn); bpGain[1 - b.winner] = require('./bp').pvp(loser, false, winner.id, b.turn); }
@@ -552,21 +567,20 @@ function settle(b) {
     const specimen = require('./specimen');
     if (winner) for (const r of participants(b, b.sides[b.winner])) { try { bond.addFriend(specimen.find(winner, { id: r.id, uid: r.uid }), 2, 'battle'); } catch { /* ya no está */ } }
   }
-  if (b.wager) for (const u of players) if (u) hub.addXp(u, b.wager * require('./balance').xpRate('duel'));
+  if (b.wager && !voided) for (const u of players) if (u) hub.addXp(u, b.wager * require('./balance').xpRate('duel'));
   for (const u of players) if (u) { hub.track(u, 'duel_play'); hub.track(u, 'play', { game: 'duel' }); }
   res.prize = prize;
   players.forEach((u, i) => {
     if (!u) return;
-    pushHist(u, { id: b.id, at: res.at, mode: 'pvp', format: b.format, level: b.level, foe: b.sides[1 - i].name, won: !tie && b.winner === i, tie, turns: b.turn, wager: b.wager, ranked: b.ranked || undefined, dr: lg && lg.rated ? lg.side[i].delta : undefined, coins: !tie && b.winner === i ? prize - b.wager : tie ? 0 : -b.wager });
+    pushHist(u, { id: b.id, at: res.at, mode: 'pvp', format: b.format, level: b.level, foe: b.sides[1 - i].name, won: !tie && b.winner === i, tie, turns: b.turn, wager: b.wager, ranked: b.ranked || undefined, dr: lg && lg.rated ? lg.side[i].delta : undefined, coins: voided || tie ? 0 : b.winner === i ? prize - b.wager : -b.wager, void: voided || undefined });
     hub.pushMe(u);
   });
   db.save();
-  b.sides.forEach((s, i) => hub.emitUser(s.userId, 'battle:end', { id: b.id, winner: tie ? 'tie' : b.winner === i ? 'you' : 'foe', prize: b.winner === i ? prize : 0, bp: bpGain[i], wager: b.wager, forfeited: b.forfeited ? b.forfeited.side === i : false, league: lg ? (lg.rated ? { rated: true, ...lg.side[i] } : { rated: false, why: lg.why }) : undefined }));
+  b.sides.forEach((s, i) => hub.emitUser(s.userId, 'battle:end', { id: b.id, winner: tie ? 'tie' : b.winner === i ? 'you' : 'foe', prize: b.winner === i ? prize : 0, bp: bpGain[i], wager: b.wager, refunded: voided || undefined, forfeited: b.forfeited ? b.forfeited.side === i : false, league: lg ? (lg.rated ? { rated: true, ...lg.side[i] } : { rated: false, why: lg.why }) : undefined }));
   if (!tie) {
     const w = players[b.winner]; const l = players[1 - b.winner];
-    if (w && l) hub.feed('duel', `⚔️ ${w.username} venció a ${l.username} en un combate ${b.ranked ? 'clasificatorio ' : ''}${b.tn ? 'de torneo ' : ''}${FORMATS[b.format].label.toLowerCase()}${b.wager ? ` y ganó ${prize.toLocaleString('es')} monedas` : ''}`);
+    if (w && l) hub.feed('duel', `⚔️ ${w.username} venció a ${l.username} en un combate ${b.ranked ? 'clasificatorio ' : ''}${b.tn ? 'de torneo ' : ''}${FORMATS[b.format].label.toLowerCase()}${b.wager && !voided ? ` y ganó ${prize.toLocaleString('es')} monedas` : ''}`);
   }
-  if (b.tn) { try { require('./tourney').onBattleEnd(b); } catch (e) { console.error('Torneo: error al cerrar el combate', e); } }
   return res;
 }
 
@@ -663,10 +677,13 @@ function challenge(user, { format, level = 'fair', wager, target, team, bond, te
   if ([...challenges.values()].filter((c) => c.creatorId === user.id).length >= 2) throw new Error('Máximo 2 retos abiertos.');
   resolveTeam(user, team, { format, level, itemClause: true }); // valida
   wager = Number(wager) || 0;
+  const tr = require('./transfer');
+  if (wager !== 0) tr.canBet(user); // cuentas nuevas o ayudadas por Joy: solo amistosos
   if (target) {
     const t = db.userByName(String(target));
     if (!t || t.npc || t.id === user.id) throw new Error('Rival no encontrado.');
     target = t.username;
+    if (wager !== 0) tr.pairCheck(user, t, wager);
   } else target = null;
   if (wager !== 0) hub.takeBet(user, wager, 'duel', { quiet: true, noXp: true });
   const c = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, format, level, wager, target, members: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), bond, tera, ranked: ranked === true, createdAt: Date.now() };
@@ -712,7 +729,11 @@ function accept(user, { id, team }) {
     dropChallenge(c); pushList();
     throw new Error('El equipo del retador ya no es válido; el reto se ha cancelado.');
   }
-  if (c.wager) hub.takeBet(user, c.wager, 'duel', { quiet: true, noXp: true });
+  if (c.wager) {
+    const tr = require('./transfer');
+    tr.canBet(user); tr.canBet(creator); tr.pairCheck(creator, user, c.wager);
+    hub.takeBet(user, c.wager, 'duel', { quiet: true, noXp: true });
+  }
   challenges.delete(c.id);
   db.escrowDel('btlc:' + c.id);
   const b = new Battle({
@@ -746,7 +767,7 @@ function startTourney(ua, ub, { format, level, bond, tera, teamA, teamB, tn }) {
 
 // ---- «Buscar rival»: cola de emparejamiento (mismo formato, nivel y banda de apuesta) ----
 const QUEUE_MS = 2 * 60 * 1000;
-const BANDS = { none: 0, small: 50, medium: 200 };
+const BANDS = Object.assign(Object.create(null), { none: 0, small: 50, medium: 200 });
 function queueCounts() {
   const c = { singles: 0, doubles: 0 };
   for (const e of queue.values()) c[e.format]++;
@@ -765,8 +786,9 @@ function enqueue(user, { format, level = 'fair', band = 'none', team, bond, tera
   ranked = ranked === true;
   // Clasificatoria: nivel 50 justo, sin apuesta y sin efectos de amistad (igualdad de condiciones); cuentas con antigüedad.
   if (ranked) { lg.canRank(user); level = 'fair'; band = 'none'; bond = false; tera = false; } else { bond = bondFlag(bond); tera = bondFlag(tera); }
-  if (!(band in BANDS)) throw new Error('Apuesta no válida.');
+  if (typeof band !== 'string' || !Object.hasOwn(BANDS, band)) throw new Error('Apuesta no válida.');
   const wager = BANDS[band];
+  if (wager) require('./transfer').canBet(user);
   resolveTeam(user, team, { format, level, itemClause: true }); // valida
   if (wager && user.coins < wager) throw new Error('No tienes monedas suficientes para esa apuesta.');
   queue.delete(user.id);
@@ -884,7 +906,7 @@ async function restoreOne(snap) {
     b.sides.forEach((s, i) => {
       const o = snap.sides[i];
       s.timeouts = o.timeouts || 0;
-      s.askedAt = o.askedAt || Date.now();
+      s.askedAt = Date.now(); // el tiempo que el casino estuvo caído no se castiga: la cuenta atrás de la petición empieza ahora
       if (o.chosen && s.req && !s.req.wait) s.chosen = true;
     });
     b.turn = Math.max(b.turn, snap.turn || 0);
@@ -968,7 +990,7 @@ function replay(user, { id }) {
   const rec = history.find((h) => h.id === String(id) && h.users.includes(user.id));
   if (!rec) return { replay: null };
   const i = rec.users.indexOf(user.id);
-  return { replay: { id: rec.id, mode: rec.mode, format: rec.format, players: rec.players, winner: rec.winner, side: 'p' + (i + 1), log: rec.log['p' + (i + 1)], roster: rec.roster, pickN: rec.pickN } };
+  return { replay: { id: rec.id, mode: rec.mode, format: rec.format, players: rec.players, winner: rec.winner, side: 'p' + (i + 1), log: rec.log['p' + (i + 1)], roster: rec.mode === 'pvp' ? rosterFor(i, rec.roster.p1, rec.roster.p2) : rec.roster, pickN: rec.pickN } };
 }
 
 // ---- Equipos guardados y constructor ----
@@ -1083,5 +1105,5 @@ module.exports = {
   undo: afterRestore(undo),
   MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu: afterRestore(startCpu), challenge: afterRestore(challenge), cancel, accept: afterRestore(accept), choose: afterRestore(choose),
   forfeit: afterRestore(forfeitAction), resume: afterRestore(resume), restoreAll, ABANDON_MS, RESTORE_GRACE_MS, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
-  startTourney, startTowerBattle, startEliteBattle, cpuReward, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
+  startTourney, startTowerBattle, startEliteBattle, cpuReward, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, isRestoring: () => restoring, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
 };

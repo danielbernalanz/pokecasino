@@ -281,3 +281,28 @@ test('la búsqueda lista por especie con lo que piden y con qué ejemplares cump
   assert.strictEqual(gts.search(a, { species: A }).list.find((x) => x.id === dep), undefined, 'tus propios depósitos no salen en Buscar');
   assert.throws(() => gts.search(b, { species: 99999 }), /no válida/);
 });
+
+// ---- Auditoría: lo que viaja con el ejemplar ----
+test('rasgos: la menta, las Chapas, la casilla de habilidad y los topes diarios de EXP y amistad viajan con el ejemplar', () => {
+  const exp = require('../server/exp');
+  const a = user(); const b = user();
+  a.collection = { [A]: { n: 1, s: 0 } }; b.collection = { [B]: { n: 1, s: 0 } };
+  const ma = one(a, A); const mb = one(b, B);
+  ex_(ma);
+  ma.mint = 'Audaz'; ma.hyper = [true, true, false, false, false, false];
+  exp.award(a, A, ma, 10 ** 9, 'exp'); // agota el tope diario de EXP
+  ma.fd = { day: new Date().toISOString().slice(0, 10), buddy: 1, feed: 7, duel: 0, battle: 0, exp: 0, pet: 1 };
+  const capBefore = exp.capLeft(A, ma);
+  const snap = gts.snapOf(a, A, ma);
+  assert.strictEqual(snap.tr.mint, 'Audaz');
+  assert.deepStrictEqual(snap.tr.hyper, [true, true, false, false, false, false]);
+  assert.ok(Number.isInteger(snap.tr.abSlot));
+  const got = gts.receive(b, snap);
+  assert.strictEqual(got.mint, 'Audaz');
+  assert.deepStrictEqual(got.hyper, [true, true, false, false, false, false]);
+  assert.strictEqual(got.abSlot, ma.abSlot);
+  assert.strictEqual(exp.capLeft(A, got), capBefore, 'el tope de EXP del día no se reinicia al traspasar');
+  assert.strictEqual(got.fd.feed, 7, 'ni el de amistad');
+  assert.ok(mb);
+});
+function ex_(m) { require('../server/exp').ensure(m.id || A, m); }

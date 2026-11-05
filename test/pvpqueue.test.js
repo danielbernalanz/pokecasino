@@ -15,7 +15,7 @@ const sdw = require('../server/showdown');
 let n = 0;
 function withMons(ids) {
   const name = 'q' + ++n;
-  const u = { id: 'id-' + name, username: name, coins: 50000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: Object.fromEntries(ids.map((id) => [id, { n: 1, s: 0 }])), stats: { pulls: 0, wagered: 0, won: 0, biggestWin: 0, duelsWon: 0, duelsLost: 0 }, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 1, createdAt: Date.now() - 9 * 864e5 };
+  const u = { id: 'id-' + name, username: name, coins: 50000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: Object.fromEntries(ids.map((id) => [id, { n: 1, s: 0 }])), stats: { pulls: 0, wagered: 0, won: 0, biggestWin: 0, duelsWon: 0, duelsLost: 0 }, pity: {}, daily: {}, voltorb: { level: 1 }, xp: 0, level: 3, createdAt: Date.now() - 9 * 864e5 };
   db.addUser(u);
   specimen.syncAll(u);
   return u;

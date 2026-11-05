@@ -273,7 +273,7 @@ function wonder(u, p) {
 const RECYCLE_BERRY_DUST = 1; // cada baya
 const RECYCLE_BERRY_DAILY = 20; // ✦ al día (dentro del tope general): ≈ 80 monedas como mucho
 function recycleValue(itemId) {
-  const it = items.ITEMS[itemId];
+  const it = Object.hasOwn(items.ITEMS, itemId) ? items.ITEMS[itemId] : null;
   if (!it || !it.price || it.cosmetic || it.megaStone || it.evo) return 0; // los objetos de evolución caen gratis en expediciones: no se reciclan
   return Math.floor((it.price * RECYCLE_RATE) / gacha.DUST_RATE);
 }
@@ -283,7 +283,7 @@ function recycleList() {
 function recycle(u, p) {
   const itemId = String(p.item);
   const qty = Number(p.qty === undefined ? 1 : p.qty);
-  const isBerry = !!items.BERRIES[itemId];
+  const isBerry = Object.hasOwn(items.BERRIES, itemId);
   const v = isBerry ? RECYCLE_BERRY_DUST : recycleValue(itemId);
   if (!v) throw new Error('Ese objeto no se puede reciclar.');
   if (!Number.isInteger(qty) || qty < 1 || qty > 99) throw new Error('Cantidad no válida.');

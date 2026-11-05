@@ -96,12 +96,15 @@ const room = (u, id) => { const c = u.collection[id]; return !c || c.n < MAX_STA
 
 // ---- Mover ejemplares ----
 // Saca el ejemplar `m` (ya validado) de la Caja y lo devuelve con TODO lo suyo.
-function pull(u, id, m) {
+// `carryItem`: el objeto equipado viaja con el ejemplar (GTS, intercambio); si es false (Mercado, regalos) vuelve a la mochila.
+function pull(u, id, m, carryItem = true) {
   m.drop = true; // sync() quita primero el marcado: así sale ESTE ejemplar y no otro
-  try { gacha.takePoke(u, id, !!m.shiny); } catch (e) { delete m.drop; throw e; }
+  if (carryItem) m.carry = true;
+  try { gacha.takePoke(u, id, !!m.shiny); } catch (e) { delete m.drop; delete m.carry; throw e; }
   const arr = specimen.sync(u, id);
   for (const x of arr) delete x.drop;
   delete m.drop;
+  delete m.carry;
   if (arr.includes(m)) throw new Error('No se pudo sacar el ejemplar de la Caja.');
   return m;
 }
@@ -120,6 +123,7 @@ function putBack(u, id, m) {
 function snapOf(from, id, m) {
   ex.ensure(id, m);
   require('./moves').ensure(id, m);
+  require('./abilities').resolve(id, m); // deja fija la casilla de habilidad (abSlot) antes de copiarla
   return { id: Number(id), shiny: !!m.shiny, tr: specimen.traitsOf(m, from), level: m.level, exp: m.exp, nick: m.nick || '', item: m.item || null,
     mv: { learned: m.learned.slice(), sdMoves: m.sdMoves.slice(), pending: (m.pending || []).slice(), moves: Array.isArray(m.moves) ? m.moves.slice() : undefined, v: m.mv } };
 }

@@ -286,11 +286,20 @@ function giftPoke(user, { to, id, shiny }) {
   if (t.npc) throw new Error('Los comerciantes NPC no aceptan regalos.');
   const rare = ['L', 'M'].includes((dex.BY_ID.get(Number(id)) || {}).rarity);
   require('./transfer').pokeInCheck(t, rare);
-  const before = specimen.sync(user, Number(id)).slice();
-  const p = gacha.takePoke(user, id, !!shiny);
+  // Se regala un ejemplar concreto (el menos valioso libre): no uno en uso (sala de intercambio, Alto Mando, incursión, expedición, criadero, compañero).
+  // Sus IV, naturaleza, Ball, marca y tamaño viajan con él; el objeto equipado vuelve a tu mochila.
+  const gts = require('./gts');
+  const nid = Number(id);
+  const free = (m) => !gts.busyReason(user, nid, m, 'los regalos');
+  let gone = specimen.leastValuable(user, nid, !!shiny, free);
+  if (!gone) {
+    const any = specimen.leastValuable(user, nid, !!shiny);
+    if (!any) { gacha.takePoke(user, id, !!shiny); throw new Error('No tienes ese Pokémon.'); } // takePoke explica por qué no
+    throw new Error(gts.busyReason(user, nid, any, 'los regalos'));
+  }
+  gts.pull(user, nid, gone, false);
+  const p = dex.BY_ID.get(nid);
   require('./transfer').notePokeIn(t, rare);
-  const left = new Set(specimen.sync(user, p.id).map((m) => m.uid));
-  const gone = before.find((m) => !left.has(m.uid)); // el ejemplar que se va: sus IV, naturaleza, Ball, marca y tamaño viajan con él
   const seen = new Set(specimen.sync(t, p.id).map((m) => m.uid));
   gacha.grant(t, p.id, !!shiny);
   const got = gone && specimen.sync(t, p.id).find((m) => !seen.has(m.uid));

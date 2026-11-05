@@ -269,8 +269,19 @@ function privateUser(u) {
 }
 
 // Monedas apartadas: pedidos de compra en el Mercado y lo que hay en juego (mesas, apuestas en curso).
+// Incluye las apuestas de las partidas abiertas (Blackjack, Minas, Video Póker, Desafío Pokémon y Voltorb Flip): si no, abrir una partida
+// con casi todo el saldo y llamar a la Enfermera Joy daría monedas de más.
+function openGameStakes(u) {
+  const g = u.games || {};
+  const bet = (x) => (Number.isFinite(x) && x > 0 ? x : 0);
+  let s = 0;
+  if (g.blackjack && !g.blackjack.done) s += (g.blackjack.hands || []).reduce((t, h) => t + bet(h.bet), 0);
+  for (const k of ['mines', 'vpoker', 'quiz']) if (g[k] && !g[k].done) s += bet(g[k].bet);
+  if (u.voltorb && u.voltorb.game) s += bet(u.voltorb.game.bet);
+  return s;
+}
 function lockedCoins(u) {
-  return require('./market').lockedIn(u) + Object.values(db.data.escrow).filter((e) => e.userId === u.id).reduce((s, e) => s + e.amount, 0);
+  return require('./market').lockedIn(u) + Object.values(db.data.escrow).filter((e) => e.userId === u.id).reduce((s, e) => s + e.amount, 0) + openGameStakes(u);
 }
 
 const lockedView = (u) => require('./locked').view(u) || { box: {}, prog: null };

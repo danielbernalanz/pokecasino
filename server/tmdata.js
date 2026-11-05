@@ -18,6 +18,7 @@ const MATERIALS = {
   'mat-roca': { name: 'Fragmento de Roca', sprite: 'hard-stone', types: ['rock', 'ground'] },
   'mat-esencia': { name: 'Esencia Espectral', sprite: 'spell-tag', types: ['ghost', 'poison'] },
 };
+Object.setPrototypeOf(MATERIALS, null);
 const MAT_OF_TYPE = {};
 for (const [id, m] of Object.entries(MATERIALS)) for (const t of m.types) MAT_OF_TYPE[t] = id;
 for (const [id, m] of Object.entries(MATERIALS)) m.desc = `Material de MT (${m.types.length} tipos). Se consigue en Expediciones y ganando combates; se gasta en la Máquina MT. No se puede vender a los PNJ.`;

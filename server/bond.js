@@ -172,13 +172,14 @@ const berriesOf = (u) => (u.berries ||= {});
 function giveBerry(u, id, n) { const bs = berriesOf(u); bs[id] = Math.min(BERRY_CAP, (bs[id] || 0) + n); }
 function takeBerry(u, id, n = 1) {
   const bs = berriesOf(u);
-  if ((bs[id] || 0) < n) throw new Error(`No tienes ${items.BERRIES[id].name}.`);
+  if (typeof id !== 'string' || !Object.hasOwn(items.BERRIES, id)) throw new Error('Esa baya no existe.');
+  if (!(bs[id] >= n)) throw new Error(`No tienes ${items.BERRIES[id].name}.`);
   bs[id] -= n;
   if (!bs[id]) delete bs[id];
 }
 function feed(u, p) {
   const berry = String(p.berry);
-  const b = items.BERRIES[berry];
+  const b = Object.hasOwn(items.BERRIES, berry) ? items.BERRIES[berry] : null;
   if (!b) throw new Error('Esa baya no existe.');
   const m = specimen.find(u, p);
   if ((berriesOf(u)[berry] || 0) < 1) throw new Error(`No tienes ${b.name}.`);
@@ -307,7 +308,7 @@ function plant(u, p) {
   const g = gardenOf(u);
   const i = plotIndex(p);
   const berry = String(p.berry);
-  const b = items.BERRIES[berry];
+  const b = Object.hasOwn(items.BERRIES, berry) ? items.BERRIES[berry] : null;
   if (!b) throw new Error('Esa baya no se puede plantar.');
   if (g.plots[i]) throw new Error('Esa parcela ya está ocupada.');
   takeBerry(u, berry);

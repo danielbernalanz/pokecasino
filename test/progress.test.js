@@ -140,7 +140,28 @@ test('el bonus de ganancias tiene tope diario (fijo y ligado a lo apostado) y no
 
 test('un reto a un rival inexistente no cobra la apuesta', () => {
   const duel = require('../server/games/duel');
-  const u = user('despistado', { coins: 1000, collection: { 6: { n: 1, s: 0 } } });
+  const u = user('despistado', { coins: 1000, level: 3, createdAt: 1, collection: { 6: { n: 1, s: 0 } } });
   assert.throws(() => duel.create(u, { pokeId: 6, wager: 500, target: 'nadie-asi' }), /Rival/);
   assert.strictEqual(u.coins, 1000);
+});
+
+test('duelos: las cuentas nuevas no apuestan y entre dos cuentas hay un tope diario de ganancia neta', () => {
+  const duel = require('../server/games/duel');
+  const tr = require('../server/transfer');
+  const mk = (name, extra = {}) => user(name, { coins: 100000, level: 5, createdAt: 1, collection: { 6: { n: 1, s: 0 } }, ...extra });
+  const young = mk('duelo-nuevo', { level: 1 });
+  assert.throws(() => duel.create(young, { pokeId: 6, wager: 500 }), /no pueden apostar/);
+  assert.ok(duel.create(young, { pokeId: 6, wager: 0 }).duel, 'los amistosos sí');
+  const healed = mk('duelo-joy', { lastHeal: Date.now() });
+  assert.throws(() => duel.create(healed, { pokeId: 6, wager: 500 }), /Enfermera Joy/);
+  const a = mk('duelo-a'); const b = mk('duelo-b');
+  const open = duel.create(a, { pokeId: 6, wager: 500 });
+  assert.throws(() => duel.accept(young, { id: open.duel.id, pokeId: 6 }), /no pueden apostar/);
+  assert.strictEqual(young.coins, 100000, 'no se cobró');
+  duel.cancel(a, { id: open.duel.id });
+  // Tras llegar al tope del día entre ellos, no se aceptan más apuestas (el amistoso sí).
+  tr.notePair(a, b, tr.PAIR_BET_DAILY);
+  assert.throws(() => duel.create(a, { pokeId: 6, wager: 100, target: b.username }), /tope diario/);
+  const open2 = duel.create(b, { pokeId: 6, wager: 0 });
+  assert.ok(duel.accept(a, { id: open2.duel.id, pokeId: 6 }).record, 'amistoso permitido');
 });

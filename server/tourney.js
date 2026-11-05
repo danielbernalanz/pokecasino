@@ -103,7 +103,7 @@ function create(u, p = {}, now = Date.now()) {
   if (!SIZES.includes(size)) throw new Error('Un torneo es de 4, 8 o 16 plazas.');
   if (!ENTRIES.includes(entry)) throw new Error('Inscripción no válida.');
   if (!WAITS.includes(wait)) throw new Error('Plazo por combate no válido.');
-  if (!showdown().FORMATS[format]) throw new Error('Formato no válido.');
+  if (typeof format !== 'string' || !Object.hasOwn(showdown().FORMATS, format)) throw new Error('Formato no válido.');
   if (level !== 'fair' && level !== 'real') throw new Error('Regla de nivel no válida.');
   const name = clean(p.name) || `Torneo de ${u.username}`;
   const t = { id: newCode(), name, host: u.id, size, format, level, bond: flag(p.bond), tera: flag(p.tera), pub: p.pub === true, entry, wait, state: 'open', at: now, players: [], matches: [], wins: {}, invites: 0, paid: false };
@@ -159,6 +159,7 @@ function invite(u, p = {}) {
   const to = db.userByName(String(p.to || ''));
   if (!to || to.npc || to.id === u.id) throw new Error('Jugador no encontrado.');
   if (t.invites >= INVITES) throw new Error(`Máximo ${INVITES} invitaciones por torneo: comparte el código ${t.id}.`);
+  require('./transfer').noteInvite(u);
   t.invites++;
   db.save();
   notify.push(to, { kind: 'tourney', text: `🏆 ${u.username} te invita al torneo «${t.name}» (código ${t.id})`, link: '#/torneos', toast: true });
@@ -377,6 +378,14 @@ function tick(now = Date.now()) {
     if (t.state === 'open' && now - t.at > OPEN_MS) { shutdown(t, 'cancelled', now, `El torneo «${t.name}» no llegó a empezar en 24 h: se devuelven las inscripciones.`); any = true; continue; }
     if (t.state === 'done' || t.state === 'cancelled') { if (now - (t.endedAt || t.at) > KEEP_MS) { delete T()[t.id]; any = true; } continue; }
     if (t.state !== 'running') continue;
+    // Partidas «live» cuyo combate ya no existe (ni en memoria ni guardado): se repiten. No se toca nada mientras se restauran los combates.
+    const sd = showdown();
+    if (!sd.isRestoring()) {
+      for (const m of t.matches.filter((x) => x.state === 'live')) {
+        const gone = !m.battle || (!sd.battles.has(m.battle) && !(db.data.sdBattles && db.data.sdBattles[m.battle]));
+        if (gone) { onAbort({ id: t.id, r: m.r, i: m.i }, now); any = true; }
+      }
+    }
     for (const m of t.matches.filter((x) => x.state === 'wait')) {
       if (m.ready[m.a] && m.ready[m.b]) { if (tryStart(t, m, now)) any = true; }
       if (m.state !== 'wait' || now < m.deadline) continue;
@@ -391,6 +400,9 @@ function tick(now = Date.now()) {
 }
 let timer = null;
 function begin_() { // (al arrancar el casino)
+  // El tiempo que el casino estuvo apagado no cuenta: los plazos de las partidas en espera se amplían desde ahora.
+  const now = Date.now();
+  for (const t of Object.values(T())) if (t.state === 'running') for (const m of t.matches) if (m.state === 'wait') m.deadline = Math.max(m.deadline, now + t.wait * 60e3);
   tick();
   if (!timer) { timer = setInterval(() => { try { tick(); } catch (e) { console.error('Torneos:', e); } }, 5000); timer.unref(); }
 }
