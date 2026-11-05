@@ -182,6 +182,9 @@ function refundEscrow() {
     // Los depósitos de combates guardados (btl:<id>:<lado>) siguen vivos: el combate se restaura al arrancar.
     const m = /^btl:([^:]+):/.exec(key);
     if (m && data.sdBattles && data.sdBattles[m[1]]) { keep[key] = { userId, amount }; continue; }
+    // Las inscripciones de un torneo (trn:<id>:<jugador>) esperan en el depósito hasta el pago o la devolución del propio torneo.
+    const tn = /^trn:([^:]+):/.exec(key);
+    if (tn && data.tourneys && data.tourneys[tn[1]] && !data.tourneys[tn[1]].paid) { keep[key] = { userId, amount }; continue; }
     const u = data.users[userId];
     if (u) { u.coins += amount; n++; total += amount; require('./hub').ledger(u, amount, 'refund', 'Partida interrumpida por una actualización'); }
   }

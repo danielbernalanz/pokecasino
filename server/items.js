@@ -63,6 +63,8 @@ Object.assign(COSMETICS, {
   'frame-liga-master': { slot: 'frame', rarity: 'E', name: 'Marco Liga Master', sprite: 'master-ball', event: true },
   'frame-liga-top': { slot: 'frame', rarity: 'L', name: 'Marco Liga Top 3', sprite: 'master-ball', event: true },
 });
+// Premio de los torneos entre amigos (tourney.js): tampoco sale de los Huevos Misteriosos.
+COSMETICS['frame-torneo'] = { slot: 'frame', rarity: 'E', name: 'Marco Trofeo', sprite: 'rare-candy', event: true };
 const SLOT_NAMES = { frame: 'marco', cardback: 'dorso de carta', title: 'título' };
 for (const [id, c] of Object.entries(COSMETICS)) {
   ITEMS[id] = { ...c, price: null, cosmetic: true, desc: `Cosmético (${SLOT_NAMES[c.slot]}). Equípalo en «Mi Entrenador»: los demás jugadores lo verán.` };

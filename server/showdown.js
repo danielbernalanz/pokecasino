@@ -102,7 +102,7 @@ function carryCmd(carry) {
 
 // ---- Combate ----
 class Battle {
-  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null, affection = false, ranked = false, tower = null, full = false, elite = null, tera = false }) {
+  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null, affection = false, ranked = false, tower = null, full = false, elite = null, tera = false, tn = null }) {
     this.id = id || crypto.randomUUID().slice(0, 8);
     // Semilla explícita: el simulador es determinista con ella y el registro de entradas, así que un combate se puede reconstruir.
     this.seed = seed || [0, 1, 2, 3].map(() => crypto.randomInt(1, 0x10000));
@@ -118,6 +118,7 @@ class Battle {
     this.full = !!full; // líderes y Alto Mando: cada bando lleva su equipo entero (sin «Picked Team Size»), el del jugador de hasta 6
     // Teracristalización (tera.js): solo si el modo lo permite (Combates libres, PvP con la regla y Teraincursiones) y cada jugador necesita el Orbe.
     this.tera = !!tera;
+    this.tn = tn; // combate de un torneo (tourney.js): { id, r, i }
     this.elite = elite; // carrera del Alto Mando (elite.js): { stage, carry } — los PS, PP y estados del jugador se arrastran de un combate al siguiente
     this.tower = tower; // Torre Batalla (tower.js): { n, boss } — el rival es un «trainer» sintético
     // Afecto (affection.js): true = solo el lado del jugador (CPU); 'both' = los dos lados (PvP). Se guarda en la instantánea (aff 1 / 2).
@@ -182,7 +183,7 @@ class Battle {
 
   snapshot() {
     return {
-      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, rk: this.ranked ? 1 : 0, tw: this.tower ? { n: this.tower.n, boss: !!this.tower.boss, tr: { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls, quote: this.trainer.quote } } : null, aff: this.affection === 'both' ? 2 : this.affection ? 1 : 0, tr: this.tera ? 1 : 0, full: this.full ? 1 : 0, el: this.elite ? { stage: this.elite.stage, carry: this.elite.carry, bonus: this.elite.bonus || 0 } : undefined,
+      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, rk: this.ranked ? 1 : 0, tn: this.tn || undefined, tw: this.tower ? { n: this.tower.n, boss: !!this.tower.boss, tr: { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls, quote: this.trainer.quote } } : null, aff: this.affection === 'both' ? 2 : this.affection ? 1 : 0, tr: this.tera ? 1 : 0, full: this.full ? 1 : 0, el: this.elite ? { stage: this.elite.stage, carry: this.elite.carry, bonus: this.elite.bonus || 0 } : undefined,
       seed: this.seed, createdAt: this.createdAt, savedAt: Date.now(), input: this.inputLog.slice(this.setupLen || 1 + this.sides.length), turn: this.turn,
       sides: this.sides.map((s) => ({ userId: s.userId, name: s.name, sets: s.sets, roster: s.roster, human: s.human, chosen: s.chosen, timeouts: s.timeouts, askedAt: s.askedAt })),
     };
@@ -378,6 +379,7 @@ class Battle {
     try { refundBattle(this); } catch (e2) { console.error(e2); }
     for (const s of this.humans()) this.emitTo(s, 'battle:end', { id: this.id, aborted: true, text: 'El combate se ha interrumpido por un error. Si había apuesta, se te ha devuelto.' });
     if (this.tower) for (const s of this.humans()) require('./tower').onAbort(s.userId, this.id);
+    if (this.tn) { try { require('./tourney').onAbort(this.tn); } catch (e) { console.error(e); } }
     this.unpersist();
     this.teardown();
     this.resolveDone({ winner: null, turns: this.turn, aborted: true });
@@ -385,7 +387,7 @@ class Battle {
 
   view(side) {
     return {
-      id: this.id, mode: this.mode, format: this.format, level: this.level, wager: this.wager, side: side.id, tera: side.tera || undefined, pickN: this.pickN, pickFoe: this.pickFoe, ranked: this.ranked || undefined, elite: this.elite ? { stage: this.elite.stage } : undefined, gym: this.trainer && this.trainer.badge ? this.trainer.badge : undefined,
+      id: this.id, mode: this.mode, format: this.format, level: this.level, wager: this.wager, side: side.id, tera: side.tera || undefined, pickN: this.pickN, pickFoe: this.pickFoe, ranked: this.ranked || undefined, tn: this.tn ? this.tn.id : undefined, elite: this.elite ? { stage: this.elite.stage } : undefined, gym: this.trainer && this.trainer.badge ? this.trainer.badge : undefined,
       tower: this.tower ? { n: this.tower.n, round: Math.floor((this.tower.n - 1) / 7) + 1, boss: !!this.tower.boss } : undefined,
       ranks: this.mode === 'pvp' ? this.sides.map((s) => require('./league').emblem(db.userById(s.userId), this.ranked ? this.format : undefined)) : undefined,
       you: side.name, foe: this.sides[1 - side.n].name, trainer: this.trainer ? { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls } : null,
@@ -562,8 +564,9 @@ function settle(b) {
   b.sides.forEach((s, i) => hub.emitUser(s.userId, 'battle:end', { id: b.id, winner: tie ? 'tie' : b.winner === i ? 'you' : 'foe', prize: b.winner === i ? prize : 0, bp: bpGain[i], wager: b.wager, forfeited: b.forfeited ? b.forfeited.side === i : false, league: lg ? (lg.rated ? { rated: true, ...lg.side[i] } : { rated: false, why: lg.why }) : undefined }));
   if (!tie) {
     const w = players[b.winner]; const l = players[1 - b.winner];
-    if (w && l) hub.feed('duel', `⚔️ ${w.username} venció a ${l.username} en un combate ${b.ranked ? 'clasificatorio ' : ''}${FORMATS[b.format].label.toLowerCase()}${b.wager ? ` y ganó ${prize.toLocaleString('es')} monedas` : ''}`);
+    if (w && l) hub.feed('duel', `⚔️ ${w.username} venció a ${l.username} en un combate ${b.ranked ? 'clasificatorio ' : ''}${b.tn ? 'de torneo ' : ''}${FORMATS[b.format].label.toLowerCase()}${b.wager ? ` y ganó ${prize.toLocaleString('es')} monedas` : ''}`);
   }
+  if (b.tn) { try { require('./tourney').onBattleEnd(b); } catch (e) { console.error('Torneo: error al cerrar el combate', e); } }
   return res;
 }
 
@@ -723,6 +726,24 @@ function accept(user, { id, team }) {
   return { battle: b.view(b.sides[1]) };
 }
 
+// Combate de un torneo (tourney.js): sin apuesta, mismas reglas que un reto PvP. Los errores llevan `side` (0/1) y `team`/`busy` para que el torneo sepa a quién pedírselo.
+function startTourney(ua, ub, { format, level, bond, tera, teamA, teamB, tn }) {
+  const us = [ua, ub];
+  us.forEach((u, i) => { if (byUser.has(u.id)) throw Object.assign(new Error('Ya estás en un combate.'), { side: i, busy: true }); });
+  checkCapacity();
+  const to = require('./tera');
+  to.ensureOrb(ua); to.ensureOrb(ub);
+  const res = [teamA, teamB].map((team, i) => { try { return resolveTeam(us[i], team, { format, level, itemClause: true }); } catch (e) { throw Object.assign(e, { side: i, team: true }); } });
+  const b = new Battle({
+    mode: 'pvp', format, level, wager: 0, affection: bond === false ? false : 'both', ranked: false, tn,
+    tera: tera !== false && to.hasOrb(ua) && to.hasOrb(ub),
+    sides: us.map((u, i) => ({ user: u, name: u.username, sets: res[i].sets, roster: res[i].roster })),
+  });
+  register(b);
+  pushList();
+  return b;
+}
+
 // ---- «Buscar rival»: cola de emparejamiento (mismo formato, nivel y banda de apuesta) ----
 const QUEUE_MS = 2 * 60 * 1000;
 const BANDS = { none: 0, small: 50, medium: 200 };
@@ -831,6 +852,7 @@ function abortSnapshot(snap, why) {
       refundOne(db.userById(e ? e.userId : s.userId), e ? e.amount : snap.wager);
     }
     if (snap.tw && s.userId) require('./tower').onAbort(s.userId, snap.id);
+    if (snap.tn && i === 0) { try { require('./tourney').onAbort(snap.tn); } catch (e) { console.error(e); } }
     // (la carrera del Alto Mando no se toca: sigue en el mismo combate y se puede reintentar)
     if (s.userId) hub.emitUser(s.userId, 'battle:end', { id: snap.id, aborted: true, text: 'Tu combate no se pudo recuperar tras la actualización del casino.' + (snap.wager ? ' Se te ha devuelto la apuesta.' : '') });
   });
@@ -849,7 +871,7 @@ async function restoreOne(snap) {
     if (s.human && !user) throw new Error('jugador desaparecido');
     return { user, name: s.name, sets: s.sets, roster: s.roster, brain: s.human ? null : new Brain('p' + (i + 1), { doubles, smart: smartFor(trainer) }) };
   });
-  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: snap.aff === 2 ? 'both' : !!snap.aff, ranked: !!snap.rk, tower: snap.tw ? { n: snap.tw.n, boss: snap.tw.boss } : null, full: !!snap.full, tera: !!snap.tr, elite: snap.el ? { stage: snap.el.stage, carry: snap.el.carry, bonus: snap.el.bonus || 0 } : null, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
+  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: snap.aff === 2 ? 'both' : !!snap.aff, ranked: !!snap.rk, tower: snap.tw ? { n: snap.tw.n, boss: snap.tw.boss } : null, full: !!snap.full, tera: !!snap.tr, tn: snap.tn || null, elite: snap.el ? { stage: snap.el.stage, carry: snap.el.carry, bonus: snap.el.bonus || 0 } : null, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
   b.startedAt = snap.createdAt;
   battles.set(b.id, b);
   for (const s of b.sides) if (s.userId) byUser.set(s.userId, b);
@@ -1061,5 +1083,5 @@ module.exports = {
   undo: afterRestore(undo),
   MAX_BATTLES, TURN_MS, MAX_TIMEOUTS, RAKE, FORMATS, validChoice, resolveTeam, startCpu: afterRestore(startCpu), challenge: afterRestore(challenge), cancel, accept: afterRestore(accept), choose: afterRestore(choose),
   forfeit: afterRestore(forfeitAction), resume: afterRestore(resume), restoreAll, ABANDON_MS, RESTORE_GRACE_MS, activeFor, historyOf, replay, saveTeam, deleteTeam, boxForBuilder, learnsetOf, setMoves, state,
-  startTowerBattle, startEliteBattle, cpuReward, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
+  startTourney, startTowerBattle, startEliteBattle, cpuReward, byUser, listPublic, queueInfo, queueMine, isQueued, unqueueUser, setQueueHook, queue, QUEUE_MS, BANDS, enqueue: afterRestore(enqueue), unqueue, refundAll, runAiBattle, _dropMemory, battles, challenges, dayWins,
 };

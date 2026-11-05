@@ -29,6 +29,7 @@ export const META = {
   duels: { t: 'Duelos rápidos', d: 'Un Pokémon a ciegas contra otro entrenador', art: 68, tone: 'r', ico: '🥊' },
   mega: { t: 'Evento Mega', d: 'Megapiedras y bote Mega', art: 6, tone: 'y', ico: '💠' },
   market: { t: 'Mercado', d: 'Compra y vende Pokémon y objetos', art: 53, tone: 'y', ico: '🏪' },
+  torneos: { t: 'Torneos', d: 'Eliminación directa entre amigos, con bote opcional', art: 149, tone: 'y', ico: '🏆' },
   gts: { t: 'GTS', d: 'Intercambia Pokémon por Pokémon con otros entrenadores', art: 202, tone: 'b', ico: '🌐' },
   shop: { t: 'Tienda', d: 'Compra objetos y bayas', art: 352, tone: 'g', ico: '🛍️' },
   workshop: { t: 'Taller', d: 'Fabrica Pokémon y MT, cambia polvo y recicla', art: 68, tone: 'p', ico: '🔨' },
@@ -48,7 +49,7 @@ export const SECTIONS = [
     { name: 'Desafíos', items: ['quiz'] }] },
   { id: 'pokemon', label: 'Pokémon', ico: { item: 'poke-ball' }, say: { emoji: '🧑‍🔬', who: 'Prof. Oak', text: 'Aquí cuidas de tu equipo: captura, entrena y presume.' }, groups: [
     { name: 'Tu equipo', items: ['gacha', 'pc', 'pokedex', 'huerto', 'criadero'] },
-    { name: 'Aventura', items: ['captura', 'combates', 'raids', 'expediciones', 'duels', 'mega'] }] },
+    { name: 'Aventura', items: ['captura', 'combates', 'torneos', 'raids', 'expediciones', 'duels', 'mega'] }] },
   { id: 'mercado', label: 'Mercado', ico: { item: 'nugget' }, say: { mon: 352, who: 'Kecleon', text: 'Compra, vende y haz buenos negocios con otros entrenadores.' }, groups: [
     { name: 'Comercio', items: ['market', 'gts', 'shop'] },
     { name: 'Taller', items: ['workshop'] }] },
@@ -182,6 +183,7 @@ const TIPS = [
   { id: 'raids', text: 'En las Teraincursiones te esperan jefes teracristalizados: ve en solitario con 3 aliados o con amigos. ¡El jefe se puede capturar!', go: 'Al combate' },
   { id: 'captura', text: 'En Captura te esperan Pokémon salvajes: debilítalos, duérmelos y lanza una Ball. ¡Hay legendarios!', go: 'A la hierba' },
   { id: 'expediciones', text: 'Tus Pokémon pueden salir de expedición mientras no estás: vuelven con EXP, Caramelos Exp. y bayas.', go: 'Explorar' },
+  { id: 'torneos', text: '¿Montamos un torneo? Crea uno de 4, 8 o 16 plazas, pásales el código a tus amigos y que gane el mejor equipo.', go: 'Ir a Torneos' },
   { id: 'combates', text: '¡Combates de verdad! Prepara tu equipo y reta a un entrenador.', go: 'A combatir' },
   { id: 'gts', text: 'En la GTS puedes cambiar un Pokémon tuyo por otro que te falte: deposítalo, di cuál quieres y otro entrenador te lo cambia.', go: 'Ir a la GTS' },
   { id: 'shop', text: 'En la Tienda hay objetos y bayas que te vendrán de maravilla. Los tuyos, en la Mochila.', go: 'Ir a la Tienda' },

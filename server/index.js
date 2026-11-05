@@ -176,6 +176,7 @@ const STATIC = {
   tera: require('./tera').STATIC,
   gts: gts.STATIC,
   raid: require('./raid').STATIC,
+  tourney: require('./tourney').STATIC,
   balls: balls.STATIC,
 };
 // Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).
@@ -726,6 +727,14 @@ io.on('connection', (socket) => {
   on('gts:cancel', gts.cancel);
   on('gts:offer', gts.offer);
   on('gts:claim', gts.claim);
+  on('tourney:state', (u, p) => require('./tourney').state(u, p), { push: false });
+  on('tourney:create', (u, p) => require('./tourney').create(u, p));
+  on('tourney:join', (u, p) => require('./tourney').join(u, p));
+  on('tourney:leave', (u, p) => require('./tourney').leave(u, p));
+  on('tourney:cancel', (u, p) => require('./tourney').cancel(u, p));
+  on('tourney:start', (u, p) => require('./tourney').start(u, p));
+  on('tourney:invite', (u, p) => require('./tourney').invite(u, p));
+  on('tourney:ready', (u, p) => require('./tourney').ready(u, p));
   on('chat:send', chat, { push: false });
   on('leaderboard', leaderboard, { push: false });
   on('player:view', viewPlayer, { push: false });
@@ -788,6 +797,7 @@ db.init().then(() => {
   mega.start();
   require('./league').start(); // cierra la temporada si cambió el mes mientras el casino estaba apagado
   require('./raid').begin(); // Teraincursiones en curso: amplía plazos y arranca el temporizador
+  require('./tourney').begin(); // Torneos: plazos de cada ronda y combates pendientes
   showdown.restoreAll().catch((e) => console.error('Combates: no se pudieron restaurar', e)); // reconstruye los combates en curso al redesplegar
   console.log('  ✅ Casino abierto');
   if (!Object.keys(db.data.users).length) console.log('  👑 El primer jugador que se registre será administrador.');

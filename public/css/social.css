@@ -1,0 +1,34 @@
+/* Torneos, intercambio directo, notificaciones, Pokédex regionales y ficha pública (views/torneos.js, trade.js, notes.js…) */
+.fr.frame-torneo { --frc: #f59e0b; --frg: #fbbf24cc; }
+
+/* ---- Torneos ---- */
+.view-torneos { min-width: 0; }
+.trn-body { min-width: 0; }
+.trn-home { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.trn-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.trn-opts label { display: grid; gap: 2px; font-size: 12px; min-width: 0; }
+.trn-opts select { width: 100%; min-width: 0; }
+.trn-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--panel2); border: 2px solid var(--ink); border-radius: 10px; min-width: 0; }
+.trn-row .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.trn-title { margin: 0; font-size: 18px; }
+.trn-code { font: 800 14px var(--body); letter-spacing: .12em; background: var(--panel2); border: 2px solid var(--ink); border-radius: 8px; padding: 3px 8px; }
+.trn-chip { background: var(--panel2); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 8px; font-size: 12px; white-space: nowrap; }
+.trn-me.hot { border-color: var(--gold); box-shadow: var(--card-sh), 0 0 14px #ffcb0555; }
+.trn-me select { min-width: 0; max-width: 100%; }
+.trn-champ { font-weight: 800; color: var(--gold); }
+.trn-bracket { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; align-items: stretch; }
+.trn-col { display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 150px; flex: 1 1 150px; }
+.trn-colh { font: 800 12px var(--body); text-align: center; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.trn-match { background: var(--panel); border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
+.trn-match.mine { border-color: var(--gold); }
+.trn-match.st-live { box-shadow: 0 0 10px #ffcb0577; }
+.trn-side { padding: 4px 8px; font-size: 13px; border-bottom: 1px solid var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trn-side:last-of-type { border-bottom: 0; }
+.trn-side.win { font-weight: 800; background: #22c55e22; }
+.trn-side.lose { opacity: .55; text-decoration: line-through; }
+.trn-side.me { color: var(--gold); }
+.trn-st { padding: 2px 8px 3px; text-align: center; background: var(--panel2); }
+@media (max-width: 760px) {
+  .trn-home { grid-template-columns: minmax(0, 1fr); }
+  .trn-col { min-width: 140px; }
+}

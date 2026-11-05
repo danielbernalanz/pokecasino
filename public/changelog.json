@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.05-ab",
+    "date": "2026-11-05",
+    "title": "Torneos entre amigos",
+    "items": [
+      "🏆 Nuevo apartado «Torneos» (Pokémon → Aventura): cualquier jugador crea un torneo de eliminación directa de 4, 8 o 16 plazas, en Individual o Dobles, a nivel 50 (como el VGC) o con niveles reales, y con las mismas opciones de amistad y Teracristalización que los retos. Se entra por código de 5 letras o desde la lista pública, y puedes invitar a jugadores.",
+      "⚔️ El cuadro se genera al llenarse las plazas o cuando el anfitrión lo inicia (mínimo 3: los huecos son «bye») y se ve en vivo. Cada ronda es un combate PvP normal: pulsas «Listo» con tu equipo y empieza cuando los dos estáis listos. Si no te presentas en el plazo (5, 10 o 15 min) pierdes; los empates se repiten.",
+      "🪙 Inscripción opcional con bote (100, 250, 500 o 1.000 monedas): el campeón se lleva el 70 % y el finalista el 30 % del bote menos la misma comisión del 5 % que el PvP. Se guarda y se paga una sola vez aunque el servidor se reinicie. Hace falta una cuenta con nivel 3 y 3 días, y como mucho 1.000 monedas de inscripciones al día.",
+      "🏅 El campeón gana el título «Campeón de Torneo» y el Marco Trofeo (una vez, con al menos 4 inscritos)."
+    ]
+  },
+  {
     "version": "2026.11.05-aa",
     "date": "2026-11-05",
     "title": "GTS: intercambia Pokémon por Pokémon",

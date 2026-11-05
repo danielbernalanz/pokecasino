@@ -59,6 +59,8 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Social**: chat con menciones `@nombre`, **mensajes privados** (`/w nombre mensaje` o «✉️» en la ficha), **emotes de Pokémon** (`:pikachu:` o el selector 😀), actividad en vivo, conectados, fichas de entrenador, ranking, regalos, recompensa diaria con racha (1.000 el primer día, +150 por día hasta 1.900) y niveles. **Avisos** (🔔 en el menú del usuario): vibración, contador en la pestaña y notificación del sistema cuando te toca en el póker, te escriben, te mencionan o recibes algo.
 
+**Torneos entre amigos** (Pokémon → Torneos): eliminación directa de 4, 8 o 16 plazas (Individual o Dobles, nivel 50 o real, amistad y Tera opcionales), inscripción por código o lista pública, cuadro en vivo y cada ronda como combate PvP normal con plazo de presentación. Bote opcional (suma cero menos el 5 %: 70 % campeón, 30 % finalista), título «Campeón de Torneo» y Marco Trofeo.
+
 **Eventos** (hora de España): lunes ⚔️ Duelos sin comisión, miércoles 🎯 Misiones ×2, viernes 🏪 Mercado sin impuesto y comisión a la mitad, sábado y domingo ✨ Variocolor ×2 y 🤝 tope de bonus de compañero ×2. Se anuncian en el Vestíbulo y el anfitrión puede lanzar cualquiera de 1 a 72 horas.
 
 **Mi Entrenador → 📊 Mis monedas**: gráfica del saldo diario, resultado neto por juego y últimos movimientos (gacha, Mercado, regalos, recompensas…).
