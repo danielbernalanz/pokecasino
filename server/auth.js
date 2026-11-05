@@ -9,6 +9,12 @@ const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 function hashPassword(pw, salt = crypto.randomBytes(16).toString('hex')) {
   return { salt, hash: crypto.scryptSync(pw, salt, 64).toString('hex') };
 }
+// Contraseña ficticia para que un usuario que no existe tarde lo mismo que uno que sí.
+let dummy = null;
+function burn(pw) {
+  dummy ||= hashPassword('contraseña-ficticia');
+  try { crypto.scryptSync(typeof pw === 'string' ? pw : '', dummy.salt, 64); } catch { /* da igual */ }
+}
 function checkPassword(pw, user) {
   if (!user.salt || !user.hash) return false; // cuentas sin contraseña (comerciantes NPC)
   const h = crypto.scryptSync(pw, user.salt, 64);
@@ -116,6 +122,7 @@ function register({ username, password, invite }, ip) {
 function login({ username, password }, ip) {
   if (tooMany(ip)) throw new Error('Demasiados intentos, espera unos minutos.');
   const u = typeof username === 'string' ? db.userByName(username) : null;
+  if (!u || u.npc) burn(password);
   if (!u || u.npc || typeof password !== 'string' || !checkPassword(password, u)) { noteFail(ip); throw new Error('Usuario o contraseña incorrectos.'); }
   if (u.banned) throw new Error('Esta cuenta está suspendida.');
   return { user: u, token: createSession(u) };

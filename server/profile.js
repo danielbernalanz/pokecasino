@@ -9,7 +9,7 @@ const playtime = require('./playtime');
 const HOF_SHOWN = 5;
 
 function view(viewer, { username } = {}) {
-  const u = db.userByName(String(username || ''));
+  const u = db.userByName(typeof username === 'string' ? username : '');
   if (!u || u.banned) throw new Error('Jugador no encontrado.');
   const progress = require('./progress');
   const L = u.league;

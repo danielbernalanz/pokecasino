@@ -86,7 +86,7 @@ function close(r, why, { notifyBoth = true, by = null } = {}) {
 
 function invite(u, p = {}, now = Date.now()) {
   gts.canUse(u, now, WHAT);
-  const t = db.userByName(String(p.to || ''));
+  const t = db.userByName(typeof p.to === 'string' ? p.to : '');
   if (!t || t.npc || t.id === u.id) throw new Error('Jugador no encontrado.');
   gts.canUse(t, now, WHAT); // (si no puede intercambiar, no tiene sentido invitarle)
   if (byUser.has(u.id)) throw new Error('Ya estás en una sala de intercambio: ciérrala antes.');

@@ -69,7 +69,7 @@ function make(id, shiny = false, owner = null) {
 }
 
 function sanitizeNick(s) {
-  const clean = String(s ?? '').replace(/[\p{C}\p{Zl}\p{Zp}]/gu, '').replace(/\s+/g, ' ').trim();
+  const clean = (typeof s === 'string' ? s : '').replace(/[\p{C}\p{Zl}\p{Zp}]/gu, '').replace(/\s+/g, ' ').trim();
   return Array.from(clean).slice(0, 12).join('').trim();
 }
 

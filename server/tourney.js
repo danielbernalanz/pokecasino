@@ -42,7 +42,7 @@ const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 const showdown = () => require('./showdown');
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const newCode = () => { for (;;) { const c = Array.from({ length: 5 }, () => ALPHA[crypto.randomInt(ALPHA.length)]).join(''); if (!T()[c]) return c; } };
-const clean = (s) => Array.from(String(s ?? '').replace(/[\p{C}\p{Zl}\p{Zp}]/gu, '').replace(/\s+/g, ' ').trim()).slice(0, NAME_MAX).join('').trim();
+const clean = (s) => Array.from((typeof s === 'string' ? s : '').replace(/[\p{C}\p{Zl}\p{Zp}]/gu, '').replace(/\s+/g, ' ').trim()).slice(0, NAME_MAX).join('').trim();
 const flag = (v) => { if (v === undefined || v === null) return true; if (typeof v !== 'boolean') throw new Error('Opción no válida.'); return v; };
 const rounds = (t) => Math.log2(t.size);
 const active = (t) => t.state === 'open' || t.state === 'running';
@@ -156,7 +156,7 @@ function invite(u, p = {}) {
   const t = get(p.id);
   if (t.host !== u.id) throw new Error('Solo el anfitrión invita.');
   if (t.state !== 'open') throw new Error('La inscripción ya está cerrada.');
-  const to = db.userByName(String(p.to || ''));
+  const to = db.userByName(typeof p.to === 'string' ? p.to : '');
   if (!to || to.npc || to.id === u.id) throw new Error('Jugador no encontrado.');
   if (t.invites >= INVITES) throw new Error(`Máximo ${INVITES} invitaciones por torneo: comparte el código ${t.id}.`);
   require('./transfer').noteInvite(u);

@@ -72,7 +72,7 @@ app.use((req, res, next) => {
       "img-src 'self' data: https://raw.githubusercontent.com https://play.pokemonshowdown.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self'",
-      "connect-src 'self' ws: wss: https://raw.githubusercontent.com",
+      "connect-src 'self' https://raw.githubusercontent.com",
       "manifest-src 'self'",
       "worker-src 'self'",
       "frame-ancestors 'none'",
@@ -102,7 +102,8 @@ app.get('/api/admin/backup', (req, res) => {
   backup.markDownload();
   res.type('application/json').send(backup.snapshot());
 });
-app.post('/api/admin/restore', express.json({ limit: '20mb' }), async (req, res) => {
+// La comprobación de anfitrión va ANTES de leer el cuerpo (hasta 20 MB): un desconocido no puede obligar al servidor a procesarlo.
+app.post('/api/admin/restore', (req, res, next) => (adminFromReq(req) ? next() : res.status(403).json({ ok: false, error: 'Solo anfitriones.' })), express.json({ limit: '20mb' }), async (req, res) => {
   const u = adminFromReq(req);
   if (!u) return res.status(403).json({ ok: false, error: 'Solo anfitriones.' });
   const raw = req.body && req.body.data;
@@ -187,6 +188,14 @@ app.get('/api/static', (req, res) => res.json(STATIC));
 app.get('/data/sd-es.json', (req, res) => res.sendFile(path.join(__dirname, 'sd-es.json'), { headers: { 'Cache-Control': 'public, max-age=3600' } }));
 // Descripciones en español de los movimientos (se cargan solo al abrir una ficha de movimientos o un combate).
 app.get('/data/move-desc-es.json', (req, res) => res.sendFile(path.join(__dirname, 'move-desc-es.json'), { headers: { 'Cache-Control': 'public, max-age=3600' } }));
+
+// Gestor de errores de Express: una respuesta genérica en JSON, sin traza ni detalles internos.
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+  const status = err && Number.isInteger(err.status) && err.status >= 400 && err.status < 500 ? err.status : 500;
+  if (status === 500) console.error('Error en la petición:', err && err.message);
+  if (res.headersSent) return res.end();
+  res.status(status).json({ ok: false, error: status === 413 ? 'La petición es demasiado grande.' : status === 500 ? 'Error del servidor.' : 'Petición no válida.' });
+});
 
 const server = http.createServer(app);
 // Compresión de mensajes grandes (estado del mercado, mesas de póker…).
@@ -317,7 +326,8 @@ function giftPoke(user, { to, id, shiny }) {
 // ---- Chat ----
 const lastMsg = new Map();
 function chat(user, { text }) {
-  text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (typeof text !== 'string') throw new Error('Mensaje no válido.');
+  text = text.replace(/\s+/g, ' ').trim().slice(0, 300);
   if (!text) throw new Error('Mensaje vacío.');
   const last = lastMsg.get(user.id) || 0;
   if (Date.now() - last < 800) throw new Error('Más despacio, entrenador.');
@@ -354,6 +364,13 @@ const myDms = (user) => (db.data.dms || []).filter((m) => m.user === user.userna
 const ADMIN_GRANT_MAX = 10000;
 const ADMIN_GRANT_DAY = 50000;
 function requireAdmin(user) { if (!user.isAdmin) throw new Error('Solo administradores.'); }
+// El primer anfitrión (la cuenta de anfitrión más antigua) es el único que puede actuar sobre otros anfitriones.
+function firstAdmin() {
+  return Object.values(db.data.users).filter((u) => u.isAdmin && !u.npc).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))[0] || null;
+}
+function noOtherAdmin(user, t) {
+  if (t.isAdmin && t.id !== user.id) { const f = firstAdmin(); if (!f || f.id !== user.id) throw new Error('Un anfitrión no puede actuar sobre otro anfitrión (solo el primero puede).'); }
+}
 // Registro de lo que hacen los anfitriones (últimas 200 acciones).
 function adminLog(user, action, target, detail) {
   db.data.adminLog ||= [];
@@ -443,6 +460,7 @@ const admin = {
     requireAdmin(user);
     const t = db.userByName(username);
     if (!t || t.npc || t.id === user.id) throw new Error('Jugador no válido.');
+    noOtherAdmin(user, t);
     t.banned = !!banned;
     adminLog(user, banned ? 'ban' : 'unban', t.username);
     if (t.banned) {
@@ -456,6 +474,7 @@ const admin = {
     requireAdmin(user);
     const t = db.userByName(username);
     if (!t || t.npc || typeof password !== 'string' || password.length < 6) throw new Error('Datos no válidos.');
+    noOtherAdmin(user, t);
     Object.assign(t, auth.hashPassword(password));
     adminLog(user, 'reset', t.username);
     for (const [k, s] of Object.entries(db.data.sessions)) if (s.userId === t.id) delete db.data.sessions[k];
@@ -480,6 +499,7 @@ const admin = {
     requireAdmin(user);
     const t = db.userByName(username);
     if (!t || t.npc || t.id === user.id) throw new Error('Jugador no válido.');
+    noOtherAdmin(user, t);
     t.isAdmin = !!isAdmin;
     adminLog(user, isAdmin ? 'admin' : 'unadmin', t.username);
     db.save();
@@ -519,6 +539,11 @@ io.use((socket, next) => {
   next();
 });
 
+const SOCKETS_MAX = 5;
+const BUCKET_MAX = 25;
+const BUCKET_REFILL = 12; // acciones por segundo
+const userSockets = new Map(); // userId -> sockets abiertos (el más antiguo primero)
+const buckets = new Map(); // userId -> cubo de acciones
 io.on('connection', (socket) => {
   const uid = socket.data.userId;
   socket.join('u:' + uid);
@@ -527,14 +552,25 @@ io.on('connection', (socket) => {
   if (meNow) { meNow.lastSeen = Date.now(); hub.econActive(meNow); }
   pushOnline();
 
-  // Limitador de eventos por socket.
-  let tokens = 25;
-  const refill = setInterval(() => { tokens = Math.min(25, tokens + 12); }, 1000);
+  // Como mucho SOCKETS_MAX conexiones por usuario (se desconecta la más antigua) y un único cubo de acciones por usuario:
+  // abrir muchos sockets no multiplica el límite.
+  const mine = (userSockets.get(uid) || []);
+  mine.push(socket);
+  userSockets.set(uid, mine);
+  while (mine.length > SOCKETS_MAX) mine.shift().disconnect(true);
+  const take = () => {
+    const now = Date.now();
+    const b = buckets.get(uid) || { t: BUCKET_MAX, at: now };
+    b.t = Math.min(BUCKET_MAX, b.t + ((now - b.at) / 1000) * BUCKET_REFILL);
+    b.at = now;
+    buckets.set(uid, b);
+    return --b.t >= 0;
+  };
 
   function on(name, fn, { push = true } = {}) {
     socket.on(name, (payload, ack) => {
       if (typeof ack !== 'function') ack = () => {};
-      if (--tokens < 0) return ack({ ok: false, error: 'Demasiadas acciones, respira un momento.' });
+      if (!take()) return ack({ ok: false, error: 'Demasiadas acciones, respira un momento.' });
       if (!ready) return ack({ ok: false, error: BUSY });
       const user = db.userById(uid);
       if (!user || user.banned) return ack({ ok: false, error: 'Sesión no válida.' });
@@ -762,7 +798,8 @@ io.on('connection', (socket) => {
   for (const [k, fn] of Object.entries(admin)) on('admin:' + k, fn);
 
   socket.on('disconnect', () => {
-    clearInterval(refill);
+    const list = (userSockets.get(uid) || []).filter((s) => s !== socket);
+    if (list.length) userSockets.set(uid, list); else { userSockets.delete(uid); buckets.delete(uid); }
     const n = (online.get(uid) || 1) - 1;
     if (n <= 0) { online.delete(uid); showdown.unqueueUser(uid); require('./trade').onDisconnect(uid); }
     else online.set(uid, n);
@@ -820,6 +857,6 @@ db.init().then(() => {
 function onListen() {
   console.log(`\n  🎰 PokéCasino escuchando en http://${config.HOST}:${config.PORT}`);
   console.log(`  🔒 Modo de red: ${config.NETWORK_MODE}${config.ALLOW_CIDRS.length ? ' + ' + config.ALLOW_CIDRS.join(', ') : ''}`);
-  console.log(config.OPEN_REGISTRATION ? '  🔓 Registro abierto (sin código de invitación)' : `  🔑 Código de invitación maestro: ${config.ACCESS_KEY}`);
+  console.log(config.OPEN_REGISTRATION ? '  🔓 Registro abierto (sin código de invitación)' : (process.env.DATABASE_URL || process.env.NODE_ENV === 'production') ? '  🔑 Código de invitación maestro configurado (no se muestra en los logs)' : `  🔑 Código de invitación maestro: ${config.ACCESS_KEY}`);
   console.log('');
 }

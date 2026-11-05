@@ -281,7 +281,7 @@ function route() {
   view.mount(root);
   // Ficha pública por enlace: #/entrenador/<nombre> abre la ficha de ese entrenador sobre el centro «Entrenador».
   const pm = location.hash.match(/^#\/entrenador\/([^/?#]+)/);
-  if (pm) showPlayer(decodeURIComponent(pm[1])).catch(() => {});
+  if (pm) { let who = null; try { who = decodeURIComponent(pm[1]); } catch { /* enlace mal formado (p. ej. %E0%A4): se ignora */ } if (who) showPlayer(who).catch(() => {}); }
 }
 window.addEventListener('hashchange', route);
 

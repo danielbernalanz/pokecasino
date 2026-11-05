@@ -343,7 +343,7 @@ function invite(u, { to } = {}) {
   const raid = raidOf(u.id);
   if (!raid || raid.state !== 'lobby' || raid.hostId !== u.id) throw new Error('Solo puedes invitar desde una sala tuya por empezar.');
   if (raid.mode === 'solo') throw new Error('Una incursión en solitario no admite invitados.');
-  const t = db.userByName(String(to || ''));
+  const t = db.userByName(typeof to === 'string' ? to : '');
   if (!t || t.npc || t.id === u.id) throw new Error('Jugador no encontrado.');
   if (humans(raid).some((x) => x.userId === t.id)) throw new Error(`${t.username} ya está en la sala.`);
   if ((raid.inv || 0) >= 6) throw new Error('Máximo 6 invitaciones por sala: comparte el código.');

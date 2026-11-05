@@ -199,7 +199,7 @@ function addUser(u) {
   byName.set(u.username.toLowerCase(), u);
   save();
 }
-const userByName = (name) => byName.get(String(name || '').toLowerCase());
+const userByName = (name) => (typeof name === 'string' ? byName.get(name.toLowerCase()) : undefined);
 const userById = (id) => data.users[id];
 
 // Sustituye todos los datos (restaurar una copia) y los guarda.
