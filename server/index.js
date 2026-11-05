@@ -291,9 +291,15 @@ function giftPoke(user, { to, id, shiny }) {
   if (t.npc) throw new Error('Los comerciantes NPC no aceptan regalos.');
   const rare = ['L', 'M'].includes((dex.BY_ID.get(Number(id)) || {}).rarity);
   require('./transfer').pokeInCheck(t, rare);
+  const before = specimen.sync(user, Number(id)).slice();
   const p = gacha.takePoke(user, id, !!shiny);
   require('./transfer').notePokeIn(t, rare);
+  const left = new Set(specimen.sync(user, p.id).map((m) => m.uid));
+  const gone = before.find((m) => !left.has(m.uid)); // el ejemplar que se va: sus IV, naturaleza, Ball, marca y tamaño viajan con él
+  const seen = new Set(specimen.sync(t, p.id).map((m) => m.uid));
   gacha.grant(t, p.id, !!shiny);
+  const got = gone && specimen.sync(t, p.id).find((m) => !seen.has(m.uid));
+  if (got) specimen.applyTraits(p.id, got, specimen.traitsOf(gone));
   require('./evoreq').noteTrade(t, user); // intercambio real: vale como un Cordón Unión
   hub.track(t, 'gift_recv');
   db.save();

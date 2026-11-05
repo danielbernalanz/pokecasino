@@ -2,7 +2,6 @@
 // Rutas de captura por región (empezamos por Kanto; para añadir una región basta con otra entrada en REGIONS).
 // Cada zona tiene una tabla de encuentros como la de los juegos: `[especie, nivel mínimo, nivel máximo, peso, hora]`, donde el peso es el
 // porcentaje de la tabla de los juegos (aproximado) y `hora` es 'day' | 'night' | null (todo el día; ver daytime.js, hora de España).
-// Se evitan a propósito las especies cuya evolución por amistad o por nivel (Chansey, Golbat, Primeape…) valdría más que capturarlas.
 // Los niveles y las especies siguen las rutas de Kanto de Rojo Fuego / Verde Hoja con las variantes nocturnas de Oro HeartGold / Plata SoulSilver.
 // Las especies de aquí salen con su ratio de captura REAL (catchdata.json). Ningún Pokémon de estas tablas evoluciona por nivel dentro de su
 // rango de encuentro hacia algo más valioso que lo que cuesta capturarlo (lo comprueba test/capture.test.js).
@@ -38,9 +37,9 @@ const REGIONS = [
       { id: 'ruta12', name: 'Rutas 11 a 13', kind: 'grass', tone: 'b', hostId: 96, desc: 'La Ruta de la Costa: Drowzee, Ekans y Sandshrew.', open: 4, enc: [
         [96, 12, 15, 25, null], [21, 14, 17, 15, DAY], [23, 12, 15, 15, null], [27, 12, 15, 15, null], [43, 20, 25, 15, NIGHT], [69, 20, 25, 15, DAY], [48, 22, 26, 15, NIGHT]] },
       { id: 'safari', name: 'Camino de la Safari', kind: 'grass', tone: 'y', hostId: 84, desc: 'Las llanuras de Fucsia: Doduo, Rhyhorn y Exeggcute.', open: 5, enc: [
-        [84, 20, 26, 25, null], [111, 21, 27, 20, null], [102, 24, 28, 20, null], [29, 22, 26, 10, DAY], [32, 22, 26, 10, DAY], [30, 25, 29, 5, null], [33, 25, 29, 5, null], [115, 25, 28, 5, null]] },
+        [84, 20, 26, 25, null], [111, 21, 27, 20, null], [102, 24, 28, 20, null], [29, 22, 26, 10, DAY], [32, 22, 26, 10, DAY], [30, 25, 29, 5, null], [33, 25, 29, 5, null], [113, 23, 28, 5, null], [115, 25, 28, 5, null]] },
       { id: 'cueva', name: 'Cueva Celeste', kind: 'cave', tone: 'p', hostId: 132, desc: 'La cueva del Alto Mando: Pokémon muy fuertes.', open: 8, enc: [
-        [24, 46, 52, 20, null], [64, 49, 56, 15, null], [132, 46, 58, 15, null], [101, 50, 60, 10, null], [40, 48, 52, 15, null], [47, 46, 52, 15, null], [112, 46, 60, 10, null]] },
+        [42, 46, 55, 25, null], [64, 49, 56, 15, null], [132, 46, 58, 15, null], [113, 49, 55, 10, null], [101, 50, 60, 10, null], [57, 46, 52, 10, null], [24, 46, 52, 15, null]] },
     ],
     // Legendarios de encuentro: [id, nivel, zona donde aparecen, medallas necesarias (y `champ`: ser Campeón de la Liga)].
     legend: [

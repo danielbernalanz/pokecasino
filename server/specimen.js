@@ -161,6 +161,16 @@ function boxView(u) {
   return { mons };
 }
 
+// Rasgos que viajan con el ejemplar al regalarlo (como al intercambiar en los juegos): IV, naturaleza, habilidad oculta, Ball, marca, tamaño y lugar de captura.
+// No viajan nivel, EXP, EVs ni amistad (la EXP no se transfiere: ver docs/ANTIABUSO.md).
+const traitsOf = (m) => ({ ivs: m.ivs.slice(), nature: m.nature, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined });
+function applyTraits(id, m, t) {
+  m.ivs = t.ivs.slice(); m.nature = t.nature;
+  abilities.resolve(id, m);
+  if (t.ha) { m.ha = true; abilities.resolve(id, m); }
+  for (const k of ['ball', 'mark', 'size', 'caught']) { if (t[k] !== undefined && t[k] !== null) m[k] = t[k]; }
+}
+
 function find(u, { id, uid }) {
   id = Number(id);
   if (!Number.isInteger(id) || typeof uid !== 'string' || uid.length > 8) throw new Error('Pokémon no válido.');
@@ -214,4 +224,4 @@ function release(u, p) {
   return res;
 }
 
-module.exports = { NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };
+module.exports = { traitsOf, applyTraits, NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };

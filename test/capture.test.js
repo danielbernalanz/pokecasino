@@ -570,9 +570,9 @@ test('economía: valor de reventa < coste esperado de capturar, para cada especi
     const value = cap.resaleValue(l.id, l.level);
     assert.ok(value < cheapestCost(l.id, l.level) / 2, `${BY_ID.get(l.id).name}: ${value} vs ${cheapestCost(l.id, l.level)}`);
   }
-  // Si evolucionara por nivel dentro de su encuentro, el valor de la evolución se tiene en cuenta (p. ej. un Magikarp de nv. 20 → Gyarados).
-  assert.ok(cap.resaleValue(129, 20) > 5 * cap.resaleValue(129, 19) / 2);
-  assert.ok(cap.resaleValue(129, 19) < cap.resaleValue(129, 20));
+  // Chansey, Golbat y Primeape siguen en las tablas (valor directo del ejemplar; la evolución la acotan los topes diarios de EXP/amistad).
+  const all = new Set(Z.ZONES.flatMap((z) => z.enc.map((e) => e.id)));
+  for (const id of [113, 42, 57]) assert.ok(all.has(id), `falta ${id}`);
 });
 
 test('economía: simulación de 30 encuentros diarios con el jugador ideal pierde monedas en todas las zonas', () => {
@@ -654,4 +654,27 @@ test('vista y estáticos: el cliente recibe zonas, Balls y contadores sin revela
   assert.strictEqual(cap.team(u).mons.length, 0);
   // Los NPC no capturan.
   assert.throws(() => cap.encounter({ npc: true, cap: null }, { zone: 'ruta1' }), /NPC/);
+});
+
+test('traspaso: los rasgos del ejemplar (Ball, marca, tamaño, IV, naturaleza) viajan; nivel y EXP no', () => {
+  const a = user({ 129: { n: 2, s: 0 } });
+  const b = user({});
+  const m = sp.sync(a, 129).find((x) => x) ;
+  Object.assign(m, { ball: 'dusk-ball', mark: 'rare', size: 255, ivs: [31, 31, 31, 0, 0, 0], nature: 'Audaz', level: 40, caught: { zone: 'arroyo', level: 6, at: 1 } });
+  m.fav = true; // el favorito se conserva: el que sale es el menos valioso, así que marcamos al otro
+  const other = sp.sync(a, 129).find((x) => x !== m);
+  other.level = 90; other.fav = true; other.ivs = [31, 31, 31, 31, 31, 31];
+  const traits = sp.traitsOf(m);
+  sp.syncAll(b);
+  const before = new Set(sp.sync(b, 129).map((x) => x.uid));
+  gacha.grant(b, 129, false);
+  const got = sp.sync(b, 129).find((x) => !before.has(x.uid));
+  sp.applyTraits(129, got, traits);
+  assert.strictEqual(got.ball, 'dusk-ball');
+  assert.strictEqual(got.mark, 'rare');
+  assert.strictEqual(got.size, 255);
+  assert.deepStrictEqual(got.ivs, [31, 31, 31, 0, 0, 0]);
+  assert.strictEqual(got.nature, 'Audaz');
+  assert.strictEqual(got.caught.zone, 'arroyo');
+  assert.strictEqual(got.level, 5); // el nivel y la EXP no se transfieren
 });

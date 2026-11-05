@@ -469,24 +469,11 @@ function run(u) {
   return { ...view(u), log: [`Huiste de ${nameOf(e.id)}.`], ended: 'ran' };
 }
 
-// Valor máximo en monedas de un Pokémon capturado de la especie `id` a `level` (lo que se saca liberándolo o vendiéndolo a un PNJ, con la
-// esperanza del variocolor): polvo de liberar × DUST_RATE, y si puede evolucionar por nivel dentro de su encuentro, lo de su mejor evolución.
-// Se usa en test/capture.test.js para comprobar que capturar nunca sale rentable.
-function resaleValue(id, level) {
-  const evo = require('./evoreq');
-  const cand = require('./candy');
-  const val = (x) => RARITY[BY_ID.get(x).rarity].dust * gacha.DUST_RATE;
-  let best = val(id);
-  const seen = new Set([id]);
-  const stack = [id];
-  while (stack.length) {
-    const cur = stack.pop();
-    for (const t of cand.evolutionsOf(cur)) {
-      if (seen.has(t.id) || !evo.isLevelUp(t.id) || evo.levelOf(t.id) > level) continue;
-      seen.add(t.id); stack.push(t.id); best = Math.max(best, val(t.id));
-    }
-  }
-  return best * (1 + 2 * SHINY_WILD * 2); // variocolor: 3 × el valor, 1/1024 de las veces (el doble con el evento)
+// Valor máximo en monedas de un Pokémon capturado de la especie `id`, tal cual (lo que se saca liberándolo o vendiéndolo a un PNJ, con la
+// esperanza del variocolor): polvo de liberar × DUST_RATE. La evolución posterior no cuenta aquí: está acotada por los topes diarios de EXP y
+// amistad (docs/ANTIABUSO.md, «Evolución + transferir», y test/progression.test.js). Se usa en test/capture.test.js.
+function resaleValue(id) {
+  return RARITY[BY_ID.get(id).rarity].dust * gacha.DUST_RATE * (1 + 2 * SHINY_WILD * 2); // variocolor: 3 × el valor, 1/1024 de las veces (el doble con el evento)
 }
 
 const STATIC = {
