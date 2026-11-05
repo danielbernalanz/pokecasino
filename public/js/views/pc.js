@@ -50,6 +50,7 @@ async function bulkTransfer(id, btn, after) {
 // Abre la ficha «Datos» de un ejemplar desde otra pantalla (p. ej. el montador de equipos de Combates), sin ir a
 // la Caja PC. `onDone` se llama al cerrarla del todo (no cuando la ficha se recarga a sí misma tras una acción).
 let afterClose = null;
+const sizeLabel = (n) => { let out = ''; for (const [min, name] of S.data.capture.sizes) if (n >= min) out = name; return out; };
 export async function openSpecimen(uid, page = 'info', onDone = null) {
   await load();
   afterClose = onDone;
@@ -323,6 +324,10 @@ function openMon(uid, openPage = 'info') {
       m.pkrs ? h('div', { class: 'small' }, h('b', {}, '🦠 Pokérus: '), m.pkrs === 'cured' ? 'curado (sigue ganando el doble de EVs; ya no contagia)' : 'infectado (gana el doble de EVs y puede contagiar a su equipo)') : null,
       m.hyper && m.hyper.some(Boolean) ? h('div', { class: 'small' }, h('b', {}, '🏋️ Entrenamiento Extremo: '), m.hyper.map((x, i) => (x ? STAT_NAMES[i] : null)).filter(Boolean).join(', '), ' a 31 en combate') : null,
       h('div', { class: 'small' }, h('b', {}, 'Habilidad: '), m.ability),
+      h('div', { class: 'small row gap pc-ball', 'data-testid': 'pc-ball', title: S.data.items[m.ball] ? S.data.items[m.ball].desc : '' }, h('b', {}, 'Ball: '), S.data.items[m.ball] ? itemImg(m.ball, 'pc-ball-img') : null, S.data.items[m.ball] ? S.data.items[m.ball].name : 'Poké Ball'),
+      m.caught ? h('div', { class: 'small', 'data-testid': 'pc-caught' }, h('b', {}, 'Capturado: '), `${(S.data.capture.zones.find((z) => z.id === m.caught.zone) || {}).name || 'en la naturaleza'} a Nv. ${m.caught.level}${m.caught.legend ? ' · encuentro legendario' : ''}${m.caught.outbreak ? ' · aparición masiva' : ''}`) : null,
+      m.mark ? h('div', { class: 'small', 'data-testid': 'pc-mark' }, h('b', {}, 'Marca: '), `${(S.data.capture.marks[m.mark] || {}).ico || ''} ${(S.data.capture.marks[m.mark] || {}).name || m.mark} · «${(S.data.capture.marks[m.mark] || {}).title || ''}»`) : null,
+      Number.isInteger(m.size) ? h('div', { class: 'small', 'data-testid': 'pc-size', title: 'Escala de tamaño de 0 (Mini) a 255 (Jumbo)' }, h('b', {}, 'Tamaño: '), `${m.size}/255 · ${sizeLabel(m.size)}${m.size === 0 ? ' · Marca Mini' : m.size === 255 ? ' · Marca Jumbo' : ''}`, h('span', { class: 'pc-ivbar pc-sizebar' }, h('i', { style: { width: (m.size / 255 * 100) + '%' } }))) : null,
       m.eg ? h('div', { class: 'small', title: 'Para criar, dos Pokémon deben compartir grupo huevo (y ser macho y hembra, o uno Ditto)' }, h('b', {}, 'Grupo huevo: '), m.eg.join(' · '), ' · ', m.gender === 'M' ? '♂ macho' : m.gender === 'F' ? '♀ hembra' : 'sin sexo') : null,
       h('div', {}, h('b', {}, `IV total ${total}/186`), ` · ${judge(total)}`, hpBar(total / 186 * 100)),
       h('div', { class: 'small muted' }, 'Obtenido: ' + new Date(m.at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })),

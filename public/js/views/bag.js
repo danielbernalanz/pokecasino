@@ -29,6 +29,7 @@ export function bagTab() {
       const equipped = cos && S.me.equip[cos.slot] === id;
       const useBtn = id === 'ticket'
         ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
+        : it.ball ? h('a', { class: 'btn primary', href: '#/captura' }, 'Ir a Captura')
         : it.tm ? h('button', { class: 'btn primary', onclick: () => useTmDialog(id) }, 'Enseñar')
           : it.shard ? h('a', { class: 'btn', href: '#/pc' }, 'Tutor (Caja PC)')
           : it.expCandy ? h('button', { class: 'btn primary', 'data-testid': 'bag-use-exp', onclick: () => useExpCandyDialog(id) }, 'Usar')

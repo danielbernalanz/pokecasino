@@ -224,10 +224,19 @@ const hpPct = (e) => (e.hp <= 0 ? 0 : Math.max(1, Math.ceil((100 * e.hp) / e.hpM
 // Lo que ve el jugador del encuentro (nada de IV, naturaleza, tamaño ni marca: se descubren al capturarlo).
 const encView = (e) => e && ({ zone: e.zone, id: e.id, level: e.level, hp: hpPct(e), status: e.status, turn: e.turn, shiny: e.shiny, legend: e.legend, outbreak: e.outbreak, weather: e.weather, phase: e.phase });
 
+// Multiplicador de cada Ball en el encuentro abierto (999 = captura segura): los juegos lo explican en la descripción de la Ball; aquí se muestra qué Balls rinden ahora.
+function ballBonuses(u, e, now) {
+  if (!e) return null;
+  const owned = !!(u.collection[e.id] && u.collection[e.id].n > 0);
+  const ctx = { night: phaseOf(now) === 'night', turn: e.turn, types: BY_ID.get(e.id).types, level: e.level, owned };
+  return Object.fromEntries(balls.IDS.map((id) => { const b = balls.bonus(id, ctx); return [id, b === Infinity ? 999 : Math.round(b * 100) / 100]; }));
+}
+
 function view(u, now = Date.now()) {
   const c = stateOf(u);
   const ob = outbreakAt(now);
   return {
+    ballBonus: ballBonuses(u, c.enc, now),
     now, max: DAILY, used: c.n, left: Math.max(0, DAILY - c.n), phase: phaseOf(now), enc: encView(c.enc),
     badges: badgeCount(u), champion: isChampion(u), species: speciesOwned(u), crit: critMult(speciesOwned(u)),
     outbreak: { zone: ob.zone, id: ob.id, from: ob.from, until: ob.until },

@@ -6,7 +6,7 @@ export default {
   id: 'shop', title: 'Tienda', icon: '🏬',
   mount(root) {
     const body = h('div', {});
-    const SECTIONS = [['', '🎒 Objetos'], ['vitamin', '💊 Vitaminas (+10 EV)'], ['evberry', '🍓 Bayas de EVs (−10 EV)'], ['evo', '🔮 Evolución: piedras y objetos especiales']];
+    const SECTIONS = [['', '🎒 Objetos'], ['vitamin', '💊 Vitaminas (+10 EV)'], ['evberry', '🍓 Bayas de EVs (−10 EV)'], ['evo', '🔮 Evolución: piedras y objetos especiales'], ['ball', '⚪ Poké Balls (para la Captura)']];
     function itemCard(id, it) {
       const qty = h('input', { type: 'number', min: 1, max: 99, value: 1, class: 'qty' });
       return h('div', { class: 'shop-item item-card', 'data-item': id },

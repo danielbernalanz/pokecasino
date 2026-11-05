@@ -22,6 +22,7 @@ export const META = {
   pokedex: { t: 'Pokédex', d: 'Colección completa y compañero', art: 479, tone: 'r', ico: '📕' },
   huerto: { t: 'Huerto de bayas', d: 'Planta bayas y haz amigos', art: 43, tone: 'g', ico: '🌱' },
   criadero: { t: 'Criadero', d: 'Huevos, eclosiones y bebés Pokémon', art: 242, tone: 'p', ico: '🥚' },
+  captura: { t: 'Captura', d: 'Hierba alta, Balls y Pokémon salvajes', art: 129, tone: 'g', ico: '🌿' },
   expediciones: { t: 'Expediciones', d: 'Manda a tu equipo de paseo y vuelve con botín', art: 12, tone: 'g', ico: '🧭' },
   combates: { t: 'Combates', d: 'Combates Pokémon de verdad y Tienda de Combate', art: 448, tone: 'p', ico: '⚔️' },
   duels: { t: 'Duelos rápidos', d: 'Un Pokémon a ciegas contra otro entrenador', art: 68, tone: 'r', ico: '🥊' },
@@ -45,7 +46,7 @@ export const SECTIONS = [
     { name: 'Desafíos', items: ['quiz'] }] },
   { id: 'pokemon', label: 'Pokémon', ico: { item: 'poke-ball' }, say: { emoji: '🧑‍🔬', who: 'Prof. Oak', text: 'Aquí cuidas de tu equipo: captura, entrena y presume.' }, groups: [
     { name: 'Tu equipo', items: ['gacha', 'pc', 'pokedex', 'huerto', 'criadero'] },
-    { name: 'Aventura', items: ['combates', 'expediciones', 'duels', 'mega'] }] },
+    { name: 'Aventura', items: ['captura', 'combates', 'expediciones', 'duels', 'mega'] }] },
   { id: 'mercado', label: 'Mercado', ico: { item: 'nugget' }, say: { mon: 352, who: 'Kecleon', text: 'Compra, vende y haz buenos negocios con otros entrenadores.' }, groups: [
     { name: 'Comercio', items: ['market', 'shop'] },
     { name: 'Taller', items: ['workshop'] }] },
@@ -176,6 +177,7 @@ const TIPS = [
   { id: 'market', text: 'En el Mercado puedes vender tus repetidos a otros entrenadores.', go: 'Ir al Mercado' },
   { id: 'quiz', text: '¿Sabes quién es ese Pokémon? Demuéstralo en el Desafío.', go: 'Probar' },
   { id: 'criadero', text: 'En el Criadero, dos Pokémon compatibles te dejan un huevo. ¡Juega para que eclosione!', go: 'Ir al Criadero' },
+  { id: 'captura', text: 'En Captura te esperan Pokémon salvajes: debilítalos, duérmelos y lanza una Ball. ¡Hay legendarios!', go: 'A la hierba' },
   { id: 'expediciones', text: 'Tus Pokémon pueden salir de expedición mientras no estás: vuelven con EXP, Caramelos Exp. y bayas.', go: 'Explorar' },
   { id: 'combates', text: '¡Combates de verdad! Prepara tu equipo y reta a un entrenador.', go: 'A combatir' },
   { id: 'shop', text: 'En la Tienda hay objetos y bayas que te vendrán de maravilla. Los tuyos, en la Mochila.', go: 'Ir a la Tienda' },
