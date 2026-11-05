@@ -44,8 +44,9 @@ function notePokeIn(t, rare, now = Date.now()) {
 }
 
 // ---- Apuestas entre jugadores (duelos y combates PvP con apuesta): otro canal posible para pasar monedas entre cuentas ----
-// Las cuentas nuevas o ayudadas por la Enfermera Joy no pueden apostar (los amistosos sin apuesta sí), y entre dos cuentas la ganancia neta
-// por apuestas no pasa del tope de regalos al día: una apuesta que podría pasarlo no se acepta (ver docs/ANTIABUSO.md).
+// Las cuentas nuevas o ayudadas por la Enfermera Joy no pueden apostar (los amistosos sin apuesta sí). Entre cuentas veteranas no hay tope:
+// las apuestas fuertes entre amigos están permitidas (como en el Mercado, un veterano ya puede pagar lo que quiera); la ganancia neta
+// por pareja se apunta para que el anfitrión la vea (ver docs/ANTIABUSO.md).
 const PAIR_BET_DAILY = GIFT_IN_DAILY;
 function canBet(u, now = Date.now()) {
   if (u.isAdmin || u.npc) return;
@@ -65,12 +66,8 @@ function pairNet(a, b, now = Date.now()) {
   const r = pairs(now)[pairKey(a, b)];
   return r ? (a.id < b.id ? r.net : -r.net) : 0;
 }
-// Lanza un error si apostar `wager` entre estas dos cuentas podría pasar el tope diario de ganancia neta.
-function pairCheck(a, b, wager, now = Date.now()) {
-  if (!wager || a.isAdmin || b.isAdmin || a.npc || b.npc) return;
-  const left = PAIR_BET_DAILY - Math.abs(pairNet(a, b, now));
-  if (wager > left) throw new Error(left > 0 ? `Entre ${a.username} y ${b.username} ya se ha movido bastante hoy: solo se admiten apuestas de hasta ${left.toLocaleString('es')} monedas entre vosotros (o amistosos sin apuesta).` : `Entre ${a.username} y ${b.username} ya se ha llegado al tope diario de ganancia por apuestas (${PAIR_BET_DAILY.toLocaleString('es')}): hoy solo amistosos sin apuesta.`);
-}
+// Sin tope entre cuentas veteranas (decisión del anfitrión): se mantiene la función por compatibilidad.
+function pairCheck() {}
 function notePair(winner, loser, wager, now = Date.now()) {
   if (!wager || winner.npc || loser.npc) return;
   const p = pairs(now);

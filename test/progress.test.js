@@ -159,9 +159,11 @@ test('duelos: las cuentas nuevas no apuestan y entre dos cuentas hay un tope dia
   assert.throws(() => duel.accept(young, { id: open.duel.id, pokeId: 6 }), /no pueden apostar/);
   assert.strictEqual(young.coins, 100000, 'no se cobró');
   duel.cancel(a, { id: open.duel.id });
-  // Tras llegar al tope del día entre ellos, no se aceptan más apuestas (el amistoso sí).
-  tr.notePair(a, b, tr.PAIR_BET_DAILY);
-  assert.throws(() => duel.create(a, { pokeId: 6, wager: 100, target: b.username }), /tope diario/);
+  // Entre veteranos no hay tope por pareja: apuestas fuertes permitidas.
+  tr.notePair(a, b, 50000);
+  const big = duel.create(a, { pokeId: 6, wager: 5000, target: b.username });
+  assert.ok(big.duel, 'apuesta fuerte entre veteranos');
+  duel.cancel(a, { id: big.duel.id });
   const open2 = duel.create(b, { pokeId: 6, wager: 0 });
   assert.ok(duel.accept(a, { id: open2.duel.id, pokeId: 6 }).record, 'amistoso permitido');
 });

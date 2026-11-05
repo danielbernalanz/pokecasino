@@ -518,19 +518,14 @@ test('las cuentas nuevas o ayudadas por la Enfermera Joy no apuestan (los amisto
   const open = sdw.challenge(vet, { format: 'singles', level: 'fair', wager: 500, team: members(vet, ids) });
   assert.throws(() => sdw.accept(young, { id: open.challenge, team: members(young, ids) }), /no pueden apostar/);
   sdw.cancel(vet, { id: open.challenge });
-  // Tope diario por pareja.
+  // Entre cuentas veteranas no hay tope por pareja: se permiten apuestas fuertes entre amigos; la ganancia neta se apunta.
   const tr = require('../server/transfer');
   const x = withMons(ids), y = withMons(ids);
-  tr.pairCheck(x, y, tr.PAIR_BET_DAILY); // exactamente el tope: cabe
-  tr.notePair(x, y, 4000);
-  assert.strictEqual(tr.pairNet(x, y), 4000);
-  assert.strictEqual(tr.pairNet(y, x), -4000);
-  assert.throws(() => tr.pairCheck(y, x, 2000), /solo se admiten apuestas de hasta 1\.?000/);
-  tr.pairCheck(y, x, 1000);
-  tr.notePair(x, y, 1000);
-  const r = sdw.challenge(x, { format: 'singles', level: 'fair', wager: 0, team: members(x, ids), target: y.username });
-  assert.ok(r.challenge, 'los amistosos siguen permitidos');
-  assert.throws(() => sdw.challenge(x, { format: 'singles', level: 'fair', wager: 500, team: members(x, ids), target: y.username }), /tope diario/);
+  tr.notePair(x, y, 50000);
+  assert.strictEqual(tr.pairNet(x, y), 50000);
+  assert.strictEqual(tr.pairNet(y, x), -50000);
+  const r = sdw.challenge(x, { format: 'singles', level: 'fair', wager: 9000, team: members(x, ids), target: y.username });
+  assert.ok(r.challenge, 'apuesta fuerte entre veteranos permitida');
   sdw.cancel(x, { id: r.challenge });
 });
 
