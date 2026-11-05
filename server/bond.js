@@ -49,6 +49,7 @@ function dayCounters(m) {
 function addFriend(m, n, kind) {
   const d = dayCounters(m);
   if (!m.friendship && m.friendship !== 0) m.friendship = 70;
+  if (m.ball === 'luxury-ball') n = Math.ceil(n * 1.5); // Lujo Ball: coge cariño antes (los topes diarios no cambian)
   const g = Math.max(0, Math.min(n, CAP[kind] - (d[kind] || 0), FRIEND_MAX - m.friendship));
   if (g > 0) { m.friendship += g; d[kind] = (d[kind] || 0) + g; }
   return g;

@@ -19,6 +19,8 @@ const candy = require('./candy');
 const bond = require('./bond');
 const expedition = require('./expedition');
 const daycare = require('./daycare');
+const capture = require('./capture');
+const balls = require('./balls');
 const slots = require('./games/slots');
 const roulette = require('./games/roulette');
 const voltorb = require('./games/voltorb');
@@ -169,6 +171,8 @@ const STATIC = {
   daytime: require('./daytime').STATIC,
   daycare: daycare.STATIC,
   quiz: quiz.STATIC,
+  capture: capture.STATIC,
+  balls: balls.STATIC,
 };
 // Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).
 app.get('/api/quiz/img/:token', quiz.imgHandler);
@@ -637,6 +641,12 @@ io.on('connection', (socket) => {
   on('exp:list', expedition.view, { push: false });
   on('exp:send', expedition.send);
   on('exp:claim', expedition.claim);
+  on('cap:state', (u) => capture.view(u), { push: false });
+  on('cap:team', capture.team, { push: false });
+  on('cap:encounter', (u, p) => capture.encounter(u, p));
+  on('cap:attack', (u, p) => capture.attack(u, p));
+  on('cap:ball', (u, p) => capture.throwBall(u, p));
+  on('cap:run', (u) => capture.run(u));
   on('care:view', daycare.view, { push: false });
   on('care:check', daycare.check, { push: false });
   on('care:deposit', daycare.deposit);

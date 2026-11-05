@@ -13,7 +13,7 @@ const ITEMS = {
   'lucky-egg': { name: 'Huevo Fortuna', sprite: 'lucky-egg', price: 300, desc: 'Experiencia de entrenador doble durante 1 hora (para tu nivel de entrenador, no para la EXP de tus Pokémon; esa la da el Huevo Suerte que se equipa).' },
   'amulet-coin': { name: 'Moneda de la Suerte', sprite: 'amulet-coin', price: 400, desc: '+10 % sobre tus ganancias netas durante 1 hora y más margen de bonus (el tope sube del 30 % al 45 % de la ventaja de la casa de lo que apuestas).' },
   'shiny-charm': { name: 'Amuleto Iris', sprite: 'shiny-charm', price: null, desc: 'Las próximas 10 tiradas tienen 4 veces más probabilidad de variocolor. Solo como premio.' },
-  'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada es legendaria seguro y, si el banner tiene destacadas, una de ellas. Solo como premio o en el Mercado.' },
+  'master-ball': { name: 'Master Ball', sprite: 'master-ball', price: null, desc: 'Tu próxima tirada es legendaria seguro y, si el banner tiene destacadas, una de ellas. Solo como premio o en el Mercado. También es la Ball de la Captura: atrapa a cualquier Pokémon salvaje seguro.' },
   'mystery-egg': { name: 'Huevo Misterioso', sprite: 'mystery-egg', price: null, desc: 'Ábrelo para obtener un cosmético al azar (marco, dorso de carta o título).' },
 };
 
@@ -92,6 +92,8 @@ Object.assign(ITEMS, require('./evs').buildItems());
 Object.assign(ITEMS, require('./exp').buildItems(), require('./hyper').buildItems());
 // Piedras, objetos de evolución y Cordón Unión (ver evoreq.js).
 Object.assign(ITEMS, require('./evoreq').buildItems());
+// Poké Balls de la Captura (ver balls.js y capture.js): se compran en la Tienda Poké.
+Object.assign(ITEMS, require('./balls').buildItems());
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
 

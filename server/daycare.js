@@ -11,6 +11,7 @@ const hub = require('./hub');
 const gacha = require('./gacha');
 const eggroups = require('./eggroups');
 const specimen = require('./specimen');
+const balls = require('./balls');
 const { DEX, BY_ID, RARITY } = require('./pokedex');
 const { rand, pick, shuffle } = require('./rng');
 
@@ -189,6 +190,7 @@ function makeEgg(u, pair) {
   const now = Date.now();
   return {
     id: crypto.randomBytes(4).toString('hex'), species: baby.id, need: needFor(baby.rarity), steps: 0, born: now, hatchAt: now + FALLBACK_MS,
+    ball: balls.inherit({ mother: motherOf(ma, mb, pair.a.id, pair.b.id), other: motherOf(ma, mb, pair.a.id, pair.b.id) === ma ? mb : ma, sameSpecies: pair.a.id === pair.b.id }, rand()),
     ivs, nature: rand() < NATURE_INHERIT ? pick(parents).nature : null, shiny: rand() < shinyP, ha: inheritsHa(motherOf(ma, mb, pair.a.id, pair.b.id), baby.id), moves: inheritedEggMoves(baby.id, [ma, mb]),
   };
 }
@@ -240,6 +242,7 @@ function hatch(u, p) {
   if (baby) {
     for (const [k, v] of Object.entries(egg.ivs)) baby.ivs[Number(k)] = v;
     if (egg.nature) baby.nature = egg.nature;
+    if (egg.ball && egg.ball !== balls.DEFAULT) baby.ball = egg.ball; // Ball heredada (ver balls.inherit)
     const ab = require('./abilities');
     ab.resolve(id, baby); // fija la versión de habilidades antes de marcar la oculta
     if (egg.ha) { baby.ha = true; ab.resolve(id, baby); } // habilidad oculta heredada
@@ -250,7 +253,7 @@ function hatch(u, p) {
   const rarity = BY_ID.get(id).rarity;
   if (egg.shiny && rarity !== 'C') hub.feed('gacha', `🥚✨ ${u.username} sacó un ${BY_ID.get(id).name} VARIOCOLOR del Criadero`, { pokeId: id, shiny: true });
   db.save();
-  return { ...view(u), hatched: { id, uid: baby ? baby.uid : null, shiny: !!egg.shiny, isNew: g.isNew, dust: g.dust, expItem: BABY_ITEM, nature: baby ? baby.nature : null, ivs: baby ? baby.ivs : null, moves: namesEs(egg.moves || []) } };
+  return { ...view(u), hatched: { id, uid: baby ? baby.uid : null, ball: egg.ball || balls.DEFAULT, shiny: !!egg.shiny, isNew: g.isNew, dust: g.dust, expItem: BABY_ITEM, nature: baby ? baby.nature : null, ivs: baby ? baby.ivs : null, moves: namesEs(egg.moves || []) } };
 }
 
 // Movimientos huevo que heredaría el bebé de una pareja ya depositada (con los movimientos que saben ahora los padres).
@@ -270,7 +273,7 @@ function view(u) {
     now, maxPairs: n, pair2Level: PAIR2_LEVEL,
     pairs: care.pairs.slice(0, n).map((pr) => (pr ? { a: pr.a, b: pr.b, baby: pr.baby, alt: pr.alt || null, eggMovesEs: namesEs(pairEggMoves(u, pr)), readyAt: pr.readyAt, hours: pr.hours, ready: now >= pr.readyAt, fee: feeFor(BY_ID.get(pr.baby).rarity),
       shiny: [lookup(u, pr.a), lookup(u, pr.b)].map((m) => !!(m && m.shiny)) } : null)),
-    eggs: care.eggs.map((e) => ({ id: e.id, species: e.species, moves: namesEs(e.moves || []), need: e.need, steps: e.steps, hatchAt: e.hatchAt, ready: e.steps >= e.need || now >= e.hatchAt })),
+    eggs: care.eggs.map((e) => ({ id: e.id, species: e.species, ball: e.ball || balls.DEFAULT, moves: namesEs(e.moves || []), need: e.need, steps: e.steps, hatchAt: e.hatchAt, ready: e.steps >= e.need || now >= e.hatchAt })),
     maxEggs: MAX_EGGS,
   };
 }

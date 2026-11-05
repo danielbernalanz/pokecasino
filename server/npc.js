@@ -290,7 +290,7 @@ function inFocus(p, a) {
   if (a.kind === 'poke') return a.shiny ? f.shiny : f.poke.includes(BY_ID.get(a.pokeId).rarity);
   if (a.kind === 'dust') return f.dust;
   const it = items.ITEMS[a.itemId];
-  if (it.megaStone || it.event || it.tm || it.material || it.bp || it.shard || it.evo || it.expCandy || it.hyper) return false; // evento, MT, materiales y Tienda de Combate: solo entre jugadores
+  if (it.megaStone || it.event || it.tm || it.material || it.bp || it.shard || it.evo || it.expCandy || it.hyper || it.ball) return false; // evento, MT, materiales, Tienda de Combate y Poké Balls: solo entre jugadores
   if (it.cosmetic) return f.cosmetics;
   if (it.price) return f.items === 'shop';
   return f.items === 'noshop';
