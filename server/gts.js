@@ -195,6 +195,7 @@ function deliver(d) {
   receive(owner, d.recv);
   G().deps.splice(G().deps.indexOf(d), 1);
   db.save();
+  require('./notify').push(owner, { kind: 'gts', text: `🌐 GTS: ${d.with} ha intercambiado tu ${nameOf(d.mon.id)} y recibes ${d.recv.shiny ? nameOf(d.recv.id) + ' variocolor' : nameOf(d.recv.id)} (Nv. ${d.recv.level})`, link: '#/gts' });
   hub.emitUser(owner.id, 'toast', { kind: 'gts', text: `🌐 GTS: recibiste ${d.recv.shiny ? nameOf(d.recv.id) + ' variocolor' : nameOf(d.recv.id)} (Nv. ${d.recv.level}) de ${d.with} y ya está en tu Caja` });
   hub.pushMe(owner);
   return true;
@@ -211,6 +212,7 @@ function settle(now = Date.now(), only = null) {
       if (d.state === 'expired' && room(owner, d.mon.id)) {
         putBack(owner, d.mon.id, d.mon.m);
         G().deps.splice(G().deps.indexOf(d), 1);
+        require('./notify').push(owner, { kind: 'gts', text: `🌐 Tu depósito de ${nameOf(d.mon.id)} caducó y vuelve a tu Caja (la comisión no se devuelve)`, link: '#/gts' });
         hub.emitUser(owner.id, 'toast', { kind: 'gts', text: `🌐 Tu depósito de ${nameOf(d.mon.id)} caducó y vuelve a tu Caja (la comisión no se devuelve)` });
         hub.pushMe(owner);
         n++;
@@ -271,6 +273,7 @@ function offer(u, p, now = Date.now()) {
   g.log.push({ at: now, a: owner.username, b: u.username, ga: brief(d.mon.id, d.mon.m), gb: brief(id, m) });
   if (g.log.length > LOG_MAX) g.log.splice(0, g.log.length - LOG_MAX);
   const delivered = deliver(d);
+  if (!delivered) require('./notify').push(owner, { kind: 'gts', text: `🌐 GTS: ${u.username} ha intercambiado tu ${nameOf(d.mon.id)}. Lo que recibes te espera en la GTS hasta que te quepa en la Caja`, link: '#/gts' });
   if (!delivered) hub.emitUser(owner.id, 'toast', { kind: 'gts', text: `🌐 GTS: ${u.username} intercambió tu ${nameOf(d.mon.id)}. Lo que recibiste te espera en la GTS hasta que te quepa en la Caja` });
   hub.feed('trade', `🌐 ${owner.username} y ${u.username} intercambiaron ${d.mon.m.shiny ? nameOf(d.mon.id) + ' variocolor' : nameOf(d.mon.id)} por ${m.shiny ? nameOf(id) + ' variocolor' : nameOf(id)} en la GTS`);
   db.save();

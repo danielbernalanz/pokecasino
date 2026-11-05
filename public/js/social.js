@@ -1,4 +1,5 @@
 // Chat, actividad en vivo y jugadores conectados.
+import { hofList } from './views/elite-ui.js';
 import { S, h, $, fmt, sprite, sfx, act, bus, modal, pokeImg, typeBadge, rarityName, RARITY_ORDER, avatar, titleTag, rankBadge, badgeImg, notify, toast, confirmRisk, fmtPlay } from './core.js';
 
 // ---------- Emotes: «:pikachu:» se pinta con el sprite del Pokémon ----------
@@ -91,6 +92,8 @@ export async function showPlayer(username) {
       text: `Vas a regalar ${fmt(amount)} de tus ${fmt(S.me.coins)} monedas (${Math.round(amount / Math.max(1, S.me.coins) * 100)} %) a ${p.username}. Los regalos no se pueden recuperar.` }))) return;
     if (await act('gift:coins', { to: p.username, amount })) { e.target.reset(); bus.emit('toast', `Enviaste ${fmt(amount)} monedas a ${p.username}`); }
   } }, h('input', { name: 'amount', type: 'number', min: 1, placeholder: 'Monedas', required: true }), h('button', { class: 'btn' }, '🎁 Regalar monedas'));
+  const tabsEl = h('div', { class: 'tabs prof-tabs', role: 'tablist' });
+  const pane = h('div', { class: 'prof-pane' });
   const body = h('div', { class: 'player-card' },
     h('div', { class: 'player-hero' },
       h('div', { class: 'avatar xl ' + (p.frame ? 'fr ' + p.frame : '') }, p.buddy ? pokeImg(p.buddy.id, p.buddy.shiny, 'player-buddy', p.buddy.mega) : h('div', { class: 'player-buddy empty' }, '?')),
@@ -108,11 +111,33 @@ export async function showPlayer(username) {
       h('button', { class: 'btn', title: 'Invitar a intercambiar un Pokémon (los dos conectados)', onclick: async (e) => { if (await act('trade:invite', { to: p.username }, e.currentTarget)) { mm.close(); location.hash = '#/trade'; } } }, '🔁 Intercambiar')) : null,
     canTalk ? giftCoins : null,
     canTalk ? h('p', { class: 'muted small' }, 'Para regalar o retar con un Pokémon usa la Pokédex o los Duelos.') : null,
+    tabsEl, pane
+  );
+  const regs = p.dexReg || [];
+  const chips = (p.titles || []).map((t) => h('span', { class: 'title-tag' }, t.text));
+  const resumen = () => h('div', { class: 'stack prof-res' },
+    h('div', { class: 'row gap wrap small' }, h('span', {}, '🆔 ', h('b', {}, p.tid || '—')), h('span', {}, '🏛️ Salón de la Fama: ', h('b', {}, p.hof.total ? `${p.hof.total} ${p.hof.total === 1 ? 'vez' : 'veces'}` : 'aún no')), h('span', {}, '🏆 Torneos: ', h('b', {}, `${p.tourney.played} jugados · ${p.tourney.won} ganados`)), h('span', {}, '📜 Diplomas: ', h('b', {}, `${regs.filter((r) => r.diploma).length}/${regs.length}`))),
+    p.buddy ? h('div', { class: 'row gap small' }, pokeImg(p.buddy.id, p.buddy.shiny, 'pixel prof-buddy', p.buddy.mega), h('span', {}, 'Compañero: ', h('b', {}, (S.dexById.get(p.buddy.id) || {}).name || '?'), p.buddy.shiny ? ' ✨' : '')) : null,
+    chips.length ? h('div', { class: 'row gap wrap' }, h('span', { class: 'small muted' }, 'Títulos:'), chips) : h('p', { class: 'muted small' }, 'Aún no tiene títulos.'),
+    p.hof.last[0] ? h('div', { class: 'stack' }, h('span', { class: 'small muted' }, 'Último equipo del Salón de la Fama'), hofList(p.hof.last.slice(0, 1), { limit: 1 })) : null);
+  const dexPane = () => h('div', { class: 'stack' },
+    h('div', { class: 'reg-grid prof-reg' }, regs.map((r) => h('div', { class: 'reg-card' + (r.diploma ? ' done' : ''), style: { '--rc': (S.data.regions.find((x) => x.id === r.id) || {}).color } },
+      h('div', { class: 'row between' }, h('b', {}, r.name), h('span', { class: r.diploma ? 'good' : 'muted small' }, r.diploma ? '📜 Diploma' : `${r.have}/${r.total}`)),
+      h('div', { class: 'reg-bar' }, h('i', { style: { width: Math.round(100 * r.have / r.total) + '%' } }))))),
     h('div', { class: 'mini-grid' }, owned.map((x) => h('div', { class: `mini-card r-${x.rarity}`, title: `${x.name} · ${rarityName(x.rarity)}` },
       h('img', { class: 'pixel', src: sprite(x.id, x.s > 0), alt: x.name, loading: 'lazy' }),
-      h('span', { class: 'stars' }, '★'.repeat(Math.min(5, x.n))))))
-  );
-  const mm = modal(body, { title: 'Ficha de entrenador', wide: true });
+      h('span', { class: 'stars' }, '★'.repeat(Math.min(5, x.n)))))));
+  const hofPane = () => h('div', {}, p.hof.last.length ? hofList(p.hof.last, { limit: 5 }) : h('p', { class: 'muted small' }, `${p.username} aún no ha entrado en el Salón de la Fama.`));
+  const TABS = [['res', '📊 Resumen', resumen], ['dex', '🗺️ Pokédex', dexPane], ['hof', '🏛️ Salón', hofPane]];
+  let cur = 'res';
+  const paintTabs = () => {
+    tabsEl.replaceChildren(...TABS.map(([id, l]) => h('button', { class: 'tab' + (cur === id ? ' active' : ''), type: 'button', role: 'tab', 'aria-selected': String(cur === id), onclick: () => { cur = id; paintTabs(); } }, l)));
+    pane.replaceChildren(TABS.find((x) => x[0] === cur)[2]());
+  };
+  paintTabs();
+  const link = `${location.origin}/#/entrenador/${encodeURIComponent(p.username)}`;
+  const mm = modal(body, { title: 'Ficha de entrenador', wide: true, onClose: () => { if (/^#\/entrenador\//.test(location.hash)) history.replaceState(null, '', '#/entrenador'); } });
+  body.querySelector('.player-hero h2')?.after(h('button', { class: 'btn small', type: 'button', title: link, onclick: async () => { try { await navigator.clipboard.writeText(link); toast('Enlace copiado', 'success'); } catch { toast(link, 'info', 8000); } } }, '🔗 Copiar enlace'));
 }
 
 function stat(label, value) { return h('div', { class: 'stat' }, h('span', { class: 'muted small' }, label), h('b', {}, value)); }

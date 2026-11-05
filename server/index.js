@@ -238,20 +238,7 @@ function leaderboard() {
   };
 }
 
-function viewPlayer(_user, { username }) {
-  const u = db.userByName(username);
-  if (!u) throw new Error('Jugador no encontrado.');
-  return {
-    player: {
-      ...hub.publicUser(u), createdAt: u.createdAt, collection: u.collection,
-      progress: { badges: u.progress.badges, sets: u.progress.sets },
-      league: u.league && u.league.played ? { singles: { r: u.league.singles.r, w: u.league.singles.w, l: u.league.singles.l }, doubles: { r: u.league.doubles.r, w: u.league.doubles.w, l: u.league.doubles.l }, best: (u.league.hist[0] || {}).best } : null,
-      stats: { pulls: u.stats.pulls, duelsWon: u.stats.duelsWon, duelsLost: u.stats.duelsLost, biggestWin: u.stats.biggestWin },
-      // Tiempo de juego: null si el jugador lo tiene en privado (salvo para él mismo).
-      playMs: require('./playtime').isPublic(u) || u.id === _user.id ? u.playMs || 0 : null,
-    },
-  };
-}
+const viewPlayer = (user, p) => require('./profile').view(user, p);
 
 function setBuddy(user, { id, shiny }) {
   if (id === null) { user.buddy = null; db.save(); return {}; }
@@ -287,6 +274,7 @@ function giftCoins(user, { to, amount }) {
   hub.ledger(t, amount, 'gift_in', user.username);
   db.save();
   hub.emitUser(t.id, 'toast', { kind: 'gift', text: `🎁 ${user.username} te regaló ${amount.toLocaleString('es')} monedas` });
+  require('./notify').push(t, { kind: 'gift', text: `🎁 ${user.username} te regaló ${amount.toLocaleString('es')} monedas` });
   hub.pushMe(t);
   return {};
 }
@@ -311,6 +299,7 @@ function giftPoke(user, { to, id, shiny }) {
   hub.track(t, 'gift_recv');
   db.save();
   hub.emitUser(t.id, 'toast', { kind: 'gift', text: `🎁 ${user.username} te envió un ${shiny ? p.name + ' variocolor' : p.name}` });
+  require('./notify').push(t, { kind: 'gift', text: `🎁 ${user.username} te envió un ${shiny ? p.name + ' variocolor' : p.name}`, link: '#/pc' });
   hub.feed('trade', `🤝 ${user.username} le regaló ${shiny ? 'un ' + p.name + ' variocolor' : p.name} a ${t.username}`);
   hub.pushMe(t);
   return {};
@@ -668,6 +657,7 @@ io.on('connection', (socket) => {
   on('raid:join', (u, p) => require('./raid').join(u, p));
   on('raid:start', (u, p) => require('./raid').start(u, p));
   on('raid:leave', (u) => require('./raid').leave(u));
+  on('raid:invite', (u, p) => require('./raid').invite(u, p));
   on('raid:choose', (u, p) => require('./raid').choose(u, p), { push: false });
   on('raid:claim', (u, p) => require('./raid').claim(u, p));
   on('tera:state', (u) => require('./tera').view(u), { push: false });
@@ -746,6 +736,9 @@ io.on('connection', (socket) => {
   on('tourney:start', (u, p) => require('./tourney').start(u, p));
   on('tourney:invite', (u, p) => require('./tourney').invite(u, p));
   on('tourney:ready', (u, p) => require('./tourney').ready(u, p));
+  on('note:list', (u) => require('./notify').list(u), { push: false });
+  on('note:read', (u, p) => require('./notify').read(u, p), { push: false });
+  on('note:clear', (u, p) => require('./notify').clear(u, p), { push: false });
   on('chat:send', chat, { push: false });
   on('leaderboard', leaderboard, { push: false });
   on('player:view', viewPlayer, { push: false });

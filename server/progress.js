@@ -110,6 +110,7 @@ function grant(user, reward, reason) {
   }
   if (reward.title && !user.progress.titles.includes(reward.title)) { user.progress.titles.push(reward.title); parts.push(`título «${TITLES[reward.title]}»`); }
   hub.emitUser(user.id, 'toast', { kind: 'quest', text: `🎯 ${reason}: ${parts.join(', ')}` });
+  require('./notify').push(user, { kind: 'quest', text: `🎯 ${reason}: ${parts.join(', ')}` }); // (el aviso emergente ya sale por el toast de arriba)
 }
 
 function ensureDaily(user) {

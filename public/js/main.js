@@ -36,6 +36,7 @@ import market from './views/market.js';
 import gts from './views/gts.js';
 import torneos from './views/torneos.js';
 import trade from './views/trade.js';
+import { initNotes, onNote } from './notes.js';
 import trainer from './views/trainer.js';
 import megaView from './views/mega.js';
 import news from './views/news.js';
@@ -278,6 +279,9 @@ function route() {
   root.scrollTop = 0;
   root.className = 'main view-' + view.id;
   view.mount(root);
+  // Ficha pública por enlace: #/entrenador/<nombre> abre la ficha de ese entrenador sobre el centro «Entrenador».
+  const pm = location.hash.match(/^#\/entrenador\/([^/?#]+)/);
+  if (pm) showPlayer(decodeURIComponent(pm[1])).catch(() => {});
 }
 window.addEventListener('hashchange', route);
 
@@ -322,6 +326,7 @@ function connect() {
     bus.emit('race', res.race);
     if (!booted) { booted = true; buildNav(); buildTabbar($('#tabbar')); setMe(S.me); route(); nightPeek(); startPlayClock(); }
     initNews(res).then(updateNewsDots).catch(() => {});
+    initNotes();
   });
   socket.on('me', setMe);
   socket.on('events', (e) => { S.events = e; bus.emit('events', e); });
@@ -365,6 +370,7 @@ function connect() {
   socket.on('poker:table', (t) => bus.emit('poker:table', t));
   socket.on('poker:hole', (x) => bus.emit('poker:hole', x));
   socket.on('market', (m) => bus.emit('market', m));
+  socket.on('note', onNote);
   socket.on('tourney:changed', (p) => bus.emit('tourney:changed', p));
   for (const ev of ['trade:room', 'trade:closed', 'trade:done', 'trade:invite']) socket.on(ev, (p) => bus.emit(ev, p));
 }

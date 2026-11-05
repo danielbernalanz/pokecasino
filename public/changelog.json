@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.05-af",
+    "date": "2026-11-05",
+    "title": "Ficha pública y centro de notificaciones",
+    "items": [
+      "🔔 Nueva campana en la cabecera con contador: tus avisos se guardan (los últimos 40) aunque no estés conectado. Te avisa de que te han intercambiado en la GTS, de depósitos caducados, invitaciones a intercambios, torneos y Teraincursiones, regalos recibidos, torneos que empiezan y logros. Puedes marcarlos como leídos o borrarlos.",
+      "💎 Nuevo: el anfitrión de una sala de Teraincursión puede invitar a un jugador por nombre (le llega un aviso con el código).",
+      "👤 Ficha pública del entrenador renovada, con pestañas: Resumen (ID, títulos, compañero, torneos y diplomas), Pokédex (progreso de las 9 regiones y su colección) y Salón de la Fama (últimos equipos). Se abre desde el ranking, el chat, «En vivo» y los conectados, o con el enlace #/entrenador/<nombre> (botón «Copiar enlace»). No muestra monedas ni datos privados; el tiempo de juego solo si lo tienes público."
+    ]
+  },
+  {
     "version": "2026.11.05-ae",
     "date": "2026-11-05",
     "title": "Intercambio directo entre jugadores",

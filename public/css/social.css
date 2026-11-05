@@ -75,3 +75,33 @@
   .trd-grid { grid-template-columns: minmax(0, 1fr); }
   .trd-arrow { transform: rotate(90deg); justify-self: center; }
 }
+
+/* ---- Centro de notificaciones ---- */
+.note-badge { position: absolute; top: 0; right: 0; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 9px; background: #ff4d4d; color: #fff; border: 2px solid var(--bar-ink, var(--ink)); font: 800 10px/12px var(--body); text-align: center; box-sizing: border-box; }
+.note-badge.hidden { display: none; }
+.note-pop { width: min(380px, calc(100vw - 24px)); display: grid; gap: 8px; }
+.note-head { gap: 8px; flex-wrap: wrap; }
+.note-list { display: grid; gap: 6px; max-height: min(60dvh, 420px); overflow-y: auto; }
+.note-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; background: var(--panel2); border: 2px solid var(--ink); border-radius: 10px; }
+.note-item.unread { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, var(--panel2)); }
+.note-item.link { cursor: pointer; }
+.note-ico { font-size: 18px; flex: none; }
+.note-text { font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.note-x { font-size: 12px !important; min-width: 28px !important; min-height: 28px !important; color: var(--muted) !important; }
+.note-empty { text-align: center; padding: 10px; }
+.note-foot { text-align: center; }
+@media (max-width: 640px) { .note-pop { width: auto; } }
+
+/* ---- Ficha pública ---- */
+.prof-tabs { margin-top: 8px; }
+.prof-pane { padding: 8px 2px 2px; min-width: 0; }
+.prof-buddy { width: 40px; height: 40px; }
+.prof-reg { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+.prof-reg .reg-card { cursor: default; }
+
+/* La campanilla de notificaciones entra en la cabecera estrecha: la Mochila ya está en el menú del usuario y en Entrenador. */
+@media (max-width: 480px) {
+  #bag-btn, #mute-btn { display: none; }
+  #uname { max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #note-btn { min-width: 34px; }
+}

@@ -154,3 +154,8 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - **Mismos topes que la GTS y los regalos** (cuentas nuevas, Enfermera Joy, 5 intercambios/día compartidos con la GTS, 10 Pokémon y 2 legendarios o míticos recibidos al día, 5 copias por especie): no se puede usar para pasar valor más deprisa que con la GTS o los regalos. Una sola sala por jugador; el invitado tiene que estar conectado; un ejemplar ofrecido no se puede depositar en la GTS ni ofrecer en otra parte mientras tanto.
 - **Sin comisión, sin monedas:** no se pueden pasar monedas. La Lotería ID sigue igual (solo cuentan los ejemplares que ya tenías antes de las 00:00 UTC; los ID ajenos se obtienen con regalos o intercambios que comparten el tope de 10 al día).
 - **Notificaciones:** las invitaciones y los resultados quedan en el centro de notificaciones del receptor (persistentes, máximo 40).
+
+## Ficha pública y notificaciones (server/profile.js, server/notify.js)
+
+- La ficha se construye en el servidor con una lista **explícita** de campos públicos (test: ni claves ni valores privados — monedas, polvo, objetos, IP, hash/sal de la contraseña, carrera del Alto Mando en curso…). Un jugador suspendido no se puede consultar. El tiempo de juego respeta `playPublic`.
+- Las notificaciones solo las crea el servidor (`notify.push`), como mucho 40 por cuenta, con texto de 200 caracteres y enlaces solo internos (`#/…`, nunca `javascript:`). Las invitaciones (torneo, intercambio, incursión) están limitadas (10 por torneo, 6 por sala, una sala de intercambio a la vez), así que no sirven para acosar a un jugador con avisos.

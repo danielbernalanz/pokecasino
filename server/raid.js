@@ -338,6 +338,21 @@ function start(u, _p, now = Date.now()) {
   return { raid: viewFor(raid, u.id) };
 }
 
+// Invitar a un jugador a la sala por empezar (solo el anfitrión; como mucho 6 invitaciones por sala): le llega un aviso persistente con el código.
+function invite(u, { to } = {}) {
+  const raid = raidOf(u.id);
+  if (!raid || raid.state !== 'lobby' || raid.hostId !== u.id) throw new Error('Solo puedes invitar desde una sala tuya por empezar.');
+  if (raid.mode === 'solo') throw new Error('Una incursión en solitario no admite invitados.');
+  const t = db.userByName(String(to || ''));
+  if (!t || t.npc || t.id === u.id) throw new Error('Jugador no encontrado.');
+  if (humans(raid).some((x) => x.userId === t.id)) throw new Error(`${t.username} ya está en la sala.`);
+  if ((raid.inv || 0) >= 6) throw new Error('Máximo 6 invitaciones por sala: comparte el código.');
+  raid.inv = (raid.inv || 0) + 1;
+  save();
+  require('./notify').push(t, { kind: 'raid', text: `💎 ${u.username} te invita a una Teraincursión de ${raid.star}★ (código ${raid.code})`, link: '#/raids', toast: true });
+  return {};
+}
+
 // Salir: en la sala (el anfitrión la cancela) o en el combate (tu Pokémon pasa a manos de la CPU y no cobras).
 function leave(u) {
   const raid = raidOf(u.id);
@@ -632,6 +647,6 @@ const STATIC = { stars: STARS, badges: BADGES, level: LEVEL, hp: HP, daily: DAIL
 
 module.exports = {
   STARS, BADGES, LEVEL, HP, BOSS_POWER, ALLY_POWER, DAILY, MAX_KOS, MAX_TURNS, TURN_MS, LOBBY_MS, SOLO_TURN_MS, CLAIM_MS, KEEP_MS, SHARDS, CANDY, EXP_DAY, ITEM_CHANCE, MIN_BALL, PERFECT_IVS, SHIELD_AT, SHIELD_FRAC, AFK_AFTER, STATIC,
-  bossesOf, bossOf, poolOf, statsOf, moveOf, dayKey, dayState, unlocked, view, team, create, join, start, leave, choose, tick, claim, viewFor, publicList, raidOf, needActs, resolveTurn, bestMove, ballOk,
+  invite, bossesOf, bossOf, poolOf, statsOf, moveOf, dayKey, dayState, unlocked, view, team, create, join, start, leave, choose, tick, claim, viewFor, publicList, raidOf, needActs, resolveTurn, bestMove, ballOk,
   begin: start_, stop, setRng, store, dmgToBoss, dmgToMon, makeAlly,
 };

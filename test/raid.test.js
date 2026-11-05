@@ -590,3 +590,21 @@ test('equilibrio: con tipos y movimientos normales, 1★-2★ se ganan casi siem
   assert.ok(rates[5] <= 0.8 && rates[5] < rates[1], JSON.stringify(rates));
   assert.ok(rates[1] >= rates[3] && rates[3] >= rates[4] && rates[4] >= rates[5] - 0.1, JSON.stringify(rates));
 });
+
+test('invitar a una sala de incursión: solo el anfitrión, con tope, avisa con el código y no vale en solitario', () => {
+  const host = user([6]); const g = user([6]); const g2 = user([6]);
+  const solo = mk(host, 1, 'solo');
+  assert.throws(() => raid.invite(host, { to: g.username }), /sala tuya por empezar|solitario/);
+  raid.leave(host); clean();
+  const r = mk(host, 1, 'private');
+  assert.strictEqual(r.raid.state, 'lobby');
+  assert.throws(() => raid.invite(g, { to: g2.username }), /sala tuya/);
+  assert.throws(() => raid.invite(host, { to: 'nadie' }), /no encontrado/);
+  raid.invite(host, { to: g.username });
+  const note = require('../server/notify').list(g).list[0];
+  assert.strictEqual(note.kind, 'raid');
+  assert.ok(note.text.includes(r.raid.code) && note.text.includes(host.username));
+  for (let i = 0; i < 5; i++) raid.invite(host, { to: g2.username });
+  assert.throws(() => raid.invite(host, { to: g.username }), /Máximo 6/);
+  void solo;
+});
