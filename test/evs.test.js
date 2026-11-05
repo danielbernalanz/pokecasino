@@ -119,7 +119,7 @@ test('vitaminas se compran en la Tienda por 1.000 monedas y las bayas por 300', 
 });
 
 test('expedición: +4 EV por hora en la estadística de la zona, tope diario 60 por ejemplar', () => {
-  const ck = clock();
+  const ck = clock(Math.floor(Date.now() / (24 * H)) * 24 * H - 1); // 23:59:59.999 UTC: las dos expediciones de 12 h se cobran el mismo día sea cual sea la hora real
   try {
     const u = user({ 4: { n: 1, s: 0 } });
     const m = u.mons[4][0];

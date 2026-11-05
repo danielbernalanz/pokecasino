@@ -4,6 +4,7 @@ import { refreshPvp } from '../nav.js';
 import { bpTab } from './bp-ui.js';
 import { leagueTab } from './league-ui.js';
 import { towerTab } from './tower-ui.js';
+import { eliteTab } from './elite-ui.js';
 import { openSpecimen } from './pc.js';
 import { expBar } from './pc-fx.js';
 import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT, moveDesc } from '../battle-screen.js';
@@ -47,7 +48,7 @@ window.addEventListener('hashchange', () => { if (location.hash.startsWith('#/co
 export default {
   id: 'combates', title: 'Combates', icon: '⚔️',
   mount(root) {
-    const ctx = { searchDraws: [], tab: /^#\/combates\/bp/.test(location.hash) ? 'bp' : /^#\/combates\/liga/.test(location.hash) ? 'league' : /^#\/combates\/torre/.test(location.hash) ? 'tower' : 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
+    const ctx = { searchDraws: [], tab: /^#\/combates\/bp/.test(location.hash) ? 'bp' : /^#\/combates\/liga/.test(location.hash) ? 'league' : /^#\/combates\/torre/.test(location.hash) ? 'tower' : /^#\/combates\/alto-mando/.test(location.hash) ? 'elite' : 'fight', state: null, box: null, screen: null, edit: { slot: 0, members: [], name: '' }, offs: [], lastCpu: null, replayScreen: null };
     this.ctx = ctx;
     const tabsEl = h('div', { class: 'tabs bt-tabs' });
     const content = h('div', { class: 'bt-content' });
@@ -55,7 +56,7 @@ export default {
       h('p', { class: 'muted' }, 'Combates por turnos con el simulador de Pokémon Showdown: movimientos reales, habilidades, tipos, Megaevolución… Individuales y dobles, contra entrenadores de la Liga o contra otros jugadores.'));
     root.append(head, tabsEl, content);
 
-    const TABS = [['fight', '🏟️ Combatir'], ['league', '🏆 Liga'], ['tower', '🗼 Torre'], ['pvp', '🤝 Retos'], ['teams', '🧩 Mis equipos'], ['hist', '📜 Historial'], ['bp', '🎖️ Tienda PB']];
+    const TABS = [['fight', '🏟️ Combatir'], ['elite', '👑 Alto Mando'], ['league', '🏆 Liga'], ['tower', '🗼 Torre'], ['pvp', '🤝 Retos'], ['teams', '🧩 Mis equipos'], ['hist', '📜 Historial'], ['bp', '🎖️ Tienda PB']];
     const drawTabs = () => tabsEl.replaceChildren(...TABS.map(([id, label]) => h('button', { class: 'tab' + (ctx.tab === id ? ' active' : ''), type: 'button', onclick: () => { ctx.tab = id; drawTabs(); show(); } }, label)));
     const inBattle = () => !!ctx.screen;
 
@@ -66,10 +67,12 @@ export default {
       closeReplay();
       const screen = new BattleScreen(view, {
         onExit: () => { closeBattle(); show(); },
-        onRematch: view.mode === 'cpu' && !view.tower && ctx.lastCpu ? () => startCpu(ctx.lastCpu.trainer, true) : null,
+        onRematch: view.mode === 'cpu' && !view.tower && !view.elite && view.trainer ? () => startCpu(view.trainer.id, true) : null,
+        onNext: view.elite ? async () => { const r = await act('battle:elite:next'); if (r) { closeBattle(); await openBattle(r.battle); } } : null,
       });
       ctx.screen = screen;
       if (view.tower) ctx.tab = 'tower';
+      if (view.elite) ctx.tab = 'elite';
       head.classList.add('hidden'); tabsEl.classList.add('hidden');
       content.replaceChildren(screen.root);
       screen.feed(view.log || [], { instant: true });
@@ -186,9 +189,11 @@ export default {
     // ---------- Pestaña Combatir ----------
     async function startCpu(trainerId, rematch = false) {
       if (!rematch) { const ok = await ensureTeam(); if (!ok) return; }
-      const team = await teamMembers(prefs.format);
+      const t = ((ctx.state && ctx.state.trainers) || []).find((x) => x.id === trainerId);
+      const fixed = !!(t && t.fixed); // líderes: Individual y niveles reales (el servidor lo fuerza)
+      const team = await teamMembers(fixed ? 'singles' : prefs.format);
       if (!team) return;
-      const r = await act('battle:cpu', { trainer: trainerId, format: prefs.format, level: prefs.level, team });
+      const r = await act('battle:cpu', { trainer: trainerId, format: fixed ? 'singles' : prefs.format, level: fixed ? 'real' : prefs.level, team });
       if (!r) return;
       ctx.lastCpu = { trainer: trainerId };
       await openBattle(r.battle);
@@ -200,17 +205,19 @@ export default {
     }
 
     function trainerCard(t) {
-      const lvTxt = prefs.level === 'fair' ? 'Nv 50' : `Nv ≈ ${Math.max(5, Math.round((avgLevel() || 20) + t.dl))}`;
-      return h('div', { class: 'tr-card tier-' + t.tier + (t.locked ? ' locked' : '') + (t.gym ? ' gym' : '') },
+      const lvTxt = t.fixed ? (t.fixed.lv[0] === t.fixed.lv[1] ? `Nv ${t.fixed.lv[0]}` : `Nv ${t.fixed.lv[0]}-${t.fixed.lv[1]}`) : prefs.level === 'fair' ? 'Nv 50' : `Nv ≈ ${Math.max(5, Math.round((avgLevel() || 20) + t.dl))}`;
+      const prize = t.fixed ? `×${t.pay} · hasta ${(t.pay * t.fixed.lv[1]).toLocaleString('es-ES')}` : `×${t.pay}`;
+      return h('div', { class: 'tr-card tier-' + t.tier + (t.locked ? ' locked' : '') + (t.gym ? ' gym' : ''), 'data-trainer': t.id },
         h('div', { class: 'tr-sil' }, t.sig.map((id) => h('img', { class: 'pixel', src: sprite(id), alt: '', loading: 'lazy' }))),
         h('div', { class: 'tr-info' },
-          h('div', { class: 'tr-cls' }, t.gym ? '🏅 ' + t.cls : t.cls),
+          h('div', { class: 'tr-cls' }, t.gym ? '🏅 ' + t.cls : t.elite ? '👑 ' + t.cls : t.cls),
           h('b', { class: 'tr-name' }, t.name),
-          h('div', { class: 'tr-meta small muted' }, `${sig(t.tier)} · ${lvTxt}`),
+          h('div', { class: 'tr-meta small muted' }, `${sig(t.tier)} · ${lvTxt}${t.fixed ? ` · ${t.fixed.n} Pokémon` : ''}`),
+          t.badge ? h('div', { class: 'tr-badge ' + (t.badge.got ? 'good' : 'gold') }, t.badge.got ? `✔ Medalla ${t.badge.n} conseguida · revancha` : `🏅 Medalla ${t.badge.n}: ¡aún por ganar!`) : null,
           h('div', { class: 'tr-quote small muted' }, `«${t.quote}»`)),
         h('div', { class: 'tr-act' },
-          h('span', { class: 'tr-coins' }, `🪙 ${t.coins}`),
-          t.locked ? h('span', { class: 'small muted' }, `🔒 ${t.badges} medallas`) : h('button', { class: 'btn primary', type: 'button', onclick: (e) => { const btn = e.currentTarget; btn.disabled = true; startCpu(t.id).finally(() => { btn.disabled = false; }); } }, 'Retar')));
+          h('span', { class: 'tr-coins', title: 'Premio en metálico: clase del entrenador × nivel más alto de su equipo (tope diario de monedas de combate)' }, `🪙 ${prize}`),
+          t.locked ? h('span', { class: 'small muted' }, `🔒 ${t.lock || t.badges + ' medallas'}`) : h('button', { class: 'btn primary', type: 'button', onclick: (e) => { const btn = e.currentTarget; btn.disabled = true; startCpu(t.id).finally(() => { btn.disabled = false; }); } }, t.badge && !t.badge.got ? 'Retar (medalla)' : 'Retar')));
     }
     const avgLevel = () => {
       const box = ctx.box;
@@ -224,7 +231,8 @@ export default {
       const st = ctx.state;
       const f = FORMAT_ES;
       const list = h('div', { class: 'tr-grid' });
-      const redraw = () => { list.replaceChildren(...st.trainers.map(trainerCard)); };
+      const gyms = h('div', { class: 'tr-grid' });
+      const redraw = () => { list.replaceChildren(...st.trainers.filter((t) => !t.gym).map(trainerCard)); gyms.replaceChildren(...st.trainers.filter((t) => t.gym).map(trainerCard)); };
       const controls = h('div', { class: 'card bt-ctl' },
         h('div', { class: 'bt-ctl-row' },
           h('div', {}, h('div', { class: 'small muted' }, 'Formato'), seg(Object.entries(f), prefs.format, (v) => { prefs.format = v; savePrefs(); drawFight(); })),
@@ -234,10 +242,13 @@ export default {
           ? 'Dobles: dos Pokémon por bando y objetivos a elegir. Lleva al menos 2 (lo recomendable son 4).'
           : 'Individual: un Pokémon por bando. Llevas todo tu equipo (hasta 6).',
         prefs.level === 'fair' ? ' Todos combaten a nivel 50: gana el mejor equipo, no el más entrenado.' : ' Niveles reales: cada Pokémon pelea con el nivel que tiene.'),
-        h('div', { class: 'bt-wins' }, `🏆 Victorias premiadas hoy: ${st.wins.n}/${st.wins.max}`, h('span', { class: 'small muted' }, ' · Cada victoria da monedas, EXP para tus Pokémon, algún Caramelo Exp. y amistad; perder no cuesta nada.')));
+        h('div', { class: 'bt-wins' }, `🏆 Victorias premiadas hoy: ${st.wins.n}/${st.wins.max} · 🪙 ${fmt(st.wins.coins)}/${fmt(st.wins.coinsMax)} monedas`, h('span', { class: 'small muted' }, ' · Cada victoria paga el premio en metálico del entrenador (clase × nivel más alto de su equipo, con tope diario), EXP para tus Pokémon, algún Caramelo Exp. y amistad; perder no cuesta nada. Los Pokémon con Recogida pueden encontrar objetos (' + st.wins.pick + '/' + st.wins.pickMax + ' hoy) y Día de Pago suma monedas.')));
       redraw();
       ctx.searchDraws = [];
-      content.replaceChildren(searchCard(), controls, list);
+      const got = S.me.progress.badges.filter((b) => b.got).length;
+      const gymHead = h('div', { class: 'stack' }, h('h3', {}, `🏅 Líderes de Gimnasio (${got}/8 medallas)`),
+        h('p', { class: 'small muted' }, 'Como en los juegos: vence a los 8 líderes de Kanto en orden para conseguir sus medallas. Sus equipos tienen nivel fijo (de 14 a 50), combaten en Individual y a niveles reales: entrena a los tuyos. Si ya tienes la medalla, es una revancha (EXP, premio y PB, pero no otra medalla). Con las 8, el Alto Mando te espera.'));
+      content.replaceChildren(searchCard(), controls, h('h3', {}, '🏟️ Entrenadores'), list, gymHead, gyms);
     }
 
     // ---------- Pestaña Retos ----------
@@ -427,6 +438,7 @@ export default {
 
     // ---------- Pestaña Tienda de Combate (los PB se ganan aquí) ----------
     function drawBp() { content.replaceChildren(bpTab()); }
+    function drawElite() { content.replaceChildren(eliteTab({ openBattle, teamMembers, ensureTeam, state: ctx.state, refresh: () => show() })); }
     function drawLeague() { content.replaceChildren(leagueTab({ goRanked: (f) => { prefs.ranked = true; prefs.format = f; savePrefs(); ctx.tab = 'fight'; drawTabs(); show(); } })); }
     function drawTower() { content.replaceChildren(towerTab({ openBattle, refresh: drawTower, teamMembers: null })); }
 
@@ -482,6 +494,7 @@ export default {
       else if (ctx.tab === 'pvp') drawPvp();
       else if (ctx.tab === 'teams') drawTeams();
       else if (ctx.tab === 'bp') drawBp();
+      else if (ctx.tab === 'elite') drawElite();
       else if (ctx.tab === 'league') drawLeague();
       else if (ctx.tab === 'tower') drawTower();
       else drawHist();

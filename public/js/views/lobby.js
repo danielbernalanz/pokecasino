@@ -151,7 +151,7 @@ export default {
     const badgeStrip = h('a', { class: 'card badge-strip', href: '#/trainer' },
       h('div', { class: 'row between' }, h('h3', {}, `🏅 Medallas ${pr.badges.filter((b) => b.got).length}/8`), h('span', { class: 'muted small' }, `Apuesta máxima ${fmt(me.maxBet)}`)),
       h('div', { class: 'row gap wrap' }, pr.badges.map((b) => badgeImg(b.n, b.got))),
-      (() => { const next = pr.badges.find((b) => !b.got); return next ? h('div', { class: 'small' }, `Siguiente: ${next.name} — ${next.req}`) : h('div', { class: 'small good' }, '👑 Campeón de la Liga'); })());
+      (() => { const next = pr.badges.find((b) => !b.got); return next ? h('div', { class: 'small' }, `Siguiente: ${next.name} — ${next.req}`) : pr.titles.some((t) => t.id === 'campeon') ? h('div', { class: 'small good' }, '👑 Campeón de la Liga') : h('div', { class: 'small' }, '¡Las 8 medallas! Ahora, el Alto Mando (Combates → Alto Mando).'); })());
     // Frase del día, corazones y «Acariciar» del compañero (se repinta solo, sin cerrar «Ver más»).
     const bondBlock = () => {
       const bb = me.buddyBond;

@@ -33,7 +33,7 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 1. **Ruta del Entrenador**: 10 pasos guiados con premio (recompensa diaria → primera tirada → compañero → primeras partidas → mesas → multijugador → Huevo Misterioso → Mercado → duelo → primera medalla). Los pasos que ya hayas cumplido se completan solos.
 2. **Misiones diarias**: 3 al día de una lista de 12, más un Huevo Misterioso si completas las tres.
-3. **8 medallas de Kanto** (Brock, Misty, Surge, Erika, Koga, Sabrina, Blaine y Giovanni), cada una con un reto distinto: nivel, Pokédex, victorias, colecciones, ventas en el Mercado, duelos/póker, variocolor y la final. Suben la apuesta máxima (de 10.000 a 100.000), abren las mesas de póker de Azulona (2 medallas) y Meseta Añil (5) y dan títulos. Con las 8 eres **Campeón de la Liga**.
+3. **8 medallas de Kanto**, como en los juegos: se ganan **venciendo a los Líderes de Gimnasio** en Combates, en orden (Brock, Misty, Surge, Erika, Koga, Sabrina, Blaine y Giovanni; equipos de nivel fijo de 14 a 50, en Individual y a niveles reales). Suben la apuesta máxima (de 10.000 a 100.000), abren las mesas de póker de Azulona (2 medallas) y Meseta Añil (5) y dan títulos. Con las 8, el **Alto Mando** (Lorelei, Bruno, Agatha, Lance y el Campeón Azul) en una carrera de 5 combates sin curar: eres **Campeón de la Liga** y entras en el Salón de la Fama.
 4. **Colecciones** (iniciales, Eeveelutions, fósiles, aves legendarias, línea de Ralts, trío del tiempo…): cada una da +1 % permanente a tus ganancias (hasta +8 %), un título y un Huevo Misterioso.
 5. **Aspecto**: marcos de avatar, dorsos de carta (los ven los demás en la mesa de póker) y títulos, visibles en chat, ranking, mesas y fichas.
 

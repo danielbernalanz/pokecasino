@@ -1,5 +1,25 @@
 [
   {
+    "version": "2026.11.05-u",
+    "date": "2026-11-05",
+    "title": "Medallas de gimnasio, Alto Mando y dinero de combate",
+    "items": [
+      "🏅 Las 8 medallas de Kanto se ganan como en los juegos: venciendo a los Líderes de Gimnasio en Combates, en orden (Brock, Misty, Teniente Surge, Erika, Koga, Sabrina, Blaine y Giovanni). Sus equipos son los de los juegos, de nivel fijo (de 14 a 50), en Individual y a niveles reales, con una IA más lista y objetos desde Erika. Si ya tenías medallas las conservas con todos sus premios; repetir a un líder da EXP, premio y PB, pero no otra medalla.",
+      "👑 Alto Mando: con las 8 medallas, carrera de 5 combates seguidos (Lorelei, Bruno, Agatha, Lance y el Campeón Azul) sin curar entre uno y otro: los PS, los PP y los estados pasan al siguiente combate. Al vencer al Campeón entras en el Salón de la Fama (en Mi Entrenador y en la pestaña Alto Mando), ganas el título de Campeón (una sola vez) y una Moneda Amuleto. Las revanchas traen equipos más fuertes.",
+      "🪙 Moneda Amuleto, ahora un objeto equipable real (40 PB en la Tienda de Combate, rara en expediciones largas y premio del Alto Mando): duplica el premio en metálico de un combate contra la CPU. La antigua Moneda Amuleto de 1 hora pasa a llamarse Moneda de la Suerte y funciona igual."
+    ]
+  },
+  {
+    "version": "2026.11.05-v",
+    "date": "2026-11-05",
+    "title": "Premio en metálico, Día de Pago y Recogida",
+    "items": [
+      "💰 Los combates contra entrenadores pagan como en los juegos: la clase del entrenador (×16 los novatos … ×100 los líderes y el Alto Mando) por el nivel más alto de su equipo. El tope diario de monedas de combate sigue siendo 800, así que la economía no cambia; lo que sobra no se cobra ese día. La pantalla final muestra el desglose.",
+      "🐱 Día de Pago: cada uso que acierta esparce 5 × el nivel del Pokémon en monedas, que se cobran al ganar (dentro del mismo tope diario y duplicadas con la Moneda Amuleto). Meowth, Persian y Perrserker lo aprenden.",
+      "🎒 Recogida: tras cada victoria, cada Pokémon con esta habilidad tiene un 10 % de encontrar un objeto (bayas, Caramelos Exp., y muy raramente Piedras, Huevo Fortuna o Caramelo Raro), con tope de 5 al día. Verás «¡Meowth encontró …!» al terminar el combate."
+    ]
+  },
+  {
     "version": "2026.11.04-t",
     "date": "2026-11-04",
     "title": "Entrenamiento Extremo, Pokérus y evoluciones al azar",

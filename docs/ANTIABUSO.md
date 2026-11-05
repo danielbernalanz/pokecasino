@@ -8,7 +8,7 @@ repitiendo una mecánica, con cuentas secundarias o con el panel de anfitrión.
 | Fuente | Máximo | Notas |
 |---|---|---|
 | Recompensa diaria | 1.000 + 150 × racha (hasta 1.900) | |
-| Combates contra la CPU | 800 | 10 victorias pagadas al día; perder no cuesta |
+| Combates contra la CPU | 800 | Premio real (clase × nivel más alto) con tope diario de 800 monedas y 10 victorias premiadas al día; la Moneda Amuleto y el Día de Pago cuentan dentro del tope; perder no cuesta |
 | Encargos de los NPC | ≈ 1.000 extra con legendarios (4.500 con dos cosméticos legendarios) | 2 al día; el NPC paga de su tesoro |
 | Expediciones | 300 (+ ≈ 250 en polvo y objetos) | |
 | Hallazgos del compañero | 200 (+ 40 ✦) | |
@@ -79,3 +79,11 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - **Chapas** (Entrenamiento Extremo): solo PB, Torre (1 al día) y Liga (mensual); IV reales intactos, así que no hay forma de «criar» IV perfectos con ellas.
 - **Pokérus:** 1/3.000 por victoria o expedición, solo duplica los EVs (que ya tienen tope diario por ejemplar); no crea monedas ni EXP.
 - **Migración de caramelos:** una sola vez por cuenta (`u.expMig`), tras una copia de seguridad, y solo convierte lo que la cuenta ya tenía; los valores se redondean hacia arriba, nunca hacia abajo. No se puede repetir ni forzar desde el cliente.
+
+## Medallas, Alto Mando y dinero de combate
+
+- **Medallas:** solo las concede el servidor al ganar un combate contra el líder (`awardBadge`, una sola vez por medalla; la revancha no da nada). Rendirse o perder no cuenta; el rival CPU no se rinde. El orden de los gimnasios lo comprueba el servidor al empezar el combate (`trainers.unlocked`), no el cliente, que además no puede elegir formato ni nivel contra un líder (se fuerzan Individual y niveles reales). Las medallas antiguas se conservan.
+- **Alto Mando:** el estado de la carrera (equipo, PS/PP/estados) vive en el servidor (`u.elite.run`); el cliente solo pide «empezar», «siguiente» o «abandonar» y no puede curar ni cambiar a su equipo entre combates. Los PS que se arrastran salen del estado final real del simulador. Abandonar vuelve a empezar desde Lorelei (equipo curado), igual que perder. Los premios del título (10.000 monedas, Master Ball, Marco) y la Moneda Amuleto de la primera vez se cobran una sola vez por cuenta (`awardChampion` mira el título; `E.amulet` la Moneda); las revanchas solo dan lo de cada combate dentro de los topes diarios.
+- **Dinero de combate:** el premio sale de una fórmula del servidor (tabla de clases × nivel del equipo que genera el propio servidor), con **tope de 800 monedas al día** también para el Día de Pago y la Moneda Amuleto. Un jugador no puede inflar el Día de Pago alargando el combate más allá del tope (el combate dura lo que dure, pero el día paga como mucho 800). El Día de Pago se cuenta del registro del combate que genera el simulador, no de nada que mande el cliente.
+- **Recogida:** 10 % por Pokémon y victoria premiada (el combate tiene que ganarse y estar dentro de las 10 premiadas), 5 hallazgos al día como máximo; sin monedas. Los objetos raros (Caramelo Raro, Piedras, Huevo Fortuna) tienen peso ≤ 6 % de los hallazgos, así que como mucho unos pocos al mes con las 5 diarias.
+- **Moneda Amuleto:** objeto equipable comerciable como los demás de la Tienda de Combate; una cuenta secundaria no puede sacar más de 800 monedas al día de combates (con o sin ella) ni más de 1 Moneda por día de expediciones.

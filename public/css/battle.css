@@ -360,3 +360,28 @@ button.tw-mon { cursor: pointer; } button.tw-mon:hover:not(:disabled) { backgrou
   .lg-count { align-items: flex-start; } .rank-badge.xl img { width: 44px; height: 44px; }
   .bt2-bar-r .bt2-rk { display: none; }
 }
+
+/* Medallas de gimnasio, Alto Mando y Salón de la Fama */
+.bt2-badge { display: flex; align-items: center; gap: 12px; text-align: left; background: #0005; border: 1px solid var(--gold); border-radius: 12px; padding: 8px 12px; max-width: 460px; }
+.bt2-badge .badge-img { width: 56px; height: 56px; flex: 0 0 auto; }
+.bt2-hof { background: linear-gradient(160deg, #2e2540, #3a2d12); border: 1px solid var(--gold); border-radius: 12px; padding: 10px 14px; }
+.tr-badge { font-size: 12px; font-weight: 800; }
+.tr-prize { font-size: 12px; }
+.el-members { display: flex; flex-direction: column; gap: 8px; }
+.el-member { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; }
+.el-member.now { border-color: var(--gold); }
+.el-member.done { opacity: .7; }
+.el-member.champ { background: linear-gradient(160deg, #2e2540, #3a2d12); }
+.el-member .tr-sil { height: 48px; justify-content: flex-start; }
+.el-member .tr-sil img { width: 48px; height: 48px; }
+.el-team { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.el-mon { display: flex; align-items: center; gap: 8px; background: #0003; border: 1px solid var(--line); border-radius: 12px; padding: 6px 8px; }
+.el-mon.down { opacity: .5; filter: grayscale(1); }
+.el-mon img { width: 48px; height: 48px; flex: 0 0 auto; }
+.el-hof { display: flex; flex-direction: column; gap: 8px; }
+.el-hof-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #0003; border: 1px solid var(--gold); border-radius: 12px; padding: 8px 12px; }
+.el-hof-n { display: flex; flex-direction: column; min-width: 84px; }
+.el-hof-team { display: flex; gap: 6px; flex-wrap: wrap; }
+.el-hof-mon { display: flex; flex-direction: column; align-items: center; }
+.el-hof-mon img { width: 56px; height: 56px; }
+@media (max-width: 520px) { .el-member { flex-wrap: wrap; } }

@@ -190,7 +190,7 @@ const TIPS = [
   { id: 'race', text: 'Gran Carrera: elige a tu favorito y a gritar.', go: 'Ver carrera' },
   { id: 'duels', text: 'Los Duelos PvP: reta a otro entrenador con tus Pokémon.', go: 'Retar' },
   { id: 'mega', text: '¡Evento Megaevolución en marcha! Hay megapiedras en juego.', go: 'Ver evento' },
-  { id: 'trainer', text: 'Mira tus medallas: cada una sube tu apuesta máxima.', go: 'Mi entrenador' },
+  { id: 'trainer', text: 'Las medallas se ganan venciendo a los Líderes de Gimnasio en Combates, en orden: cada una sube tu apuesta máxima. ¡Entrena a tu equipo!', go: 'Mi entrenador' },
   { id: 'ranking', text: '¿Dónde estás tú en el ranking? Echa un vistazo.', go: 'Ver ranking' },
 ];
 export function suggestion() {
@@ -209,7 +209,7 @@ export function suggestion() {
   const night = phaseNow() === 'night';
   const timeTip = night ? '🌙 Es de noche en España: en el Gacha salen más Gastly, Zubat, Hoothoot, Murkrow y Misdreavus, y esos Pokémon rinden más en las expediciones que salen ahora.' : '☀️ Es de día en España: en el Gacha salen más Ledyba, Sunkern, Cherubi, Hoppip y Starly, y esos Pokémon rinden más en las expediciones que salen ahora.';
   if (new Date().getDate() % 2 === 0) return { text: timeTip, go: 'Ir al Gacha', link: '#/gacha', id: 'time' };
-  const quips = ['¡Lo has probado casi todo, entrenador! Ahora a por las 8 medallas.', 'Recuerda: juega con cabeza. Las apuestas altas siempre piden confirmación.', 'La Caja PC guarda tus Pokémon: ¿has probado a entrenarlos con Caramelos Exp. o en combate?'];
+  const quips = ['¡Lo has probado casi todo, entrenador! Ahora a por las 8 medallas: vence a los Líderes de Gimnasio en Combates.', 'Recuerda: juega con cabeza. Las apuestas altas siempre piden confirmación.', 'La Caja PC guarda tus Pokémon: ¿has probado a entrenarlos con Caramelos Exp. o en combate?'];
   return { text: quips[new Date().getDate() % quips.length], go: null, id: 'quip' };
 }
 export function oakSay() {

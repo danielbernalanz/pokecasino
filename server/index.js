@@ -153,7 +153,7 @@ const STATIC = {
   openRegistration: config.OPEN_REGISTRATION,
   racePool: race.POOL, voltorbDivisors: voltorb.DIVISORS, voltorbCap: voltorb.SCORE_CAP,
   items: items.ITEMS, marketFee: market.SETUP_FEE, salesTax: market.SALES_TAX, vpPaytable: videopoker.PAYTABLE, baccaratPayout: baccarat.PAYOUT,
-  plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES,
+  plinko: { tables: plinko.TABLES, rows: plinko.ROWS }, crashGrowth: crash.GROWTH, pokerTables: holdem.TABLES, minBet: config.MIN_BET, maxBet: config.MAX_BET, maxBetByBadges: hub.MAX_BET_BY_BADGES, battleCoinsDay: require('./trainers').COINS_DAY,
   bondTiers: bond.tiersView(), bondMoves: Object.keys(bond.BOND_MOVES),
   cosmetics: items.COSMETICS, berries: items.BERRIES, recycleBerry: { dust: candy.RECYCLE_BERRY_DUST, daily: candy.RECYCLE_BERRY_DAILY },
   heal: { limit: healer.LIMIT, cooldown: healer.COOLDOWN, amount: healer.AMOUNT },

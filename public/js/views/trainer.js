@@ -1,6 +1,7 @@
 import { historyCard } from './history.js';
 import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, playingCard, fmtPlay } from '../core.js';
 import { openEgg } from '../rewards.js';
+import { hofList } from './elite-ui.js';
 
 // Cuántos anuncios hay en el Mercado de un Pokémon (para animar a comprar la pieza que falta).
 let marketCache = null;
@@ -59,11 +60,11 @@ export default {
         const [cur, max] = b.prog;
         return h('div', { class: 'badge-card' + (b.got ? ' got' : '') },
           badgeImg(b.n, b.got),
-          h('div', { class: 'grow' }, h('b', {}, b.name), h('div', { class: 'muted small' }, `Líder ${b.leader}`), h('div', { class: 'small' }, b.req),
-            b.got ? h('div', { class: 'small good' }, '✔ Conseguida') : h('div', { class: 'pity-bar' }, h('i', { style: { width: Math.min(100, (cur / max) * 100) + '%' } }))));
+          h('div', { class: 'grow' }, h('b', {}, b.name), h('div', { class: 'muted small' }, `Líder ${b.leader} · ${b.city}`), h('div', { class: 'small', 'data-testid': 'badge-req' }, b.req),
+            b.got ? h('div', { class: 'small good' }, '✔ Conseguida') : h('a', { class: 'btn small primary', href: '#/combates' }, '⚔️ Retar a ' + b.leader)));
       }));
       const perks = h('div', { class: 'small muted' },
-        'Cada medalla sube tu apuesta máxima, da monedas y objetos, y un título. Con 2 medallas abres la Mesa Ciudad Azulona y con 5 la Mesa Meseta Añil. Con las 8 serás Campeón de la Liga.');
+        'Como en los juegos, las medallas se ganan venciendo a los Líderes de Gimnasio de Kanto en Combates, en orden. Cada medalla sube tu apuesta máxima, da monedas y objetos, y un título. Con 2 medallas abres la Mesa Ciudad Azulona y con 5 la Mesa Meseta Añil. Con las 8 se abre el Alto Mando: véncelo (y al Campeón) para ser Campeón de la Liga y entrar en el Salón de la Fama.');
 
       // --- Colecciones ---
       const sets = h('div', { class: 'set-grid' }, pr.sets.map((s) => h('div', { class: 'set-card' + (s.done ? ' done' : '') },
@@ -109,7 +110,7 @@ export default {
           h('img', { class: 'pixel', src: sprite(id), alt: S.dexById.get(id).name }))))) : null;
 
       if (trTab === 'perfil') body.replaceChildren(h('div', { class: 'tr-profile' }, h('div', { class: 'stack' }, card, lockedBox || ''), hist));
-      else if (trTab === 'medallas') body.replaceChildren(h('h2', { class: 'section-title' }, `Medallas de Kanto (${got}/8)`), perks, badges);
+      else if (trTab === 'medallas') body.replaceChildren(h('h2', { class: 'section-title' }, `Medallas de Kanto (${got}/8)`), perks, badges, h('h2', { class: 'section-title' }, '🏛️ Salón de la Fama'), hofList(me.hof, { limit: 20 }), got >= 8 ? h('a', { class: 'btn primary', href: '#/combates/alto-mando' }, '👑 Ir al Alto Mando') : null);
       else if (trTab === 'aspecto') body.replaceChildren(h('div', { class: 'cards3 tr-looks' }, slotBox('frame', '🖼️ Marco de avatar'), slotBox('cardback', '🂠 Dorso de carta'), slotBox('title', '🏷️ Título'), eggBox));
       else body.replaceChildren(h('p', { class: 'small muted' }, 'Toca un Pokémon que te falte para buscarlo en el Mercado. 🏪 indica cuántos hay a la venta.'), sets);
     }

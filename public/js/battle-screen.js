@@ -1,6 +1,6 @@
 // Pantalla de combate al estilo Pokémon: campo de batalla, cajas de PS, cuadro de texto con escritura y menú de acciones.
 // Recibe líneas del protocolo de Showdown (ver sd-protocol.js) y las ejecuta una a una con pausas y animaciones.
-import { S, h, emit, toast, sfx, TYPE_ES, typeBadge, sprite, modal, rankBadge, RANK_NAMES, itemImg } from './core.js';
+import { S, h, emit, toast, sfx, TYPE_ES, typeBadge, sprite, modal, rankBadge, RANK_NAMES, itemImg, badgeImg } from './core.js';
 import { aniImg } from './anim.js';
 import { showProgress } from './views/pc-fx.js';
 import { Protocol, STATUS_ES, STATUS_LONG, STAT_ES, toID } from './sd-protocol.js';
@@ -41,11 +41,12 @@ const detailsSpecies = (d) => String(d || '').split(',')[0];
 
 /** Pantalla de combate. `opts.replay` = sin menú (repetición). */
 export class BattleScreen {
-  constructor(view, { replay = false, onExit, onRematch } = {}) {
+  constructor(view, { replay = false, onExit, onRematch, onNext } = {}) {
     this.view = view;
     this.replay = replay;
     this.onExit = onExit;
     this.onRematch = onRematch;
+    this.onNext = onNext; // carrera del Alto Mando: «Siguiente combate»
     this.me = view.side || 'p1';
     this.foe = this.me === 'p1' ? 'p2' : 'p1';
     this.doubles = view.format === 'doubles';
@@ -202,7 +203,7 @@ export class BattleScreen {
 
   updateTray() {
     const mk = (side, el) => {
-      const n = this.view.pickN || (this.view.roster[side] || []).length;
+      const n = (side === this.foe && this.view.pickFoe) || this.view.pickN || (this.view.roster[side] || []).length;
       const f = this.fainted[side];
       el.replaceChildren(...Array.from({ length: n }, (_, i) => h('i', { class: i < n - f ? 'ball' : 'ball off' })));
     };
@@ -570,8 +571,9 @@ export class BattleScreen {
       const r = i.reward;
       if (r.capped) parts.push(h('p', { class: 'muted' }, 'Hoy ya has cobrado el máximo de victorias premiadas. ¡Vuelve mañana!'));
       else {
+        const pz = r.prize;
         parts.push(h('div', { class: 'bt2-rewards' },
-          h('span', { class: 'rw' }, `🪙 +${r.coins}`),
+          h('span', { class: 'rw', 'data-testid': 'rw-coins' }, `🪙 +${Number(r.coins).toLocaleString('es-ES')}`),
           ...(r.exp || []).map((x) => h('span', { class: 'rw rw-exp', 'data-testid': 'rw-exp' }, `${x.name} +${Number(x.exp).toLocaleString('es-ES')} EXP${x.to > x.from ? ` (Nv. ${x.from} → ${x.to})` : ''}`)),
           ...Object.entries(r.candies || {}).map(([id, q]) => h('span', { class: 'rw' }, itemImg(id, 'rw-img'), `+${q} ${(S.data.items[id] || {}).name || id}`)),
           r.friend ? h('span', { class: 'rw' }, `💗 +${r.friend} amistad`) : null,
@@ -580,7 +582,30 @@ export class BattleScreen {
           r.bp ? h('span', { class: 'rw' }, `🎖️ +${r.bp} PB`) : null,
           r.tm ? h('span', { class: 'rw' }, `💿 ¡${(S.data.items[r.tm] || {}).name || r.tm}!`) : null,
           h('span', { class: 'rw muted' }, `Premios de hoy: te quedan ${r.winsLeft}`)));
+        // Premio en metálico como en los juegos: clase × nivel más alto del rival; Día de Pago; Moneda Amuleto; tope diario.
+        if (pz) {
+          const lines = [`💰 Premio: ${pz.pay} × Nv. ${pz.level} = ${pz.base.toLocaleString('es-ES')}`];
+          if (pz.paydayUses) lines.push(`Día de Pago: ${pz.paydayUses} ${pz.paydayUses === 1 ? 'uso' : 'usos'} = +${pz.payday.toLocaleString('es-ES')}`);
+          if (pz.amulet) lines.push('🪙 Moneda Amuleto: ×2');
+          parts.push(h('p', { class: 'small', 'data-testid': 'rw-prize' }, lines.join(' · ')));
+          if (pz.capped) parts.push(h('p', { class: 'small' }, `Tope diario de monedas de combate alcanzado (${(S.data.battleCoinsDay || 800).toLocaleString('es-ES')}): el resto del premio no se cobra hoy.`));
+        }
+        for (const f of r.pickup || []) parts.push(h('p', { class: 'good', 'data-testid': 'rw-pickup' }, `¡${f.name} encontró ${f.label}!`));
       }
+    }
+    if (i.badge) {
+      const bd = i.badge;
+      parts.push(bd.first
+        ? h('div', { class: 'bt2-badge', 'data-testid': 'rw-badge' }, badgeImg(bd.n, true, 'big'), h('div', {}, h('b', { class: 'good' }, `🏅 ¡Has conseguido la ${bd.name}!`),
+          h('div', { class: 'small' }, `${bd.total}/8 medallas · +${Number(bd.coins).toLocaleString('es-ES')} monedas${Object.entries(bd.items || {}).map(([id, q]) => ` · ${q}× ${(S.data.items[id] || {}).name || id}`).join('')} · más límite de apuesta`)))
+        : h('p', { class: 'small', 'data-testid': 'rw-badge-again' }, `Ya tenías la ${bd.name}: la revancha da EXP y Puntos de Batalla, pero no otra medalla.`));
+    }
+    if (i.elite) {
+      const E = i.elite;
+      if (E.cleared) parts.push(h('div', { class: 'bt2-hof', 'data-testid': 'rw-hof' }, h('b', { class: 'good' }, E.champion ? '👑 ¡Eres el Campeón de la Liga Pokémon!' : '🏛️ ¡Has vuelto a vencer a la Liga!'),
+        h('div', { class: 'small' }, `Entras en el Salón de la Fama (${E.n}.ª vez).${E.amulet ? ' Premio: 1× Moneda Amuleto.' : ''}`)));
+      else if (E.ended) parts.push(h('p', { class: 'muted' }, `La carrera acaba aquí (${E.stage}/${E.total}: ${E.foe}). Puedes empezar otra, con el equipo curado.`));
+      else if (E.next) parts.push(h('p', { class: 'small', 'data-testid': 'rw-elite-next' }, `Combate ${E.stage}/${E.total} superado. Sin curar a tu equipo: el siguiente es ${E.next}.`));
     }
     if (i.bp) parts.push(h('p', {}, `🎖️ +${i.bp} PB (Puntos de Batalla)`));
     if (i.reward && !i.reward.capped && i.reward.exp) setTimeout(() => showProgress({ members: i.reward.exp.filter((x) => x.to > x.from), evolve: i.reward.evolve || [], pokerus: i.reward.pokerus || [] }), 700); // subidas de nivel, Pokérus y «¿Quieres que evolucione?»
@@ -610,9 +635,10 @@ export class BattleScreen {
       h('h2', { class: you ? 'good' : tie ? '' : 'bad' }, i.aborted ? 'Combate interrumpido' : you ? '🏆 ¡Has ganado!' : tie ? '🤝 Empate' : 'Has perdido'),
       ...parts,
       h('div', { class: 'row gap wrap bt2-end-actions' },
+        you && i.elite && i.elite.next && this.onNext ? h('button', { class: 'btn primary', type: 'button', 'data-testid': 'elite-next', onclick: (e) => { e.currentTarget.disabled = true; this.onNext(); } }, `⚔️ Siguiente: ${i.elite.next}`) : null,
         this.onRematch ? h('button', { class: 'btn primary', type: 'button', onclick: () => this.onRematch() }, '🔁 Revancha') : null,
         h('button', { class: 'btn', type: 'button', onclick: () => this.openLog() }, '📜 Registro'),
-        h('button', { class: 'btn gold', type: 'button', onclick: () => this.onExit && this.onExit() }, this.view.tower ? 'Volver a la Torre' : 'Volver al menú'))));
+        h('button', { class: 'btn gold', type: 'button', onclick: () => this.onExit && this.onExit() }, this.view.tower ? 'Volver a la Torre' : this.view.elite ? 'Volver al Alto Mando' : 'Volver al menú'))));
   }
 
   // ---------- Menú de acciones ----------
