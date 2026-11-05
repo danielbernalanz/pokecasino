@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.05-ae",
+    "date": "2026-11-05",
+    "title": "Intercambio directo entre jugadores",
+    "items": [
+      "🔁 Nuevo apartado «Intercambio» (Mercado → Comercio), como el intercambio en línea de los juegos: invita a un jugador conectado (también desde su ficha con «🔁 Intercambiar»), cada uno elige un Pokémon de su Caja, os enseñáis el resumen (nivel, naturaleza, habilidad, Ball, entrenador original, objeto, movimientos…) y, si los dos confirmáis, se intercambian al momento.",
+      "🛡️ Cualquier cambio de oferta anula las confirmaciones, y no se mueve nada si alguien cancela, se desconecta o la sala caduca. Se conservan los rasgos como en la GTS (IV, naturaleza, Ball, entrenador original, nivel, objeto, movimientos; no EVs ni amistad) y vale como intercambio para las evoluciones.",
+      "🆓 Sin comisión, como en los juegos, y con los mismos topes que la GTS y los regalos: nivel 3 y 3 días de cuenta, 5 intercambios al día (compartidos con la GTS) y 10 Pokémon y 2 legendarios o míticos recibidos al día."
+    ]
+  },
+  {
     "version": "2026.11.05-ad",
     "date": "2026-11-05",
     "title": "Pokédex regionales y Diploma del Game Freak",

@@ -64,25 +64,28 @@ function meets(want, id, m) {
 }
 
 // ---- Bloqueos: los mismos que para regalar/vender (fuera, compañero) y los que están en uso ahora mismo ----
-function busyReason(u, id, m) {
+// `what`: cómo se llama lo que se quiere hacer en los mensajes («la GTS», «el intercambio»). `roomId`: sala de intercambio directo que no cuenta como bloqueo (la propia).
+function busyReason(u, id, m, what = 'la GTS', roomId = null) {
   if (m.away) return `${nameOf(id)} ${m.away === 'care' ? 'está en el Criadero' : 'está de expedición'}: espera a que vuelva.`;
   if (u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid) return `${nameOf(id)} es tu compañero: elige otro compañero antes.`;
   let inBattle = null;
   try { inBattle = require('./showdown').activeFor(u); } catch { /* sin combates */ }
-  if (inBattle) return 'Estás en un combate: termínalo antes de usar la GTS.';
+  if (inBattle) return `Estás en un combate: termínalo antes de usar ${what}.`;
   const run = u.elite && u.elite.run;
   if (run && run.members.some((x) => x.uid === m.uid)) return `${nameOf(id)} está en tu carrera del Alto Mando.`;
+  const heldIn = require('./trade').heldIn(u.id, m.uid);
+  if (heldIn && heldIn !== roomId) return `${nameOf(id)} está ofrecido en una sala de intercambio.`;
   const inRaid = Object.values(db.data.raids || {}).some((r) => !r.over && r.players.some((p) => p.human && !p.left && p.userId === u.id && p.mon && p.mon.uid === m.uid));
   if (inRaid) return `${nameOf(id)} está en una Teraincursión.`;
   return null;
 }
 
 // ---- Cuentas y topes ----
-function canUse(u, now) {
-  if (u.npc) throw new Error('Los comerciantes NPC no usan la GTS.');
+function canUse(u, now, what = 'la GTS') {
+  if (u.npc) throw new Error(`Los comerciantes NPC no usan ${what}.`);
   if (u.isAdmin) return;
-  if (tr.young(u, now)) throw new Error(`Para usar la GTS necesitas nivel ${tr.GIFT_MIN_LEVEL} y una cuenta de al menos ${tr.GIFT_MIN_DAYS} días.`);
-  if (tr.healed(u, now)) throw new Error('La Enfermera Joy te ayudó hace menos de 24 h: hasta entonces no puedes usar la GTS.');
+  if (tr.young(u, now)) throw new Error(`Para usar ${what} necesitas nivel ${tr.GIFT_MIN_LEVEL} y una cuenta de al menos ${tr.GIFT_MIN_DAYS} días.`);
+  if (tr.healed(u, now)) throw new Error(`La Enfermera Joy te ayudó hace menos de 24 h: hasta entonces no puedes usar ${what}.`);
 }
 function dayLeft(u, now = Date.now()) {
   const d = dayKey(now);
@@ -307,4 +310,4 @@ function init() {
   if (!timer) { timer = setInterval(() => settle(), 10 * 60 * 1000); timer.unref(); }
 }
 
-module.exports = { STATIC, FEE, MAX_ACTIVE, EXPIRE_MS, DAILY, deposit, cancel, claim, offer, search, state, settle, init, noteSeen, seenBy, seenList, wantText, meets, lvRange, busyReason, G };
+module.exports = { pull, putBack, snapOf, receive, canUse, dayLeft, room, isRare, MAX_STARS, STATIC, FEE, MAX_ACTIVE, EXPIRE_MS, DAILY, deposit, cancel, claim, offer, search, state, settle, init, noteSeen, seenBy, seenList, wantText, meets, lvRange, busyReason, G };

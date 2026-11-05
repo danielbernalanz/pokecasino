@@ -199,6 +199,7 @@ function onlineList() {
   return [...online.keys()].map((id) => db.userById(id)).filter((u) => u && !u.npc).map((u) => (showdown.isQueued(u.id) ? { ...hub.publicUser(u), seeking: true } : hub.publicUser(u)));
 }
 const pushOnline = () => io.emit('online', onlineList());
+require('./trade').setOnline((id) => online.has(id)); // el intercambio directo solo invita a gente conectada
 showdown.setQueueHook(pushOnline);
 
 function claimDaily(user) {
@@ -724,6 +725,13 @@ io.on('connection', (socket) => {
   on('poker:action', holdem.action);
   on('gift:coins', giftCoins);
   on('gift:poke', giftPoke);
+  on('trade:state', (u) => require('./trade').state(u), { push: false });
+  on('trade:invite', (u, p) => require('./trade').invite(u, p));
+  on('trade:accept', (u, p) => require('./trade').accept(u, p));
+  on('trade:leave', (u, p) => require('./trade').leave(u, p));
+  on('trade:offer', (u, p) => require('./trade').offer(u, p));
+  on('trade:confirm', (u, p) => require('./trade').confirm(u, p));
+  on('trade:unconfirm', (u) => require('./trade').unconfirm(u));
   on('gts:state', (u) => gts.state(u), { push: false });
   on('gts:search', gts.search, { push: false });
   on('gts:deposit', gts.deposit);
@@ -754,7 +762,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     clearInterval(refill);
     const n = (online.get(uid) || 1) - 1;
-    if (n <= 0) { online.delete(uid); showdown.unqueueUser(uid); }
+    if (n <= 0) { online.delete(uid); showdown.unqueueUser(uid); require('./trade').onDisconnect(uid); }
     else online.set(uid, n);
     pushOnline();
   });
@@ -790,6 +798,7 @@ db.init().then(() => {
   // Lo que quedó en juego si la versión anterior se apagó de golpe vuelve a sus dueños.
   market.init();
   gts.init();
+  require('./trade').start();
   npc.start();
   const back = db.refundEscrow();
   if (back.n) console.log(`  ↩️  Devueltas ${back.total} monedas en juego a ${back.n} apuesta(s)/mesa(s) pendientes`);

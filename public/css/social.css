@@ -55,3 +55,23 @@
 .reg-card.done { box-shadow: var(--card-sh), 0 0 12px var(--rc); }
 .reg-bar { height: 8px; background: var(--sunk); border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; }
 .reg-bar i { display: block; height: 100%; background: var(--rc, var(--gold)); }
+
+/* ---- Intercambio directo ---- */
+.view-trade { min-width: 0; }
+.trd-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.trd-side { background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 10px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.trd-side h3 { margin: 0; font-size: 15px; }
+.trd-arrow { align-self: center; font: 700 26px var(--pixel); color: var(--gold); }
+.trd-card { background: var(--panel2); border: 2px solid var(--ink); border-radius: 10px; padding: 8px; display: grid; gap: 6px; min-width: 0; }
+.trd-card.empty { min-height: 120px; place-items: center; }
+.trd-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.trd-top img { width: 72px; height: 72px; flex: none; image-rendering: pixelated; }
+.trd-top .types { justify-content: flex-start; flex-wrap: wrap; }
+.trd-dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; font-size: 12.5px; }
+.trd-dl dt { color: var(--muted); }
+.trd-dl dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trd-moves { display: flex; flex-wrap: wrap; gap: 4px; }
+@media (max-width: 760px) {
+  .trd-grid { grid-template-columns: minmax(0, 1fr); }
+  .trd-arrow { transform: rotate(90deg); justify-self: center; }
+}

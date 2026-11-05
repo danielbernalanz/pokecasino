@@ -35,6 +35,7 @@ import poker from './views/poker.js';
 import market from './views/market.js';
 import gts from './views/gts.js';
 import torneos from './views/torneos.js';
+import trade from './views/trade.js';
 import trainer from './views/trainer.js';
 import megaView from './views/mega.js';
 import news from './views/news.js';
@@ -45,7 +46,7 @@ import { buildSidebar, buildTabbar, markNav, refreshNew, markVisited, resetVisit
 installEmoji(); // emojis genéricos → iconos de Pokémon (pkicons.js)
 
 duels.title = 'Duelos rápidos'; // los duelos de siempre (1 Pokémon a ciegas) pasan a llamarse así junto a los nuevos Combates
-const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, captura, raids, criadero, shop, bag, workshop, megaView, market, gts, torneos, ranking, admin, ...hubs];
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, captura, raids, criadero, shop, bag, workshop, megaView, market, gts, trade, torneos, ranking, admin, ...hubs];
 
 // ---------- Autenticación ----------
 let mode = 'login';
@@ -365,6 +366,7 @@ function connect() {
   socket.on('poker:hole', (x) => bus.emit('poker:hole', x));
   socket.on('market', (m) => bus.emit('market', m));
   socket.on('tourney:changed', (p) => bus.emit('tourney:changed', p));
+  for (const ev of ['trade:room', 'trade:closed', 'trade:done', 'trade:invite']) socket.on(ev, (p) => bus.emit(ev, p));
 }
 
 // ---------- App instalable ----------

@@ -147,3 +147,10 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 
 - Solo cosméticos (título y marco), una vez por cuenta y región: no hay nada que repetir ni vender (los marcos de diploma son `event` y los Huevos Misteriosos no los dan). Se calcula en el servidor con `collection ∪ locked ∪ dexSeen`; el cliente solo lo pinta.
 - Una cuenta secundaria puede completar una región, pero cada Pokémon que obtiene ya está sometido a los topes de Gacha/Captura/regalos/GTS; no obtiene nada que no sea cosmético.
+
+## Intercambio directo (server/trade.js)
+
+- **Atómico y sin trampas:** las salas viven en memoria, no se mueve nada hasta la doble confirmación, y al ejecutar todo se valida antes de tocar nada; si algo fallara a medias, se restaura el estado de los dos jugadores (colección, ejemplares, Pokédex «obtenida», polvo y compañero) y la sala sigue abierta sin confirmaciones. Se comprueba la «firma» del ejemplar frente a lo que vio el otro (no vale cambiar el objeto o el nivel después de que el otro confirme). Cancelar, rechazar, caducar o desconectarse cierran la sala sin mover nada.
+- **Mismos topes que la GTS y los regalos** (cuentas nuevas, Enfermera Joy, 5 intercambios/día compartidos con la GTS, 10 Pokémon y 2 legendarios o míticos recibidos al día, 5 copias por especie): no se puede usar para pasar valor más deprisa que con la GTS o los regalos. Una sola sala por jugador; el invitado tiene que estar conectado; un ejemplar ofrecido no se puede depositar en la GTS ni ofrecer en otra parte mientras tanto.
+- **Sin comisión, sin monedas:** no se pueden pasar monedas. La Lotería ID sigue igual (solo cuentan los ejemplares que ya tenías antes de las 00:00 UTC; los ID ajenos se obtienen con regalos o intercambios que comparten el tope de 10 al día).
+- **Notificaciones:** las invitaciones y los resultados quedan en el centro de notificaciones del receptor (persistentes, máximo 40).

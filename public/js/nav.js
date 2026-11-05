@@ -29,6 +29,7 @@ export const META = {
   duels: { t: 'Duelos rápidos', d: 'Un Pokémon a ciegas contra otro entrenador', art: 68, tone: 'r', ico: '🥊' },
   mega: { t: 'Evento Mega', d: 'Megapiedras y bote Mega', art: 6, tone: 'y', ico: '💠' },
   market: { t: 'Mercado', d: 'Compra y vende Pokémon y objetos', art: 53, tone: 'y', ico: '🏪' },
+  trade: { t: 'Intercambio', d: 'Cambia un Pokémon con un amigo conectado', art: 63, tone: 'b', ico: '🔁' },
   torneos: { t: 'Torneos', d: 'Eliminación directa entre amigos, con bote opcional', art: 149, tone: 'y', ico: '🏆' },
   gts: { t: 'GTS', d: 'Intercambia Pokémon por Pokémon con otros entrenadores', art: 202, tone: 'b', ico: '🌐' },
   shop: { t: 'Tienda', d: 'Compra objetos y bayas', art: 352, tone: 'g', ico: '🛍️' },
@@ -51,7 +52,7 @@ export const SECTIONS = [
     { name: 'Tu equipo', items: ['gacha', 'pc', 'pokedex', 'huerto', 'criadero'] },
     { name: 'Aventura', items: ['captura', 'combates', 'torneos', 'raids', 'expediciones', 'duels', 'mega'] }] },
   { id: 'mercado', label: 'Mercado', ico: { item: 'nugget' }, say: { mon: 352, who: 'Kecleon', text: 'Compra, vende y haz buenos negocios con otros entrenadores.' }, groups: [
-    { name: 'Comercio', items: ['market', 'gts', 'shop'] },
+    { name: 'Comercio', items: ['market', 'gts', 'trade', 'shop'] },
     { name: 'Taller', items: ['workshop'] }] },
   { id: 'entrenador', label: 'Entrenador', ico: { badge: 1 }, say: { mon: 25, who: 'Pikachu', text: '¡Pika! Tus medallas, tu ranking y las novedades.' }, groups: [
     { name: 'Tú', items: ['bag', 'trainer', 'ranking', 'news'] }] },
@@ -186,6 +187,7 @@ const TIPS = [
   { id: 'torneos', text: '¿Montamos un torneo? Crea uno de 4, 8 o 16 plazas, pásales el código a tus amigos y que gane el mejor equipo.', go: 'Ir a Torneos' },
   { id: 'combates', text: '¡Combates de verdad! Prepara tu equipo y reta a un entrenador.', go: 'A combatir' },
   { id: 'gts', text: 'En la GTS puedes cambiar un Pokémon tuyo por otro que te falte: deposítalo, di cuál quieres y otro entrenador te lo cambia.', go: 'Ir a la GTS' },
+  { id: 'trade', text: 'Si tu amigo está conectado, podéis intercambiar Pokémon en directo: cada uno elige el suyo, los dos confirmáis y listo.', go: 'Ir a Intercambio' },
   { id: 'shop', text: 'En la Tienda hay objetos y bayas que te vendrán de maravilla. Los tuyos, en la Mochila.', go: 'Ir a la Tienda' },
   { id: 'roulette', text: 'La Ruleta de Tipos tiene una casilla Poké Ball… ¡cuidado!', go: 'Jugar' },
   { id: 'plinko', text: 'Plinko: suelta una Poké Ball y que ruede la suerte.', go: 'Jugar' },
