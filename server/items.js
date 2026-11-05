@@ -64,6 +64,7 @@ Object.assign(COSMETICS, {
   'frame-liga-top': { slot: 'frame', rarity: 'L', name: 'Marco Liga Top 3', sprite: 'master-ball', event: true },
 });
 // Premio de los torneos entre amigos (tourney.js): tampoco sale de los Huevos Misteriosos.
+for (const r of require('./regions').REGIONS) COSMETICS[r.frame] = { slot: 'frame', rarity: 'E', name: `Marco Diploma ${r.name}`, sprite: 'rare-candy', event: true }; // Diploma del Game Freak (regions.js)
 COSMETICS['frame-torneo'] = { slot: 'frame', rarity: 'E', name: 'Marco Trofeo', sprite: 'rare-candy', event: true };
 const SLOT_NAMES = { frame: 'marco', cardback: 'dorso de carta', title: 'título' };
 for (const [id, c] of Object.entries(COSMETICS)) {

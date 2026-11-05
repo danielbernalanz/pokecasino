@@ -142,3 +142,8 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 
 - **Sin monedas:** la semana temática solo reparte encuentros y jefes distintos; la única recompensa es la misión semanal (3 capturas del tipo → 2 Tickets Gacha, una vez por semana y cuenta). Las capturas siguen costando Balls y el tope de 30 encuentros/día; capturar a un jefe de Teraincursión sigue limitado a 10 incursiones premiadas al día.
 - Determinista por fecha: ni el cliente ni el anfitrión eligen el tipo. Una cuenta secundaria puede completar su propia misión (2 Tickets/semana), pero cada ticket vale lo que una tirada (150 monedas) y requiere ≥ 3 capturas con Balls pagadas: menos de lo que cuestan.
+
+## Pokédex regionales y diplomas (server/regions.js)
+
+- Solo cosméticos (título y marco), una vez por cuenta y región: no hay nada que repetir ni vender (los marcos de diploma son `event` y los Huevos Misteriosos no los dan). Se calcula en el servidor con `collection ∪ locked ∪ dexSeen`; el cliente solo lo pinta.
+- Una cuenta secundaria puede completar una región, pero cada Pokémon que obtiene ya está sometido a los topes de Gacha/Captura/regalos/GTS; no obtiene nada que no sea cosmético.

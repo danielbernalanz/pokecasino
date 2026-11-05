@@ -264,7 +264,7 @@ function privateUser(u) {
     buddyBonus: buddyBonus(u), pvpPlayed: !!(u.btHist || []).some((x) => x.mode === 'pvp'), stats: u.stats, voltorbLevel: u.voltorb.level,
     items: u.items, buffs: u.buffs, equip: u.equip, looks: looks(u), maxBet: maxBetFor(u),
     bonusLeft: bonusLeft(u), bonusCap: bonusCap(u), bonusPaid: bonusDayOf(u).paid, lockedCoins: lockedCoins(u), locked: lockedView(u).box, lockedProg: lockedView(u).prog,
-    progress: require('./progress').view(u), hof: (u.elite && u.elite.hof) || [], mega: require('./mega').privateView(u), themeMis: require('./themes').mine(u), buddyFinds: require('./bond').findsView(u), buddyBond: require('./bond').buddyBondView(u), berries: u.berries || {},
+    progress: require('./progress').view(u), hof: (u.elite && u.elite.hof) || [], mega: require('./mega').privateView(u), themeMis: require('./themes').mine(u), dexReg: require('./regions').view(u), buddyFinds: require('./bond').findsView(u), buddyBond: require('./bond').buddyBondView(u), berries: u.berries || {},
   };
 }
 

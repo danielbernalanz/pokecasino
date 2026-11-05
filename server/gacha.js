@@ -166,6 +166,7 @@ function grant(user, id, shiny, { unlock = false } = {}) {
   if (unlocked) back = require('./locked').restore(user, id);
   const c = (user.collection[id] ||= { n: 0, s: 0 });
   if (!user.npc) (user.dexSeen ||= {})[id] = 1; // «visto» para la GTS: sigue contando aunque luego se regale o transfiera (server/gts.js)
+  if (!user.npc) require('./regions').onObtain(user, id); // Diploma del Game Freak al completar una Pokédex regional
   const isNew = c.n === 0;
   const newShiny = shiny && c.s === 0;
   let dust = back;

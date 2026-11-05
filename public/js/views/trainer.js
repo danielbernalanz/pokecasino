@@ -3,6 +3,7 @@ import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, it
 import { openEgg } from '../rewards.js';
 import { hofList } from './elite-ui.js';
 import { lotteryPanel } from './lottery-ui.js';
+import { showRegion } from './pokedex.js';
 
 // Cuántos anuncios hay en el Mercado de un Pokémon (para animar a comprar la pieza que falta).
 let marketCache = null;
@@ -118,7 +119,22 @@ export default {
         if (lotEl) body.replaceChildren(lotEl);
         else { body.replaceChildren(h('p', { class: 'small muted' }, 'Cargando…')); lotEl = false; lotteryPanel().then((el) => { lotEl = el; if (trTab === 'loteria') body.replaceChildren(el); }); }
       }
-      else body.replaceChildren(h('p', { class: 'small muted' }, 'Toca un Pokémon que te falte para buscarlo en el Mercado. 🏪 indica cuántos hay a la venta.'), sets);
+      else body.replaceChildren(regionsBlock(), h('h2', { class: 'section-title' }, '📚 Colecciones'), h('p', { class: 'small muted' }, 'Toca un Pokémon que te falte para buscarlo en el Mercado. 🏪 indica cuántos hay a la venta.'), sets);
+    }
+    // Pokédex regionales: obtenidos / total y Diploma del Game Freak (título y marco) al completarlas.
+    function regionsBlock() {
+      const regs = S.me.dexReg || [];
+      const done = regs.filter((r) => r.diploma).length;
+      return h('div', { class: 'stack' },
+        h('h2', { class: 'section-title' }, `🗺️ Pokédex regionales (${done}/${regs.length} diplomas)`),
+        h('p', { class: 'small muted' }, 'Como en los juegos: completa la Pokédex de una región (cuentan los Pokémon que has llegado a tener) y recibes el Diploma del Game Freak: título y marco de avatar, una sola vez.'),
+        h('div', { class: 'reg-grid' }, regs.map((r) => {
+          const col = (S.data.regions.find((x) => x.id === r.id) || {}).color;
+          return h('button', { class: 'reg-card' + (r.diploma ? ' done' : ''), type: 'button', style: { '--rc': col }, title: `Ver la Pokédex de ${r.name}`, onclick: () => showRegion(r.gen) },
+            h('div', { class: 'row between' }, h('b', {}, r.name), h('span', { class: r.diploma ? 'good' : 'muted small' }, r.diploma ? '📜 Diploma' : `${r.have}/${r.total}`)),
+            h('div', { class: 'reg-bar' }, h('i', { style: { width: Math.round(100 * r.have / r.total) + '%' } })),
+            h('div', { class: 'small muted' }, r.diploma ? `Completa (${r.total}) · ${new Date(r.diploma).toLocaleDateString('es-ES')}` : `Faltan ${r.total - r.have}`));
+        })));
     }
     async function equip(slot, id) { if (await act('equip', { slot, id })) sfx('click'); }
     render();

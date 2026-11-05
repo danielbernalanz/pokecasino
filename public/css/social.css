@@ -39,3 +39,19 @@
 .theme-card .grow { min-width: 0; }
 .theme-note { display: inline-flex; align-items: center; background: var(--panel2); border: 2px solid var(--gold); border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 800; white-space: nowrap; }
 @media (max-width: 640px) { .theme-card { padding: 6px 10px; } .theme-card .small { font-size: 11.5px; line-height: 1.25; } }
+
+/* ---- Pokédex regionales y Diplomas del Game Freak ---- */
+.fr.frame-dex-kanto { --frc: #e3350d; --frg: #e3350d99; }
+.fr.frame-dex-johto { --frc: #d4a017; --frg: #d4a01799; }
+.fr.frame-dex-hoenn { --frc: #1d8f5a; --frg: #1d8f5a99; }
+.fr.frame-dex-sinnoh { --frc: #6d7fd8; --frg: #6d7fd899; }
+.fr.frame-dex-teselia { --frc: #475569; --frg: #47556999; }
+.fr.frame-dex-kalos { --frc: #d946a8; --frg: #d946a899; }
+.fr.frame-dex-alola { --frc: #f97316; --frg: #f9731699; }
+.fr.frame-dex-galar { --frc: #a855f7; --frg: #a855f799; }
+.fr.frame-dex-paldea { --frc: #dc2626; --frg: #dc262699; }
+.reg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.reg-card { text-align: left; background: var(--panel); border: 3px solid var(--ink); border-left: 8px solid var(--rc, var(--gold)); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 8px 10px; display: grid; gap: 4px; min-width: 0; cursor: pointer; font: inherit; color: inherit; }
+.reg-card.done { box-shadow: var(--card-sh), 0 0 12px var(--rc); }
+.reg-bar { height: 8px; background: var(--sunk); border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; }
+.reg-bar i { display: block; height: 100%; background: var(--rc, var(--gold)); }

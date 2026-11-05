@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.05-ad",
+    "date": "2026-11-05",
+    "title": "Pokédex regionales y Diploma del Game Freak",
+    "items": [
+      "🗺️ Mi Entrenador → Colecciones muestra tu progreso en las 9 Pokédex regionales: Kanto (151), Johto (100), Hoenn (135), Sinnoh (107), Teselia (156), Kalos (72), Alola (88), Galar (96) y Paldea (120). Toca una región para ver su Pokédex filtrada.",
+      "📜 Al completar una región recibes el Diploma del Game Freak, como en los juegos: un título («Diploma de Kanto»…) y un marco de avatar, una sola vez por región. Cuentan los Pokémon que has llegado a tener (también los regalados, liberados o con candado). Sin monedas.",
+      "🏅 Si ya tenías una Pokédex regional completa, el diploma te llega solo."
+    ]
+  },
+  {
     "version": "2026.11.05-ac",
     "date": "2026-11-05",
     "title": "Semanas temáticas por tipo",

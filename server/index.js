@@ -177,6 +177,7 @@ const STATIC = {
   gts: gts.STATIC,
   raid: require('./raid').STATIC,
   tourney: require('./tourney').STATIC,
+  regions: require('./regions').STATIC.map(({ ids, ...r }) => r),
   balls: balls.STATIC,
 };
 // Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).

@@ -96,6 +96,9 @@ const TITLES = {
 for (const s of SETS) TITLES['set-' + s.id] = s.title;
 for (const b of BADGES) TITLES['badge-' + b.id] = `Vencedor de ${b.leader}`;
 
+// Diplomas del Game Freak de las Pokédex regionales (regions.js).
+for (const r of require('./regions').REGIONS) TITLES[r.title] = `Diploma de ${r.name}`;
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 function grant(user, reward, reason) {
@@ -177,6 +180,7 @@ function track(user, event, data = {}) {
 // Comprueba medallas y colecciones (llamado tras cualquier evento).
 function evaluate(user) {
   const p = user.progress;
+  if (!user.npc) require('./regions').check(user); // Pokédex regionales completas (cuentas antiguas incluidas)
   for (const s of SETS) {
     if (!p.sets.includes(s.id) && s.ids.every((id) => user.collection[id])) {
       p.sets.push(s.id);

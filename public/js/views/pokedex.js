@@ -7,6 +7,8 @@ import { openInPc } from './pc.js';
 import { craftFilter } from './workshop.js';
 
 let filter = { q: '', show: null, rarity: [], type: [], gen: [] };
+// Desde Mi Entrenador → Colecciones: abre la Pokédex ya filtrada por región.
+export function showRegion(gen) { filter = { q: '', show: null, rarity: [], type: [], gen: [String(gen)] }; location.hash = '#/pokedex'; }
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'];
 
 const lockedN = () => Object.keys(S.me.locked || {}).length;
