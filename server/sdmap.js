@@ -204,13 +204,15 @@ function toSet(id, m, { level = 'fair', mega = 0, doubles = false, usedNames = n
     megaForm = Number(mega);
     if (ms.move && !moves.includes(ms.move)) moves = [...moves.slice(0, 3), ms.move];
   }
+  const tera = require('./tera');
+  const teraType = tera.teraOf(id, m); // Teratipo del ejemplar (tera.js): solo se usa si el combate deja teracristalizar
   const formName = require('./forms').showdownName(id, m); // Dudunsparce de tres segmentos · Maushold familia de cuatro
   const set = {
     name, species: formName && ps().Dex.species.get(formName).exists ? formName : sp.name, item, ability: m.sdAbility, moves, nature: NATURE_EN[m.mint || m.nature] || 'Serious',
     gender, evs, ivs, level: lvl, shiny: !!m.shiny, happiness: Math.max(0, Math.min(255, Number.isFinite(m.friendship) ? m.friendship : 70)),
-    pokeball: 'pokeball',
+    pokeball: 'pokeball', teraType: tera.cap(teraType),
   };
-  return { set, roster: { name, id, shiny: !!m.shiny, level: lvl, gender: gender || null, mega: megaForm || 0, uid: m.uid } };
+  return { set, roster: { name, id, shiny: !!m.shiny, level: lvl, gender: gender || null, mega: megaForm || 0, uid: m.uid, tera: teraType } };
 }
 
 const pack = (sets) => ps().Teams.pack(sets);

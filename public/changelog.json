@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.05-y",
+    "date": "2026-11-05",
+    "title": "Teracristalización",
+    "items": [
+      "💎 Nuevo botón «Teracristalizar» junto a los movimientos: una vez por combate, tu Pokémon cambia a su Teratipo y refuerza los ataques de ese tipo, con el soporte nativo del simulador de la 9.ª generación. La CPU no teracristaliza.",
+      "🔮 Necesitas el Orbe Teracristal (objeto clave): el Profesor Oak te lo da con tu primera medalla. Se puede usar en Combates libres contra entrenadores, en PvP (opción del reto, activada por defecto; hace falta el Orbe en los dos jugadores) y en las futuras Teraincursiones. No en líderes, Alto Mando, Torre Batalla ni Clasificatoria.",
+      "🧬 Cada Pokémon tiene un Teratipo (por defecto, uno de sus tipos). Míralo y cámbialo en la ficha de la Caja PC con 50 Teralitos del tipo que quieras (18 Teralitos nuevos, uno por tipo). Los regalos conservan el Teratipo."
+    ]
+  },
+  {
     "version": "2026.11.05-x",
     "date": "2026-11-05",
     "title": "Lotería ID",

@@ -15,7 +15,7 @@ const NO_TEAM = 'auto';
 
 const BAND_ES = { none: 'Sin apuesta', small: 'Apuesta pequeña (50)', medium: 'Apuesta media (200)' };
 const BAND_COINS = { none: 0, small: 50, medium: 200 };
-const prefs = { format: 'singles', level: 'fair', team: NO_TEAM, wager: 0, band: 'none', bond: true, ranked: false };
+const prefs = { format: 'singles', level: 'fair', team: NO_TEAM, wager: 0, band: 'none', bond: true, tera: true, ranked: false };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('btprefs') || '{}')); } catch { /* sin almacenamiento */ }
 const savePrefs = () => { try { localStorage.setItem('btprefs', JSON.stringify(prefs)); } catch { /* sin almacenamiento */ } };
 
@@ -144,13 +144,15 @@ export default {
       const box = h('div', { class: 'card stack pvp-search' });
       const bondToggle = (onChange) => h('label', { class: 'bond-opt', title: 'Los Pokémon con mucha amistad pueden aguantar un golpe, esquivar, curarse o dar críticos. Afecta a los dos jugadores según la amistad de sus Pokémon.' },
         h('input', { type: 'checkbox', checked: prefs.bond, onchange: (e) => { prefs.bond = e.target.checked; savePrefs(); if (onChange) onChange(); } }), ' 💞 Efectos de amistad');
+      const teraToggle = () => h('label', { class: 'bond-opt tera-opt', title: 'Cada jugador puede teracristalizar a un Pokémon una vez por combate. Hace falta el Orbe Teracristal (se consigue con la primera medalla) y que los dos lo tengan.' },
+        h('input', { type: 'checkbox', checked: prefs.tera, onchange: (e) => { prefs.tera = e.target.checked; savePrefs(); } }), ' 💎 Teracristalización');
       const draw = () => {
         const mine = S.pvp && S.pvp.mine;
         if (mine) {
           const n = (S.pvp.q && S.pvp.q[mine.format]) || 1;
           box.replaceChildren(h('h3', {}, '🔎 Buscar rival'),
             h('p', { class: 'pvp-searching', role: 'status' }, h('span', { class: 'pvp-spin', 'aria-hidden': 'true' }), `Buscando rival… (${n} en cola)`),
-            h('div', { class: 'small muted' }, mine.ranked ? `🏆 Clasificatoria · ${FORMAT_ES[mine.format]} · nivel 50, sin apuesta ni amistad` : `${FORMAT_ES[mine.format]} · ${LEVEL_ES[mine.level]} · ${BAND_ES[mine.band]}${mine.bond === false ? '' : ' · 💞 amistad'}`, `. Puedes ir a otra pantalla: te avisaremos al encontrar rival (la búsqueda dura 2 minutos).`),
+            h('div', { class: 'small muted' }, mine.ranked ? `🏆 Clasificatoria · ${FORMAT_ES[mine.format]} · nivel 50, sin apuesta ni amistad` : `${FORMAT_ES[mine.format]} · ${LEVEL_ES[mine.level]} · ${BAND_ES[mine.band]}${mine.bond === false ? '' : ' · 💞 amistad'}${mine.tera === false ? '' : ' · 💎 Tera'}`, `. Puedes ir a otra pantalla: te avisaremos al encontrar rival (la búsqueda dura 2 minutos).`),
             h('button', { class: 'btn danger', type: 'button', onclick: async (e) => { const r = await act('battle:unqueue', {}, e.currentTarget); if (r) { S.pvp.mine = null; refreshPvp(); redrawSearch(); } } }, 'Cancelar búsqueda'));
           return;
         }
@@ -163,7 +165,7 @@ export default {
             prefs.ranked ? null : h('div', {}, h('div', { class: 'small muted' }, 'Niveles'), seg(Object.entries(LEVEL_ES), prefs.level, (v) => { prefs.level = v; savePrefs(); redrawSearch(); })),
             prefs.ranked ? null : h('div', {}, h('div', { class: 'small muted' }, 'Apuesta'), seg(Object.entries(BAND_ES).map(([k, v]) => [k, v.replace(/ \(\d+\)/, '')]), prefs.band, (v) => { prefs.band = v; savePrefs(); redrawSearch(); })),
             h('div', { class: 'grow' }, h('div', { class: 'small muted' }, 'Tu equipo'), teamSelect())),
-          prefs.ranked ? h('p', { class: 'small muted lg-note' }, '🏆 Clasificatoria de la Liga: nivel 50 justo, sin apuesta y sin efectos de amistad. Ganas o pierdes puntos y subes de rango (Poké Ball → Master Ball). Máximo 5 combates puntuados al día contra el mismo rival.') : bondToggle(),
+          prefs.ranked ? h('p', { class: 'small muted lg-note' }, '🏆 Clasificatoria de la Liga: nivel 50 justo, sin apuesta y sin efectos de amistad. Ganas o pierdes puntos y subes de rango (Poké Ball → Master Ball). Máximo 5 combates puntuados al día contra el mismo rival.') : h('div', { class: 'row gap wrap' }, bondToggle(), teraToggle()),
           h('button', { class: 'btn primary big', type: 'button', onclick: async (e) => {
             const btn = e.currentTarget;
             btn.disabled = true;
@@ -173,7 +175,7 @@ export default {
               if (wg && !(await confirmBet('duels', wg, { what: 'jugarte en este combate' }))) return;
               const team = await teamMembers(prefs.format);
               if (!team) return;
-              const r = await act('battle:queue', { format: prefs.format, level: prefs.level, band: prefs.band, bond: !!prefs.bond, ranked: !!prefs.ranked, team });
+              const r = await act('battle:queue', { format: prefs.format, level: prefs.level, band: prefs.band, bond: !!prefs.bond, tera: !!prefs.tera, ranked: !!prefs.ranked, team });
               if (!r) return;
               sfx('click');
               if (r.matched) { S.pvp.mine = null; refreshPvp(); await openBattle(r.battle); } else { S.pvp.mine = r.queue; refreshPvp(); redrawSearch(); }
@@ -267,7 +269,7 @@ export default {
           const forOther = c.target && c.target !== S.me.username && !mine;
           return h('div', { class: 'duel-row' + (c.target === S.me.username ? ' for-me' : '') },
             h('div', { class: 'duel-hidden' }, c.format === 'doubles' ? '2v2' : '1v1'),
-            h('div', { class: 'grow' }, h('b', {}, c.creator), mine ? ' (tú)' : '', h('div', { class: 'muted small' }, `${FORMAT_ES[c.format]} · ${LEVEL_ES[c.level]} · ${c.size} Pokémon${c.target ? ' · Reto a ' + c.target : ''}`, c.bond === false ? null : h('span', { class: 'bond-tag', title: 'Con efectos de amistad: los Pokémon con mucho cariño pueden aguantar, esquivar, curarse o dar críticos' }, ' · 💞 amistad'))),
+            h('div', { class: 'grow' }, h('b', {}, c.creator), mine ? ' (tú)' : '', h('div', { class: 'muted small' }, `${FORMAT_ES[c.format]} · ${LEVEL_ES[c.level]} · ${c.size} Pokémon${c.target ? ' · Reto a ' + c.target : ''}`, c.tera === false ? null : h('span', { class: 'bond-tag', title: 'Con Teracristalización (si los dos tenéis el Orbe Teracristal)' }, ' · 💎 Tera'), c.bond === false ? null : h('span', { class: 'bond-tag', title: 'Con efectos de amistad: los Pokémon con mucho cariño pueden aguantar, esquivar, curarse o dar críticos' }, ' · 💞 amistad'))),
             h('div', { class: 'wager' }, c.wager ? fmt(c.wager) : 'Amistoso'),
             mine ? h('button', { class: 'btn danger', type: 'button', onclick: (e) => { const btn = e.currentTarget; act('battle:cancel', { id: c.id }, btn); } }, 'Cancelar')
               : h('button', { class: 'btn primary', type: 'button', disabled: forOther, onclick: async (e) => {
@@ -291,6 +293,7 @@ export default {
         h('div', {}, h('div', { class: 'small muted' }, 'Niveles'), seg(Object.entries(LEVEL_ES), prefs.level, (v) => { prefs.level = v; savePrefs(); drawPvp(); })),
         h('div', {}, h('div', { class: 'small muted' }, 'Tu equipo'), teamSelect()),
         h('label', { class: 'bond-opt', title: 'Los Pokémon con mucha amistad pueden aguantar un golpe, esquivar, curarse o dar críticos (para los dos jugadores, según su propia amistad).' }, h('input', { type: 'checkbox', checked: prefs.bond, onchange: (e) => { prefs.bond = e.target.checked; savePrefs(); } }), ' 💞 Efectos de amistad'),
+        h('label', { class: 'bond-opt tera-opt', title: 'Cada jugador puede teracristalizar a un Pokémon una vez por combate (hace falta el Orbe Teracristal, que se consigue con la primera medalla, en los dos).' }, h('input', { type: 'checkbox', checked: prefs.tera, onchange: (e) => { prefs.tera = e.target.checked; savePrefs(); } }), ' 💎 Teracristalización'),
         h('label', {}, 'Apuesta (0 = amistoso)', wager),
         h('label', {}, 'Rival', target, datalist),
         h('button', { class: 'btn primary big', type: 'button', onclick: async (e) => {
@@ -301,7 +304,7 @@ export default {
           const team = await teamMembers(prefs.format);
           if (!team) return;
           prefs.wager = wg; savePrefs();
-          const r = await act('battle:challenge', { format: prefs.format, level: prefs.level, wager: wg, target: target.value.trim() || null, bond: !!prefs.bond, team }, btn);
+          const r = await act('battle:challenge', { format: prefs.format, level: prefs.level, wager: wg, target: target.value.trim() || null, bond: !!prefs.bond, tera: !!prefs.tera, team }, btn);
           if (r) { sfx('click'); toast('Reto publicado. Cuando alguien lo acepte empezará el combate.', 'success'); }
         } }, 'Publicar reto'),
         h('p', { class: 'muted small' }, 'Cada jugador elige su equipo a ciegas y llevan lo mismo (el equipo más pequeño marca cuántos). El ganador se lleva el bote menos un 5 % de comisión. Turnos de 60 s: si te quedas sin tiempo se elige solo, y 3 seguidos pierden el combate. Los retos caducan a los 10 minutos.'));

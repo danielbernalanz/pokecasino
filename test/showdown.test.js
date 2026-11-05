@@ -131,10 +131,10 @@ test('nombres en español: movimientos, habilidades y objetos', () => {
 });
 
 test('validación de elecciones: acepta las legítimas y rechaza basura', () => {
-  for (const ok of ['move 1', 'move 2 1', 'move 3 -2', 'move 1 mega', 'move 1 2 mega', 'switch 4', 'team 1234', 'default', 'move 1 1, move 2 2', 'move 1, switch 3', 'pass', 'shift', 'move 1, pass']) {
+  for (const ok of ['move 1', 'move 2 1', 'move 3 -2', 'move 1 mega', 'move 1 2 mega', 'move 1 terastallize', 'move 2 1 terastallize', 'move 1 -2 terastallize, move 2 1', 'switch 4', 'team 1234', 'default', 'move 1 1, move 2 2', 'move 1, switch 3', 'pass', 'shift', 'move 1, pass']) {
     assert.ok(sdw.validChoice(ok), ok);
   }
-  for (const bad of ['', 'move', 'move 9', 'move 0', 'switch 7', 'team 0', 'team 1234567', 'move 1 terastallize', '>forcewin p1', 'move 1\n>forcewin p1', 'move 1; rm -rf', '/choose move 1', 'move 1 1 1', 'x'.repeat(101), 'move 1, '.repeat(20), 'MOVE 1', null, undefined, 5, {}, ['move 1']]) {
+  for (const bad of ['', 'move', 'move 9', 'move 0', 'switch 7', 'team 0', 'team 1234567', 'move 1 mega terastallize', 'move 1 terastallize terastallize', 'move terastallize', '>forcewin p1', 'move 1\n>forcewin p1', 'move 1; rm -rf', '/choose move 1', 'move 1 1 1', 'x'.repeat(101), 'move 1, '.repeat(20), 'MOVE 1', null, undefined, 5, {}, ['move 1']]) {
     assert.ok(!sdw.validChoice(bad), String(bad));
   }
 });

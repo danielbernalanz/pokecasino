@@ -33,6 +33,8 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Lotería ID** (Mi Entrenador → 🎟️ Lotería): cada entrenador tiene un ID de 5 dígitos y cada Pokémon recuerda el ID de su entrenador original (los regalados lo conservan). Una vez al día (día UTC) puedes comprobar gratis el número sorteado: 2 cifras coincidentes desde el final dan un Caramelo Exp. XS, 3 un Caramelo Exp. M, 4 cinco Ultra Ball y 5 una Master Ball. Nunca da monedas (ver `docs/BALANCE.md`).
 
+**Teracristalización** (Combates): el Orbe Teracristal (objeto clave, te lo da el Profesor Oak con la 1.ª medalla) permite teracristalizar a un Pokémon una vez por combate con el soporte nativo del simulador (gen. 9): botón «Teracristalizar» junto a los movimientos. Vale en Combates libres contra entrenadores, PvP (opción del reto; hace falta el Orbe en los dos) y Teraincursiones; no en líderes, Alto Mando, Torre ni Clasificatoria. Cada ejemplar tiene un Teratipo (por defecto uno de sus tipos) que se ve y se cambia en la ficha de la Caja PC con 50 Teralitos del tipo.
+
 **Progresión (de novato a campeón)**
 
 1. **Ruta del Entrenador**: 10 pasos guiados con premio (recompensa diaria → primera tirada → compañero → primeras partidas → mesas → multijugador → Huevo Misterioso → Mercado → duelo → primera medalla). Los pasos que ya hayas cumplido se completan solos.
@@ -151,6 +153,7 @@ server/
   dexdata.json    Los 1.025 Pokémon (generado con scripts/build-dex.js desde PokeAPI)
   gacha.js        Banners, probabilidades, Master Ball, variocolores y tienda de polvo
   items.js        Objetos, Tienda Poké y efectos
+  tera.js         Teracristalización: Teratipo, Orbe Teracristal, Teralitos y reglas por modo de combate
   lottery.js      Lotería ID: ID de entrenador, sorteo diario, premios por cifras y OT de los ejemplares
   capture.js      Captura de Pokémon salvajes: encuentros, fórmula real, ataques, Balls, marcas y tamaños (capzones.js: rutas; balls.js: Poké Balls; catchdata.json: ratios de captura de PokeAPI, scripts/gen-catch.js)
   market.js       Mercado entre jugadores con depósito

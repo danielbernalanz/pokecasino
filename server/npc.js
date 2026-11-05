@@ -82,6 +82,7 @@ function bounds(a) {
   if (it.tm) { const cap = Math.max(1, Math.floor(it.craft[0] * 0.25)); return { cap, floor: Math.max(it.craft[0], 2 * cap) }; }
   if (it.material) return { cap: 20, floor: 60 };
   if (it.shard) return { cap: 20, floor: 80 };
+  if (it.teraShard || it.key) return { cap: 20, floor: 80 }; // Teralitos y objetos clave: inertes (los PNJ no los comercian; ver inFocus)
   // Objetos de la Tienda de Combate (se pagan con PB, no con monedas): inertes; el tope teórico sería muy bajo.
   if (it.expCandy && !it.bp) { const cap = Math.max(1, Math.floor(it.expCandy / 200)); return { cap, floor: 8 * cap }; } // Caramelos Exp.: inertes (no se compran con monedas)
   if (it.bp) { const cap = Math.max(1, Math.floor(it.bp / 2)); return { cap, floor: Math.max(4 * it.bp, 2 * cap) }; }
@@ -290,7 +291,7 @@ function inFocus(p, a) {
   if (a.kind === 'poke') return a.shiny ? f.shiny : f.poke.includes(BY_ID.get(a.pokeId).rarity);
   if (a.kind === 'dust') return f.dust;
   const it = items.ITEMS[a.itemId];
-  if (it.megaStone || it.event || it.tm || it.material || it.bp || it.shard || it.evo || it.expCandy || it.hyper || it.ball) return false; // evento, MT, materiales, Tienda de Combate y Poké Balls: solo entre jugadores
+  if (it.megaStone || it.event || it.tm || it.material || it.bp || it.shard || it.teraShard || it.key || it.evo || it.expCandy || it.hyper || it.ball) return false; // evento, MT, materiales, Tienda de Combate y Poké Balls: solo entre jugadores
   if (it.cosmetic) return f.cosmetics;
   if (it.price) return f.items === 'shop';
   return f.items === 'noshop';

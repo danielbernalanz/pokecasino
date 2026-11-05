@@ -104,3 +104,9 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - **Solo cuentan los Pokémon que tenías antes de las 00:00 UTC de hoy**: aunque alguien vea el número de hoy, no le sirve para fabricar un premio con regalos de última hora. Los ID ajenos solo se consiguen con regalos, que ya tienen tope (10 Pokémon y 2 legendarios al día por receptor; las cuentas nuevas no regalan).
 - **Un único premio al día** (el del mejor ejemplar), sin monedas y de objetos baratos de conseguir; el único objeto realmente valioso (Master Ball) sale a 1 de cada 100.000 por ID y día. Una cuenta secundaria no cambia la cuenta: cada una tiene su ID y su propia comprobación diaria, pero sus premios son los mismos objetos de valor esperado ≈ 1 moneda al día.
 - El **ID de entrenador** lo asigna el servidor y no se puede elegir ni cambiar.
+
+## Teracristalización (server/tera.js, server/showdown.js)
+
+- **El servidor decide** quién puede teracristalizar: el cliente solo envía `move N terastallize`; `Battle.choose` lo rechaza si el modo no lo permite o el jugador no tiene el Orbe, y la petición que llega al cliente ya sale sin `canTerastallize`. En PvP hace falta el Orbe **en los dos** (si no, la regla del simulador sigue activa) y nunca en la Clasificatoria.
+- **Orbe Teracristal:** objeto clave, no comerciable ni reciclable ni vendible a PNJ; se entrega una sola vez (`u.teraOrb`), así que una cuenta secundaria no gana nada.
+- **Teralitos:** solo salen de las Teraincursiones (con su tope diario, ver más abajo) y se gastan de 50 en 50 para cambiar un Teratipo: no dan monedas, los PNJ no los comercian y no se pueden reciclar.

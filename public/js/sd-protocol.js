@@ -7,6 +7,7 @@
 
 export const toID = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+export const TYPE_ES = { normal: 'Normal', fire: 'Fuego', water: 'Agua', electric: 'Eléctrico', grass: 'Planta', ice: 'Hielo', fighting: 'Lucha', poison: 'Veneno', ground: 'Tierra', flying: 'Volador', psychic: 'Psíquico', bug: 'Bicho', rock: 'Roca', ghost: 'Fantasma', dragon: 'Dragón', dark: 'Siniestro', steel: 'Acero', fairy: 'Hada', stellar: 'Astral' };
 export const STAT_ES = { atk: 'Ataque', def: 'Defensa', spa: 'At. Esp.', spd: 'Def. Esp.', spe: 'Velocidad', accuracy: 'Precisión', evasion: 'Evasión', hp: 'PS' };
 export const STATUS_ES = { par: 'PAR', brn: 'QUE', psn: 'ENV', tox: 'ENV', slp: 'DOR', frz: 'CON' };
 export const STATUS_LONG = { par: 'Paralizado', brn: 'Quemado', psn: 'Envenenado', tox: 'Gravemente envenenado', slp: 'Dormido', frz: 'Congelado' };
@@ -184,7 +185,7 @@ export class Protocol {
         const lv = /L(\d+)/.exec(det);
         const mon = {
           name: r.name, id: entry ? entry.id : 0, shiny: /shiny/.test(det) || !!(entry && entry.shiny), level: lv ? Number(lv[1]) : (entry ? entry.level : 100),
-          gender: /, ([MF])\b/.test(det) ? /, ([MF])\b/.exec(det)[1] : null, mega: 0, species, key: r.key, side: r.side,
+          gender: /, ([MF])\b/.test(det) ? /, ([MF])\b/.exec(det)[1] : null, mega: 0, species, key: r.key, side: r.side, tera: /tera:(\w+)/.test(det) ? toID(/tera:(\w+)/.exec(det)[1]) : '',
         };
         this.active[r.key] = mon;
         let msg;
@@ -366,7 +367,15 @@ export class Protocol {
         return [{ k: 'msg', slot: r.key, msg: eaten ? `¡${this.label(r.key, true)} comió su ${it}!` : `¡${it} ${this.prep('de', r.key)} se usó!` }];
       }
       case '-transform': { const r = ref(p[2]); return r ? [{ k: 'msg', slot: r.key, msg: `¡${this.label(r.key, true)} se transformó!` }] : []; }
-      case '-terastallize': return [];
+      case '-terastallize': {
+        const r = ref(p[2]);
+        if (!r) return [];
+        const type = toID(p[3]);
+        const mon = this.active[r.key];
+        if (mon) mon.tera = type;
+        const nm = this.label(r.key, true);
+        return [{ k: 'msg', slot: r.key, big: true, tera: type, msg: `¡${nm} se ha cubierto de cristales y ha teracristalizado al tipo ${TYPE_ES[type] || p[3]}!` }];
+      }
       case 'turn': this.turn = Number(p[2]) || 0; return [{ k: 'turn', n: this.turn }];
       case 'win': {
         const winner = p[2];

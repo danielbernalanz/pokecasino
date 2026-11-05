@@ -823,3 +823,16 @@ Como la Lotería del Centro Pokémon de los juegos. Está en **Mi Entrenador →
 
 ### Probabilidades y valor esperado
 Con un ID, cada día: exactamente 2 cifras **0,9 %** · 3 cifras **0,09 %** · 4 cifras **0,009 %** · 5 cifras **0,001 %** (≥ 2 cifras: 1 %). Cada **ID distinto** que tengas (Pokémon regalados por otros entrenadores) es una oportunidad más (los ID propios cuentan una sola vez). Valor esperado por ID y día, valorando el Caramelo Exp. XS en ≈ 3 monedas, el M en ≈ 90, las 5 Ultra Ball en 2.400 y la Master Ball en 75.000 (cotas altas): `0,009·3 + 0,0009·90 + 0,00009·2.400 + 0,00001·75.000 ≈ 1,1` monedas al día; con 12 ID distintos ≈ 13. Muy por debajo de cualquier otra fuente sin apostar (≈ 2.500 al día) y con la Master Ball en ≈ 1 de cada 100.000 días por ID (`test/lottery.test.js`, «valor esperado»).
+
+## Teracristalización (server/tera.js, showdown.js, sdmap.js · test/tera.test.js) — 05-11-2026
+
+| Pieza | Regla |
+|---|---|
+| **Teratipo** (`m.tera`) | Cada ejemplar tiene uno. Por defecto es **uno de los tipos de su especie** (determinista por `uid`: los de doble tipo salen repartidos), como los Pokémon normales de los juegos. Los jefes de Teraincursión capturados pueden tener uno distinto. Viaja con el ejemplar al regalarlo |
+| **Orbe Teracristal** | Objeto clave (`items.ITEMS['tera-orb'].key`): no se vende, no se comercia (`market.parseRef` lo rechaza), no se recicla ni lo compran los PNJ. Lo da el Profesor Oak al conseguir la **1.ª medalla** (también a quien ya la tenía, al conectarse) y solo una vez. Sin Orbe no hay botón |
+| **En combate** | Soporte nativo del simulador (gen. 9, `move N terastallize`): una vez por combate y jugador, cambia su tipo al Teratipo y refuerza los ataques de ese tipo (Tera STAB). Botón «Teracristalizar (tipo)» junto a los movimientos, como la Megaevolución. El servidor valida la elección (hace falta el Orbe y un modo que lo permita), quita `canTerastallize` de la petición a quien no puede y el combate guardado recuerda la regla (`tr`) para restaurarlo tras un reinicio |
+| **Dónde sí** | **Combates libres** contra entrenadores normales (la CPU nunca teracristaliza: su IA no lo usa), **PvP** (opción del reto, activada por defecto: solo se activa si **los dos** tienen el Orbe, para que nadie juegue con ventaja) y **Teraincursiones** |
+| **Dónde no** | **Líderes de gimnasio y Alto Mando** (Kanto/FRLG no tenía Tera; son los mismos combates de siempre), **Torre Batalla** (equipos de alquiler iguales para todos) y **Clasificatoria de la Liga** (igualdad de condiciones, como con los efectos de amistad). Esos combates mantienen la «Terastal Clause» del simulador |
+| **Teralitos** | 18 objetos, uno por tipo (`tera-shard-<tipo>`), que caen de las Teraincursiones. **50 Teralitos de un tipo cambian el Teratipo de un ejemplar a ese tipo** (Caja PC → Datos → 💎 Teratipo → Cambiar). Sin precio en monedas: los PNJ no los comercian; solo se pasan entre jugadores en el Mercado |
+
+Nada de esto da monedas ni cambia ninguna recompensa: teracristalizar solo cambia cómo se juega el combate (la CPU no se hace más fuerte ni más débil). Los combates que ya estaban en curso se restauran sin Tera como antes.

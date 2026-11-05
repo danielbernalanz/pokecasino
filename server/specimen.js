@@ -157,7 +157,7 @@ function boxView(u) {
     const pk = require('./pokerus');
     const fm = require('./forms');
     for (const m of arr) ex.ensure(Number(id), m);
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), expMax: ex.expAt(Number(id), 100), evoForced: fm.forcedTarget(Number(id), m), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, ball: require('./balls').ballOf(m), mark: m.mark || null, size: Number.isInteger(m.size) ? m.size : null, caught: m.caught || null, ot: lot().otOf(u, m), otn: lot().otNameOf(u, m), at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), expMax: ex.expAt(Number(id), 100), evoForced: fm.forcedTarget(Number(id), m), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, ball: require('./balls').ballOf(m), mark: m.mark || null, size: Number.isInteger(m.size) ? m.size : null, caught: m.caught || null, tera: require('./tera').teraOf(Number(id), m), ot: lot().otOf(u, m), otn: lot().otNameOf(u, m), at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
   }
   db.save();
   return { mons };
@@ -165,12 +165,12 @@ function boxView(u) {
 
 // Rasgos que viajan con el ejemplar al regalarlo (como al intercambiar en los juegos): ID del entrenador original (y su nombre), IV, naturaleza, habilidad oculta, Ball, marca, tamaño y lugar de captura.
 // No viajan nivel, EXP, EVs ni amistad (la EXP no se transfiere: ver docs/ANTIABUSO.md).
-const traitsOf = (m, from) => ({ ot: from ? lot().otOf(from, m) : m.ot, otn: from ? (lot().otNameOf(from, m) || from.username) : m.otn, ivs: m.ivs.slice(), nature: m.nature, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined });
+const traitsOf = (m, from) => ({ tera: m.tera, ot: from ? lot().otOf(from, m) : m.ot, otn: from ? (lot().otNameOf(from, m) || from.username) : m.otn, ivs: m.ivs.slice(), nature: m.nature, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined });
 function applyTraits(id, m, t) {
   m.ivs = t.ivs.slice(); m.nature = t.nature;
   abilities.resolve(id, m);
   if (t.ha) { m.ha = true; abilities.resolve(id, m); }
-  for (const k of ['ot', 'otn', 'ball', 'mark', 'size', 'caught']) { if (t[k] !== undefined && t[k] !== null) m[k] = t[k]; }
+  for (const k of ['ot', 'otn', 'tera', 'ball', 'mark', 'size', 'caught']) { if (t[k] !== undefined && t[k] !== null) m[k] = t[k]; }
 }
 
 function find(u, { id, uid }) {

@@ -94,6 +94,8 @@ Object.assign(ITEMS, require('./exp').buildItems(), require('./hyper').buildItem
 Object.assign(ITEMS, require('./evoreq').buildItems());
 // Poké Balls de la Captura (ver balls.js y capture.js): se compran en la Tienda Poké.
 Object.assign(ITEMS, require('./balls').buildItems());
+// Orbe Teracristal (objeto clave) y Teralitos (ver tera.js).
+Object.assign(ITEMS, require('./tera').buildItems());
 const EGG_WEIGHTS = { C: 40, U: 30, R: 18, E: 9, L: 3 };
 const HOUR = 3600 * 1000;
 
@@ -193,6 +195,8 @@ function use(user, { itemId, pokeId }) {
     throw new Error('Esto se usa desde la Caja PC → Datos → Entrenar o desde la Mochila con «Usar».');
   } else if (ITEMS[itemId] && (ITEMS[itemId].ev || ITEMS[itemId].evo)) {
     throw new Error('Esto se usa desde la Caja PC → Datos → Entrenar.');
+  } else if (ITEMS[itemId] && (ITEMS[itemId].key || ITEMS[itemId].teraShard)) {
+    throw new Error(ITEMS[itemId].key ? 'El Orbe Teracristal se usa en combate (botón «Teracristalizar»).' : 'Los Teralitos se gastan en la Caja PC → Datos, cambiando el Teratipo de un Pokémon.');
   } else if (ITEMS[itemId] && ITEMS[itemId].shard) {
     throw new Error('Los fragmentos se gastan en el Tutor de movimientos (Caja PC → Movimientos).');
   } else if (ITEMS[itemId] && ITEMS[itemId].material) {

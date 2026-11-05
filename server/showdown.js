@@ -40,7 +40,7 @@ const queue = new Map(); // userId → { userId, format, level, band, wager, tea
 const history = []; // últimos combates con registro completo (repeticiones)
 
 // ---- Validación de lo que manda el cliente ----
-const ACTION = '(?:move [1-4](?: -?[12])?(?: mega)?|switch [1-6]|pass|shift)';
+const ACTION = '(?:move [1-4](?: -?[12])?(?: mega| terastallize)?|switch [1-6]|pass|shift)';
 const CHOICE_RE = new RegExp(`^(?:team [1-6]{1,6}|default|${ACTION}(?:, ${ACTION}){0,3})$`);
 function validChoice(choice) {
   return typeof choice === 'string' && choice.length <= 100 && CHOICE_RE.test(choice);
@@ -102,7 +102,7 @@ function carryCmd(carry) {
 
 // ---- Combate ----
 class Battle {
-  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null, affection = false, ranked = false, tower = null, full = false, elite = null }) {
+  constructor({ mode, format, level, sides, wager = 0, trainer = null, id = null, seed = null, createdAt = null, affection = false, ranked = false, tower = null, full = false, elite = null, tera = false }) {
     this.id = id || crypto.randomUUID().slice(0, 8);
     // Semilla explícita: el simulador es determinista con ella y el registro de entradas, así que un combate se puede reconstruir.
     this.seed = seed || [0, 1, 2, 3].map(() => crypto.randomInt(1, 0x10000));
@@ -116,13 +116,15 @@ class Battle {
     this.trainer = trainer;
     this.ranked = !!ranked; // Clasificatoria de la Liga (league.js): solo PvP, nivel 50, sin apuesta ni afecto
     this.full = !!full; // líderes y Alto Mando: cada bando lleva su equipo entero (sin «Picked Team Size»), el del jugador de hasta 6
+    // Teracristalización (tera.js): solo si el modo lo permite (Combates libres, PvP con la regla y Teraincursiones) y cada jugador necesita el Orbe.
+    this.tera = !!tera;
     this.elite = elite; // carrera del Alto Mando (elite.js): { stage, carry } — los PS, PP y estados del jugador se arrastran de un combate al siguiente
     this.tower = tower; // Torre Batalla (tower.js): { n, boss } — el rival es un «trainer» sintético
     // Afecto (affection.js): true = solo el lado del jugador (CPU); 'both' = los dos lados (PvP). Se guarda en la instantánea (aff 1 / 2).
     this.affection = affection === 'both' ? 'both' : (!!affection && mode !== 'pvp');
     this.sides = sides.map((s, i) => ({
       n: i, id: 'p' + (i + 1), userId: s.user ? s.user.id : null, name: s.name, sets: s.sets, roster: s.roster,
-      brain: s.brain || null, req: null, chosen: false, deadline: 0, timer: null, timeouts: 0, log: [], seen: new Set(), human: !!s.user, askedAt: Date.now(),
+      tera: !!(tera && s.user && require('./tera').hasOrb(s.user)), brain: s.brain || null, req: null, chosen: false, deadline: 0, timer: null, timeouts: 0, log: [], seen: new Set(), human: !!s.user, askedAt: Date.now(),
     }));
     this.pickN = this.full ? this.sides[0].sets.length : Math.min(FORMATS[format].cap, ...this.sides.map((s) => s.sets.length));
     this.pickFoe = this.full ? this.sides[1].sets.length : undefined;
@@ -140,7 +142,8 @@ class Battle {
     const bs = (this.bs = new BattleStream());
     const streams = (this.streams = getPlayerStreams(bs));
     const maxLen = Math.max(...this.sides.map((s) => s.sets.length));
-    const rules = ['Species Clause', 'Terastal Clause'];
+    const rules = ['Species Clause'];
+    if (!this.tera) rules.push('Terastal Clause'); // sin la cláusula, el simulador deja teracristalizar (la CPU nunca lo hace y a quien no tiene Orbe se lo quitamos de la petición)
     if (!this.full && this.pickN < maxLen) rules.push(`Picked Team Size = ${this.pickN}`);
     if (this.affection) rules.push(this.affection === 'both' ? 'AffectionBoth' : 'Affection');
     const fid = `${FORMATS[this.format].id}@@@${rules.join(',')}`;
@@ -179,7 +182,7 @@ class Battle {
 
   snapshot() {
     return {
-      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, rk: this.ranked ? 1 : 0, tw: this.tower ? { n: this.tower.n, boss: !!this.tower.boss, tr: { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls, quote: this.trainer.quote } } : null, aff: this.affection === 'both' ? 2 : this.affection ? 1 : 0, full: this.full ? 1 : 0, el: this.elite ? { stage: this.elite.stage, carry: this.elite.carry, bonus: this.elite.bonus || 0 } : undefined,
+      id: this.id, v: SIM_VERSION, mode: this.mode, format: this.format, level: this.level, wager: this.wager, trainer: this.trainer ? this.trainer.id : null, rk: this.ranked ? 1 : 0, tw: this.tower ? { n: this.tower.n, boss: !!this.tower.boss, tr: { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls, quote: this.trainer.quote } } : null, aff: this.affection === 'both' ? 2 : this.affection ? 1 : 0, tr: this.tera ? 1 : 0, full: this.full ? 1 : 0, el: this.elite ? { stage: this.elite.stage, carry: this.elite.carry, bonus: this.elite.bonus || 0 } : undefined,
       seed: this.seed, createdAt: this.createdAt, savedAt: Date.now(), input: this.inputLog.slice(this.setupLen || 1 + this.sides.length), turn: this.turn,
       sides: this.sides.map((s) => ({ userId: s.userId, name: s.name, sets: s.sets, roster: s.roster, human: s.human, chosen: s.chosen, timeouts: s.timeouts, askedAt: s.askedAt })),
     };
@@ -218,6 +221,7 @@ class Battle {
       if (line === '' || line.startsWith('|debug|') || line.startsWith('||') || line.startsWith('|html|')) continue; // (eco de >eval y >editbattle: no es para el jugador)
       out.push(line);
     }
+    if (req && req.active && !side.tera) for (const a of req.active) if (a) delete a.canTerastallize; // sin Orbe (o en un modo sin Tera) no hay botón
     for (const line of out) {
       const m = /^\|(?:switch|drag)\|p[12][ab]: ([^|]*)\|/.exec(line);
       if (m) side.seen.add(m[1]);
@@ -290,6 +294,7 @@ class Battle {
   choose(side, choice) {
     if (this.over) throw new Error('El combate ya ha terminado.');
     if (!validChoice(choice)) throw new Error('Elección no válida.');
+    if (/terastallize/.test(choice) && !side.tera) throw new Error(this.tera ? 'Necesitas el Orbe Teracristal (se consigue con la primera medalla).' : 'En este combate no se puede teracristalizar.');
     if (!side.req) throw new Error('Todavía no hay nada que elegir.');
     if (side.req.wait) throw new Error('Espera: ahora le toca elegir al rival.');
     if (side.chosen) throw new Error('Ya has elegido. Espera al rival.');
@@ -380,7 +385,7 @@ class Battle {
 
   view(side) {
     return {
-      id: this.id, mode: this.mode, format: this.format, level: this.level, wager: this.wager, side: side.id, pickN: this.pickN, pickFoe: this.pickFoe, ranked: this.ranked || undefined, elite: this.elite ? { stage: this.elite.stage } : undefined, gym: this.trainer && this.trainer.badge ? this.trainer.badge : undefined,
+      id: this.id, mode: this.mode, format: this.format, level: this.level, wager: this.wager, side: side.id, tera: side.tera || undefined, pickN: this.pickN, pickFoe: this.pickFoe, ranked: this.ranked || undefined, elite: this.elite ? { stage: this.elite.stage } : undefined, gym: this.trainer && this.trainer.badge ? this.trainer.badge : undefined,
       tower: this.tower ? { n: this.tower.n, round: Math.floor((this.tower.n - 1) / 7) + 1, boss: !!this.tower.boss } : undefined,
       ranks: this.mode === 'pvp' ? this.sides.map((s) => require('./league').emblem(db.userById(s.userId), this.ranked ? this.format : undefined)) : undefined,
       you: side.name, foe: this.sides[1 - side.n].name, trainer: this.trainer ? { id: this.trainer.id, name: this.trainer.name, cls: this.trainer.cls } : null,
@@ -592,8 +597,9 @@ function startCpu(user, { trainer: trainerId, format, level = 'fair', team }) {
   const avg = mine.roster.reduce((s, r) => s + r.level, 0) / mine.roster.length;
   const foe = trainers.buildTeam(t, Math.min(FORMATS[format].cap, mine.sets.length), { level, avgLevel: avg, doubles: FORMATS[format].doubles });
   const doubles = FORMATS[format].doubles;
+  require('./tera').ensureOrb(user);
   const b = new Battle({
-    mode: 'cpu', format, level, trainer: t, affection: true, full: trainers.fixed(t),
+    mode: 'cpu', format, level, trainer: t, affection: true, full: trainers.fixed(t), tera: require('./tera').modeAllows({ mode: 'cpu', fixed: trainers.fixed(t) }),
     sides: [
       { user, name: user.username, sets: mine.sets, roster: mine.roster },
       { name: `${t.cls} ${t.name}`, sets: foe.sets, roster: foe.roster, brain: new Brain('p2', { doubles, smart: smartFor(t) }) },
@@ -637,7 +643,7 @@ function startTowerBattle(user, { format, n, boss, foe, mine }) {
 
 // ---- PvP ----
 function listPublic() {
-  return [...challenges.values()].filter((c) => !c.ranked).map((c) => ({ id: c.id, creator: c.creator, format: c.format, level: c.level, wager: c.wager, target: c.target, size: c.members.length, bond: c.bond, createdAt: c.createdAt }));
+  return [...challenges.values()].filter((c) => !c.ranked).map((c) => ({ id: c.id, creator: c.creator, format: c.format, level: c.level, wager: c.wager, target: c.target, size: c.members.length, bond: c.bond, tera: c.tera, createdAt: c.createdAt }));
 }
 const pushList = () => hub.broadcast('battle:list', listPublic());
 
@@ -647,9 +653,10 @@ function bondFlag(v) {
   if (typeof v !== 'boolean') throw new Error('Opción de amistad no válida.');
   return v;
 }
-function challenge(user, { format, level = 'fair', wager, target, team, bond }, quiet = false, ranked = false) {
+function challenge(user, { format, level = 'fair', wager, target, team, bond, tera }, quiet = false, ranked = false) {
   checkFree(user);
   bond = bondFlag(bond);
+  tera = ranked === true ? false : bondFlag(tera); // Teracristalización (por defecto sí; la Clasificatoria nunca)
   if ([...challenges.values()].filter((c) => c.creatorId === user.id).length >= 2) throw new Error('Máximo 2 retos abiertos.');
   resolveTeam(user, team, { format, level, itemClause: true }); // valida
   wager = Number(wager) || 0;
@@ -659,7 +666,7 @@ function challenge(user, { format, level = 'fair', wager, target, team, bond }, 
     target = t.username;
   } else target = null;
   if (wager !== 0) hub.takeBet(user, wager, 'duel', { quiet: true, noXp: true });
-  const c = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, format, level, wager, target, members: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), bond, ranked: ranked === true, createdAt: Date.now() };
+  const c = { id: crypto.randomUUID().slice(0, 8), creatorId: user.id, creator: user.username, format, level, wager, target, members: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), bond, tera, ranked: ranked === true, createdAt: Date.now() };
   challenges.set(c.id, c);
   db.escrowSet('btlc:' + c.id, user.id, wager);
   pushList();
@@ -695,6 +702,7 @@ function accept(user, { id, team }) {
   const creator = db.userById(c.creatorId);
   if (!creator || byUser.has(creator.id)) throw new Error('El retador está en otro combate ahora mismo.');
   checkCapacity();
+  require('./tera').ensureOrb(user); require('./tera').ensureOrb(creator);
   const mine = resolveTeam(user, team, { format: c.format, level: c.level, itemClause: true });
   let theirs;
   try { theirs = resolveTeam(creator, c.members, { format: c.format, level: c.level, itemClause: true }); } catch (e) {
@@ -706,6 +714,7 @@ function accept(user, { id, team }) {
   db.escrowDel('btlc:' + c.id);
   const b = new Battle({
     mode: 'pvp', format: c.format, level: c.level, wager: c.wager, affection: c.ranked || c.bond === false ? false : 'both', ranked: !!c.ranked,
+    tera: !c.ranked && c.tera !== false && require('./tera').hasOrb(creator) && require('./tera').hasOrb(user), // hace falta que AMBOS tengan el Orbe
     sides: [{ user: creator, name: creator.username, sets: theirs.sets, roster: theirs.roster }, { user, name: user.username, sets: mine.sets, roster: mine.roster }],
   });
   if (c.wager) { db.escrowSet(escKey(b, 0), creator.id, c.wager); db.escrowSet(escKey(b, 1), user.id, c.wager); }
@@ -727,21 +736,21 @@ function pushQueue() { hub.broadcast('battle:queue', queueInfo()); if (queueHook
 let queueHook = null;
 const setQueueHook = (fn) => { queueHook = fn; };
 const isQueued = (userId) => queue.has(userId);
-function queueMine(user) { const e = queue.get(user.id); return e ? { ranked: !!e.ranked, format: e.format, level: e.level, band: e.band, wager: e.wager, bond: e.bond, left: Math.max(0, e.at + QUEUE_MS - Date.now()) } : null; }
+function queueMine(user) { const e = queue.get(user.id); return e ? { ranked: !!e.ranked, format: e.format, level: e.level, band: e.band, wager: e.wager, bond: e.bond, tera: e.tera, left: Math.max(0, e.at + QUEUE_MS - Date.now()) } : null; }
 
-function enqueue(user, { format, level = 'fair', band = 'none', team, bond, ranked }) {
+function enqueue(user, { format, level = 'fair', band = 'none', team, bond, tera, ranked }) {
   checkFree(user);
   const lg = require('./league');
   ranked = ranked === true;
   // Clasificatoria: nivel 50 justo, sin apuesta y sin efectos de amistad (igualdad de condiciones); cuentas con antigüedad.
-  if (ranked) { lg.canRank(user); level = 'fair'; band = 'none'; bond = false; } else bond = bondFlag(bond);
+  if (ranked) { lg.canRank(user); level = 'fair'; band = 'none'; bond = false; tera = false; } else { bond = bondFlag(bond); tera = bondFlag(tera); }
   if (!(band in BANDS)) throw new Error('Apuesta no válida.');
   const wager = BANDS[band];
   resolveTeam(user, team, { format, level, itemClause: true }); // valida
   if (wager && user.coins < wager) throw new Error('No tienes monedas suficientes para esa apuesta.');
   queue.delete(user.id);
-  const me = { userId: user.id, format, level, band, wager, bond, ranked, team: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), at: Date.now() };
-  let rivals = [...queue.values()].filter((e) => !!e.ranked === ranked && e.format === format && e.level === level && e.band === band && e.bond === bond && e.userId !== user.id).sort((a, b) => a.at - b.at);
+  const me = { userId: user.id, format, level, band, wager, bond, tera, ranked, team: team.map((m) => ({ id: Number(m.id), uid: String(m.uid), mega: Number(m.mega) || 0 })), at: Date.now() };
+  let rivals = [...queue.values()].filter((e) => !!e.ranked === ranked && e.format === format && e.level === level && e.band === band && e.bond === bond && e.tera === tera && e.userId !== user.id).sort((a, b) => a.at - b.at);
   if (ranked) {
     // Parejas de nivel parecido (la ventana se abre con la espera) y con cupo diario libre entre ambos.
     const mine = lg.rating(user, format);
@@ -752,7 +761,7 @@ function enqueue(user, { format, level = 'fair', band = 'none', team, bond, rank
     const other = db.userById(o.userId);
     if (!other || byUser.has(o.userId)) { queue.delete(o.userId); continue; }
     let c;
-    try { c = challenge(other, { format, level, wager, target: user.username, team: o.team, bond }, true, ranked); } catch (e) {
+    try { c = challenge(other, { format, level, wager, target: user.username, team: o.team, bond, tera }, true, ranked); } catch (e) {
       queue.delete(o.userId);
       hub.emitUser(o.userId, 'battle:queue:end', { reason: 'error', text: 'Te hemos sacado de la cola: ' + e.message });
       continue;
@@ -840,7 +849,7 @@ async function restoreOne(snap) {
     if (s.human && !user) throw new Error('jugador desaparecido');
     return { user, name: s.name, sets: s.sets, roster: s.roster, brain: s.human ? null : new Brain('p' + (i + 1), { doubles, smart: smartFor(trainer) }) };
   });
-  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: snap.aff === 2 ? 'both' : !!snap.aff, ranked: !!snap.rk, tower: snap.tw ? { n: snap.tw.n, boss: snap.tw.boss } : null, full: !!snap.full, elite: snap.el ? { stage: snap.el.stage, carry: snap.el.carry, bonus: snap.el.bonus || 0 } : null, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
+  const b = new Battle({ mode: snap.mode, format: snap.format, level: snap.level, wager: snap.wager || 0, trainer, affection: snap.aff === 2 ? 'both' : !!snap.aff, ranked: !!snap.rk, tower: snap.tw ? { n: snap.tw.n, boss: snap.tw.boss } : null, full: !!snap.full, tera: !!snap.tr, elite: snap.el ? { stage: snap.el.stage, carry: snap.el.carry, bonus: snap.el.bonus || 0 } : null, id: snap.id, seed: snap.seed, createdAt: snap.createdAt, sides });
   b.startedAt = snap.createdAt;
   battles.set(b.id, b);
   for (const s of b.sides) if (s.userId) byUser.set(s.userId, b);

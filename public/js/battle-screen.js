@@ -307,6 +307,7 @@ export class BattleScreen {
       }
       case 'msg': {
         if (e.mega) await this.megaFlash(e.slot);
+        if (e.tera) await this.teraFlash(e.slot, e.tera);
         if (e.msg) await this.say(e.msg, e.warn ? 900 : 480);
         break;
       }
@@ -332,6 +333,8 @@ export class BattleScreen {
     sl.el.classList.remove('empty', 'down');
     sl.hb.classList.remove('empty');
     sl.nm.textContent = e.mon.name + (e.mon.shiny ? ' ✨' : '');
+    sl.wrap.classList.remove('tera-on'); sl.wrap.removeAttribute('data-tera'); sl.nm.removeAttribute('title');
+    if (e.mon.tera) this.teraMark(sl, e.mon.tera); // vuelve a salir ya teracristalizado
     const g = GENDER[e.mon.gender];
     sl.gd.textContent = g ? g[0] : '';
     sl.gd.className = 'gd ' + (g ? g[1] : '');
@@ -507,8 +510,36 @@ export class BattleScreen {
       sl.img = this.spriteFor(sl.mon, sl.own);
       sl.wrap.append(sl.img);
       sl.nm.textContent = '💠 ' + sl.mon.name;
+      if (sl.mon.tera) this.teraMark(sl, sl.mon.tera);
       if (!this.skip) { this.flash(); sfx('sparkle'); }
     }
+  }
+
+  // Teracristalización: el Pokémon se cubre de cristales del color de su Teratipo (y se queda marcado con 💎 mientras dure el combate).
+  teraMark(sl, type) {
+    if (!sl || !type) return;
+    sl.wrap.classList.add('tera-on');
+    sl.wrap.style.setProperty('--tc', TYPE_COLOR[type] || '#9be9f5');
+    sl.wrap.dataset.tera = type;
+    if (sl.nm && sl.mon && !sl.nm.textContent.startsWith('💎')) sl.nm.textContent = '💎 ' + sl.nm.textContent.replace(/^💠 /, '');
+    if (sl.nm) sl.nm.title = `Teratipo ${TYPE_ES[type] || type}`;
+  }
+  async teraFlash(slot, type) {
+    const sl = this.slotOf(slot);
+    if (!sl) return;
+    if (sl.mon) sl.mon.tera = type;
+    if (!this.skip && !reduced()) {
+      this.pulse(sl.hb);
+      sl.wrap.style.setProperty('--tc', TYPE_COLOR[type] || '#9be9f5');
+      sl.wrap.classList.add('tera-burst');
+      const gem = h('div', { class: 'tera-gem', 'aria-hidden': 'true' }, '💎');
+      sl.wrap.append(gem);
+      sfx('sparkle');
+      await this.sleep(700);
+      sl.wrap.classList.remove('tera-burst');
+      gem.remove();
+    }
+    this.teraMark(sl, type);
   }
 
   async megaFlash(slot) {
@@ -802,6 +833,19 @@ export class BattleScreen {
       const megaLbl = h('b', {});
       const megaSub = h('small', {});
       const canMega = !!act.canMegaEvo && !megaUsed;
+      // Teracristalización: una vez por combate (el simulador lo controla; el servidor solo la deja a quien tiene el Orbe y en los modos que la permiten).
+      const teraType = act.canTerastallize ? toID(act.canTerastallize) : '';
+      const canTera = !!teraType && !picks.slice(0, s).some((x) => /terastallize/.test(x || ''));
+      const tera = { checked: false };
+      const teraLbl = h('b', {});
+      const teraSub = h('small', {});
+      const teraBtn = h('button', { class: `tera-btn t-${teraType}`, type: 'button', 'aria-pressed': 'false', 'data-testid': 'tera-btn', style: { '--tc': TYPE_COLOR[teraType] || '#9be9f5' }, onclick: () => {
+        tera.checked = !tera.checked;
+        teraBtn.classList.toggle('on', tera.checked);
+        teraBtn.setAttribute('aria-pressed', String(tera.checked));
+        teraLbl.textContent = tera.checked ? `¡${name} se teracristalizará este turno!` : `Teracristalizar (${TYPE_ES[teraType] || teraType})`;
+        teraSub.textContent = tera.checked ? 'Ahora elige el movimiento · toca para cancelar' : 'Una vez por combate: cambia su tipo y refuerza sus ataques de ese tipo';
+      } });
       const head = h('div', { class: 'bt2-ask' }, h('b', {}, `¿Qué hará ${name}?`), req.active.length > 1 ? h('span', { class: 'muted small' }, ` (Pokémon ${s + 1} de ${req.active.length})`) : null);
       const moves = h('div', { class: 'mv-grid' }, act.moves.map((mv, mi) => {
         const meta = moveMeta(mv.id) || { type: 'normal', cat: 'p', bp: 0, acc: 0, pp: mv.maxpp };
@@ -809,7 +853,8 @@ export class BattleScreen {
         return h('button', { class: `mv t-${meta.type}`, type: 'button', disabled: dis, title: moveDesc(mv.id), oncontextmenu: (e) => { if (moveDesc(mv.id)) { e.preventDefault(); toast(`${moveEs(mv.id)}: ${moveDesc(mv.id)}`, 'info', 5000); } }, onclick: () => {
           const tk = mv.target || 'normal';
           const mg = canMega && mega.checked ? ' mega' : '';
-          const done = (t) => { if (canMega && mega.checked) megaUsed = true; picks[s] = `move ${mi + 1}${t !== null ? ' ' + t : ''}${mg}`; step(s + 1); };
+          const tg = canTera && tera.checked && !mg ? ' terastallize' : '';
+          const done = (t) => { if (canMega && mega.checked) megaUsed = true; picks[s] = `move ${mi + 1}${t !== null ? ' ' + t : ''}${mg}${tg}`; step(s + 1); };
           if (this.doubles && NEEDS_TARGET.has(tk)) this.askTarget(s, tk, mv, done, () => step(s));
           else done(null);
         } },
@@ -826,7 +871,8 @@ export class BattleScreen {
         s > 0 ? h('button', { class: 'btn', type: 'button', onclick: () => { picks.length = s - 1; step(s - 1); } }, '↩ Atrás') : null,
         this.forfeitButton());
       if (canMega) { megaLbl.textContent = `Megaevolucionar a ${name}`; megaSub.textContent = 'Actívalo y luego elige un movimiento'; megaBtn.append(h('span', { class: 'mega-btn-ico' }, '💠'), h('span', { class: 'mega-btn-t' }, megaLbl, megaSub)); }
-      this.menu.replaceChildren(h('div', { class: 'bt2-act' }, head, canMega ? megaBtn : '', moves, row));
+      if (canTera) { teraLbl.textContent = `Teracristalizar (${TYPE_ES[teraType] || teraType})`; teraSub.textContent = 'Una vez por combate: cambia su tipo y refuerza sus ataques de ese tipo'; teraBtn.append(h('span', { class: 'tera-btn-ico' }, '💎'), h('span', { class: 'tera-btn-t' }, teraLbl, teraSub)); }
+      this.menu.replaceChildren(h('div', { class: 'bt2-act' }, head, canMega ? megaBtn : '', canTera && !(canMega && mega.checked) ? teraBtn : '', moves, row));
     };
     step(0);
   }

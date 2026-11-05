@@ -23,3 +23,29 @@
   .lot-top { grid-template-columns: minmax(0, 1fr); }
   .lot-d { width: 30px; height: 40px; font-size: 24px; }
 }
+
+/* ---- Teracristalización en combate ---- */
+.tera-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer; padding: 8px 12px; margin-bottom: 6px; font: inherit; color: var(--text);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--tc, #9be9f5) 35%, var(--panel)), var(--panel) 70%); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: 0 3px 0 var(--ink); min-height: 44px; }
+.tera-btn:hover { filter: brightness(1.05); }
+.tera-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.tera-btn.on { background: linear-gradient(135deg, var(--tc, #9be9f5), color-mix(in srgb, var(--tc, #9be9f5) 40%, var(--panel))); box-shadow: 0 0 0 3px var(--gold), 0 3px 0 var(--ink); }
+.tera-btn .tera-btn-ico { font-size: 1.6em; line-height: 1; flex: 0 0 auto; }
+.tera-btn .tera-btn-t { display: flex; flex-direction: column; min-width: 0; }
+.tera-btn .tera-btn-t small { opacity: .8; font-size: .78em; }
+.spr-wrap.tera-on .mon-img { filter: drop-shadow(0 0 5px var(--tc, #9be9f5)) drop-shadow(0 0 10px var(--tc, #9be9f5)); }
+.spr-wrap.tera-on::after { content: ''; position: absolute; inset: -4% -6% 0; clip-path: polygon(50% 0, 100% 32%, 82% 100%, 18% 100%, 0 32%); background: linear-gradient(135deg, #ffffffcc, var(--tc, #9be9f5) 50%, #ffffff77 80%); opacity: .38; pointer-events: none; z-index: 3; }
+.spr-wrap.tera-burst .mon-img { animation: bt-tera 0.7s ease-out; }
+.tera-gem { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 40px; z-index: 4; animation: bt-tera-gem 0.7s ease-out forwards; pointer-events: none; }
+@keyframes bt-tera { 0% { filter: brightness(1) drop-shadow(0 0 0 var(--tc)); } 40% { filter: brightness(2.4) drop-shadow(0 0 18px var(--tc)); } 100% { filter: brightness(1) drop-shadow(0 0 8px var(--tc)); } }
+@keyframes bt-tera-gem { 0% { transform: translateX(-50%) scale(.3) rotate(-30deg); opacity: 0; } 50% { transform: translateX(-50%) scale(1.4) rotate(10deg); opacity: 1; } 100% { transform: translateX(-50%) scale(1) rotate(0); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .spr-wrap.tera-burst .mon-img, .tera-gem { animation: none; } }
+@media (max-height: 560px), (max-width: 420px) { .bt2-act .tera-btn { padding: 4px 8px; margin-bottom: 4px; min-height: 38px; } .bt2-act .tera-btn small { display: none; } }
+
+/* ---- Teratipo en la ficha (cambio con Teralitos) ---- */
+.tera-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.tera-type { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 4px 2px; color: #fff; border: 3px solid var(--ink); border-radius: 10px; cursor: pointer; font: inherit; min-height: 64px; text-shadow: 0 1px 0 #0006; }
+.tera-type:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.4); }
+.tera-type.cur { box-shadow: 0 0 0 3px var(--gold); }
+.tera-type small { opacity: .9; }
+.tera-shard-img { width: 28px; height: 28px; image-rendering: pixelated; }

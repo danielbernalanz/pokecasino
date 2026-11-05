@@ -154,8 +154,10 @@ const book = (ref, side) => M().orders.filter((o) => o.ref === ref && o.side ===
 const removeEmpty = () => { M().orders = M().orders.filter((o) => o.qty > 0); };
 
 // ---- Vender: llena pedidos de compra y publica el resto como orden de venta ----
+// Objetos clave (Orbe Teracristal): ni se venden ni se compran.
+const noKey = (a) => { if (a.kind === 'item' && items.ITEMS[a.itemId].key) throw new Error('Los objetos clave no se comercian.'); return a; };
 function sell(user, payload) {
-  const a = parseRef(payload);
+  const a = noKey(parseRef(payload));
   const qty = Number(payload.qty);
   const price = Number(payload.price);
   const onlyId = payload.orderId != null ? Number(payload.orderId) : null; // llenar solo esa orden concreta
@@ -204,7 +206,7 @@ function sell(user, payload) {
 
 // ---- Comprar: toma órdenes de venta y publica el resto como pedido de compra ----
 function buy(user, payload) {
-  const a = parseRef(payload);
+  const a = noKey(parseRef(payload));
   const qty = Number(payload.qty);
   const price = Number(payload.price);
   const onlyId = payload.orderId != null ? Number(payload.orderId) : null; // llenar solo esa orden concreta

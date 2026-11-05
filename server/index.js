@@ -172,6 +172,7 @@ const STATIC = {
   daycare: daycare.STATIC,
   quiz: quiz.STATIC,
   capture: capture.STATIC,
+  tera: require('./tera').STATIC,
   balls: balls.STATIC,
 };
 // Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).
@@ -653,6 +654,8 @@ io.on('connection', (socket) => {
   on('cap:attack', (u, p) => capture.attack(u, p));
   on('cap:ball', (u, p) => capture.throwBall(u, p));
   on('cap:run', (u) => capture.run(u));
+  on('tera:state', (u) => require('./tera').view(u), { push: false });
+  on('tera:set', (u, p) => require('./tera').setType(u, p));
   on('lot:state', (u) => require('./lottery').view(u), { push: false });
   on('lot:check', (u) => require('./lottery').check(u));
   on('care:view', daycare.view, { push: false });
