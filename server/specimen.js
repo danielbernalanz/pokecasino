@@ -1,0 +1,258 @@
+'use strict';
+// Pokémon únicos: cada copia «real» de una especie tiene sus propios datos (naturaleza, IVs, mote…).
+// La colección (`collection[id] = { n, s, cn }`) sigue siendo la fuente de verdad de los CONTADORES;
+// `u.mons[id]` es una lista de ejemplares que se sincroniza perezosamente con ese contador.
+const crypto = require('crypto');
+const db = require('./db');
+const { BY_ID } = require('./pokedex');
+const { rand, randInt, pick } = require('./rng');
+const { MOVES } = require('./games/battle');
+const movesMod = require('./moves');
+const abilities = require('./abilities');
+const eggroups = require('./eggroups');
+const evs = require('./evs');
+const hyper = require('./hyper');
+
+// [nombre, +stat, −stat] sobre el orden hp, atk, def, spa, spd, spe (índices 1..5; null = neutra).
+const NATURES = [
+  ['Fuerte'], ['Huraña', 1, 2], ['Audaz', 1, 5], ['Firme', 1, 3], ['Pícara', 1, 4],
+  ['Osada', 2, 1], ['Dócil'], ['Plácida', 2, 5], ['Agitada', 2, 3], ['Floja', 2, 4],
+  ['Miedosa', 5, 1], ['Activa', 5, 2], ['Seria'], ['Alegre', 5, 3], ['Ingenua', 5, 4],
+  ['Modesta', 3, 1], ['Afable', 3, 2], ['Mansa', 3, 5], ['Tímida'], ['Alocada', 3, 4],
+  ['Serena', 4, 1], ['Amable', 4, 2], ['Grosera', 4, 5], ['Cauta', 4, 3], ['Rara'],
+].map(([name, up = null, down = null]) => ({ name, up, down }));
+const NATURE_BY_NAME = new Map(NATURES.map((n) => [n.name, n]));
+const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
+
+const ABILITIES = {
+  fire: 'Mar Llamas', water: 'Torrente', grass: 'Espesura', electric: 'Electricidad Estática', bug: 'Enjambre', normal: 'Intimidación',
+  poison: 'Punto Tóxico', ground: 'Velo Arena', flying: 'Ojo Compuesto', psychic: 'Sincronía', ghost: 'Levitación', rock: 'Robustez',
+  ice: 'Manto Níveo', dragon: 'Piel Escama', dark: 'Francotirador', steel: 'Cuerpo Puro', fairy: 'Rizos Rosados', fighting: 'Entusiasmo',
+};
+const GENERIC_ABILITY = 'Impasible';
+
+const EXTRA = {
+  normal: ['Hiperrayo', 'Derribo', 'Cola Férrea'], fire: ['Envite Ígneo', 'Llamarada', 'Colmillo Ígneo'], water: ['Hidrobomba', 'Cascada', 'Pistola Agua'],
+  electric: ['Trueno', 'Voltio Cruel', 'Onda Trueno'], grass: ['Hoja Afilada', 'Latigazo', 'Energibola'], ice: ['Ventisca', 'Canto Helado', 'Colmillo Hielo'],
+  fighting: ['Puño Dinámico', 'Mach Punch', 'Onda Certera'], poison: ['Residuos', 'Puya Nociva', 'Tóxico'], ground: ['Excavar', 'Tierra Viva', 'Terratemblor'],
+  flying: ['Pájaro Osado', 'Respiro', 'Aire Afilado'], psychic: ['Psicorrayo', 'Paz Mental', 'Cabezazo Zen'], bug: ['Zumbido', 'Chupavidas', 'Pin Misil'],
+  rock: ['Roca Afilada', 'Pedrada', 'Poder Pasado'], ghost: ['Garra Umbría', 'Come Sueños', 'Puño Sombra'], dragon: ['Garra Dragón', 'Cometa Draco', 'Cola Dragón'],
+  dark: ['Mordisco', 'Juego Sucio', 'Pulso Umbrío'], steel: ['Foco Resplandor', 'Garra Metal', 'Bola Acero'], fairy: ['Brillo Mágico', 'Beso Drenaje', 'Viento Feérico'],
+};
+const FALLBACK_MOVES = ['Placaje', 'Protección', 'Danza Espada', 'Descanso'];
+
+const makeUid = () => crypto.randomBytes(4).toString('hex');
+const isFixed = (p) => p.rarity === 'L' || p.rarity === 'M';
+
+function movesFor(p) {
+  const out = [];
+  const add = (m) => { if (m && !out.includes(m) && out.length < 4) out.push(m); };
+  for (const t of p.types) add(MOVES[t]);
+  const pool = p.types.flatMap((t) => EXTRA[t] || []);
+  while (out.length < 3 && pool.length) add(pool.splice(randInt(0, pool.length - 1), 1)[0]);
+  add('Placaje');
+  add('Protección');
+  for (const m of FALLBACK_MOVES) add(m);
+  return out;
+}
+
+function make(id, shiny = false, owner = null) {
+  const p = BY_ID.get(id);
+  const m = {
+    uid: makeUid(), nature: pick(NATURES).name, ivs: Array.from({ length: 6 }, () => randInt(0, 31)), level: 5, exp: require('./exp').expAt(id, 5), friendship: 70,
+    gender: isFixed(p) ? null : eggroups.rollGender(id, rand()), ability: ABILITIES[p.types[0]] || GENERIC_ABILITY, moves: movesFor(p),
+    nick: '', fav: false, shiny: !!shiny, at: Date.now(), evs: [0, 0, 0, 0, 0, 0], // EVs: los ejemplares nuevos empiezan en 0 (ver evs.js)
+  };
+  if (owner) m.ot = require('./lottery').tidOf(owner); // ID del entrenador original (Lotería ID, ver lottery.js); los antiguos sin `ot` cuentan como del propio jugador
+  movesMod.ensure(id, m); // movimientos por nivel (aprendidos y equipados)
+  return m;
+}
+
+function sanitizeNick(s) {
+  const clean = (typeof s === 'string' ? s : '').replace(/[\p{C}\p{Zl}\p{Zp}]/gu, '').replace(/\s+/g, ' ').trim();
+  return Array.from(clean).slice(0, 12).join('').trim();
+}
+
+const ivTotal = (m) => m.ivs.reduce((s, v) => s + v, 0);
+// Valor ascendente: lo menos valioso primero.
+const byValue = (a, b) => a.level - b.level || a.friendship - b.friendship || ivTotal(a) - ivTotal(b) || b.at - a.at;
+
+function sync(u, id) {
+  u.mons ||= {};
+  const c = u.collection[id];
+  const want = c && BY_ID.has(id) ? Math.max(0, c.n - (c.cn || 0)) : 0;
+  if (!want) {
+    for (const m of u.mons[id] || []) if (m.item && !m.carry) require('./bp').giveBack(u, m.item); // se queda sin ninguno: el objeto equipado vuelve a la mochila
+    delete u.mons[id];
+    return [];
+  }
+  const arr = (u.mons[id] ||= []);
+  const buddyUid = u.buddy && u.buddy.id === id ? u.buddy.uid : null;
+  const wantShiny = Math.min(c.s || 0, want);
+  if (arr.length < want) {
+    let need = wantShiny - arr.filter((m) => m.shiny).length;
+    while (arr.length < want) { arr.push(make(id, need > 0, u)); need--; }
+  }
+  while (arr.length > want) {
+    const rank = (m) => (m.drop ? -10 : 0) + (m.away ? 20 : 0) + (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
+    let worst = 0;
+    for (let i = 1; i < arr.length; i++) {
+      const d = rank(arr[i]) - rank(arr[worst]);
+      if (d < 0 || (d === 0 && byValue(arr[i], arr[worst]) < 0)) worst = i;
+    }
+    const [gone] = arr.splice(worst, 1);
+    // El objeto equipado de un ejemplar que se va (transferir, liberar, vender, regalar…) vuelve a la mochila; solo se queda con él si viaja con el ejemplar (`carry`, ver gts.pull).
+    if (gone.item && !gone.carry) require('./bp').giveBack(u, gone.item);
+  }
+  // Variocolores: se ajustan quitando/poniendo la marca a los menos valiosos (determinista).
+  let have = arr.filter((m) => m.shiny).length;
+  if (have !== wantShiny) {
+    const asc = arr.slice().sort(byValue);
+    if (have > wantShiny) for (const m of asc) { if (have > wantShiny && m.shiny) { m.shiny = false; have--; } }
+    else for (const m of asc) { if (have < wantShiny && !m.shiny) { m.shiny = true; have++; } }
+  }
+  if (u.buddy && u.buddy.id === id && u.buddy.uid && !arr.some((m) => m.uid === u.buddy.uid)) delete u.buddy.uid;
+  return arr;
+}
+
+// El ejemplar menos valioso de la especie (el que quitaría `sync`) entre los que cumplen `ok`; `null` si no hay ninguno.
+function leastValuable(u, id, shiny, ok = () => true) {
+  const buddyUid = u.buddy && u.buddy.id === id ? u.buddy.uid : null;
+  const rank = (m) => (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
+  let best = null;
+  for (const m of sync(u, id)) {
+    if (!!m.shiny !== !!shiny || !ok(m)) continue;
+    if (!best || rank(m) < rank(best) || (rank(m) === rank(best) && byValue(m, best) < 0)) best = m;
+  }
+  return best;
+}
+
+function syncAll(u) {
+  u.mons ||= {};
+  for (const id of Object.keys(u.mons)) {
+    if (u.collection[id]) continue;
+    for (const m of u.mons[id]) if (m.item && !m.carry) require('./bp').giveBack(u, m.item); // la especie ya no está en la colección: el objeto vuelve a la mochila
+    delete u.mons[id];
+  }
+  for (const id of Object.keys(u.collection)) sync(u, Number(id));
+  return u.mons;
+}
+
+// Mejor ejemplar (por suma de IVs) con ese variocolor; el del compañero si lo es.
+function bestFor(u, id, shiny) {
+  const arr = sync(u, id);
+  if (u.buddy && u.buddy.id === id && u.buddy.uid) {
+    const b = arr.find((m) => m.uid === u.buddy.uid);
+    if (b && b.shiny === !!shiny) return b;
+  }
+  return arr.filter((m) => m.shiny === !!shiny).sort((a, b) => ivTotal(b) - ivTotal(a))[0] || null;
+}
+
+// Naturaleza efectiva: la de la menta (si tiene) o la original, que sigue figurando (como en Espada/Escudo).
+const natureOf = (m) => m.mint || m.nature;
+function natureMult(natureName, i) {
+  const n = NATURE_BY_NAME.get(natureName);
+  if (!n) return 1;
+  return n.up === i ? 1.1 : n.down === i ? 0.9 : 1;
+}
+
+// Estadísticas reales (a nivel 50 por defecto), con IVs, EVs y naturaleza: son las que usa el combate.
+function computeStats(id, m, level = 50) {
+  const b = BY_ID.get(id).stats;
+  const ev = evs.ensure(m);
+  const iv = hyper.effIvs(m); // IV efectivos: los reales, con 31 en lo entrenado con Chapas (Entrenamiento Extremo)
+  return b.map((base, i) => {
+    const core = Math.floor(((2 * base + iv[i] + Math.floor(ev[i] / 4)) * level) / 100);
+    return i === 0 ? core + level + 10 : Math.floor((core + 5) * natureMult(natureOf(m), i));
+  });
+}
+
+const bond = () => require('./bond'); // carga diferida: bond.js importa este módulo
+const lot = () => require('./lottery');
+function boxView(u) {
+  syncAll(u);
+  const mons = [];
+  for (const [id, arr] of Object.entries(u.mons)) {
+    for (const m of arr) { movesMod.ensure(Number(id), m); abilities.resolve(Number(id), m); }
+    const ex = require('./exp');
+    const cd = require('./candy');
+    const pk = require('./pokerus');
+    const fm = require('./forms');
+    for (const m of arr) ex.ensure(Number(id), m);
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), expMax: ex.expAt(Number(id), 100), evoForced: fm.forcedTarget(Number(id), m), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, ball: require('./balls').ballOf(m), mark: m.mark || null, size: Number.isInteger(m.size) ? m.size : null, caught: m.caught || null, tera: require('./tera').teraOf(Number(id), m), ot: lot().otOf(u, m), otn: lot().otNameOf(u, m), at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
+  }
+  db.save();
+  return { mons };
+}
+
+// Rasgos que viajan con el ejemplar al regalarlo (como al intercambiar en los juegos): ID del entrenador original (y su nombre), IV, naturaleza, habilidad oculta, Ball, marca, tamaño y lugar de captura.
+// No viajan nivel, EXP, EVs ni amistad (la EXP no se transfiere: ver docs/ANTIABUSO.md).
+// También viajan la menta (naturaleza efectiva), las Chapas de Entrenamiento Extremo (IV a 31), la casilla de habilidad normal y los contadores
+// del día (tope de EXP `xc` y de amistad `fd`): así traspasar un ejemplar no reinicia sus topes diarios (ver docs/ANTIABUSO.md).
+const traitsOf = (m, from) => ({ tera: m.tera, ot: from ? lot().otOf(from, m) : m.ot, otn: from ? (lot().otNameOf(from, m) || from.username) : m.otn, ivs: m.ivs.slice(), nature: m.nature, mint: m.mint || undefined, hyper: hyper.hyperOf(m) ? m.hyper.slice() : undefined, abSlot: Number.isInteger(m.abSlot) ? m.abSlot : undefined, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined, xc: m.xc ? { ...m.xc } : undefined, fd: m.fd ? { ...m.fd } : undefined });
+function applyTraits(id, m, t) {
+  m.ivs = t.ivs.slice(); m.nature = t.nature;
+  if (t.mint) m.mint = t.mint;
+  if (Array.isArray(t.hyper) && t.hyper.length === 6) m.hyper = t.hyper.slice();
+  if (Number.isInteger(t.abSlot)) m.abSlot = t.abSlot;
+  abilities.resolve(id, m);
+  if (t.ha) { m.ha = true; abilities.resolve(id, m); }
+  if (t.xc) m.xc = { ...t.xc };
+  if (t.fd) m.fd = { ...t.fd };
+  for (const k of ['ot', 'otn', 'tera', 'ball', 'mark', 'size', 'caught']) { if (t[k] !== undefined && t[k] !== null) m[k] = t[k]; }
+}
+
+function find(u, { id, uid }) {
+  id = Number(id);
+  if (!Number.isInteger(id) || typeof uid !== 'string' || uid.length > 8) throw new Error('Pokémon no válido.');
+  const m = sync(u, id).find((x) => x.uid === uid);
+  if (!m) throw new Error('No tienes ese ejemplar.');
+  return m;
+}
+
+function nick(u, p) {
+  const m = find(u, p);
+  m.nick = sanitizeNick(p.nick);
+  db.save();
+  return { nick: m.nick };
+}
+
+function fav(u, p) {
+  const m = find(u, p);
+  m.fav = !!p.fav;
+  db.save();
+  return { fav: m.fav };
+}
+
+// Ejemplares ocupados (expedición, criadero): `m.away = 'exp:<id>' | 'care'`. No se liberan, transfieren, venden,
+// regalan, intercambian, evolucionan ni combaten mientras estén fuera.
+const AWAY_MSG = 'está fuera (expedición o criadero): espera a que vuelva.';
+function assertFree(m, name) { if (m && m.away) throw new Error(`${name || 'Ese Pokémon'} ${AWAY_MSG}`); }
+// Cuántos ejemplares de la especie están ocupados (en total y variocolor).
+function busyCount(u, id) {
+  const arr = u.mons && u.mons[id];
+  if (!arr) return { total: 0, shiny: 0 };
+  let total = 0; let shiny = 0;
+  for (const m of arr) if (m.away) { total++; if (m.shiny) shiny++; }
+  return { total, shiny };
+}
+
+function release(u, p) {
+  const gacha = require('./gacha');
+  const m = find(u, p);
+  assertFree(m, BY_ID.get(Number(p.id)).name);
+  const id = Number(p.id);
+  const c = u.collection[id];
+  const sBefore = c.s || 0;
+  m.drop = true;
+  let res;
+  try { res = gacha.release(u, { id, count: 1 }); } catch (e) { delete m.drop; throw e; }
+  if (m.shiny) c.s = Math.max(0, sBefore - 1);
+  const arr = sync(u, id);
+  for (const x of arr) delete x.drop;
+  if (u.buddy && u.buddy.id === id && u.buddy.shiny && !c.s) u.buddy.shiny = false;
+  db.save();
+  return res;
+}
+
+module.exports = { leastValuable, traitsOf, applyTraits, NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };

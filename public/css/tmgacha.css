@@ -1,0 +1,61 @@
+/* Gacha de MT: disco que gira, tarjetas con brillo de nivel y cuadrícula del ×10. */
+.tg-disc { --c: #888; --g: #9aa7b8; width: 150px; height: 150px; border-radius: 50%; position: relative; display: grid; place-items: center; flex: none;
+  background: radial-gradient(circle at 50% 50%, #1b1b22 0 13%, transparent 14%), conic-gradient(from 0deg, var(--c), #fff 12%, var(--c) 25%, #0003 37%, var(--c) 50%, #fff 62%, var(--c) 75%, #0003 87%, var(--c));
+  box-shadow: 0 0 0 4px #141414, 0 0 28px 6px color-mix(in srgb, var(--g) 70%, transparent); }
+.tg-disc::before { content: ''; position: absolute; inset: 14%; border-radius: 50%; border: 3px solid #14141466; }
+.tg-disc span { position: relative; font-family: 'Jersey 10', sans-serif; font-size: 30px; color: #fff; text-shadow: 0 2px 0 #000a; letter-spacing: 1px; }
+.tg-disc.spin { animation: tgSpin .45s linear infinite, tgFlash .6s ease-in-out infinite alternate; }
+.tg-disc.spin.slow { animation: tgSpin 1.4s linear infinite, tgFlash .6s ease-in-out infinite alternate; }
+.tg-disc.demo { animation: tgSpin 5s linear infinite; }
+.tg-demo .tg-disc { width: 84px; height: 84px; } .tg-demo .tg-disc span { font-size: 20px; }
+.tg-disc.mini { width: 58px; height: 58px; } .tg-disc.mini span { font-size: 14px; }
+.tg-disc.mini.focus { animation: tgSpin .4s linear infinite, tgFlash .3s ease-in-out infinite alternate; transform: scale(1.15); }
+.tg-disc.still { width: 74px; height: 74px; box-shadow: 0 0 0 3px #141414, 0 0 18px 3px color-mix(in srgb, var(--g) 70%, transparent); } .tg-disc.still span { font-size: 18px; }
+@keyframes tgSpin { to { transform: rotate(360deg); } }
+@keyframes tgFlash { from { filter: brightness(.85) saturate(1); } to { filter: brightness(1.45) saturate(1.4); } }
+
+.tg-ov { padding: 12px; overflow: hidden; }
+.tg-stage { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 760px; max-height: 100%; }
+.tg-holder { display: grid; place-items: center; min-height: 230px; }
+.tg-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; text-align: center; color: #fff; background: #14102acc; border: 2px solid var(--g); border-radius: 12px; box-shadow: 0 0 14px color-mix(in srgb, var(--g) 55%, transparent); min-width: 0; }
+.tg-card b { font-size: 12px; line-height: 1.15; overflow-wrap: anywhere; }
+.tg-card-meta { display: flex; gap: 4px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 11px; }
+.tg-tier { color: var(--g); font-weight: 800; }
+.tg-star { position: absolute; top: 2px; right: 4px; font-size: 13px; }
+.tg-card.t3 { box-shadow: 0 0 22px 3px color-mix(in srgb, var(--g) 70%, transparent); }
+.tg-card.t4 { background: linear-gradient(160deg, #3a2a05, #14102a 60%); box-shadow: 0 0 30px 6px #ffcf3a99, inset 0 0 14px #ffcf3a66; animation: tgGold 1.4s ease-in-out infinite alternate; }
+@keyframes tgGold { to { box-shadow: 0 0 44px 12px #ffcf3acc, inset 0 0 20px #ffcf3a88; } }
+.tg-card.big { padding: 18px 22px; gap: 8px; min-width: 220px; max-width: 80vw; }
+.tg-card.big b { font-size: 20px; }
+.tg-card.big .tg-disc.still { width: 120px; height: 120px; } .tg-card.big .tg-disc.still span { font-size: 28px; }
+.tg-card.big .tg-card-meta { font-size: 14px; }
+.tg-card.pop { animation: tgPop .45s cubic-bezier(.2, 1.4, .4, 1); }
+.tg-card.flip { animation: tgFlip .4s ease-out; }
+@keyframes tgPop { from { transform: scale(.4) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tgFlip { from { transform: rotateY(90deg) scale(.8); } to { transform: none; } }
+
+.tg-pack { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.tg-count { color: #fffc; font-weight: 800; }
+.tg-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.tg-slot { display: grid; place-items: center; min-height: 128px; min-width: 0; }
+.tg-summary { color: #fff; font-weight: 800; text-align: center; }
+
+.tg-hero-row { display: flex; gap: 14px; align-items: center; }
+.tg-demo { flex: none; display: grid; place-items: center; }
+.tg-feat { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.tg-odds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.tg-odd { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 2px solid var(--g); border-radius: 10px; text-align: center; }
+.tg-odd b { color: var(--g); }
+
+@media (max-width: 600px) {
+  .tg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .tg-slot { min-height: 0; }
+  .tg-slot .tg-card { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: 4px 6px; gap: 6px; width: 100%; }
+  .tg-slot .tg-card-disc { display: none; }
+  .tg-disc.mini { width: 40px; height: 40px; } .tg-disc.mini span { font-size: 11px; }
+  .tg-slot { min-height: 54px; }
+  .tg-odds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tg-hero-row { flex-direction: column; text-align: center; }
+  .tg-card.big { min-width: 0; width: 78vw; }
+}
+@media (prefers-reduced-motion: reduce) { .tg-disc.spin, .tg-disc.demo, .tg-disc.slow, .tg-disc.mini.focus, .tg-card.t4, .tg-card.pop, .tg-card.flip { animation: none; } }
