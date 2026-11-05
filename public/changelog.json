@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.05-z",
+    "date": "2026-11-05",
+    "title": "Teraincursiones cooperativas",
+    "items": [
+      "💎 Nuevo apartado «Teraincursiones» (Pokémon → Aventura): jefes teracristalizados de 1★ a 5★ que se abren con 1, 2, 4, 6 y 8 medallas. Cada día hay 2 jefes por estrella, los mismos para todos y rotan solos a las 00:00 UTC.",
+      "👥 Juega en solitario (tú y 3 aliados de la CPU) o con hasta 4 jugadores reales: sala abierta (aparece en la lista para que otros se unan) o privada con código de 4 letras. Cada uno lleva un Pokémon de su Caja con sus estadísticas del Nv. 50, sus movimientos y su Teratipo, y puede teracristalizar una vez.",
+      "🛡️ El jefe se cubre de un escudo al llegar al 50 % de PS (al romperlo pierde un ataque) y cada 3 turnos ataca a todo el equipo. Un Pokémon debilitado vuelve dos turnos después, pero con 4 debilitados o 20 turnos se pierde. Si te desconectas, el turno se resuelve solo y la CPU lleva tu Pokémon; si el servidor se reinicia, la incursión sigue.",
+      "🎁 Al ganar (hasta 10 incursiones premiadas al día): Teralitos del tipo del jefe para cambiar Teratipos (50 por cambio), Caramelos Exp. (con tope diario), a veces una Menta o una Cápsula Habilidad y la captura garantizada del jefe con su Teratipo (gasta una Ball: Poké 1★-2★, Super 3★, Ultra 4★-5★). Nunca da monedas."
+    ]
+  },
+  {
     "version": "2026.11.05-y",
     "date": "2026-11-05",
     "title": "Teracristalización",

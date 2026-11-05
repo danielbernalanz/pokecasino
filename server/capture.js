@@ -486,5 +486,5 @@ const STATIC = {
 module.exports = {
   DAILY, FLEE, SHINY_WILD, HA_CHANCE, OUTBREAK_SHARE, OUTBREAK_HOURS, STATUS_BONUS, CRIT_TABLE, MARKS, SIZES, FRIEND_BALL_FRIENDSHIP, STATIC,
   critMult, sizeLabel, sizeTitle, rollSize, weatherOf, outbreakAt, stateOf, legendStatus, moveInfo, levelMod, modifiedRate, shakeB, roll, probability, ratioOf, wildStats,
-  makeEncounter, view, encounter, team, attack, throwBall, run, resaleValue, hpPct,
+  makeEncounter, view, encounter, team, attack, throwBall, run, resaleValue, hpPct, finishCapture,
 };

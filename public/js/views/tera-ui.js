@@ -1,6 +1,7 @@
 // Teratipo de un ejemplar (ficha de la Caja PC) y cambio con Teralitos (ver server/tera.js).
 import { S, h, act, sfx, toast, modal, typeBadge, itemImg, TYPE_ES } from '../core.js';
 
+export const TYPE_COLOR = { normal: '#c9c5b8', fire: '#ff7a2f', water: '#4fa3ff', electric: '#ffe03a', grass: '#6fd45a', ice: '#9be9f5', fighting: '#d9553a', poison: '#b45fd1', ground: '#d6b25c', flying: '#a9b8ff', psychic: '#ff6fa8', bug: '#a8c534', rock: '#b9a45e', ghost: '#7d62b8', dragon: '#6a5cff', dark: '#6b574a', steel: '#b8c2d1', fairy: '#ffadd6' };
 const cfg = () => S.data.tera;
 const shards = (t) => (S.me.items || {})[`tera-shard-${t}`] || 0;
 

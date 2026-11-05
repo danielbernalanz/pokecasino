@@ -839,7 +839,7 @@ export class BattleScreen {
       const tera = { checked: false };
       const teraLbl = h('b', {});
       const teraSub = h('small', {});
-      const teraBtn = h('button', { class: `tera-btn t-${teraType}`, type: 'button', 'aria-pressed': 'false', 'data-testid': 'tera-btn', style: { '--tc': TYPE_COLOR[teraType] || '#9be9f5' }, onclick: () => {
+      const teraBtn = h('button', { class: 'tera-btn', type: 'button', 'aria-pressed': 'false', 'data-testid': 'tera-btn', style: '--tc:' + (TYPE_COLOR[teraType] || '#9be9f5'), onclick: () => {
         tera.checked = !tera.checked;
         teraBtn.classList.toggle('on', tera.checked);
         teraBtn.setAttribute('aria-pressed', String(tera.checked));

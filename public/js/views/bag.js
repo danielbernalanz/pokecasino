@@ -30,6 +30,8 @@ export function bagTab() {
       const useBtn = id === 'ticket'
         ? h('a', { class: 'btn', href: '#/gacha' }, 'Usar en el Gacha')
         : it.ball ? h('a', { class: 'btn primary', href: '#/captura' }, 'Ir a Captura')
+        : it.key ? h('a', { class: 'btn primary', href: '#/raids' }, 'Teraincursiones')
+        : it.teraShard ? h('a', { class: 'btn', href: '#/pc' }, 'Cambiar Teratipo (Caja PC)')
         : it.tm ? h('button', { class: 'btn primary', onclick: () => useTmDialog(id) }, 'Enseñar')
           : it.shard ? h('a', { class: 'btn', href: '#/pc' }, 'Tutor (Caja PC)')
           : it.expCandy ? h('button', { class: 'btn primary', 'data-testid': 'bag-use-exp', onclick: () => useExpCandyDialog(id) }, 'Usar')
@@ -52,7 +54,7 @@ export function bagTab() {
           if (r) { useFx(id, at); toast(`Usaste ${it.name}`, 'success'); }
         } }, id === 'mystery-egg' ? 'Abrir' : 'Usar');
       return h('div', { class: 'shop-item item-card' }, itemImg(id, 'big'), h('div', { class: 'grow' }, h('b', {}, `${it.name} ×${n}`), h('div', { class: 'small muted' }, it.desc)),
-        h('div', { class: 'stack' }, useBtn, h('button', { class: 'btn small', onclick: () => openItem({ kind: 'item', itemId: id }, 'sell') }, 'Vender')));
+        h('div', { class: 'stack' }, useBtn, it.key ? null : h('button', { class: 'btn small', onclick: () => openItem({ kind: 'item', itemId: id }, 'sell') }, 'Vender')));
     })) : h('p', { class: 'muted' }, 'Tu mochila está vacía. Consigue objetos en la Tienda Poké, subiendo de nivel, con la recompensa diaria o en el Mercado.'));
 }
 

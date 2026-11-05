@@ -18,6 +18,7 @@ import huerto from './views/huerto.js';
 import expediciones from './views/expediciones.js';
 import criadero from './views/criadero.js';
 import captura from './views/captura.js';
+import raids from './views/raids.js';
 import shop from './views/shop.js';
 import bag from './views/bag.js';
 import workshop from './views/workshop.js';
@@ -42,7 +43,7 @@ import { buildSidebar, buildTabbar, markNav, refreshNew, markVisited, resetVisit
 installEmoji(); // emojis genéricos → iconos de Pokémon (pkicons.js)
 
 duels.title = 'Duelos rápidos'; // los duelos de siempre (1 Pokémon a ciegas) pasan a llamarse así junto a los nuevos Combates
-const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, captura, criadero, shop, bag, workshop, megaView, market, ranking, admin, ...hubs];
+const VIEWS = [lobby, news, trainer, poker, crash, race, duels, battle, blackjack, videopoker, baccarat, roulette, slots, plinko, mines, voltorb, quiz, gacha, pokedex, pc, huerto, expediciones, captura, raids, criadero, shop, bag, workshop, megaView, market, ranking, admin, ...hubs];
 
 // ---------- Autenticación ----------
 let mode = 'login';
@@ -321,6 +322,8 @@ function connect() {
   });
   socket.on('me', setMe);
   socket.on('events', (e) => { S.events = e; bus.emit('events', e); });
+  socket.on('raid:state', (v) => { bus.emit('raid:state', v); if (v && v.state === 'battle' && v.turn === 1 && !/^#\/raids/.test(location.hash)) toast('💎 ¡Tu Teraincursión ha empezado! Entra en Pokémon → Teraincursiones.', 'info', 6000); });
+  socket.on('raid:list', (l) => bus.emit('raid:list', l));
   socket.on('mega:state', (m) => { S.mega = m; bus.emit('mega', m); });
   socket.on('mega:bote', (b) => { if (S.mega) S.mega.bote = b.bote; bus.emit('mega:bote', b); });
   socket.on('mega:hour', (w) => { bus.emit('mega:hour', w); import('./fx.js').then(({ flash, vibrate }) => { flash('#7df9ff', 700); vibrate([60, 40, 60, 40, 120]); }); sfx('levelup'); });

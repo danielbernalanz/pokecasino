@@ -173,6 +173,7 @@ const STATIC = {
   quiz: quiz.STATIC,
   capture: capture.STATIC,
   tera: require('./tera').STATIC,
+  raid: require('./raid').STATIC,
   balls: balls.STATIC,
 };
 // Imágenes del Desafío: el token no revela el número del Pokémon (la URL del sprite sí lo haría).
@@ -654,6 +655,14 @@ io.on('connection', (socket) => {
   on('cap:attack', (u, p) => capture.attack(u, p));
   on('cap:ball', (u, p) => capture.throwBall(u, p));
   on('cap:run', (u) => capture.run(u));
+  on('raid:state', (u) => require('./raid').view(u), { push: false });
+  on('raid:team', (u) => require('./raid').team(u), { push: false });
+  on('raid:create', (u, p) => require('./raid').create(u, p));
+  on('raid:join', (u, p) => require('./raid').join(u, p));
+  on('raid:start', (u, p) => require('./raid').start(u, p));
+  on('raid:leave', (u) => require('./raid').leave(u));
+  on('raid:choose', (u, p) => require('./raid').choose(u, p), { push: false });
+  on('raid:claim', (u, p) => require('./raid').claim(u, p));
   on('tera:state', (u) => require('./tera').view(u), { push: false });
   on('tera:set', (u, p) => require('./tera').setType(u, p));
   on('lot:state', (u) => require('./lottery').view(u), { push: false });
@@ -769,6 +778,7 @@ db.init().then(() => {
   crash.start();
   mega.start();
   require('./league').start(); // cierra la temporada si cambió el mes mientras el casino estaba apagado
+  require('./raid').begin(); // Teraincursiones en curso: amplía plazos y arranca el temporizador
   showdown.restoreAll().catch((e) => console.error('Combates: no se pudieron restaurar', e)); // reconstruye los combates en curso al redesplegar
   console.log('  ✅ Casino abierto');
   if (!Object.keys(db.data.users).length) console.log('  👑 El primer jugador que se registre será administrador.');

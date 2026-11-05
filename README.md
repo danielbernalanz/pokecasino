@@ -35,6 +35,8 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Teracristalización** (Combates): el Orbe Teracristal (objeto clave, te lo da el Profesor Oak con la 1.ª medalla) permite teracristalizar a un Pokémon una vez por combate con el soporte nativo del simulador (gen. 9): botón «Teracristalizar» junto a los movimientos. Vale en Combates libres contra entrenadores, PvP (opción del reto; hace falta el Orbe en los dos) y Teraincursiones; no en líderes, Alto Mando, Torre ni Clasificatoria. Cada ejemplar tiene un Teratipo (por defecto uno de sus tipos) que se ve y se cambia en la ficha de la Caja PC con 50 Teralitos del tipo.
 
+**Teraincursiones** (Pokémon → Aventura → 💎 Teraincursiones): jefes teracristalizados de 1★ a 5★ (se abren con 1, 2, 4, 6 y 8 medallas), 2 por estrella y día, iguales para todos y deterministas (rotación diaria). En solitario (tú + 3 aliados de la CPU) o con hasta 4 jugadores reales: salas abiertas (lista), privadas (código de 4 letras) o por lista. Cada jugador lleva un Pokémon de su Caja (estadísticas del Nv. 50 y sus movimientos equipados) y elige movimiento cada turno (30 s; sin respuesta se elige solo y tras 3 turnos pasa al piloto automático; si se va, la CPU lleva su Pokémon). El jefe se cubre de un escudo al 50 % de PS, al romperlo pierde un ataque y cada 3 turnos ataca a todos; el equipo aguanta 4 debilitados y 20 turnos. Cada jugador puede teracristalizar una vez. Premios al ganar (tope de 10 incursiones premiadas por jugador y día): Teralitos del tipo del jefe, Caramelos Exp. (con tope diario de EXP), a veces una Menta o una Cápsula Habilidad y la **captura garantizada del jefe con su Teratipo** (gasta una Ball: Poké 1★-2★, Super 3★, Ultra 4★-5★). Nunca da monedas. El estado vive en el servidor y se restaura tras un reinicio.
+
 **Progresión (de novato a campeón)**
 
 1. **Ruta del Entrenador**: 10 pasos guiados con premio (recompensa diaria → primera tirada → compañero → primeras partidas → mesas → multijugador → Huevo Misterioso → Mercado → duelo → primera medalla). Los pasos que ya hayas cumplido se completan solos.
@@ -153,6 +155,7 @@ server/
   dexdata.json    Los 1.025 Pokémon (generado con scripts/build-dex.js desde PokeAPI)
   gacha.js        Banners, probabilidades, Master Ball, variocolores y tienda de polvo
   items.js        Objetos, Tienda Poké y efectos
+  raid.js         Teraincursiones cooperativas: jefes del día, salas, turnos, escudo, recompensas y captura del jefe
   tera.js         Teracristalización: Teratipo, Orbe Teracristal, Teralitos y reglas por modo de combate
   lottery.js      Lotería ID: ID de entrenador, sorteo diario, premios por cifras y OT de los ejemplares
   capture.js      Captura de Pokémon salvajes: encuentros, fórmula real, ataques, Balls, marcas y tamaños (capzones.js: rutas; balls.js: Poké Balls; catchdata.json: ratios de captura de PokeAPI, scripts/gen-catch.js)

@@ -836,3 +836,49 @@ Con un ID, cada día: exactamente 2 cifras **0,9 %** · 3 cifras **0,09 %** · 4
 | **Teralitos** | 18 objetos, uno por tipo (`tera-shard-<tipo>`), que caen de las Teraincursiones. **50 Teralitos de un tipo cambian el Teratipo de un ejemplar a ese tipo** (Caja PC → Datos → 💎 Teratipo → Cambiar). Sin precio en monedas: los PNJ no los comercian; solo se pasan entre jugadores en el Mercado |
 
 Nada de esto da monedas ni cambia ninguna recompensa: teracristalizar solo cambia cómo se juega el combate (la CPU no se hace más fuerte ni más débil). Los combates que ya estaban en curso se restauran sin Tera como antes.
+
+## Teraincursiones cooperativas (server/raid.js · test/raid.test.js) — 05-11-2026
+
+Apartado **💎 Teraincursiones** (Pokémon → Aventura). Modelo por turnos sencillo, todo en el servidor (`crypto`); el cliente solo pide «crear», «unirse», «elegir movimiento», «salir» o «capturar».
+
+| Pieza | Regla |
+|---|---|
+| **Estrellas** | 1★ con 1 medalla · 2★ con 2 · 3★ con 4 · 4★ con 6 · 5★ con 8 (las mismas medallas de Kanto) |
+| **Jefes del día** | 2 por estrella y día UTC, deterministas (`sha256` de la fecha) y distintos entre sí; igual para todos. Teratipo al azar de los 18 (también determinista). Especies sin legendarios ni míticos: 1★ Comunes (BST 250-340), 2★ Comunes y Poco comunes, 3★ Poco comunes y Raras, 4★ Raras y Épicas, 5★ Épicas (BST 500-640). Nv. 20 / 30 / 40 / 50 / 60 |
+| **Jefe** | PS fijos 1.000 / 1.500 / 2.200 / 2.600 / 3.000; su Teratipo es su único tipo (defensa); al llegar al **50 % de PS** aparece un **escudo** del 25 % de sus PS (el golpe se detiene en el 50 % aunque sobrara daño): mientras dura no baja la vida; al romperse **pierde su siguiente ataque**. Ataca con su Teratipo (STAB ×1,5) a un Pokémon al azar y **cada 3 turnos a todos** con 0,55 de potencia. Potencia 40 / 45 / 52 / 48 / 48. Es inmune a estados |
+| **Equipo** | Hasta 4 jugadores (un Pokémon cada uno: estadísticas reales del Nv. 50 con IV, EV y naturaleza, movimientos equipados, Teratipo propio). Las plazas libres son aliados de la CPU (Pokémon de la rareza de la estrella con un ataque del tipo que mejor funcione contra el jefe), así que se puede ir **en solitario** (tú + 3). Los movimientos de daño hacen daño (fórmula de 5.ª generación, STAB, tipos, críticos 1/24), Recuperación-like cura el 50 %, los que suben Ataque/At. Esp. lo suben y los de estado puro no afectan al jefe |
+| **Tera** | Una vez por incursión y jugador (necesita el Orbe Teracristal): STAB ×1,5 en el Teratipo (×2 si ya era uno de sus tipos) y su tipo defensivo pasa a ser el Teratipo |
+| **KO y turnos** | Un Pokémon debilitado **vuelve con los PS llenos dos turnos después**; con **4 debilitados en total** se pierde. Máximo **20 turnos** |
+| **Tiempo** | Turnos de 30 s (5 min en solitario). Sin respuesta se elige el mejor movimiento; tras 3 turnos seguidos sin tiempo el jugador pasa al **piloto automático** (y vuelve en cuanto elige). Quien sale de la incursión deja su Pokémon a la CPU. Las salas esperan 2 minutos y se completan con aliados CPU |
+| **Persistencia** | El estado vive en `db.data.raids` y las fechas límite son marcas de tiempo: un reinicio del servidor amplía los plazos y todo sigue. Las terminadas se conservan 6 h; las capturas pendientes, 24 h (`u.raid.claims`) |
+
+### Recompensas (solo por ganar y participar; **tope de 10 incursiones premiadas por jugador y día**)
+Participar = elegir movimiento en al menos un tercio de los turnos (quien deja que la CPU juegue por él no cobra).
+
+| Estrellas | Teralitos (tipo del jefe) | Caramelos Exp. | Menta al azar | Cápsula Habilidad | Ball mínima para capturar |
+|---|---|---|---|---|---|
+| 1★ | 1-2 | 2 × XS (200 EXP) | — | — | Poké |
+| 2★ | 2-3 | 1 × S (800) | — | — | Poké |
+| 3★ | 3-5 | 2 × S (1.600) | 8 % | — | Super |
+| 4★ | 4-7 | 1 × M (3.000) | 12 % | — | Ultra |
+| 5★ | 6-10 | 2 × M (6.000) | 20 % | 5 % | Ultra |
+
+* **Teralitos**: sin valor en monedas (ni los compran los PNJ). Con 50 se cambia un Teratipo: como mucho ≈ 100 al día (2 cambios).
+* **Caramelos Exp.**: **tope propio de 9.000 EXP al día** (lo mismo que 90 PB de la Tienda de Combate), aunque se hagan 10 incursiones de 5★; se suman a los 12.000 de combates y no se pueden comprar con monedas.
+* **Captura garantizada**: el jefe nunca escapa. Entra con su **Teratipo**, nivel de la incursión (20-60), 1-4 IV perfectos, naturaleza y tamaño al azar, variocolor 1/1024 y habilidad oculta 2 %. **Cuesta una Ball** del precio mínimo de la tabla (o mejor; la Master Ball también vale). Se reclama durante 24 h.
+* Además XP de entrenador plana (10 × estrellas, con su tope diario) y **nunca monedas**.
+
+### Economía (por qué no es rentable)
+Valor de reventa máximo de un jefe (polvo × 4): Común 20 · Poco común 48 · Rara 120 · Épica 320 (×3 si variocolor, 1/1024). La Ball mínima cuesta **siempre más** que el valor del Pokémon (`test/raid.test.js`, «economía», para **cada especie de cada estrella**):
+
+| Estrellas | Mejor valor de reventa | Ball mínima | Coste / valor |
+|---|---|---|---|
+| 1★ | 20 | Poké (120) | 6× |
+| 2★ | 48 | Poké (120) | 2,5× |
+| 3★ | 120 | Super (360) | 3× |
+| 4★-5★ | 320 | Ultra (480) | 1,5× |
+
+Con el tope de 10 al día lo máximo que se podría «sacar» liberando son ≤ 3.200 monedas de reventa por ≥ 4.800 de Balls: pérdida segura. Mentas y Cápsulas Habilidad no tienen precio de tienda ni los compran los PNJ (solo valen entre jugadores).
+
+### Dificultad (simulación, `test/raid.test.js` «equilibrio»)
+Con un Pokémon sin entrenar (Nv. 50, 0 EV, sus movimientos por nivel), jugando siempre el movimiento de más daño y teracristalizando si coincide el tipo, en solitario con 3 aliados: **1★ ≈ 100 % · 2★ ≈ 100 % · 3★ ≈ 95 % · 4★ ≈ 55-80 % · 5★ ≈ 30-50 %** (según tipos), 4-15 turnos. Con EV, buenos tipos y compañeros reales sube bastante.
