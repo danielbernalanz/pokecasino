@@ -808,3 +808,18 @@ El valor máximo de un Pokémon capturado es lo que se saca liberándolo (polvo 
 `test/capture.test.js` lo comprueba para **cada especie y nivel de cada ruta** (con la mejor Ball posible de cada tipo, 601+ especies para críticas, Ocaso de noche, Nido, Red y Acopio activos, Turno a ×4, etc.) y con una **simulación de 3.000 encuentros por zona** con el jugador ideal (el valor devuelto es siempre < 90 % del gasto). El test mide el valor directo del ejemplar capturado; la evolución posterior queda acotada por los topes diarios de EXP/amistad («Evolución + transferir» en ANTIABUSO, ≈ 9.000/día en el máximo teórico) y por `test/progression.test.js`. Chansey, Golbat y Primeape están en sus rutas reales (Cueva Celeste, Safari). Como mucho un día entero da 30 capturas, es decir, ≥ 3.600 monedas en Balls para ≤ 600 de reventa.
 
 Lo que sí da la captura es **objetivo** (elegir qué especie, Ball, marca o tamaño) y progreso de colección: una Pokédex de comunes sale a ≈ 150-250 monedas por especie dirigida en lugar de las 150 por tirada al azar del Gacha, pero los Pokémon salen con el nivel y la amistad de la ruta (y sin ventajas de monedas). Los **legendarios de encuentro** abaratan el camino a las Aves y a Mewtwo para las colecciones (una sola vez por cuenta, con medallas y la Liga como filtro y ≈ 1.700 monedas de Balls de media en lugar de ≈ 51.000 de Gacha): es el único «atajo» y está limitado a 4 Pokémon por cuenta. Master Ball: sin cambios (se sigue ganando cada 25 niveles, como Campeón y en el Mercado).
+
+## Lotería ID (server/lottery.js · test/lottery.test.js) — 05-11-2026
+
+Como la Lotería del Centro Pokémon de los juegos. Está en **Mi Entrenador → 🎟️ Lotería**.
+
+| Pieza | Regla |
+|---|---|
+| **ID de entrenador** | 5 dígitos (`u.tid`). Si la cuenta ya tenía uno se respeta; si no, sale de un hash del id de usuario y se reserva el siguiente libre si choca con otra cuenta (nunca se repite entre cuentas) |
+| **OT de los ejemplares** | Los ejemplares nuevos llevan `ot` = ID de quien los obtiene. Los antiguos (sin `ot`) cuentan como del propio jugador. Al **regalar** un Pokémon conserva el `ot` (y el nombre `otn`) del entrenador original, aunque pase por varias manos: por eso tiene sentido intercambiar. El Mercado y los PNJ crean un ejemplar nuevo para el comprador |
+| **Sorteo** | Un número de 5 dígitos al día (día UTC): `sha256(semilla del servidor + fecha) mod 100000`. La semilla (`state.lotSeed`) se genera una vez y no sale del servidor: el número de mañana no se puede conocer. Es el mismo para todos. Solo lo ve quien ya lo ha comprobado |
+| **Comprobación** | Gratis, **una vez al día por jugador** (se guarda el resultado; recargar no repite). Se compara con el `ot` de todos tus Pokémon y cuenta el **mejor** (un único premio al día) |
+| **Premios** | Cifras coincidentes contando desde el final, como en los juegos: **2 → Caramelo Exp. XS · 3 → Caramelo Exp. M · 4 → 5 Ultra Ball · 5 → Master Ball**. Solo objetos que ya existen; **nunca monedas** |
+
+### Probabilidades y valor esperado
+Con un ID, cada día: exactamente 2 cifras **0,9 %** · 3 cifras **0,09 %** · 4 cifras **0,009 %** · 5 cifras **0,001 %** (≥ 2 cifras: 1 %). Cada **ID distinto** que tengas (Pokémon regalados por otros entrenadores) es una oportunidad más (los ID propios cuentan una sola vez). Valor esperado por ID y día, valorando el Caramelo Exp. XS en ≈ 3 monedas, el M en ≈ 90, las 5 Ultra Ball en 2.400 y la Master Ball en 75.000 (cotas altas): `0,009·3 + 0,0009·90 + 0,00009·2.400 + 0,00001·75.000 ≈ 1,1` monedas al día; con 12 ID distintos ≈ 13. Muy por debajo de cualquier otra fuente sin apostar (≈ 2.500 al día) y con la Master Ball en ≈ 1 de cada 100.000 días por ID (`test/lottery.test.js`, «valor esperado»).

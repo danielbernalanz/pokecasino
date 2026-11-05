@@ -1,0 +1,25 @@
+/* Lotería ID, Teracristalización e Incursiones (views/lottery-ui.js, battle-screen.js, views/raids.js) */
+
+/* ---- Lotería ID ---- */
+.lot-panel { gap: 10px; }
+.lot-top { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.lot-card { background: var(--panel2); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-sh); padding: 10px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.lot-digits { display: flex; gap: 6px; justify-content: center; }
+.lot-d { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 44px; font: 700 28px/1 var(--pixel); background: var(--panel-in); color: var(--text); border: 3px solid var(--ink); border-radius: 8px; }
+.lot-d.hit { background: var(--gold); color: #3a2500; box-shadow: 0 0 0 2px var(--red); }
+.lot-draw .lot-result { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.lot-draw .btn { min-height: 44px; }
+.lot-win { font-weight: 800; color: var(--good); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.lot-win img, .lot-prizes img { width: 28px; height: 28px; image-rendering: pixelated; }
+.lot-prizes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.lot-prizes li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 2px 4px; border-radius: 8px; }
+.lot-prizes li.on { background: var(--gold); color: #3a2500; }
+.lot-ids { display: flex; flex-wrap: wrap; gap: 5px; }
+.lot-chip { background: var(--panel2); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 9px; font-size: 13px; }
+.lot-chip.me { background: #ffe9a8; color: #5b3d00; }
+.lot-info { align-items: start; }
+.lot-info h4, .lot-draw h3 { margin: 0; }
+@media (max-width: 640px) {
+  .lot-top { grid-template-columns: minmax(0, 1fr); }
+  .lot-d { width: 30px; height: 40px; font-size: 24px; }
+}

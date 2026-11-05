@@ -2,6 +2,7 @@ import { historyCard } from './history.js';
 import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, playingCard, fmtPlay } from '../core.js';
 import { openEgg } from '../rewards.js';
 import { hofList } from './elite-ui.js';
+import { lotteryPanel } from './lottery-ui.js';
 
 // Cuántos anuncios hay en el Mercado de un Pokémon (para animar a comprar la pieza que falta).
 let marketCache = null;
@@ -23,13 +24,14 @@ export default {
     const body = h('div', { class: 'stack tr-panel' });
     const hist = h('div', { class: 'tr-hist' }, h('h2', { class: 'section-title' }, 'Historial'));
     // Pestañas: todo el perfil cabe en una pantalla; cada pestaña muestra un bloque.
-    const TABS = [['perfil', '🙋', 'Perfil'], ['medallas', '🏅', 'Medallas'], ['aspecto', '🎨', 'Aspecto'], ['colecciones', '📚', 'Colecciones']];
+    const TABS = [['perfil', '🙋', 'Perfil'], ['medallas', '🏅', 'Medallas'], ['aspecto', '🎨', 'Aspecto'], ['colecciones', '📚', 'Colecciones'], ['loteria', '🎟️', 'Lotería']];
     const tabsEl = h('div', { class: 'tabs tr-tabs', role: 'tablist' });
     const paintTabs = () => tabsEl.replaceChildren(...TABS.map(([id, ico, l]) => h('button', { class: 'tab' + (trTab === id ? ' active' : ''), role: 'tab', 'aria-selected': String(trTab === id), onclick: () => { trTab = id; paintTabs(); render(); } }, `${ico} ${l}`)));
     paintTabs();
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '🏅 Mi Entrenador'), h('p', { class: 'muted' }, 'Medallas, colecciones, tu aspecto y tus cuentas.')), tabsEl, body);
     historyCard().then((c) => hist.append(c));
     let counts = {};
+    let lotEl = null;
 
     function render() {
       const me = S.me;
@@ -42,7 +44,7 @@ export default {
         avatar(me.buddy, looks, 'big'),
         h('div', { class: 'stack' },
           h('h2', {}, me.username, ' ', titleTag(looks.title)),
-          h('div', { class: 'muted' }, `Nivel ${me.level} · ${got}/8 medallas · ${pr.sets.filter((s) => s.done).length} colecciones`),
+          h('div', { class: 'muted' }, `ID ${me.tid} · Nivel ${me.level} · ${got}/8 medallas · ${pr.sets.filter((s) => s.done).length} colecciones`),
           h('div', { class: 'row gap' }, playingCard(null, { back: me.equip.cardback, cls: 'small' }), playingCard(null, { back: me.equip.cardback, cls: 'small' }),
             h('span', { class: 'muted small' }, 'Así ven tus cartas en el póker')),
           h('div', { class: 'small' }, `Límite de apuesta: `, h('b', {}, fmt(me.maxBet)), got < 8 ? h('span', { class: 'muted' }, ` → ${fmt(S.data.maxBetByBadges[got + 1])} con la próxima medalla`) : null),
@@ -112,6 +114,10 @@ export default {
       if (trTab === 'perfil') body.replaceChildren(h('div', { class: 'tr-profile' }, h('div', { class: 'stack' }, card, lockedBox || ''), hist));
       else if (trTab === 'medallas') body.replaceChildren(h('h2', { class: 'section-title' }, `Medallas de Kanto (${got}/8)`), perks, badges, h('h2', { class: 'section-title' }, '🏛️ Salón de la Fama'), hofList(me.hof, { limit: 20 }), got >= 8 ? h('a', { class: 'btn primary', href: '#/combates/alto-mando' }, '👑 Ir al Alto Mando') : null);
       else if (trTab === 'aspecto') body.replaceChildren(h('div', { class: 'cards3 tr-looks' }, slotBox('frame', '🖼️ Marco de avatar'), slotBox('cardback', '🂠 Dorso de carta'), slotBox('title', '🏷️ Título'), eggBox));
+      else if (trTab === 'loteria') { // (el panel se crea una sola vez: cargar su estado dispara «me», que volvería a pintar esta vista)
+        if (lotEl) body.replaceChildren(lotEl);
+        else { body.replaceChildren(h('p', { class: 'small muted' }, 'Cargando…')); lotEl = false; lotteryPanel().then((el) => { lotEl = el; if (trTab === 'loteria') body.replaceChildren(el); }); }
+      }
       else body.replaceChildren(h('p', { class: 'small muted' }, 'Toca un Pokémon que te falte para buscarlo en el Mercado. 🏪 indica cuántos hay a la venta.'), sets);
     }
     async function equip(slot, id) { if (await act('equip', { slot, id })) sfx('click'); }

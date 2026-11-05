@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.05-x",
+    "date": "2026-11-05",
+    "title": "Lotería ID",
+    "items": [
+      "🎟️ Nueva pestaña «Lotería» en Mi Entrenador. Cada entrenador tiene un ID de 5 dígitos (se ve en su tarjeta) y una vez al día puedes comprobar gratis el número sorteado, como en el Centro Pokémon de los juegos.",
+      "🏆 Se comparan las cifras desde el final con el ID del entrenador original de tus Pokémon: 2 cifras dan un Caramelo Exp. XS, 3 un Caramelo Exp. M, 4 cinco Ultra Ball y 5 una Master Ball. Nunca da monedas.",
+      "🤝 Cada Pokémon recuerda quién lo obtuvo (ficha de la Caja PC → Entrenador original). Los que te regalan conservan el ID del entrenador original, así que tener Pokémon de varios entrenadores te da más oportunidades. Los tuyos de antes cuentan como tuyos.",
+      "🔒 Solo cuentan los Pokémon que ya tenías antes de las 00:00 UTC de hoy y hay un único premio al día."
+    ]
+  },
+  {
     "version": "2026.11.05-w",
     "date": "2026-11-05",
     "title": "Captura de Pokémon salvajes",

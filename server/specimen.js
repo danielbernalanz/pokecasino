@@ -56,13 +56,14 @@ function movesFor(p) {
   return out;
 }
 
-function make(id, shiny = false) {
+function make(id, shiny = false, owner = null) {
   const p = BY_ID.get(id);
   const m = {
     uid: makeUid(), nature: pick(NATURES).name, ivs: Array.from({ length: 6 }, () => randInt(0, 31)), level: 5, exp: require('./exp').expAt(id, 5), friendship: 70,
     gender: isFixed(p) ? null : eggroups.rollGender(id, rand()), ability: ABILITIES[p.types[0]] || GENERIC_ABILITY, moves: movesFor(p),
     nick: '', fav: false, shiny: !!shiny, at: Date.now(), evs: [0, 0, 0, 0, 0, 0], // EVs: los ejemplares nuevos empiezan en 0 (ver evs.js)
   };
+  if (owner) m.ot = require('./lottery').tidOf(owner); // ID del entrenador original (Lotería ID, ver lottery.js); los antiguos sin `ot` cuentan como del propio jugador
   movesMod.ensure(id, m); // movimientos por nivel (aprendidos y equipados)
   return m;
 }
@@ -86,7 +87,7 @@ function sync(u, id) {
   const wantShiny = Math.min(c.s || 0, want);
   if (arr.length < want) {
     let need = wantShiny - arr.filter((m) => m.shiny).length;
-    while (arr.length < want) { arr.push(make(id, need > 0)); need--; }
+    while (arr.length < want) { arr.push(make(id, need > 0, u)); need--; }
   }
   while (arr.length > want) {
     const rank = (m) => (m.drop ? -10 : 0) + (m.away ? 20 : 0) + (m.uid === buddyUid ? 4 : 0) + (m.fav ? 2 : 0);
@@ -145,6 +146,7 @@ function computeStats(id, m, level = 50) {
 }
 
 const bond = () => require('./bond'); // carga diferida: bond.js importa este módulo
+const lot = () => require('./lottery');
 function boxView(u) {
   syncAll(u);
   const mons = [];
@@ -155,20 +157,20 @@ function boxView(u) {
     const pk = require('./pokerus');
     const fm = require('./forms');
     for (const m of arr) ex.ensure(Number(id), m);
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), expMax: ex.expAt(Number(id), 100), evoForced: fm.forcedTarget(Number(id), m), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, ball: require('./balls').ballOf(m), mark: m.mark || null, size: Number.isInteger(m.size) ? m.size : null, caught: m.caught || null, at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), expMax: ex.expAt(Number(id), 100), evoForced: fm.forcedTarget(Number(id), m), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, ball: require('./balls').ballOf(m), mark: m.mark || null, size: Number.isInteger(m.size) ? m.size : null, caught: m.caught || null, ot: lot().otOf(u, m), otn: lot().otNameOf(u, m), at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
   }
   db.save();
   return { mons };
 }
 
-// Rasgos que viajan con el ejemplar al regalarlo (como al intercambiar en los juegos): IV, naturaleza, habilidad oculta, Ball, marca, tamaño y lugar de captura.
+// Rasgos que viajan con el ejemplar al regalarlo (como al intercambiar en los juegos): ID del entrenador original (y su nombre), IV, naturaleza, habilidad oculta, Ball, marca, tamaño y lugar de captura.
 // No viajan nivel, EXP, EVs ni amistad (la EXP no se transfiere: ver docs/ANTIABUSO.md).
-const traitsOf = (m) => ({ ivs: m.ivs.slice(), nature: m.nature, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined });
+const traitsOf = (m, from) => ({ ot: from ? lot().otOf(from, m) : m.ot, otn: from ? (lot().otNameOf(from, m) || from.username) : m.otn, ivs: m.ivs.slice(), nature: m.nature, ha: !!m.ha, ball: m.ball, mark: m.mark, size: m.size, caught: m.caught ? { ...m.caught } : undefined });
 function applyTraits(id, m, t) {
   m.ivs = t.ivs.slice(); m.nature = t.nature;
   abilities.resolve(id, m);
   if (t.ha) { m.ha = true; abilities.resolve(id, m); }
-  for (const k of ['ball', 'mark', 'size', 'caught']) { if (t[k] !== undefined && t[k] !== null) m[k] = t[k]; }
+  for (const k of ['ot', 'otn', 'ball', 'mark', 'size', 'caught']) { if (t[k] !== undefined && t[k] !== null) m[k] = t[k]; }
 }
 
 function find(u, { id, uid }) {

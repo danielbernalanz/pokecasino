@@ -31,6 +31,8 @@ Casino Pokémon **online y multijugador** para jugar con tus amigos en una red p
 
 **Captura de Pokémon salvajes** (Pokémon → Aventura → 🌿 Captura): 13 rutas de Kanto con las tablas de encuentros de los juegos (de día y de noche, hora de España), 30 encuentros al día, apariciones masivas cada 4 h, clima, marcas (Rara 1/1000, hora, clima, Mini, Jumbo) y tamaños 0–255. Debilita al salvaje con tu equipo (daño y estados), lanza la Ball con la fórmula real de los juegos (ratio de cada especie, 4 sacudidas, capturas críticas según tu Pokédex) y míralo en la Caja PC. 12 Poké Balls con sus efectos (Poké, Super, Ultra, Ocaso, Rápida, Turno, Red, Nido, Acopio, Lujo, Amigo, Sanación; la Master Ball del Gacha captura al 100 %), guardadas en el ejemplar y heredadas en el Criadero. Legendarios de encuentro (Articuno, Zapdos, Moltres, Mewtwo): una sola captura por jugador. Capturar nunca da monedas (ver `docs/BALANCE.md`).
 
+**Lotería ID** (Mi Entrenador → 🎟️ Lotería): cada entrenador tiene un ID de 5 dígitos y cada Pokémon recuerda el ID de su entrenador original (los regalados lo conservan). Una vez al día (día UTC) puedes comprobar gratis el número sorteado: 2 cifras coincidentes desde el final dan un Caramelo Exp. XS, 3 un Caramelo Exp. M, 4 cinco Ultra Ball y 5 una Master Ball. Nunca da monedas (ver `docs/BALANCE.md`).
+
 **Progresión (de novato a campeón)**
 
 1. **Ruta del Entrenador**: 10 pasos guiados con premio (recompensa diaria → primera tirada → compañero → primeras partidas → mesas → multijugador → Huevo Misterioso → Mercado → duelo → primera medalla). Los pasos que ya hayas cumplido se completan solos.
@@ -149,6 +151,7 @@ server/
   dexdata.json    Los 1.025 Pokémon (generado con scripts/build-dex.js desde PokeAPI)
   gacha.js        Banners, probabilidades, Master Ball, variocolores y tienda de polvo
   items.js        Objetos, Tienda Poké y efectos
+  lottery.js      Lotería ID: ID de entrenador, sorteo diario, premios por cifras y OT de los ejemplares
   capture.js      Captura de Pokémon salvajes: encuentros, fórmula real, ataques, Balls, marcas y tamaños (capzones.js: rutas; balls.js: Poké Balls; catchdata.json: ratios de captura de PokeAPI, scripts/gen-catch.js)
   market.js       Mercado entre jugadores con depósito
   npc.js          Comerciantes NPC del Mercado (precios con tope, límites diarios, tesorería)

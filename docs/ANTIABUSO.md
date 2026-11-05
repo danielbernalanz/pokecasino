@@ -97,3 +97,10 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - **Apariciones masivas, clima y marcas:** deterministas por tramo de tiempo (iguales para todos, no dependen del jugador) o tiradas del servidor; no dan ventaja de monedas. Variocolor 1/1024.
 - **Ejemplares capturados:** son ejemplares normales; al **regalarlos** conservan Ball, marca, tamaño, IV, naturaleza y habilidad oculta (no nivel ni EXP: la EXP no se transfiere); en el Mercado y con los PNJ (órdenes por especie, no por ejemplar) el comprador recibe un ejemplar nuevo. Los capturados no esquivan los topes de cuentas nuevas (`transfer.js`) ni los de los PNJ.
 - **Herencia de Ball:** decidida por el servidor al recoger el huevo; la Master Ball nunca se hereda.
+
+## Lotería ID (server/lottery.js)
+
+- **Una comprobación al día por jugador** (`u.lot.day`), con el resultado guardado: recargar no lo repite. El número lo calcula el servidor con una semilla que no sale de él; mañana no se puede adivinar, y hoy solo lo ve quien ya lo ha comprobado.
+- **Solo cuentan los Pokémon que tenías antes de las 00:00 UTC de hoy**: aunque alguien vea el número de hoy, no le sirve para fabricar un premio con regalos de última hora. Los ID ajenos solo se consiguen con regalos, que ya tienen tope (10 Pokémon y 2 legendarios al día por receptor; las cuentas nuevas no regalan).
+- **Un único premio al día** (el del mejor ejemplar), sin monedas y de objetos baratos de conseguir; el único objeto realmente valioso (Master Ball) sale a 1 de cada 100.000 por ID y día. Una cuenta secundaria no cambia la cuenta: cada una tiene su ID y su propia comprobación diaria, pero sus premios son los mismos objetos de valor esperado ≈ 1 moneda al día.
+- El **ID de entrenador** lo asigna el servidor y no se puede elegir ni cambiar.

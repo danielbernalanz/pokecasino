@@ -257,7 +257,7 @@ function publicUser(u) {
 function privateUser(u) {
   require('./exp').migrate(u); // caramelos de familia → Caramelos Exp. (una sola vez por cuenta; normalmente ya lo hizo fixes.js al arrancar)
   return {
-    id: u.id, username: u.username, isAdmin: u.isAdmin, playMs: u.playMs || 0, playPublic: u.playPublic !== false, coins: u.coins, dust: u.dust, bp: Math.max(0, Math.floor(u.bp || 0)),
+    id: u.id, username: u.username, tid: require('./lottery').tidOf(u), isAdmin: u.isAdmin, playMs: u.playMs || 0, playPublic: u.playPublic !== false, coins: u.coins, dust: u.dust, bp: Math.max(0, Math.floor(u.bp || 0)),
     xp: u.xp, level: u.level, xpCur: xpForLevel(u.level), xpNext: xpForLevel(u.level + 1),
     daily: u.daily, lastHeal: u.lastHeal, collection: u.collection, buddy: u.buddy, trades: u.tradeLog || [],
     buddyBonus: buddyBonus(u), pvpPlayed: !!(u.btHist || []).some((x) => x.mode === 'pvp'), stats: u.stats, voltorbLevel: u.voltorb.level,

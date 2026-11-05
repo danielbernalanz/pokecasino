@@ -299,7 +299,7 @@ function giftPoke(user, { to, id, shiny }) {
   const seen = new Set(specimen.sync(t, p.id).map((m) => m.uid));
   gacha.grant(t, p.id, !!shiny);
   const got = gone && specimen.sync(t, p.id).find((m) => !seen.has(m.uid));
-  if (got) specimen.applyTraits(p.id, got, specimen.traitsOf(gone));
+  if (got) specimen.applyTraits(p.id, got, specimen.traitsOf(gone, user));
   require('./evoreq').noteTrade(t, user); // intercambio real: vale como un Cordón Unión
   hub.track(t, 'gift_recv');
   db.save();
@@ -653,6 +653,8 @@ io.on('connection', (socket) => {
   on('cap:attack', (u, p) => capture.attack(u, p));
   on('cap:ball', (u, p) => capture.throwBall(u, p));
   on('cap:run', (u) => capture.run(u));
+  on('lot:state', (u) => require('./lottery').view(u), { push: false });
+  on('lot:check', (u) => require('./lottery').check(u));
   on('care:view', daycare.view, { push: false });
   on('care:check', daycare.check, { push: false });
   on('care:deposit', daycare.deposit);
