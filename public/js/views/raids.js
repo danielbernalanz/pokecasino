@@ -1,6 +1,7 @@
 // Teraincursiones cooperativas: jefes teracristalizados de 1★ a 5★, en solitario (3 aliados CPU) o con hasta 4 jugadores (ver server/raid.js).
 import { S, h, act, emit, fmt, sfx, toast, modal, sprite, typeBadge, hpBar, itemImg, bus, TYPE_ES } from '../core.js';
 import { aniImg } from '../anim.js';
+import { themeNote } from '../weekly.js';
 import { confetti, reduced, shake } from '../fx.js';
 import { TYPE_COLOR } from './tera-ui.js';
 
@@ -23,6 +24,7 @@ export default {
     let timers = [];
     const body = h('div', { class: 'raid-body' });
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '💎 Teraincursiones'), h('p', { class: 'muted' }, 'Jefes teracristalizados de 1★ a 5★: solo con 3 aliados o con hasta 4 jugadores. Capturas al jefe con su Teratipo.')), body);
+    { const tn = themeNote(); if (tn) root.querySelector('.game-head')?.append(tn); }
 
     async function load() { try { st = await emit('raid:state'); } catch (e) { toast(e.message, 'error'); return; } cur = st.raid; render(); }
     const stop = () => { timers.forEach(clearInterval); timers = []; };

@@ -244,7 +244,9 @@ test('apariciones masivas y clima: deterministas, una por tramo de 4 h, de una e
   let hit = 0;
   const N = 6000;
   for (let i = 0; i < N; i++) if (cap.makeEncounter({}, z, t, rng).id === a.id) hit++;
-  const base = z.enc.filter((e) => e.id === a.id && (!e.t || e.t === 'day')).reduce((s, e) => s + e.w, 0) / z.enc.filter((e) => !e.t || e.t === 'day').reduce((s, e) => s + e.w, 0);
+  // (con el peso ×3 del tipo de la semana temática, ver themes.js)
+  const wt = (e) => e.w * require('../server/themes').captureWeight(e.id, t);
+  const base = z.enc.filter((e) => e.id === a.id && (!e.t || e.t === 'day')).reduce((s, e) => s + wt(e), 0) / z.enc.filter((e) => !e.t || e.t === 'day').reduce((s, e) => s + wt(e), 0);
   assert.ok(Math.abs(hit / N - (0.4 + 0.6 * base)) < 0.03, `${hit / N}`);
   // Clima: estable en cada tramo de 6 h; sin clima en cuevas.
   assert.strictEqual(cap.weatherOf('ruta1', t), cap.weatherOf('ruta1', t + 60000));

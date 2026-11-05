@@ -23,6 +23,7 @@ const gacha = require('./gacha');
 const specimen = require('./specimen');
 const daytime = require('./daytime');
 const balls = require('./balls');
+const themes = require('./themes');
 const movesMod = require('./moves');
 const abilities = require('./abilities');
 const Z = require('./capzones');
@@ -199,7 +200,7 @@ function pickWild(z, now, rng) {
   const ob = outbreakAt(now);
   if (ob.zone === z.id && rng() < OUTBREAK_SHARE) return { id: ob.id, level: ri(rng, ob.min, ob.max), outbreak: true, wx };
   const pool = z.enc.filter((e) => !e.t || e.t === ph);
-  const e = weightedPick(pool, (x) => x.w * (wx === 'rain' && isWater(x.id) ? RAIN_WATER : 1), rng);
+  const e = weightedPick(pool, (x) => x.w * (wx === 'rain' && isWater(x.id) ? RAIN_WATER : 1) * themes.captureWeight(x.id, now), rng); // (Semana temática: ×3 al tipo de la semana, ver themes.js)
   return { id: e.id, level: ri(rng, e.min, e.max), outbreak: false, wx };
 }
 
@@ -451,6 +452,7 @@ function finishCapture(u, e, ballId, now) {
     m.caught = { zone: e.zone, level: e.level, at: now, legend: !!e.legend, outbreak: !!e.outbreak };
     m.at = now;
   }
+  themes.onCapture(u, id, now); // misión de la semana temática
   const rare = pk.rarity === 'L' || pk.rarity === 'M';
   const z = Z.ZONE_BY_ID.get(e.zone);
   if (rare) hub.feed('capture', `🎯 ${u.username} ha capturado a ${pk.name} salvaje en ${z ? z.name : 'su ruta'}`, { pokeId: id, shiny: e.shiny });

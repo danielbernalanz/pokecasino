@@ -5,6 +5,7 @@ import { canInstall, installApp } from '../main.js';
 import { dailyChest } from '../rewards.js';
 import { buddyFindBlock, petButton, heartsEl } from './huerto.js';
 import { oakSay } from '../nav.js';
+import { themeCard } from '../weekly.js';
 
 function rewardText(r) {
   const parts = [];
@@ -195,7 +196,7 @@ export default {
       h('div', { class: 'page-head home-head' }, h('h1', {}, `¡Hola, ${me.username}!`), buddyArt),
       oakSay(),
       pc.box,
-      h('div', { class: 'stack' }, backupReminder(), megaBanner(), S.events && S.events.active.length ? eventsCard() : ''),
+      h('div', { class: 'stack' }, backupReminder(), megaBanner(), themeCard(), S.events && S.events.active.length ? eventsCard() : ''),
       h('div', { class: 'home-grid' },
         h('div', { class: 'card home-card' }, h('h3', {}, h('img', { class: 'pixel', src: item('amulet-coin'), alt: '' }), 'Regalo diario'),
           days, h('div', { class: 'home-actions' }, dailyBtn)),

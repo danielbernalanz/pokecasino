@@ -71,6 +71,6 @@ function force(id, hours) {
   db.save();
 }
 
-const publicState = () => ({ active: active(), next: next(), all: Object.entries(EVENTS).map(([id, e]) => ({ id, ...e })) });
+const publicState = () => ({ theme: require('./themes').state(), active: active(), next: next(), all: Object.entries(EVENTS).map(([id, e]) => ({ id, ...e })) });
 
 module.exports = { EVENTS, WEEK, active, has, next, force, publicState, madrid };

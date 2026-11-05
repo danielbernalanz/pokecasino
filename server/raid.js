@@ -24,6 +24,7 @@ const db = require('./db');
 const hub = require('./hub');
 const { BY_ID, DEX, TYPES, effectiveness } = require('./pokedex');
 const { rand: realRand } = require('./rng');
+const themes = require('./themes');
 
 let RNG = realRand; // las pruebas lo sustituyen por uno determinista
 const setRng = (f) => { RNG = f || realRand; };
@@ -85,10 +86,14 @@ function bossesOf(day = dayKey()) {
     const pool = poolOf(star);
     const used = new Set();
     for (let slot = 0; slot < SLOTS; slot++) {
-      let k = h32(`raid:${day}:${star}:${slot}`) % pool.length;
-      while (used.has(pool[k].id)) k = (k + 1) % pool.length;
-      used.add(pool[k].id);
-      out.push({ star, slot, id: pool[k].id, tera: TYPES[h32(`raidtera:${day}:${star}:${slot}`) % TYPES.length], level: LEVEL[star] });
+      // Semana temática (themes.js): el último jefe de cada estrella es del tipo de la semana (especie de ese tipo si el grupo de la estrella la tiene) y de ese Teratipo.
+      const th = slot === SLOTS - 1 ? themes.typeOfDay(day) : null;
+      const themed = th ? pool.filter((p) => p.types.includes(th)) : [];
+      const src = themed.length >= SLOTS ? themed : pool;
+      let k = h32(`raid:${day}:${star}:${slot}`) % src.length;
+      while (used.has(src[k].id)) k = (k + 1) % src.length;
+      used.add(src[k].id);
+      out.push({ star, slot, id: src[k].id, tera: th || TYPES[h32(`raidtera:${day}:${star}:${slot}`) % TYPES.length], level: LEVEL[star], ...(th ? { theme: true } : {}) });
     }
   }
   return out;

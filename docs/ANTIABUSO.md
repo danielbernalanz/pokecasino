@@ -137,3 +137,8 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - **Un solo torneo a la vez por jugador** y máximo 30 torneos sin terminar en el casino; los equipos se validan en el servidor (cláusulas de especies y objetos, ejemplares libres) al pulsar «Listo» y otra vez al empezar el combate.
 - **Premios cosméticos** solo con ≥ 4 inscritos y ≥ 2 victorias reales (sin incomparecencias ni «bye»), una vez por cuenta: un torneo de dos cuentas no da nada.
 - **Invitaciones:** como mucho 10 por torneo (avisos persistentes en el centro de notificaciones, no mensajes públicos).
+
+## Eventos temáticos (server/themes.js)
+
+- **Sin monedas:** la semana temática solo reparte encuentros y jefes distintos; la única recompensa es la misión semanal (3 capturas del tipo → 2 Tickets Gacha, una vez por semana y cuenta). Las capturas siguen costando Balls y el tope de 30 encuentros/día; capturar a un jefe de Teraincursión sigue limitado a 10 incursiones premiadas al día.
+- Determinista por fecha: ni el cliente ni el anfitrión eligen el tipo. Una cuenta secundaria puede completar su propia misión (2 Tickets/semana), pero cada ticket vale lo que una tirada (150 monedas) y requiere ≥ 3 capturas con Balls pagadas: menos de lo que cuestan.

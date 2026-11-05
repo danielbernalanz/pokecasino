@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.11.05-ac",
+    "date": "2026-11-05",
+    "title": "Semanas temáticas por tipo",
+    "items": [
+      "🗓️ Cada semana (de lunes a domingo, hora de España) es ahora una «Semana de <tipo>»: Fantasma, Fuego, Eléctrica… Cada ciclo de 18 semanas recorre los 18 tipos. Se suma a los eventos de fin de semana y se anuncia en el Vestíbulo, en «En vivo» y en la cabecera de Captura y Teraincursiones.",
+      "🌿 En Captura, los Pokémon del tipo de la semana salen el triple de veces en las rutas donde viven (los ratios de captura, las Balls y los 30 encuentros al día no cambian).",
+      "💎 En las Teraincursiones, el segundo jefe de cada estrella es de ese tipo y con ese Teratipo.",
+      "🎯 Misión semanal: captura 3 Pokémon del tipo de la semana (en Captura o capturando a un jefe de incursión) y te llevas 2 Tickets Gacha, una vez por semana. Sin monedas extra."
+    ]
+  },
+  {
     "version": "2026.11.05-ab",
     "date": "2026-11-05",
     "title": "Torneos entre amigos",

@@ -492,13 +492,15 @@ const admin = {
 let eventsSig = null;
 function checkEvents() {
   const st = events.publicState();
-  const sig = st.active.map((e) => `${e.id}:${e.ends}`).join(',');
+  const sig = st.active.map((e) => `${e.id}:${e.ends}`).join(',') + '|' + st.theme.type;
   if (sig === eventsSig) return;
-  const before = new Set((eventsSig || '').split(',').filter(Boolean).map((x) => x.split(':')[0]));
+  const before = new Set((eventsSig || '').split('|')[0].split(',').filter(Boolean).map((x) => x.split(':')[0]));
+  const oldTheme = (eventsSig || '').split('|')[1];
   const first = eventsSig === null;
   eventsSig = sig;
   io.emit('events', st);
   if (first) return;
+  if (oldTheme !== st.theme.type) hub.feed('event', `¡Empieza ${st.theme.icon} ${st.theme.name}! Más Pokémon de tipo ${st.theme.typeName} en Captura, jefes de Teraincursión de ese tipo y misión semanal.`);
   for (const e of st.active) if (!before.has(e.id)) hub.feed('event', `¡Empieza ${e.icon} ${e.name}! ${e.desc}`);
 }
 setInterval(checkEvents, 60 * 1000).unref();

@@ -1,5 +1,6 @@
 // Captura: rutas de Kanto con encuentros salvajes. Debilita con tu equipo, duerme, lanza Balls y captúralo (ver server/capture.js).
 import { S, h, act, emit, fmt, sfx, toast, modal, sprite, typeBadge, hpBar, say, loader, itemImg, sleep, bus } from '../core.js';
+import { themeNote } from '../weekly.js';
 import { aniImg } from '../anim.js';
 import { burstEl, reduced, confetti, flash, vibrate, shake } from '../fx.js';
 import { phaseNow, PHASE } from '../daytime.js';
@@ -330,6 +331,7 @@ export default {
     const head = h('div', { class: 'cap-head' });
     root.append(h('div', { class: 'game-head' }, h('h1', {}, '🌿 Captura'), h('div', { class: 'row gap wrap' }, h('a', { class: 'btn small', href: '#/pc' }, '🖥️ Caja PC'), h('a', { class: 'btn small', href: '#/bag' }, '🎒 Mochila'))),
       head, body);
+    { const tn = themeNote(); if (tn) root.querySelector('.game-head .row')?.prepend(tn); }
     body.append(loader('Entrando en la hierba alta…'));
     try { await load(); } catch (err) { toast(err.message, 'error'); }
     this.off = bus.on('me', () => { /* la cabecera y los contadores salen del estado del servidor */ });
