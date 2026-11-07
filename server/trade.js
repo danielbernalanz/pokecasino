@@ -196,11 +196,12 @@ function execute(r, who, now) {
   } catch (e) { fail(e.message); }
   const snapA = gts.snapOf(ua, A.id, mA); const snapB = gts.snapOf(ub, B.id, mB);
   const back = [snapshot(ua), snapshot(ub)];
+  let gotA; let gotB;
   try {
     gts.pull(ua, A.id, mA);
     gts.pull(ub, B.id, mB);
-    gts.receive(ua, snapB);
-    gts.receive(ub, snapA);
+    gotA = gts.receive(ua, snapB);
+    gotB = gts.receive(ub, snapA);
   } catch (e) {
     restore(ua, back[0]); restore(ub, back[1]);
     console.error('Intercambio directo: se ha deshecho (', e.message, ')');
@@ -212,6 +213,7 @@ function execute(r, who, now) {
   gts.dayLeft(ub, now); ub.gts.n++;
   const evo = require('./evoreq'); // intercambio real: vale como un Cordón Unión para los dos (ver evoreq.noteTrade)
   evo.noteTrade(ua, ub, now); evo.noteTrade(ub, ua, now);
+  require('./candy').offerTradeEvo(ua, gotA, B.id, A.id); require('./candy').offerTradeEvo(ub, gotB, A.id, B.id); // evolución por intercambio automática
   const g = (db.data.gts ||= { deps: [], log: [], nextId: 1 });
   g.log.push({ at: now, a: ua.username, b: ub.username, ga: { id: A.id, shiny: !!mA.shiny, level: snapA.level, nick: snapA.nick, ball: snapA.tr.ball || null, ot: null }, gb: { id: B.id, shiny: !!mB.shiny, level: snapB.level, nick: snapB.nick, ball: snapB.tr.ball || null, ot: null }, direct: true });
   if (g.log.length > 200) g.log.splice(0, g.log.length - 200);

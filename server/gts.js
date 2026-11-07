@@ -193,7 +193,8 @@ function cancel(u, p, now = Date.now()) {
 function deliver(d) {
   const owner = db.userById(d.userId);
   if (!owner || !room(owner, d.recv.id)) return false;
-  receive(owner, d.recv);
+  const gotOwner = receive(owner, d.recv);
+  require('./candy').offerTradeEvo(owner, gotOwner, d.recv.id, d.mon.id); // evolución por intercambio (se avisa al conectarse)
   G().deps.splice(G().deps.indexOf(d), 1);
   db.save();
   require('./notify').push(owner, { kind: 'gts', text: `🌐 GTS: ${d.with} ha intercambiado tu ${nameOf(d.mon.id)} y recibes ${d.recv.shiny ? nameOf(d.recv.id) + ' variocolor' : nameOf(d.recv.id)} (Nv. ${d.recv.level})`, link: '#/gts' });
@@ -261,7 +262,8 @@ function offer(u, p, now = Date.now()) {
   const mine = snapOf(u, id, m); // lo que sale de mi Caja (con mis rasgos) …
   const theirs = snapOf(owner, d.mon.id, d.mon.m); // … y lo que sale del depósito
   pull(u, id, m);
-  try { receive(u, theirs); } catch (e) { putBack(u, id, m); throw e; }
+  let gotMine;
+  try { gotMine = receive(u, theirs); } catch (e) { putBack(u, id, m); throw e; }
   tr.notePokeIn(u, isRare(d.mon.id), now);
   tr.notePokeIn(owner, isRare(id), now);
   dayLeft(u, now); u.gts.n++;
@@ -270,6 +272,7 @@ function offer(u, p, now = Date.now()) {
   const evo = require('./evoreq'); // intercambio real: vale como un Cordón Unión para los dos (ver evoreq.noteTrade)
   evo.noteTrade(u, owner, now);
   evo.noteTrade(owner, u, now);
+  require('./candy').offerTradeEvo(u, gotMine, d.mon.id, id);
   const g = G();
   g.log.push({ at: now, a: owner.username, b: u.username, ga: brief(d.mon.id, d.mon.m), gb: brief(id, m) });
   if (g.log.length > LOG_MAX) g.log.splice(0, g.log.length - LOG_MAX);

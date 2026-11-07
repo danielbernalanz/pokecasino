@@ -161,6 +161,13 @@ bus.on('me', (me) => {
   paintGift(me);
 });
 bus.on('toast', (t) => toast(t, 'success'));
+// Evolución por intercambio automática (GTS / intercambio directo): al recibir el Pokémon se pregunta «¿Quieres que evolucione?» (cancelar = como pulsar B).
+let tradeEvoBusy = false;
+bus.on('me', async (me) => {
+  if (tradeEvoBusy || !me.tradeEvo || !me.tradeEvo.length) return;
+  tradeEvoBusy = true;
+  try { const { askEvolution } = await import('./views/pc-fx.js'); const o = me.tradeEvo[0]; await askEvolution({ id: o.id, uid: o.uid, shiny: o.shiny, name: o.name, to: o.to, auto: true }); } catch { /* nada */ } finally { tradeEvoBusy = false; }
+});
 // 🎁 de la cabecera: aparece mientras el regalo diario de hoy sigue sin reclamar (lleva al Inicio).
 function paintGift(me = S.me) {
   const b = $('#gift-btn');

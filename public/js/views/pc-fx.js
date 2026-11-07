@@ -124,14 +124,15 @@ export async function askEvolution(info) {
       h('div', { class: 'row gap wrap evo-ask-btns' },
         ...info.to.map((t) => h('button', { class: 'btn primary', type: 'button', 'data-evo-to': t.to, onclick: () => finish(t.to) }, info.to.length > 1 ? `Evolucionar a ${t.name}` : `Sí, a ${t.name}`)),
         h('button', { class: 'btn', type: 'button', 'data-evo-cancel': '1', onclick: () => finish(0) }, 'No, que siga como está')),
-      h('p', { class: 'small muted' }, 'Si ahora no, podrás hacerlo cuando quieras en Caja PC → Datos → Entrenar.'));
+      h('p', { class: 'small muted' }, 'info.auto ? 'Si ahora no, podrás hacerlo más tarde con un Cordón Unión o un intercambio pendiente (Caja PC → Datos → Entrenar).' : 'Si ahora no, podrás hacerlo cuando quieras en Caja PC → Datos → Entrenar.'));
     const m = modal(body, { title: 'Evolución', onClose: () => finish(0) });
   });
-  if (!choice) return false;
-  const r = await act('pc:evolve', { id: info.id, uid: info.uid, to: choice });
-  if (!r) return false;
+  if (!choice) { if (info.auto) await act('pc:evocancel', { uid: info.uid }); return false; } // cancelar = pulsar B: sin evolucionar; después, Cordón Unión o intercambio pendiente
+  const r = await act('pc:evolve', { id: info.id, uid: info.uid, to: choice, ...(info.auto ? { auto: true } : {}) });
+  if (!r) { if (info.auto) await act('pc:evocancel', { uid: info.uid }); return false; }
   await evolveAnim(info.id, choice, info.shiny);
   toast(`¡Tu ${name} evolucionó a ${r.name}!${r.form ? ` (${r.form})` : ''}`, 'success');
+  if (r.shedinja) toast('¡Con una Poké Ball ha aparecido un Shedinja en tu Caja!', 'success');
   if (r.evo && r.evo.length) await askEvolution({ id: r.to, uid: info.uid, shiny: info.shiny, name: info.nick || S.dexById.get(r.to).name, nick: info.nick, to: r.evo });
   return true;
 }

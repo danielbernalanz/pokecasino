@@ -99,7 +99,7 @@ function openMon(uid, openPage = 'info') {
     const r = (S.data.evo.req || {})[t.id];
     if (!r) return [];
     const out = [];
-    if (r.item) { const have = S.me.items[r.item] || 0; out.push({ text: `${S.data.items[r.item].name} (tienes ${have})`, ok: have > 0 }); }
+    if (r.item) { const have = S.me.items[r.item] || 0; const eq = (S.data.items[r.item].holdId && m.item === S.data.items[r.item].holdId); out.push({ text: `${S.data.items[r.item].name} (${eq ? 'lo lleva equipado: se gasta ese' : `tienes ${have}`})`, ok: have > 0 || eq }); }
     if (r.trade) {
       const cords = S.me.items[S.data.evo.link] || 0;
       const tokens = box.tradeTokens || 0;
@@ -137,6 +137,7 @@ function openMon(uid, openPage = 'info') {
         modalRef.close();
         await evolveAnim(m.id, t.id, m.shiny);
         toast(`¡Tu ${label(m)} evolucionó a ${t.name}!${r.form ? ` (${r.form})` : ''}`, 'success');
+        if (r.shedinja) toast('¡Con una Poké Ball ha aparecido un Shedinja en tu Caja!', 'success');
         if (r.evo && r.evo.length) await askEvolution({ id: r.to, uid, shiny: m.shiny, name: label(m), to: r.evo });
         await load(); render && render();
         if (r.pending && r.pending.length) openMon(uid);

@@ -29,6 +29,8 @@ const MAX_LEVEL = exp.MAX_LEVEL;
 // También el último de su especie: la Pokédex es un registro permanente (dexreg.js), así que la especie origen sigue «obtenida» aunque ya no la tengas.
 // (Hasta la v59 la PRIMERA evolución a una especie nueva dejaba una copia de nivel 5 de la especie origen para no perder su entrada: ya no hace falta
 // ni se da; las cuentas que ya la recibieron la conservan y `u.evoReg` solo queda como historial.)
+// Nincada → Ninjask: si hay hueco en la Caja (menos de 5 Shedinja) y una Poké Ball (normal) en la mochila, se gasta y aparece un Shedinja nuevo (como en los juegos).
+const NINCADA = 290; const NINJASK = 291; const SHEDINJA = 292;
 const WONDER_DAILY = 5;
 const RECYCLE_RATE = 0.4; // del precio de tienda
 const RECYCLE_DAILY_DUST = 300;
@@ -61,7 +63,7 @@ const evoLevel = (to) => evoreq.levelOf(to);
 
 // Comprueba TODO lo que hace falta para que el ejemplar `m` (especie `id`) evolucione a `to` sin tocar nada; lanza un error en español si falta algo.
 // Devuelve el plan de requisitos especiales (`consume()` gasta el objeto o intercambio) y si es la primera evolución a esa especie.
-function evoCheck(u, m, id, to) {
+function evoCheck(u, m, id, to, opt = {}) {
   id = Number(id); to = Number(to);
   const target = evolutionsOf(id).find((x) => x.id === to);
   if (!target) throw new Error('Ese Pokémon no puede evolucionar a eso.');
@@ -80,7 +82,8 @@ function evoCheck(u, m, id, to) {
   // Las estrellas de Caramelo Raro (`cn`) necesitan una copia real que las respalde: el último ejemplar real no puede irse si las hay.
   if (c && (c.cn || 0) > 0 && gacha.realCopies(c) <= 1) throw new Error(`Las estrellas de Caramelo Raro de ${BY_ID.get(id).name} necesitan este ejemplar: no puede evolucionar mientras sea el único real.`);
   if (tc && tc.n >= 5) throw new Error(`Ya tienes 5 estrellas de ${target.name}.`);
-  const special = evoreq.plan(u, m, id, to); // objeto, intercambio, sexo, hora… (lanza error sin gastar nada si falta algo)
+  if (to === SHEDINJA) throw new Error('Shedinja solo aparece cuando Nincada evoluciona a Ninjask (con hueco en la Caja y una Poké Ball en la mochila).');
+  const special = evoreq.plan(u, m, id, to, Date.now(), opt); // objeto, intercambio, sexo, hora… (lanza error sin gastar nada si falta algo)
   return { special, target };
 }
 // Evoluciones que el ejemplar puede hacer AHORA al subir de nivel (las «de nivel»: nivel, amistad, objeto equipado, movimiento…).
@@ -192,7 +195,11 @@ function evolve(u, p) {
   const m = specimen.find(u, p);
   const id = Number(p.id);
   const to = Number(p.to);
-  const { special, target } = evoCheck(u, m, id, to);
+  // Evolución por intercambio AUTOMÁTICA (GTS o intercambio directo): solo con una oferta registrada para ese ejemplar y esa especie (el cliente no puede forzarla).
+  const offer = p.auto ? (u.tradeEvo || []).find((o) => o.uid === m.uid && o.id === id) : null;
+  if (p.auto && !offer) throw new Error('Esa evolución por intercambio ya no está disponible.');
+  const { special, target } = evoCheck(u, m, id, to, offer ? { auto: true, partner: offer.partner } : {});
+  if (offer) u.tradeEvo = u.tradeEvo.filter((o) => o !== offer);
   const c = u.collection[id];
   const tc = u.collection[to];
   const oldEntry = exp.ensure(id, m) && { exp: m.exp, lo: exp.expAt(id, m.level), hi: exp.expAt(id, m.level + 1) };
@@ -228,10 +235,73 @@ function evolve(u, p) {
   if (u.buddy && u.buddy.id === id && u.buddy.uid === m.uid) u.buddy = { id: to, shiny: m.shiny, uid: m.uid };
   specimen.sync(u, id);
   specimen.sync(u, to);
+  const shedinja = id === NINCADA && to === NINJASK ? spawnShedinja(u, m) : null;
   if (!u.npc) { require('./regions').onObtain(u, to); if (u.progress) require('./progress').evaluate(u); }
   if (target.rarity === 'L' || target.rarity === 'M') hub.feed('evolve', `🌟 ${u.username} hizo evolucionar a ${BY_ID.get(id).name} en ${target.name}`, { pokeId: to, shiny: m.shiny });
   db.save();
-  return { from: id, to, uid: m.uid, name: target.name, used: special.uses, form, learned: learnt.auto, pending: learnt.pending, evo: evoOptions(u, m, to) };
+  return { from: id, to, uid: m.uid, name: target.name, used: special.uses, form, learned: learnt.auto, pending: learnt.pending, evo: evoOptions(u, m, to), shedinja: shedinja ? shedinja.uid : null };
+}
+
+// Shedinja de Nincada: mismo nivel, IV y naturaleza que Nincada (antes de evolucionar); sin objeto, sin mote, en una Poké Ball y con el jugador como entrenador original.
+// Economía: la Poké Ball cuesta 120 y Shedinja es Común (polvo 5 ≈ 20 monedas, un PNJ paga ≤ 20, un Caramelo Exp. XS), así que cada Shedinja pierde ≥ 100 monedas de valor: sin bucle.
+function spawnShedinja(u, nincada) {
+  const c = u.collection[SHEDINJA];
+  if ((c && c.n >= 5) || !(u.items['poke-ball'] > 0)) return null;
+  items.take(u, 'poke-ball');
+  const before = new Set(specimen.sync(u, SHEDINJA).map((x) => x.uid));
+  gacha.grant(u, SHEDINJA, false);
+  const s = specimen.sync(u, SHEDINJA).find((x) => !before.has(x.uid));
+  if (!s) return null;
+  s.ivs = nincada.ivs.slice();
+  s.nature = nincada.nature;
+  s.level = nincada.level;
+  s.exp = exp.expAt(SHEDINJA, s.level);
+  s.item = undefined; delete s.item;
+  s.nick = '';
+  s.ball = 'poke-ball';
+  exp.ensure(SHEDINJA, s);
+  hub.emitUser(u.id, 'toast', { kind: 'evolve', text: '🥚 ¡Con la Poké Ball ha aparecido un Shedinja en tu Caja!' });
+  return s;
+}
+
+// ---- Evolución por intercambio automática (GTS / intercambio directo) ----
+// Como en los juegos, al RECIBIR un Pokémon por intercambio real que cumple (especie por intercambio, objeto equipado, Karrablast↔Shelmet) se ofrece evolucionarlo
+// («¿Quieres que evolucione?»); cancelar es como pulsar B: queda sin evolucionar y puede hacerlo después con un Cordón Unión o un intercambio pendiente. Los regalos y las compras del
+// Mercado NO son intercambios en los juegos: solo dan el «intercambio pendiente» de siempre (evoreq.noteTrade). La Piedra Eterna lo impide.
+function offerTradeEvo(u, got, id, gaveId) {
+  if (!u || u.npc || !got) return [];
+  id = Number(id);
+  const ok = [];
+  for (const t of evolutionsOf(id)) {
+    const r = evoreq.reqOf(t.id);
+    if (!r || !r.trade) continue;
+    try { evoCheck(u, got, id, t.id, { auto: true, partner: Number(gaveId) }); ok.push(t.id); } catch { /* no cumple */ }
+  }
+  if (!ok.length) return [];
+  u.tradeEvo = (u.tradeEvo || []).filter((o) => o.uid !== got.uid).slice(-9);
+  u.tradeEvo.push({ uid: got.uid, id, partner: Number(gaveId), at: Date.now() });
+  hub.emitUser(u.id, 'toast', { kind: 'evolve', text: `🔁 ${got.nick || BY_ID.get(id).name} puede evolucionar por el intercambio` });
+  return ok;
+}
+// Ofertas todavía válidas (se descartan las que ya no cumplen o cuyo ejemplar ya no está).
+function tradeEvoView(u) {
+  if (!u.tradeEvo || !u.tradeEvo.length) return [];
+  const out = [];
+  u.tradeEvo = u.tradeEvo.filter((o) => {
+    const m = (u.mons && u.mons[o.id] || []).find((x) => x.uid === o.uid);
+    if (!m) return false;
+    const to = [];
+    for (const t of evolutionsOf(o.id)) { try { evoCheck(u, m, o.id, t.id, { auto: true, partner: o.partner }); to.push({ to: t.id, name: t.name }); } catch { /* no */ } }
+    if (!to.length) return false;
+    out.push({ id: o.id, uid: o.uid, shiny: !!m.shiny, name: m.nick || BY_ID.get(o.id).name, to });
+    return true;
+  });
+  return out;
+}
+function cancelTradeEvo(u, p) {
+  u.tradeEvo = (u.tradeEvo || []).filter((o) => o.uid !== String(p && p.uid));
+  db.save();
+  return {};
 }
 
 // ---- Intercambio Milagroso ----
@@ -321,6 +391,6 @@ function boxExtra(u) {
 module.exports = {
   transferMany, transferAllDupes, MANY_MAX,
   TRANSFER_EXP, PULL_ITEM, PULL_NEW_ITEM, MIN_LEVEL, MAX_LEVEL, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST, RECYCLE_BERRY_DAILY, RECYCLE_BERRY_DUST,
-  transferExp, giveExp, evoCheck, evoOptions, canEvolveTo, evoLevel, evolutionsOf, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
+  offerTradeEvo, tradeEvoView, cancelTradeEvo, SHEDINJA, transferExp, giveExp, evoCheck, evoOptions, canEvolveTo, evoLevel, evolutionsOf, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
   transfer, transferBulk, evolve, wonder, recycle,
 };

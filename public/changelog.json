@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.07-f",
+    "date": "2026-11-07",
+    "title": "Evoluciones como en los juegos",
+    "items": [
+      "🔁 Intercambio en la GTS o directo: el Pokémon que recibes y que evoluciona por intercambio te pregunta «¿Quieres que evolucione?» al llegar. Si cancelas, puedes hacerlo más tarde con el Cordón Unión o un intercambio pendiente. Karrablast y Shelmet solo entre sí.",
+      "🎒 Los objetos de evolución (Revestimiento Metálico, Roca del Rey, Garra Afilada, Piedra Oval…) se pueden equipar y se gastan al evolucionar. Las piedras siguen usándose desde la mochila.",
+      "🥚 Nincada → Ninjask: con hueco en la Caja y una Poké Ball en la mochila aparece también un Shedinja (mismo nivel, IV y naturaleza). Shedinja ya no se obtiene evolucionando Nincada directamente."
+    ]
+  },
+  {
     "version": "2026.11.07-e",
     "date": "2026-11-07",
     "title": "Pokédex como en los juegos",

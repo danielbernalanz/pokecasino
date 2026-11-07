@@ -44,13 +44,20 @@ function buildItems() {
   const out = {};
   for (const [id, name, sprite, price] of CATALOG) {
     const users = Object.entries(DATA).filter(([, r]) => r.item === id).map(([to]) => BY_ID.get(Number(to)).name);
-    out[id] = { name, sprite, price, evo: true, cat: 'evo', desc: `Objeto de evolución: se gasta al evolucionar a ${users.join(', ')}. Se usa desde Caja PC → Datos → Entrenar → Evolución.` };
+    const held = HELDABLE.has(id) ? { holdId: holdIdOf(id) } : {};
+    out[id] = { name, sprite, price, evo: true, cat: 'evo', ...held, desc: `Objeto de evolución: se gasta al evolucionar a ${users.join(', ')}. Se usa desde Caja PC → Datos → Entrenar → Evolución.${HELDABLE.has(id) ? ' También se puede llevar equipado (Caja PC → Datos → Objeto): al evolucionar —por intercambio en la GTS o con un compañero, o al subir de nivel— se gasta el equipado.' : ''}` };
   }
   out[LINK] = { name: 'Cordón Unión', sprite: 'linking-cord', price: CORD, evo: true, cat: 'evo',
     desc: 'Sustituye al intercambio en las evoluciones por intercambio (Kadabra, Machoke, Graveler, Haunter…). Se gasta al evolucionar. También vale un intercambio real: cada Pokémon que recibes de otro jugador te da un intercambio pendiente.' };
   return out;
 }
 
+// Objetos de evolución que también se LLEVAN equipados y se gastan al evolucionar (como en los juegos): los de «intercambio con objeto» (Revestimiento Metálico,
+// Roca del Rey, Escama Dragón…) y los de «nivel con objeto» (Garra/Colmillo Afilado, Piedra Oval). Las piedras y demás objetos que se USAN siguen saliendo de la mochila.
+const HELDABLE = new Set(Object.values(DATA).filter((r) => r.item && (r.trade || r.time)).map((r) => r.item));
+const holdIdOf = (item) => String(item).replace(/-/g, ''); // id de Showdown: metal-coat → metalcoat
+// Evoluciones por intercambio que en los juegos exigen intercambiar una especie por otra concreta: Karrablast ↔ Shelmet.
+const TRADE_PAIR = { 589: 616, 617: 588 };
 const reqOf = (to) => DATA[Number(to)] || null;
 const levelOf = (to) => LVL[Number(to)] || 0;
 const isLevelUp = (to) => LU.has(Number(to));
@@ -70,7 +77,7 @@ function noteTrade(receiver, giver, now = Date.now()) {
 // Comprueba los requisitos especiales de `from → to` para el ejemplar `m` SIN tocar nada. Lanza un error en español si faltan;
 // devuelve { consume() } que gasta lo necesario (llamar solo cuando todo lo demás ya está validado).
 // `friend`: la evolución va por la vía de amistad (cuenta el horario de Espeon/Umbreon, pero no hay objeto que gastar).
-function plan(u, m, from, to, now = Date.now()) {
+function plan(u, m, from, to, now = Date.now(), opt = {}) {
   const r = reqOf(to);
   if (!r) return { consume() {}, uses: {} };
   const items = require('./items');
@@ -87,9 +94,14 @@ function plan(u, m, from, to, now = Date.now()) {
     require('./moves').ensure(Number(from), m);
     if (!m.learned.includes(r.move)) miss.push(`conocer ${require('./moves').name(r.move)}`);
   }
-  if (r.item && !(u.items[r.item] > 0)) miss.push(items.ITEMS[r.item].name);
+  const held = !!r.item && HELDABLE.has(r.item) && m.item === holdIdOf(r.item); // equipado: se gasta ese
+  if (r.item && !held && (opt.auto || !(u.items[r.item] > 0))) miss.push(items.ITEMS[r.item].name + (opt.auto ? ' equipado' : ''));
   let via = null;
-  if (r.trade) {
+  if (r.trade && opt.auto) {
+    // Intercambio real (GTS o directo): evoluciona al recibirlo; Karrablast y Shelmet solo entre sí.
+    if (TRADE_PAIR[Number(to)] && TRADE_PAIR[Number(to)] !== Number(opt.partner)) miss.push(`intercambiarlo por ${BY_ID.get(TRADE_PAIR[Number(to)]).name}`);
+    via = 'auto';
+  } else if (r.trade) {
     if (tokensOf(u) > 0) via = 'token';
     else if ((u.items[LINK] || 0) > 0) via = 'cord';
     else miss.push('un Cordón Unión (o un intercambio con otro jugador)');
@@ -98,7 +110,7 @@ function plan(u, m, from, to, now = Date.now()) {
   return {
     uses: { item: r.item || null, via },
     consume() {
-      if (r.item) items.take(u, r.item, 1);
+      if (r.item) { if (held) delete m.item; else items.take(u, r.item, 1); }
       if (via === 'token') u.tradeTokens = tokensOf(u) - 1;
       else if (via === 'cord') items.take(u, LINK, 1);
     },
@@ -107,4 +119,4 @@ function plan(u, m, from, to, now = Date.now()) {
 
 const STATIC = { req: DATA, lvl: LVL, lu: [...LU], link: LINK, phase: daytime.STATIC, tokenMax: TOKEN_MAX, tokenDaily: TOKEN_DAILY };
 
-module.exports = { DATA, levelOf, isLevelUp, CATALOG, STONES, RARES, LINK, STONE, RARE, CORD, TOKEN_MAX, TOKEN_DAILY, STATIC, buildItems, reqOf, tokensOf, noteTrade, plan };
+module.exports = { HELDABLE, holdIdOf, TRADE_PAIR, DATA, levelOf, isLevelUp, CATALOG, STONES, RARES, LINK, STONE, RARE, CORD, TOKEN_MAX, TOKEN_DAILY, STATIC, buildItems, reqOf, tokensOf, noteTrade, plan };

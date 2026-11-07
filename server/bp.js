@@ -12,7 +12,8 @@ const abilities = require('./abilities');
 const bpdata = require('./bpdata');
 const { BY_ID } = require('./pokedex');
 
-const HELD_IDS = new Set([...bpdata.HELD.map((x) => x[0]), ...Object.values(bpdata.BERRY_HOLD)]);
+const evoreq = require('./evoreq');
+const HELD_IDS = new Set([...bpdata.HELD.map((x) => x[0]), ...Object.values(bpdata.BERRY_HOLD), ...[...evoreq.HELDABLE].map(evoreq.holdIdOf)]);
 const holdable = (id) => !!id && HELD_IDS.has(id);
 
 const day = (u) => {
@@ -71,6 +72,7 @@ function buy(u, p) {
 // Fuente de cada objeto equipable: la mochila (`hi-<id>`) o el almacén de bayas.
 const HELD_SRC = Object.create(null);
 for (const [hold] of bpdata.HELD) HELD_SRC[hold] = { inv: 'items', key: 'hi-' + hold };
+for (const it of evoreq.HELDABLE) HELD_SRC[evoreq.holdIdOf(it)] = { inv: 'items', key: it }; // objetos de evolución equipables (evoreq.js)
 for (const [berry, hold] of Object.entries(bpdata.BERRY_HOLD)) HELD_SRC[hold] = { inv: 'berries', key: berry };
 const nameOfHeld = (hold) => (HELD_SRC[hold] ? (HELD_SRC[hold].inv === 'items' ? items.ITEMS[HELD_SRC[hold].key] : items.BERRIES[HELD_SRC[hold].key]).name : hold);
 

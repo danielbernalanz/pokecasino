@@ -674,6 +674,7 @@ io.on('connection', (socket) => {
   on('pc:transferAll', candy.transferAllDupes);
   on('pc:expcandy', (u, p) => require('./exp').useCandy(u, p));
   on('pc:evolve', candy.evolve);
+  on('pc:evocancel', candy.cancelTradeEvo);
   on('pc:hyper', (u, p) => require('./hyper').use(u, p));
   on('pc:wonder', candy.wonder);
   on('shop:recycle', candy.recycle);

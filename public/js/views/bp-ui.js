@@ -2,8 +2,10 @@
 import { S, h, fmt, act, toast, sfx, itemImg } from '../core.js';
 import { loadNames } from '../battle-screen.js';
 
-const nameOfHold = (hold) => { const it = S.data.items['hi-' + hold]; if (it) return it.name; const b = Object.values(S.data.berries).find((x) => x.hold === hold); return b ? b.name : hold; };
-const stock = (hold) => (S.me.items['hi-' + hold] || 0) + (S.data.berries ? Object.entries(S.data.berries).filter(([, b]) => b.hold === hold).reduce((a, [id]) => a + ((S.me.berries || {})[id] || 0), 0) : 0);
+// Clave del objeto de la mochila que se lleva como `hold` («hi-leftovers», o el propio objeto de evolución: metal-coat → holdId «metalcoat»).
+const heldKey = (hold) => (S.data.items['hi-' + hold] ? 'hi-' + hold : Object.keys(S.data.items).find((k) => S.data.items[k].holdId === hold));
+const nameOfHold = (hold) => { const it = S.data.items[heldKey(hold)]; if (it) return it.name; const b = Object.values(S.data.berries).find((x) => x.hold === hold); return b ? b.name : hold; };
+const stock = (hold) => (S.me.items[heldKey(hold)] || 0) + (S.data.berries ? Object.entries(S.data.berries).filter(([, b]) => b.hold === hold).reduce((a, [id]) => a + ((S.me.berries || {})[id] || 0), 0) : 0);
 
 /** Pestaña de la Tienda. */
 export function bpTab() {
@@ -26,7 +28,7 @@ export function bpTab() {
 export async function gearPage(m, onChange) {
   await loadNames();
   const run = async (action, payload, msg, btn) => { const r = await act(action, { id: m.id, uid: m.uid, ...payload }, btn); if (r) { sfx('click'); if (msg) toast(msg(r), 'success'); onChange(); } };
-  const holds = [...new Set([...Object.keys(S.me.items).filter((k) => k.startsWith('hi-')).map((k) => k.slice(3)),
+  const holds = [...new Set([...Object.keys(S.me.items).filter((k) => k.startsWith('hi-')).map((k) => k.slice(3)), ...Object.keys(S.me.items).filter((k) => S.data.items[k] && S.data.items[k].holdId).map((k) => S.data.items[k].holdId),
     ...Object.entries(S.data.berries).filter(([id]) => (S.me.berries || {})[id] > 0).map(([, b]) => b.hold)])].filter((x) => stock(x) > 0 && x !== m.item);
   const owned = (pred) => Object.entries(S.me.items).filter(([id, n]) => n > 0 && S.data.items[id] && pred(S.data.items[id]));
   return h('div', { class: 'stack' },
