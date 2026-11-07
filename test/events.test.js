@@ -28,12 +28,14 @@ test('el calendario sigue la hora de España', () => {
 
 test('el anfitrión puede lanzar y cancelar eventos', () => {
   db.data.state.events = {};
+  // Un evento que hoy no toca por calendario, para que no dependa del día en que se ejecuta la prueba.
+  const id = Object.keys(events.EVENTS).find((k) => !events.active().some((e) => e.id === k));
   assert.throws(() => events.force('nada', 2));
-  assert.throws(() => events.force('market', 100));
-  events.force('market', 2);
-  assert.ok(events.has('market'));
-  assert.ok(events.active().find((e) => e.id === 'market').forced);
-  events.force('market', 0);
+  assert.throws(() => events.force(id, 100));
+  events.force(id, 2);
+  assert.ok(events.has(id));
+  assert.ok(events.active().find((e) => e.id === id).forced);
+  events.force(id, 0);
   assert.ok(!events.active().some((e) => e.forced));
 });
 

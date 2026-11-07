@@ -10,6 +10,9 @@ process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pokecasino-market-
 
 const db = require('../server/db');
 const market = require('../server/market');
+
+// El Viernes de Mercado quita el impuesto y reduce la comisión: estas pruebas miden las tarifas normales, así que se fija el evento (no dependen del día).
+{ const ev = require('../server/events'); const has = ev.has; ev.has = (id) => (id === 'market' ? false : has(id)); }
 const plinko = require('../server/games/plinko');
 const mines = require('../server/games/mines');
 const crash = require('../server/games/crash');

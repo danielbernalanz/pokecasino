@@ -14,6 +14,9 @@ const blackjack = require('../server/games/blackjack');
 const plinko = require('../server/games/plinko');
 const gacha = require('../server/gacha');
 const market = require('../server/market');
+
+// El Viernes de Mercado quita el impuesto y reduce la comisión: estas pruebas miden las tarifas normales, así que se fija el evento (no dependen del día).
+{ const ev = require('../server/events'); const has = ev.has; ev.has = (id) => (id === 'market' ? false : has(id)); }
 const items = require('../server/items');
 
 function user(name, extra = {}) {
