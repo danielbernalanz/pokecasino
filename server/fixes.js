@@ -185,6 +185,32 @@ const FIXES = [
       return out.length ? out : ['nadie tenía caramelos'];
     },
   },
+  {
+    // Los NPC pagaban comisión de publicación al repostar órdenes (sumidero pensado para jugadores) y algunos se quedaron
+    // sin fondos. Se les repone: lo que su registro (últimos 100 movimientos) muestra como `market_fee` y, como mínimo,
+    // hasta el doble del umbral de fondos bajos (LOW_FUNDS × 2 = 40 % de su tesorería inicial); nunca por encima de
+    // `npcStart`. Es dinero de los NPC: no sale de ningún jugador.
+    id: 'npc-tesoreria-2026-11-07',
+    apply() {
+      const hub = require('./hub');
+      const market = require('./market');
+      const npc = require('./npc');
+      const out = [];
+      for (const u of Object.values(db.data.users).filter((x) => x.npc && x.npcStart)) {
+        const equity = u.coins + market.lockedIn(u);
+        const lostFees = ((u.hist && u.hist.log) || []).filter((l) => l.r === 'market_fee' && l.d < 0).reduce((t, l) => t - l.d, 0);
+        const target = Math.min(u.npcStart, Math.max(equity + lostFees, Math.ceil(2 * npc.LOW_FUNDS * u.npcStart)));
+        const add = Math.max(0, Math.floor(target - equity));
+        if (!add) { out.push(`${u.username}: sin cambios (${equity})`); continue; }
+        u.coins += add;
+        hub.ledger(u, add, 'npc_refill', 'Corrección: comisiones de publicación pagadas');
+        out.push(`${u.username}: +${add} (${equity} → ${equity + add}; comisiones vistas ${lostFees})`);
+      }
+      db.data.adminLog ||= [];
+      db.data.adminLog.push({ at: Date.now(), by: 'sistema', action: 'fix', target: 'NPC', detail: ('Tesorerías NPC: ' + out.join(' · ')).slice(0, 400) });
+      return out.length ? out : ['sin NPC'];
+    },
+  },
 ];
 
 // Copia de seguridad y después las correcciones pendientes.

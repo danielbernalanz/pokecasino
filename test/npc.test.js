@@ -724,3 +724,25 @@ test('NPC: el relleno de tesorería sale solo de lo que pagan los jugadores, con
   assert.ok(out.length > 0 && paid0 > 0);
   resetSpecial();
 });
+
+test('migración de tesorerías NPC: repone comisiones vistas y mínimo del 40 %, sin pasar de la inicial', () => {
+  resetSpecial();
+  const fix = require('../server/fixes').FIXES.find((f) => f.id === 'npc-tesoreria-2026-11-07');
+  const [k, b, g, d] = ['kecleon', 'bill', 'ginger', 'dorado'].map(N);
+  for (const u of [k, b, g, d]) u.hist.log = [];
+  k.coins = 59000; k.hist.log.push({ t: 1, d: -800, r: 'market_fee' }, { t: 2, d: -500, r: 'market_fee' }); // 1.300 de comisiones
+  b.coins = 5000; b.hist.log.push({ t: 1, d: -300, r: 'market_fee' }); // por debajo del 40 %
+  g.coins = 60000;
+  d.coins = 30000; d.hist.log.push({ t: 1, d: -40000, r: 'market_fee' }); // las comisiones no pasan de la inicial
+  const jug = Object.values(db.data.users).filter((u) => !u.npc).map((u) => u.coins);
+  const total0 = npcs().reduce((s, u) => s + u.coins, 0);
+  fix.apply();
+  assert.strictEqual(k.coins, 60000);
+  assert.strictEqual(b.coins, 24000, 'al menos 40 % de la inicial');
+  assert.strictEqual(g.coins, 60000);
+  assert.strictEqual(d.coins, 60000);
+  assert.ok(npcs().every((u) => u.coins <= u.npcStart));
+  assert.ok(npcs().reduce((s, u) => s + u.coins, 0) > total0);
+  assert.deepStrictEqual(Object.values(db.data.users).filter((u) => !u.npc).map((u) => u.coins), jug, 'ningún jugador pierde monedas');
+  resetSpecial();
+});
