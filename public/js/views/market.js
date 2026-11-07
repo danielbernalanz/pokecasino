@@ -15,6 +15,26 @@ let panelOpen = false; // panel de filtros desplegado (móvil)
 // Minúsculas y sin acentos, para buscar con tolerancia.
 const norm = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 let state = null;
+let values = null; // ref -> [valor|null, base, PB?]: valor estimado (solo informativo, ver server/valuation.js)
+let valuesPending = null;
+function loadValues() {
+  if (values || valuesPending) return valuesPending;
+  valuesPending = act('market:values').then((r) => { if (r) values = r; valuesPending = null; return values; }).catch(() => { valuesPending = null; });
+  return valuesPending;
+}
+const BASIS = {
+  jugadores: 'mediana de las ventas recientes entre jugadores (acotada por los límites del artículo)',
+  comerciantes: 'punto medio de los precios de los comerciantes, según cuánto stock tienen',
+  tienda: 'precio de la tienda', fabricación: 'coste de fabricarla en el Taller', polvo: 'cambio de polvo estelar', PB: 'Tienda de Combate (Puntos de Batalla)',
+};
+// «Valor estimado ≈ X» con la base en el tooltip; separado del último precio real.
+function estTag(ref, cls = 'small muted') {
+  const e = values && values[ref];
+  if (!e) return '';
+  const [v, basis, pb] = e;
+  const tip = `Estimación orientativa, no una operación real. Base: ${BASIS[basis] || basis}.`;
+  return h('div', { class: cls + ' mk-est', title: tip }, v == null ? `Valor: ${fmt(pb)} PB ` : 'Valor estimado ≈ ', v == null ? '' : money(v), h('span', { class: 'mk-est-basis' }, ` (${basis})`));
+}
 
 // ---- Artículos ----
 const refOf = (a) => (a.kind === 'poke' ? `poke:${a.pokeId}:${a.shiny ? 1 : 0}` : a.kind === 'item' ? `item:${a.itemId}` : 'dust');
@@ -246,10 +266,15 @@ const BUY_LBL = '🔵 Se compra (pedidos de compra)';
 // Precio medio: últimas 24 h si hay operaciones; si no, la media de 30 días.
 function avgOf(ref) {
   const since = Date.now() - 86400000;
-  const t = state.trades.filter((x) => x.ref === ref && x.at >= since);
+  const t = state.trades.filter((x) => x.ref === ref && x.at >= since && !x.npcInternal);
   if (t.length) { const q = t.reduce((s, x) => s + x.qty, 0); return { v: Math.round(t.reduce((s, x) => s + x.qty * x.price, 0) / q), label: '24 h' }; }
   const st = state.stats[ref];
   return st && st.avg ? { v: st.avg, label: '30 d' } : null;
+}
+// Última operación entre comerciantes (dato aparte: no entra en el precio medio).
+function internalLine(ref) {
+  const t = state && state.internal && state.internal[ref];
+  return t ? h('div', { class: 'small muted mk-int', title: 'Operación directa entre dos comerciantes NPC: no cuenta para el precio medio.' }, 'Último entre comerciantes: ', money(t.price)) : '';
 }
 const tier = (a) => { const r = rarityOf(a); return r ? h('span', { class: 'mk-tier r-' + r, title: rarityName(r) }, r) : ''; };
 function icon(a, cls = 'mk-img') {
@@ -336,6 +361,7 @@ function itemDialog(a, o = {}) {
     const av = avgOf(a.ref);
     head.replaceChildren(icon(a, 'mk-big'), h('div', { class: 'grow' }, h('h2', { class: 'mk-dname' }, nameOf(a)), h('div', { class: 'row gap wrap' }, tags(a), ...(p ? p.types.map(typeBadge) : [])),
       h('div', { class: 'small muted' }, `Precio medio ${av ? av.label : '24 h'}: `, av ? money(av.v) : '—', ` · Tienes ${fmt(owned(a))}`),
+      estTag(a.ref), internalLine(a.ref),
       ...setsNeeding(a).slice(0, 1).map((s) => h('div', { class: 'small gold-text' }, `📚 Te sirve para «${s.name}»`))));
   };
   const modes = sell
@@ -412,10 +438,12 @@ function itemDialog(a, o = {}) {
       return sell ? (lowAsk ? Math.max(1, lowAsk.price - 1) : avg || (topBid ? topBid.price + 1 : 100)) : (topBid ? topBid.price + 1 : avg || (lowAsk ? Math.max(1, lowAsk.price - 1) : 100));
     };
     if (vals.price == null) vals.price = startPrice();
+    let touched = false; // si el jugador escribe un precio a mano, no se le pisa
+    let sug = null;
     const cap = () => (sell ? Math.min(have, MAXQ[a.kind]) : MAXQ[a.kind]);
     const price = h('input', { type: 'number', class: 'mk-num mk-price-in', min: 1, inputmode: 'numeric', value: vals.price, 'aria-label': 'Precio por unidad' });
     const setPrice = (v) => { price.value = Math.max(1, Math.round(v)); upd(); };
-    const stepP = (d) => h('button', { class: 'chip mk-step', type: 'button', 'aria-label': d < 0 ? 'Bajar precio' : 'Subir precio', onclick: () => setPrice((Number(price.value) || 0) + d) }, d < 0 ? '−' : '+');
+    const stepP = (d) => h('button', { class: 'chip mk-step', type: 'button', 'aria-label': d < 0 ? 'Bajar precio' : 'Subir precio', onclick: () => { touched = true; setPrice((Number(price.value) || 0) + d); } }, d < 0 ? '−' : '+');
     const chips = h('div', { class: 'seg mk-quick' });
     const mkt = h('div', { class: 'small muted' });
     const days = h('select', { class: 'mk-days', 'aria-label': 'Duración' }, DURS.map((d) => h('option', { value: d }, `${d} ${d === 1 ? 'día' : 'días'}`)));
@@ -427,14 +455,25 @@ function itemDialog(a, o = {}) {
     const say = h('p', { class: 'mk-say small' }, sell
       ? 'Tu orden queda publicada a tu precio hasta que alguien te compre. El artículo queda en depósito; lo no vendido se te devuelve.'
       : 'Tu pedido espera hasta que alguien te venda a ese precio; las monedas quedan apartadas y se te devuelven si cancelas o caduca.');
-    price.oninput = upd;
+    const sugLine = h('div', { class: 'small muted mk-sug' });
+    const paintSug = () => {
+      if (!sug || sug.price == null) { sugLine.replaceChildren(); return; }
+      sugLine.replaceChildren(`Sugerido: ${fmt(sug.price)} (${sug.basis}) `, h('button', { class: 'chip', type: 'button', onclick: () => { touched = false; setPrice(sug.price); } }, 'Usar'));
+    };
+    act('market:suggest', { ...a, side: sell ? 'sell' : 'buy' }).then((r) => {
+      if (!r) return;
+      sug = r;
+      if (!touched && r.price != null) { vals.price = r.price; price.value = r.price; upd(); }
+      paintSug();
+    }).catch(() => {});
+    price.oninput = () => { touched = true; upd(); };
     const el = h('div', { class: 'stack' }, say, mkt,
-      h('label', {}, 'Precio por unidad', h('div', { class: 'mk-priceRow' }, h('span', { class: 'coin-ico' }), stepP(-1), price, stepP(1))), chips,
+      h('label', {}, 'Precio por unidad', h('div', { class: 'mk-priceRow' }, h('span', { class: 'coin-ico' }), stepP(-1), price, stepP(1))), sugLine, chips,
       h('label', {}, 'Cantidad', q.el), h('label', {}, 'Duración', days), info, note);
     function upd() {
       const { lowAsk, topBid, av } = ctx();
       const avg = av && av.v;
-      const quick = (label, v) => h('button', { class: 'chip', type: 'button', disabled: v == null, onclick: () => setPrice(v) }, label);
+      const quick = (label, v) => h('button', { class: 'chip', type: 'button', disabled: v == null, onclick: () => { touched = true; setPrice(v); } }, label);
       chips.replaceChildren(...(sell
         ? [quick('Igualar', lowAsk && lowAsk.price), quick('−1', lowAsk && lowAsk.price - 1), quick('Precio medio', avg || null)]
         : [quick('Igualar', topBid && topBid.price), quick('+1', topBid && topBid.price + 1), quick('Precio medio', avg || null)]));
@@ -545,7 +584,7 @@ function itemRow(a, r, mode, have) {
   h('span', { class: 'mk-chev', 'aria-hidden': 'true' }, '▸'), icon(a),
   h('div', { class: 'mk-info' }, h('b', { class: 'mk-name' }, nameOf(a)), tags(a),
     lowAsk && isFlash(lowAsk) ? h('div', { class: 'small' }, h('span', { class: 'mk-flash' }, '🔥 Oferta'), ` termina en ${countdown(lowAsk.flash)}`) : '',
-    av ? h('div', { class: 'small muted' }, `Precio medio ${av.label}: `, money(av.v)) : '', sets ? h('div', { class: 'small gold-text' }, `📚 Para «${sets.name}»`) : ''));
+    av ? h('div', { class: 'small muted' }, `Precio medio ${av.label}: `, money(av.v)) : '', estTag(ref), sets ? h('div', { class: 'small gold-text' }, `📚 Para «${sets.name}»`) : ''));
   const qty = mode === 'buy' ? col('Cantidad', h('b', {}, lowAsk ? fmt(sumQty(r.asks)) : '—')) : col('Cantidad', h('b', {}, fmt(have)));
   const cols = [qty,
     col('Se vende desde', price(lowAsk, 'c-sell', r.asks, 'vende'), 'sellcol' + (mode === 'buy' ? ' hl' : '')),
@@ -562,6 +601,7 @@ function itemRow(a, r, mode, have) {
 export async function openItem(a, side = 'buy') {
   a = { ...a, ref: refOf(a) };
   if (!state) { const s = await act('market:state'); if (!s) return; state = s; }
+  await loadValues();
   itemDialog(a, { side: side === 'sell' ? 'sell' : 'buy' });
 }
 
@@ -874,8 +914,9 @@ export default {
           const bought = t.buyer === me;
           const sold = t.seller === me;
           const verb = bought ? 'Compra' : sold ? 'Venta' : 'Operación';
-          return h('button', { class: 'mk-ocard mk-hist' + (bought ? ' bought' : sold ? ' sold' : ''), type: 'button', onclick: () => itemDialog(a, { side: 'buy', chart: true }) }, icon(a),
+          return h('button', { class: 'mk-ocard mk-hist' + (t.npcInternal ? ' internal' : '') + (bought ? ' bought' : sold ? ' sold' : ''), type: 'button', onclick: () => itemDialog(a, { side: 'buy', chart: true }) }, icon(a),
             h('div', { class: 'mk-oinfo' }, h('b', {}, `${t.qty > 1 ? t.qty + '× ' : ''}${nameOf(a)}`),
+              t.npcInternal ? h('div', { class: 'small' }, h('span', { class: 'mk-kind' }, 'ENTRE COMERCIANTES'), ' ', h('b', {}, t.seller), ' → ', h('b', {}, t.buyer), h('span', { class: 'mk-int-tag' }, 'no cuenta para el precio medio')) :
               h('div', { class: 'small' }, h('span', { class: bought ? 'tag-buy' : sold ? 'tag-sell' : 'mk-kind' }, verb.toUpperCase()), ' Vendió ', h('b', {}, t.seller === me ? 'tú' : t.seller), npcTag(t.sellerNpc), ' · compró ', h('b', {}, t.buyer === me ? 'tú' : t.buyer), npcTag(t.buyerNpc)),
               h('div', { class: 'small muted' }, new Date(t.at).toLocaleString('es-ES'))),
             h('div', { class: 'mk-ometa' }, h('span', { class: 'mk-price' }, h('span', { class: 'coin-ico' }), fmt(t.price), h('span', { class: 'muted small' }, '/ud')),
@@ -910,6 +951,7 @@ export default {
     this.tick = setInterval(() => { if (cur && cur.strip) cur.strip.update(); }, 30000);
     const r = await act('market:state');
     if (r) { state = r; render(); }
+    loadValues().then(() => { if (cur) cur.redraw(); });
   },
   unmount() { this.offs.forEach((f) => f()); clearInterval(this.tick); },
 };

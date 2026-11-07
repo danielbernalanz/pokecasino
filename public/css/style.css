@@ -1683,3 +1683,9 @@ a.pill:hover, a.jackpot-pill:hover { filter: brightness(1.06); }
 .popover .menu-logout { margin-top: 6px; }
 .gacha-modes { margin-bottom: 8px; }
 .gacha-pane.hidden { display: none; }
+/* Mercado: valor estimado y operaciones entre comerciantes (discretos, aparte del precio real) */
+.mk-est { cursor: help; }
+.mk-est-basis { opacity: .75; }
+.mk-int-tag { margin-left: 6px; padding: 1px 6px; border-radius: 4px; font: 700 10px Nunito; background: #64748b33; color: var(--muted, #94a3b8); white-space: nowrap; }
+.mk-hist.internal { opacity: .8; border-style: dashed; }
+.mk-sug { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
