@@ -112,28 +112,28 @@ const maxBid = (rarity) => Math.max(1, Math.floor(BID_FRAC * RARITY[rarity].dust
 // enc: qué encargos pide (poke: rarezas de Pokémon · cos: rarezas de cosméticos).
 const NPCS = [
   { id: 'npc-kecleon', name: 'Kecleon', treasury: 60000, bidFrac: 0.85, askMult: 1.15, spread: 0.15, jitter: 0.05, bids: 3, asks: 2,
-    focus: { poke: ['C', 'U'], shiny: false, cats: ['shop', 'ball', 'evo', 'tm', 'material', 'expcandy'], dust: true }, enc: { poke: ['R'] },
+    focus: { poke: ['C', 'U'], shiny: false, cats: ['shop', 'ball', 'evo', 'tm', 'material', 'expcandy'], dust: true }, also: ['egg'], enc: { poke: ['R'] },
     art: 352, title: 'El camaleón del bazar',
     bio: 'Cambia de color según el cliente, pero no de palabra: precios justos y trato rápido. Lo compra todo lo cotidiano.',
     seeks: 'Comunes y poco comunes, objetos de la tienda, Poké Balls, piedras, MT, materiales, caramelos y polvo estelar. A veces un encargo de raras.',
     sells: 'Lo que ha ido comprando: Pokémon corrientes, tickets, caramelos y polvo.',
     quotes: ['Hoy me siento verde esperanza. ¿Y tú?', 'Si no lo ves, es que me lo he camuflado.', 'Un buen trato no necesita tinta.', 'Compro barato, vendo justo. Lo prometo.', 'Los tickets se agotan rápido, ¡avisado estás!', 'Cambio de color, no de precio.', 'Tráeme tus repetidos, que me cuadra el inventario.'] },
   { id: 'npc-bill', name: 'Bill', treasury: 60000, bidFrac: 0.9, askMult: 1.5, spread: 0.20, jitter: 0.05, bids: 2, asks: 2, sets: true,
-    focus: { poke: ['R', 'E'], react: ['C', 'U'], shiny: false, cats: [], dust: false }, enc: { poke: ['R', 'E'] },
+    focus: { poke: ['R', 'E'], react: ['C', 'U'], shiny: false, cats: [], dust: false }, also: ['tm', 'material', 'expcandy'], enc: { poke: ['R', 'E'] },
     art: 133, title: 'El Pokémaníaco de Kanto',
     bio: 'El mayor Pokémaníaco de Kanto: ordena su colección por tipo, por región y por tipo otra vez. Siempre le falta uno.',
     seeks: 'Pokémon raros y épicos, sobre todo los que completan colecciones (y cualquier común o poco común si hace falta). Publica encargos con premio.',
     sells: 'Raros y épicos que le sobran de sus colecciones.',
     quotes: ['Me falta uno. Siempre me falta uno.', 'Una colección sin completar es una herida abierta.', 'Mi álbum huele a victoria.', 'Los repetidos son para quien no sabe colocarlos.', 'Hoy huelo un encargo gordo.', 'Ordenar por tipo… no, por región… no, por tipo.', 'Soy Bill. Sí, el del Sistema de Almacenamiento. No, no es una máquina del tiempo.'] },
   { id: 'npc-ginger', name: 'Lisia', treasury: 60000, bidFrac: 0.7, askMult: 1.25, spread: 0.25, jitter: 0.05, bids: 3, asks: 2,
-    focus: { poke: [], shiny: false, cats: ['cosmetic', 'egg', 'mega', 'tera', 'shard'], dust: false }, enc: { cos: ['R', 'E', 'L'] },
+    focus: { poke: [], shiny: false, cats: ['cosmetic', 'egg', 'mega', 'tera', 'shard'], dust: false }, also: ['rare', 'shop'], enc: { cos: ['R', 'E', 'L'] },
     art: 334, title: 'La Coordinadora estrella de Hoenn',
     bio: 'Coordinadora estrella de Hoenn, siempre con su Altaria. Vive para el estilo: marcos, dorsos y títulos para lucir en tu perfil.',
     seeks: 'Cosméticos (marcos, dorsos, títulos), Huevos Misteriosos, Megapiedras, Teralitos y Fragmentos del Tutor.',
     sells: 'Cosméticos y Huevos Misteriosos. A veces una oferta flash.',
     quotes: ['Un buen marco hace al entrenador.', 'Un Concurso se gana con estilo, no solo con fuerza.', 'Altaria y yo no regateamos: negociamos con gracia.', 'Lo bonito también cotiza.', 'Si brilla, lo quiero. Si brilla más, lo vendo.', 'Mi bolsa siempre tiene sitio para un dorso raro.', 'Mira, mira… ¡cómo combina!'] },
   { id: 'npc-dorado', name: 'VendeMagikarp', treasury: 60000, bidFrac: 0.95, askMult: 1.8, spread: 0.35, jitter: 0.05, bids: 2, asks: 2,
-    focus: { poke: ['L', 'M'], shiny: true, cats: ['rare', 'bp'], dust: false }, enc: { poke: ['L'] },
+    focus: { poke: ['L', 'M'], shiny: true, cats: ['rare', 'bp'], dust: false }, also: ['cosmetic', 'mega'], enc: { poke: ['L'] },
     art: 129, title: 'El vendedor de Magikarp',
     bio: 'Te vendió un Magikarp por 500 monedas y ahora quiere venderte una leyenda. Es caro, y rara vez pregunta de dónde viene lo que le traes.',
     seeks: 'Legendarias, míticas y variocolores, Master Ball, Amuletos Iris y objetos de la Tienda de Combate. Algún encargo de legendarias con premio.',
@@ -159,6 +159,7 @@ function N() {
   n.feed ||= { day: null, n: 0 };
   n.pool ||= { paid: 0, given: 0 }; // monedas que pagaron JUGADORES en comisiones/impuestos del Mercado y lo ya repartido a los NPC
   n.refill ||= {}; // npcId -> { day, amt }: relleno recibido hoy
+  n.lastInternal ||= {}; // ref -> { to, at }: última operación directa (evita idas y vueltas)
   n.nextId ||= 1;
   return n;
 }
@@ -736,8 +737,11 @@ const totalHeld = (a) => npcUsers().reduce((t, u) => t + held(u, a), 0);
 // Un NPC vende a otro algo que tiene de sobra y que el otro busca (su especialidad o sus encargos), a un precio dentro de
 // [tope, suelo]: el punto medio desplazado por la escasez global (poco stock entre todos → hacia el suelo; mucho → hacia el
 // tope) con algo de ruido. Respeta STOCK_MAX del comprador (así nunca pasa de 5 copias y no se convierte en polvo).
+const DAY_MS = 24 * 3600 * 1000;
 const INTERNAL = { perDay: [4, 10], qty: 2, maxFrac: 0.05, keepFrac: 0.4 };
 const wantsRefs = (p) => new Set(encArticles(p).map((a) => a.ref));
+// Un comerciante también compra a otro (al por mayor) lo de su especialidad, sus encargos y sus intereses secundarios (`also`).
+const peerWants = (p, a, enc) => inFocus(p, a) || enc.has(a.ref) || (p.also || []).includes(categoryOf(a));
 function internalPrice(a, total, r = rand()) {
   const b = bounds(a);
   const t = clamp(0.5 + 0.1 * (2 - total), 0.1, 0.9) + (r * 2 - 1) * 0.08;
@@ -755,11 +759,13 @@ function internalTrade(now = Date.now()) {
     for (const o of openOrders(s)) if (o.side === 'sell') refs.set(o.ref, art(o));
     for (const a of refs.values()) {
       if (!bounds(a) || flashRefs.has(a.ref)) continue;
-      const keep = inFocus(sp, a) ? 1 : 0;
+      const keep = 0; // un comerciante puede vender su última unidad a otro que la valora más (solo si tiene más que él: nunca van y vienen)
       for (const b of us) {
         if (b.id === s.id) continue;
         const bp = profile(b);
-        if (!inFocus(bp, a) && !wants.get(b.id).has(a.ref)) continue;
+        if (!peerWants(bp, a, wants.get(b.id))) continue;
+        const last = N().lastInternal[a.ref];
+        if (last && last.to === s.id && now - last.at < 3 * DAY_MS) continue; // sin ir y venir con el mismo artículo
         const mine = held(s, a);
         const room = STOCK_MAX[a.kind] - held(b, a);
         if (mine - keep < 1 || room < 1 || mine <= held(b, a)) continue;
@@ -779,7 +785,7 @@ function internalTrade(now = Date.now()) {
     // Si lo que vende está en sus ofertas, se retiran antes (el depósito vuelve al inventario).
     if (market.owned(s, a) < qty) for (const o of openOrders(s).filter((x) => x.side === 'sell' && x.ref === a.ref)) market.cancel(s, { id: o.id });
     if (market.owned(s, a) < qty) continue;
-    try { return market.npcTrade(s, b, { ...a, qty, price }); } catch { /* sin monedas, etc. */ }
+    try { const t = market.npcTrade(s, b, { ...a, qty, price }); N().lastInternal[a.ref] = { to: b.id, at: now }; return t; } catch { /* sin monedas, etc. */ }
   }
   return null;
 }
