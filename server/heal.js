@@ -1,6 +1,6 @@
 'use strict';
-// Centro Pokémon (enfermera Joy): préstamo de 500 monedas si te quedas sin fondos (una vez cada 12 h: es una red de seguridad,
-// no un ingreso; antes eran 1.000 cada hora = 24.000 al día, 10 veces más que todas las recompensas diarias).
+// Centro Pokémon (enfermera Joy): préstamo de 1.000 monedas si te quedas sin fondos (una vez cada 4 h: es una red de seguridad,
+// no un ingreso; antes era cada hora = 24.000 al día; ahora ≤ 6.000 al día y solo con menos de 200 monedas).
 const LIMIT = 200;
 const COOLDOWN = 4 * 60 * 60 * 1000;
 const AMOUNT = 1000;

@@ -11,6 +11,9 @@ process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pokecasino-trn-'))
 const db = require('../server/db');
 const specimen = require('../server/specimen');
 const sdw = require('../server/showdown');
+// El Lunes de Duelos quita la comisión del PvP/torneos: estas pruebas miden la comisión normal, así que se fija el evento (no dependen del día).
+{ const ev = require('../server/events'); const has = ev.has; ev.has = (id) => (id === 'duels' ? false : has(id)); }
+
 const trn = require('../server/tourney');
 const notify = require('../server/notify');
 

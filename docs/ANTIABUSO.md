@@ -7,17 +7,21 @@ repitiendo una mecánica, con cuentas secundarias o con el panel de anfitrión.
 
 | Fuente | Máximo | Notas |
 |---|---|---|
-| Recompensa diaria | 1.000 + 150 × racha (hasta 1.900) | |
+| Recompensa diaria | 1.000 + 150 × racha (hasta 1.900) | + 1 Ticket Gacha al día y un Amuleto Iris cada 7 días de racha |
 | Combates contra la CPU | 800 | Premio real (clase × nivel más alto) con tope diario de 800 monedas y 10 victorias premiadas al día; la Moneda Amuleto y el Día de Pago cuentan dentro del tope; perder no cuesta |
-| Encargos de los NPC | ≈ 1.000 extra con legendarios (4.500 con dos cosméticos legendarios) | 2 al día; el NPC paga de su tesoro |
-| Expediciones | 300 (+ ≈ 250 en polvo y objetos) | |
+| Encargos de los NPC | 680 de prima con dos legendarios (4.500 con dos cosméticos legendarios) + premio (Ticket / Huevo) | 2 al día; la prima es el 50 % del precio y la paga el NPC de su tesoro |
+| Expediciones | 300 (+ 80 en polvo y 1 Huevo o Ticket, ≈ 500) | |
 | Hallazgos del compañero | 200 (+ 40 ✦) | |
 | Primera visita a cada apartado | 750 en total, una sola vez | |
-| Misiones, medallas y niveles | Progresión, no se repiten | |
+| Misiones diarias | ≈ 1.350–2.000 las 3 mejores del catálogo (se sortean 3 al azar: de media ≈ 900) + bonus de las tres (250 + Huevo) | Un Huevo Misterioso vale de media ≈ 417 si se abre y se venden los cosméticos a un PNJ; el miércoles las monedas de misión van ×2 |
+| Medallas, niveles, Ruta | Progresión, no se repiten | |
+| Voltorb Flip | 1 Moneda de la Suerte al día (≈ 229) | Antes una por tablero limpiado con la apuesta mínima (corregido en la auditoría del 07-11-2026) |
 | Enfermera Joy | 1.000 cada 4 h, solo con menos de 200 monedas | Red de seguridad; no se puede regalar ni pagar de más en 24 h |
 
-Un jugador muy activo saca como mucho unas 4.000–5.000 monedas al día sin apostar, menos que la apuesta máxima
-de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md).
+Cifra calculada con las constantes reales (`node scripts/max-free-income.js`, comprobada en `test/balance.test.js`): un jugador muy activo saca como mucho
+**≈ 8.500 monedas al día** sin apostar (≈ 9.100 los miércoles) contando todo lo que se pueda vender a un PNJ, con el mejor sorteo de misiones y todos los topes
+llenos; lo típico con todo hecho cada día es ≈ 5.000–6.000. Con dos cosméticos legendarios para los encargos sube a ≈ 12.300 (la prima de 2 × 2.250). La Enfermera
+Joy es aparte (+6.000 como mucho, solo con menos de 200 monedas). El techo normal queda por debajo de la apuesta máxima de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md).
 
 ## Bucles cerrados (tests)
 
@@ -60,7 +64,7 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - En el Mercado, las cuentas nuevas o ayudadas por la Enfermera Joy en las últimas 24 h no pueden pagar más de
   3 × el precio mínimo de referencia (evita pasar monedas comprando caro).
 - Los NPC solo compran a cuentas de nivel 3 y más de 24 h.
-- Lo que sale de fuentes gratuitas con tope diario (MT de premio, materiales, megapiedras, Teralitos, Fragmentos, Caramelos Exp., objetos de PB, Balls y piedras) y que ahora cotizan los NPC paga como mucho **400 monedas por cuenta y día** (`FARM_DAY`, dentro del tope general de ventas a NPC): ≈ +9 % sobre las ≈ 4-5 mil/día sin apostar, y con N cuentas secundarias N × 400, cada una con su nivel 3, 24 h y los topes de cada fuente.
+- Lo que sale de fuentes gratuitas con tope diario (MT de premio, materiales, megapiedras, Teralitos, Fragmentos, Caramelos Exp., objetos de PB, Balls y piedras) y que ahora cotizan los NPC paga como mucho **400 monedas por cuenta y día** (`FARM_DAY`, dentro del tope general de ventas a NPC): ≈ +5 % sobre el techo de ≈ 8.500/día sin apostar, y con N cuentas secundarias N × 400, cada una con su nivel 3, 24 h y los topes de cada fuente.
 
 ## Mercado: NPC creadores de mercado (07-11-2026)
 

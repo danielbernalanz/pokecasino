@@ -186,7 +186,7 @@ Ingreso diario máximo de un casual (racha ≥ 7, 3 misiones, tirada gratis y Ti
 | Moneda de la Suerte | +10 % de ganancias netas y bolsa de bonus del 45 % en lugar del 30 % durante 1 h | 2.500 | **400** | beneficio máximo ≈ 0,15 × ventaja × lo apostado en la hora: con 100.000 apostados en Slots ≈ 360 monedas |
 | Amuleto Iris | las 10 próximas tiradas tienen ×4 de variocolor | solo premio | solo premio (NPC compra a ≤ 500, antes 1.500) | ≈ 0,5 variocolor de más |
 | Master Ball | próxima tirada legendaria (la destacada del banner) | cada 5 niveles | cada 25, Campeón, 0,5 % de los ×10 | vale ≈ 17.000 monedas de tiradas |
-| Huevo Misterioso | un cosmético al azar | sin cambios | sin cambios | abrir uno vale de media ≈ 370 en PNJ frente a 900 que piden por él |
+| Huevo Misterioso | un cosmético al azar | sin cambios | sin cambios | abrir uno vale de media ≈ 417 en PNJ frente a 900 que piden por él |
 | Cosméticos | marco / dorso / título por rareza | | | sin cambios |
 
 ## Gacha
@@ -339,7 +339,7 @@ sin chat lleno de mensajes y sin grifos de monedas. Todos los invariantes de `se
 
 | Artículo | Suelo de venta antes | Suelo ahora | Tope de compra antes | Tope ahora |
 |---|---|---|---|---|
-| Pokémon C / U / R / E / L / M | 150 / 400 / 1.200 / 4.000 / 15.000 / 30.000 | **90 / 200 / 500 / 1.500 / 9.000 / 18.000** | 90 % del valor de liberar (18 / 43 / 108 / 288 / 900 / 1.800) | **100 %** (20 / 48 / 120 / 320 / 1.000 / 2.000) |
+| Pokémon C / U / R / E / L / M | 150 / 400 / 1.200 / 4.000 / 15.000 / 30.000 | **90 / 200 / 500 / 1.500 / 9.000 / 18.000** | 90 % del valor de liberar (18 / 43 / 108 / 288 / 900 / 1.800) | **100 %** (20 / 48 / 120 / 320 / 680 / 1.280 tras ajustar el polvo de L y M) |
 | Variocolor | ≥ 4 × normal | **máx(3 × suelo normal, 2,5 × tope variocolor)** | 3 × normal | 3 × normal (= su valor de liberar) |
 | Cosméticos C / U / R / E / L | 250 / 600 / 1.500 / 4.500 / 15.000 | **150 / 350 / 900 / 2.700 / 9.000** | 60 / 150 / 400 / 1.200 / 4.000 | **69 / 172 / 450 / 1.350 / 4.500** |
 | Master Ball | 12.000 | **9.000** | 2.000 | 2.300 |
@@ -371,7 +371,7 @@ sin chat lleno de mensajes y sin grifos de monedas. Todos los invariantes de `se
 * **Cotas:** una vez por encargo y jugador, 2 premios (y primas) al día por jugador, solo jugadores elegibles
   (nivel ≥ 3, cuenta de > 24 h). La prima la paga el NPC de su tesorería (cuenta para su gasto diario): son monedas
   que cambian de manos, no se crean. **Prima extra máxima por jugador y día = 2 × 0,5 × tope = 1 × tope** del artículo:
-  ≤ 1.000 con Pokémon L, ≤ 320 con E, ≤ 120 con R, y como mucho 4.500 con dos cosméticos L. Es el único caso en que un NPC paga
+  ≤ 680 con Pokémon L, ≤ 320 con E, ≤ 120 con R, y como mucho 4.500 con dos cosméticos L. Es el único caso en que un NPC paga
   por encima de su tope, y el test lo comprueba explícitamente.
 * Los premios están valorados (ticket 150, huevo 600, 💠 ≈ 6) y el test exige que `suelo − 1,5 × tope > valor del
   premio` (y con el 80 % del suelo en artículos que pueden estar en oferta flash): comprar a un NPC, venderle de
@@ -970,7 +970,7 @@ Kecleon 56.042 y, sin relleno, al bajar del 20 % dejaban de comprar).
 
 Los artículos sin precio en monedas (MT de premio, materiales, megapiedras, Teralitos, Fragmentos, Caramelos Exp., objetos de PB, Balls y piedras) se compran muy barato: `cap` ≤ 10 monedas para materiales, Teralitos y fragmentos; 300 las megapiedras (el suelo es 9.000); 10 % del coste de fabricación las MT (50-800); ≤ ½ PB los objetos de PB; 1 moneda por 200 EXP los Caramelos Exp. Además **todo lo que un jugador cobra de los NPC por estas categorías tiene un tope propio de `FARM_DAY` = 400 monedas por cuenta y día** (`dayRec.farm`), dentro de los topes ya existentes (`SELL_COINS_BASE + 500 × nivel` y `SELL_UNITS`).
 
-**Máximo extra por jugador y día frente a antes: +400 monedas** (≈ +9 % sobre las ≈ 4-5 mil/día sin apostar de `docs/ANTIABUSO.md`; el valor real es mucho menor: un granjero que vende todo lo que saca cobra ≈ 150/día en la simulación). Para comparar, antes los NPC no compraban nada de esto (0). Con N cuentas el máximo es N × 400, pero cada cuenta necesita nivel 3 y 24 h y sus fuentes tienen tope por cuenta (ya cubierto en `docs/ANTIABUSO.md → Cuentas secundarias`).
+**Máximo extra por jugador y día frente a antes: +400 monedas** (≈ +5 % sobre el techo de ≈ 8.500/día sin apostar de `docs/ANTIABUSO.md`; el valor real es mucho menor: un granjero que vende todo lo que saca cobra ≈ 150/día en la simulación). Para comparar, antes los NPC no compraban nada de esto (0). Con N cuentas el máximo es N × 400, pero cada cuenta necesita nivel 3 y 24 h y sus fuentes tienen tope por cuenta (ya cubierto en `docs/ANTIABUSO.md → Cuentas secundarias`).
 
 ### Antimanipulación
 
@@ -990,3 +990,14 @@ Los artículos sin precio en monedas (MT de premio, materiales, megapiedras, Ter
 | Cobertura de cotización | 81,7 % (2.086 de 2.553) | 100 % |
 
 El techo de 2 × la inicial (120.000 de caja) destruye el exceso; el resto del patrimonio está en pedidos abiertos. Jugadores simulados: el granjero cobra 4.650 en 30 días (tope 12.000); el comprador gasta 355.338; el arbitraje NPC→NPC no encuentra ningún hueco positivo (90 pares comprobados: siempre `tope < suelo`); comprar a un NPC y liberar pierde 217.894 de 239.534 pagados; la pareja compinchada pierde monedas (impuesto) y el valor estimado no pasa de 1,25 × suelo.
+
+## Auditoría independiente de juego justo (07-11-2026)
+
+Se comprobó cada regla de `docs/ANTIABUSO.md` contra el código, los tests y simulaciones (`scripts/sim-npc-market.js`, `scripts/max-free-income.js`).
+
+| Hallazgo | Resolución |
+|---|---|
+| Dos tests del bonus fallaban sábados y domingos | El fin de semana del Compañero sube un 25 % la bolsa de bonus y duplica el tope fijo (diseño, ver arriba: con todo activo 56 % de la ventaja, < 100 %). Los tests asumían un día normal; ahora fijan el evento y prueban los dos casos. Otros tests dependían del Lunes de Duelos (sin comisión) y de un combate aleatorio del Alto Mando: también deterministas |
+| Voltorb Flip daba una Moneda de la Suerte por cada tablero limpiado (nivel ≥ 5) con la apuesta mínima (10) y los PNJ la compran a 229 | Máximo 1 al día (`voltorb.prizeDay`); test de regresión |
+| «≈ 4–5 mil monedas/día sin apostar» | Cifra real: techo ≈ 8.500 (9.100 miércoles; típico 5–6 mil), detalle en `scripts/max-free-income.js`; incluye el valor real de un Huevo Misterioso abierto (≈ 417, no 172) |
+| Bucles con PNJ | Sin cambios: venta ≥ 2 × compra en todo, la fabricación de Pokémon (60/144/360/960/1.600/3.200) queda por debajo de los suelos (90/200/500/1.500/9.000/18.000), polvo 3 compra / 8 venta |

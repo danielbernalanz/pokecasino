@@ -216,4 +216,4 @@ function use(user, { itemId, pokeId }) {
   return { used: itemId };
 }
 
-module.exports = { ITEMS, BERRIES, COSMETICS, give, take, buy, use, equip, openEgg };
+module.exports = { ITEMS, BERRIES, COSMETICS, EGG_WEIGHTS, give, take, buy, use, equip, openEgg };

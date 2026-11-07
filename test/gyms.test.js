@@ -189,6 +189,8 @@ test('Alto Mando: los PS, PP y estados pasan de un combate al siguiente, los deb
   assert.ok(first.end.elite && first.end.elite.foe === 'Lorelei');
   const run = u.elite.run;
   assert.ok(run && run.stage === 1, 'la carrera sigue');
+  // El combate real es aleatorio: si alguien cayó, se le cura para que el recuento de «en pie» de abajo sea determinista.
+  for (const c of Object.values(run.carry)) if (c.hp <= 0) c.hp = c.max;
   const hurt = Object.values(run.carry);
   assert.ok(hurt.length === STRONG.length && hurt.every((c) => c.max > 0 && c.hp <= c.max));
   // Lo que cuenta el simulador al terminar se guarda tal cual; para comprobarlo de forma determinista se «hiere» a mano: el primero con 40 % de PS,

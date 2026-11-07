@@ -113,9 +113,12 @@ function flip(user, { index }) {
     const before = user.voltorb.level;
     user.voltorb.level = Math.min(8, before + 1);
     if (before >= 6) hub.feed('win', `${user.username} superó el nivel ${before} de Voltorb Flip ⚡`);
-    if (before >= 5) {
+    // Premio de objeto: una Moneda de la Suerte como mucho al día. Sin este tope se cobraba una por tablero limpiado con la apuesta
+    // mínima (10) y los PNJ la pagan a 229: ganancia segura que no sale de la ventaja de la casa.
+    if (before >= 5 && user.voltorb.prizeDay !== hub.dayKey()) {
+      user.voltorb.prizeDay = hub.dayKey();
       user.items['amulet-coin'] = (user.items['amulet-coin'] || 0) + 1;
-      hub.emitUser(user.id, 'toast', { kind: 'item', text: '🎒 Premio de Voltorb Flip: +1 Moneda de la Suerte' });
+      hub.emitUser(user.id, 'toast', { kind: 'item', text: '🎒 Premio de Voltorb Flip: +1 Moneda de la Suerte (1 al día)' });
     }
     db.save();
     return { ...res, outcome: 'clear', newLevel: user.voltorb.level };

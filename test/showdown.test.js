@@ -15,6 +15,9 @@ const hub = require('../server/hub');
 const specimen = require('../server/specimen');
 const sd = require('../server/sdmap');
 const sdw = require('../server/showdown');
+// El Lunes de Duelos quita la comisión del PvP/torneos: estas pruebas miden la comisión normal, así que se fija el evento (no dependen del día).
+{ const ev = require('../server/events'); const has = ev.has; ev.has = (id) => (id === 'duels' ? false : has(id)); }
+
 const trainers = require('../server/trainers');
 const { DEX, BY_ID } = require('../server/pokedex');
 const ES = require('../server/sd-es.json');

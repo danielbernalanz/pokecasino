@@ -169,3 +169,26 @@ test('ruleta: una lista de apuestas con huecos se rechaza con un mensaje claro',
   const roulette = require('../server/games/roulette');
   assert.throws(() => roulette.spin({ coins: 1000 }, { bets: [null] }), /Apuestas no válidas/);
 });
+
+test('Voltorb Flip: el premio de objeto (Moneda de la Suerte) es una al día, no una por tablero con la apuesta mínima', () => {
+  const db = require('../server/db');
+  const u = { id: 'id-volt-premio', username: 'volt-premio', coins: 100000, dust: 0, buddy: null, items: {}, buffs: {}, games: {}, collection: {}, stats: { pulls: 0, wagered: 0, won: 0, biggestWin: 0 }, daily: {}, voltorb: { level: 6 }, xp: 0, level: 5 };
+  db.addUser(u);
+  let clears = 0;
+  for (let i = 0; i < 4; i++) {
+    u.voltorb.level = 6;
+    voltorb.start(u, { bet: 10 });
+    const g = u.voltorb.game;
+    let last;
+    g.board.forEach((v, idx) => { if (v > 1) last = voltorb.flip(u, { index: idx }); });
+    if (last && last.outcome === 'clear') clears++;
+  }
+  assert.strictEqual(clears, 4, 'cuatro tableros limpiados con la apuesta mínima');
+  assert.strictEqual(u.items['amulet-coin'], 1, 'solo la primera Moneda de la Suerte del día');
+  u.voltorb.prizeDay = '2000-01-01'; // otro día
+  u.voltorb.level = 6;
+  voltorb.start(u, { bet: 10 });
+  const g = u.voltorb.game;
+  g.board.forEach((v, idx) => { if (v > 1) voltorb.flip(u, { index: idx }); });
+  assert.strictEqual(u.items['amulet-coin'], 2);
+});

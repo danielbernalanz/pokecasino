@@ -361,3 +361,17 @@ test('Tienda: precios coherentes (Ticket = 1 tirada; Huevo Suerte y Moneda Amule
   const gain = (BAL.BONUS_SHARE_AMULET - BAL.BONUS_SHARE) * BAL.edge('slots') * 100000;
   assert.ok(gain <= items.ITEMS['amulet-coin'].price, `${gain}`);
 });
+
+test('monedas que no salen de apostar: el techo diario de un jugador muy activo (scripts/max-free-income.js) queda por debajo de la apuesta máxima de nivel 1', () => {
+  const { compute } = require('../scripts/max-free-income');
+  const lvl1 = hub.MAX_BET_BY_BADGES[0];
+  const normal = compute();
+  const wed = compute({ wednesday: true });
+  assert.ok(normal.total < lvl1, `día normal ${normal.total}`);
+  assert.ok(wed.total < lvl1, `miércoles ${wed.total}`);
+  assert.ok(normal.total > 4000, 'si baja de 4.000 hay que actualizar docs/ANTIABUSO.md');
+  // Con dos cosméticos legendarios para los encargos (la prima es el 50 % del tope de 4.500) sube pero sigue acotado.
+  assert.ok(compute({ legendaryCosmetics: true }).total < 13000);
+  // Un día normal no incluye a la Enfermera Joy (solo si te quedas con menos de 200 monedas) ni lo que se cobra una sola vez.
+  assert.strictEqual(normal.joy, 6000);
+});
