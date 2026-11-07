@@ -60,6 +60,15 @@ de nivel 1 (10.000). Todos los juegos tienen ventaja de la casa (ver BALANCE.md)
 - En el Mercado, las cuentas nuevas o ayudadas por la Enfermera Joy en las últimas 24 h no pueden pagar más de
   3 × el precio mínimo de referencia (evita pasar monedas comprando caro).
 - Los NPC solo compran a cuentas de nivel 3 y más de 24 h.
+- Lo que sale de fuentes gratuitas con tope diario (MT de premio, materiales, megapiedras, Teralitos, Fragmentos, Caramelos Exp., objetos de PB, Balls y piedras) y que ahora cotizan los NPC paga como mucho **400 monedas por cuenta y día** (`FARM_DAY`, dentro del tope general de ventas a NPC): ≈ +9 % sobre las ≈ 4-5 mil/día sin apostar, y con N cuentas secundarias N × 400, cada una con su nivel 3, 24 h y los topes de cada fuente.
+
+## Mercado: NPC creadores de mercado (07-11-2026)
+
+- Los NPC compran por debajo y venden por encima de todas las demás vías (tienda, fabricación, liberar, reciclar, gacha, captura): comprar a un NPC y vender a otro, al Mercado o liberar siempre pierde (`test/npc.test.js`, `scripts/sim-npc-market.js`).
+- **Las ventas de los NPC son traspaso, no una fuente nueva:** solo venden lo que compraron a jugadores y su reabastecimiento diario de siempre (Pokémon C/U/R/E, una legendaria cada dos días, Huevos). No reabastecen Caramelos Exp., Chapas, PB, MT, materiales, megapiedras, Teralitos ni legendarios extra: lo que un NPC vende de esas categorías lo vendió antes otro jugador, igual que en el Mercado entre jugadores.
+- Las operaciones entre NPC no mueven monedas hacia jugadores, no cuentan para `npc.reference()` ni para los topes de cuentas nuevas, y las operaciones de cuentas nuevas o ayudadas por la Enfermera Joy no son referencia de precios. Con dos cuentas compinchadas el valor estimado nunca sube de 1,25 × el suelo.
+- La comisión de publicación sigue siendo un sumidero para **jugadores**; los NPC no la pagan. La mitad de lo que pagan los jugadores en comisiones e impuestos rellena las tesorerías de los NPC (máximo 5 % de su inicial al día y nunca por encima de ella; el exceso sobre 2 × la inicial se destruye): no se crean monedas nuevas.
+- El valor estimado (`server/valuation.js`) y el precio sugerido son solo informativos: no entran en ningún tope.
 
 ## Panel de anfitrión
 

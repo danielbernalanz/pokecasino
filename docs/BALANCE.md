@@ -942,3 +942,51 @@ Depositar/retirar (intacto, comisión no reembolsable), máximo de depósitos, c
 - **Ficha pública** (ranking, chat, «En vivo», conectados o el enlace `#/entrenador/<nombre>`): ID de entrenador, aspecto (marco, título, compañero), medallas, colección, Liga, estadísticas de duelos, Salón de la Fama (veces y los 5 últimos equipos), progreso de las 9 Pokédex regionales con sus diplomas, títulos, torneos jugados/ganados y, solo si el jugador lo tiene público (`playtime.isPublic`), el tiempo de juego. No lleva monedas, polvo, objetos, historial, IP ni nada de la cuenta. Es solo lectura y no da nada.
 - **Notificaciones:** avisos personales persistentes en la cuenta (`u.notes`, como mucho 40 por jugador; los más antiguos se descartan): te han intercambiado en la GTS, depósito de la GTS caducado, invitación a intercambio directo, a un torneo o a una Teraincursión, regalo recibido, torneo que empieza/ronda/campeón, intercambio directo completado y logros (medallas, colecciones, misiones, Diplomas). Se pueden marcar como leídas o borrar. No dan nada ni mueven monedas.
 - **Push del navegador:** no hay servidor de push (no hay suscripciones `PushManager`); solo existía la infraestructura de avisos locales (Notification API + `notificationclick` del SW). Los avisos con `toast` la reutilizan (solo si el jugador activó «Avisos» y no está mirando la pestaña); no se ha añadido nada más.
+
+## Comerciantes NPC como creadores de mercado, comercio entre ellos y relleno de tesorería (07-11-2026)
+
+Diagnóstico (simulación de 14 días solo con NPC, antes): **0 operaciones**, ningún artículo con compra y venta a la vez y las
+tesorerías se vaciaban solo con comisiones de publicación (TratanteDorado 60.000 → 6.694; ColeccionBill 45.890; MercaderGinger 40.175;
+Kecleon 56.042 y, sin relleno, al bajar del 20 % dejaban de comprar).
+
+### Qué cambia
+
+| Cambio | Detalle |
+|---|---|
+| Sin comisión de publicación para NPC | `market.fee(total, user)` es 0 si `user.npc`. El **impuesto de venta sí se mantiene**: lo paga el vendedor y es lo que retira monedas cuando un jugador compra a un NPC (3 % de lo que los jugadores les pagan). Con la comisión a 0, el churn por deriva (25 %) o caducidad (12 h) ya no cuesta nada, así que se deja como está |
+| Comercio entre NPC | 4-10 operaciones directas al día en instantes aleatorios del plan del día (`dayPlan().int`). Un NPC vende a otro lo que tiene (hasta su última unidad) y el otro busca (especialidad, encargos o intereses secundarios `also`). Precio en [tope, suelo]: `tope + t × (suelo − tope)` con `t = 0,5 + 0,1 × (2 − unidades entre todos)` (0,1-0,9) ± 0,08 de ruido: escaso → hacia el suelo, abundante → hacia el tope. Suma cero, sin comisión ni impuesto. Respeta `STOCK_MAX` del comprador (nunca > 5 copias), un gasto máximo del 5 % de su tesorería inicial y que se quede ≥ 40 %; sin idas y vueltas del mismo artículo en 3 días. Marcadas `npcInternal`: salen en el historial y como «último entre comerciantes», pero **no** cuentan para `npc.reference()`, las medias ni los topes de `transfer.js` |
+| Relleno de tesorería | La mitad de las comisiones de publicación e impuestos pagados por **jugadores** (`db.data.npc.pool.paid`) se reparte cada día a los NPC con `REFILL.dailyFrac` = 5 % de su `npcStart` por NPC y día, y con techo en `npcStart` (cuenta `coins + pedidos`). Nunca reparte más de `0,5 × pool.paid` (`pool.given`). El impuesto que paga un NPC y su comisión (ya 0) no entran en la bolsa |
+| Techo de beneficios | Lo que un NPC tiene por encima de **2 × npcStart** se destruye (`npc_burn`, sumidero) en vez de acumularse |
+| Migración | `npc-tesoreria-2026-11-07` (`server/fixes.js`): devuelve a cada NPC lo que su registro (últimos 100 movimientos) muestra como `market_fee` y, como mínimo, hasta 2 × `LOW_FUNDS` = 40 % de `npcStart`; nunca por encima de `npcStart`. Es dinero de NPC, no de jugadores. El historial completo de comisiones no se conserva (el registro guarda 100 movimientos), así que en la práctica sube hasta el 40 % |
+
+### Creadores de mercado: precios y cobertura
+
+* Cada NPC cotiza **todas las categorías de su especialidad** (`npc.categoryOf`): Kecleon (Pokémon C/U, polvo, tienda, Poké Balls, piedras, MT, materiales, Caramelos Exp.), Bill (Pokémon R/E y, a petición de un jugador que vende, C/U; interés por MT y materiales), Lisia (cosméticos, Huevos, megapiedras, Teralitos, Fragmentos del Tutor) y VendeMagikarp (legendarios, míticos, variocolores, Master Ball, Amuleto Iris, objetos de la Tienda de Combate). Cobertura: **2.553 de 2.553 artículos comerciables (100 %)**; los objetos clave (Orbe Teracristal) siguen sin comerciarse.
+* **Márgenes** por especialidad entre el 15 % y el 35 % sobre la referencia de jugadores (`spread`: Kecleon 15, Bill 20, Lisia 25, VendeMagikarp 35 %). Sin referencia, compran entre el 70 % y el 100 % del tope (según demanda y stock) y venden desde el suelo (× multiplicador de personalidad, más baratos cuanto más stock). Siempre `venta × (1 − impuesto) > compra`: cada vuelta les deja beneficio (test «creadores de mercado»).
+* **Nunca abaratan:** la venta nunca baja de la tienda (objetos de tienda, Balls, piedras), del coste de fabricar una MT (monedas + materiales a su precio de venta) ni del suelo de cada rareza; la compra nunca supera lo que dan liberar un duplicado (Pokémon), reciclar (Balls y piedras: 40 % del precio) ni el `cap`. Las MT se compran a ≤ 10 % de su coste en monedas (< el coste de una tirada de la Máquina MT, 1.500).
+* **Valor ancla = valor estimado** (`server/valuation.js`) solo informativo: no entra en los topes de `transfer.js` ni decide los precios de los NPC (esos siguen saliendo de `bounds()` y `reference()`, más conservadores).
+
+### Compras de lo que sale de fuentes gratuitas con tope diario
+
+Los artículos sin precio en monedas (MT de premio, materiales, megapiedras, Teralitos, Fragmentos, Caramelos Exp., objetos de PB, Balls y piedras) se compran muy barato: `cap` ≤ 10 monedas para materiales, Teralitos y fragmentos; 300 las megapiedras (el suelo es 9.000); 10 % del coste de fabricación las MT (50-800); ≤ ½ PB los objetos de PB; 1 moneda por 200 EXP los Caramelos Exp. Además **todo lo que un jugador cobra de los NPC por estas categorías tiene un tope propio de `FARM_DAY` = 400 monedas por cuenta y día** (`dayRec.farm`), dentro de los topes ya existentes (`SELL_COINS_BASE + 500 × nivel` y `SELL_UNITS`).
+
+**Máximo extra por jugador y día frente a antes: +400 monedas** (≈ +9 % sobre las ≈ 4-5 mil/día sin apostar de `docs/ANTIABUSO.md`; el valor real es mucho menor: un granjero que vende todo lo que saca cobra ≈ 150/día en la simulación). Para comparar, antes los NPC no compraban nada de esto (0). Con N cuentas el máximo es N × 400, pero cada cuenta necesita nivel 3 y 24 h y sus fuentes tienen tope por cuenta (ya cubierto en `docs/ANTIABUSO.md → Cuentas secundarias`).
+
+### Antimanipulación
+
+* Las operaciones entre NPC y las de cuentas nuevas (< nivel 3 o < 3 días) o ayudadas por la Enfermera Joy (24 h) no son referencia de precios (`t.npcInternal`, `t.young`).
+* `npc.reference()` sigue exigiendo ≥ 3 operaciones de ≥ 2 vendedores y los precios de los NPC la reciben acotada por [`cap`, ...]; el valor estimado la acota a [`cap`, 1,25 × `floor`]: dos cuentas veteranas compinchadas que cierren ventas a precios absurdos no lo suben más de un 25 % sobre el suelo (test).
+
+### Simulación (`node scripts/sim-npc-market.js 30`, código real con reloj falso; 5 estrategias de jugador)
+
+| NPC | Antes (14 d, solo NPC) | Ahora (30 d, con jugadores) |
+|---|---|---|
+| Kecleon | 56.042 | 128.831 (beneficio 68.831; mínimo 59.989) |
+| ColeccionBill / Bill | 45.890 | 130.407 |
+| MercaderGinger / Lisia | 40.175 | 129.885 |
+| TratanteDorado / VendeMagikarp | 6.694 | 133.954 |
+| Operaciones entre NPC | 0 | 122 (≈ 4 al día) |
+| Artículos con compra y venta a la vez | 0 | 76-90 pares NPC con ambos lados |
+| Cobertura de cotización | 81,7 % (2.086 de 2.553) | 100 % |
+
+El techo de 2 × la inicial (120.000 de caja) destruye el exceso; el resto del patrimonio está en pedidos abiertos. Jugadores simulados: el granjero cobra 4.650 en 30 días (tope 12.000); el comprador gasta 355.338; el arbitraje NPC→NPC no encuentra ningún hueco positivo (90 pares comprobados: siempre `tope < suelo`); comprar a un NPC y liberar pierde 217.894 de 239.534 pagados; la pareja compinchada pierde monedas (impuesto) y el valor estimado no pasa de 1,25 × suelo.
