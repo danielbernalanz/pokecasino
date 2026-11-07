@@ -1,10 +1,19 @@
 [
   {
+    "version": "2026.11.07-b",
+    "date": "2026-11-07",
+    "title": "Giovanni abre su tienda en el Mercado",
+    "items": [
+      "🏪 El comerciante de legendarios, variocolores y objetos raros ahora es Giovanni, el jefe del Team Rocket (con su Persian). Mismos precios y límites de siempre.",
+      "🎲 Voltorb Flip: la Moneda de la Suerte de premio (nivel 5 o más) se da una vez al día."
+    ]
+  },
+  {
     "version": "2026.11.07-a",
     "date": "2026-11-07",
     "title": "Comerciantes con nombre, más vida en el Mercado",
     "items": [
-      "🏪 Los comerciantes del Mercado ahora son Kecleon, Bill, Lisia y VendeMagikarp. Cotizan todo lo que se puede comerciar: Poké Balls, piedras, MT, materiales, megapiedras, Teralitos, Fragmentos, objetos de la Tienda de Combate y más. Siempre compran más barato y venden más caro que cualquier otra vía, y lo que cobras por objetos de recompensa tiene un tope diario.",
+      "🏪 Los comerciantes del Mercado ahora son Kecleon, Bill, Lisia y Giovanni. Cotizan todo lo que se puede comerciar: Poké Balls, piedras, MT, materiales, megapiedras, Teralitos, Fragmentos, objetos de la Tienda de Combate y más. Siempre compran más barato y venden más caro que cualquier otra vía, y lo que cobras por objetos de recompensa tiene un tope diario.",
       "🤝 Los comerciantes comercian entre ellos unas cuantas veces al día: lo verás en Completadas como «entre comerciantes» y como «último entre comerciantes» en cada artículo. No cuentan para el precio medio.",
       "💡 Valor estimado en cada artículo (con la base de la estimación) y precio sugerido al crear órdenes de compra y venta, con botón «Usar». Es solo orientativo: no es una operación real ni cambia ningún tope.",
       "🛠️ Los comerciantes ya no pagan comisión de publicación y sus tesorerías se rellenan con parte de lo que pagan los jugadores en comisiones e impuestos (sin crear monedas nuevas)."

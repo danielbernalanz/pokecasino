@@ -961,8 +961,8 @@ Kecleon 56.042 y, sin relleno, al bajar del 20 % dejaban de comprar).
 
 ### Creadores de mercado: precios y cobertura
 
-* Cada NPC cotiza **todas las categorías de su especialidad** (`npc.categoryOf`): Kecleon (Pokémon C/U, polvo, tienda, Poké Balls, piedras, MT, materiales, Caramelos Exp.), Bill (Pokémon R/E y, a petición de un jugador que vende, C/U; interés por MT y materiales), Lisia (cosméticos, Huevos, megapiedras, Teralitos, Fragmentos del Tutor) y VendeMagikarp (legendarios, míticos, variocolores, Master Ball, Amuleto Iris, objetos de la Tienda de Combate). Cobertura: **2.553 de 2.553 artículos comerciables (100 %)**; los objetos clave (Orbe Teracristal) siguen sin comerciarse.
-* **Márgenes** por especialidad entre el 15 % y el 35 % sobre la referencia de jugadores (`spread`: Kecleon 15, Bill 20, Lisia 25, VendeMagikarp 35 %). Sin referencia, compran entre el 70 % y el 100 % del tope (según demanda y stock) y venden desde el suelo (× multiplicador de personalidad, más baratos cuanto más stock). Siempre `venta × (1 − impuesto) > compra`: cada vuelta les deja beneficio (test «creadores de mercado»).
+* Cada NPC cotiza **todas las categorías de su especialidad** (`npc.categoryOf`): Kecleon (Pokémon C/U, polvo, tienda, Poké Balls, piedras, MT, materiales, Caramelos Exp.), Bill (Pokémon R/E y, a petición de un jugador que vende, C/U; interés por MT y materiales), Lisia (cosméticos, Huevos, megapiedras, Teralitos, Fragmentos del Tutor) y Giovanni (legendarios, míticos, variocolores, Master Ball, Amuleto Iris, objetos de la Tienda de Combate). Cobertura: **2.553 de 2.553 artículos comerciables (100 %)**; los objetos clave (Orbe Teracristal) siguen sin comerciarse.
+* **Márgenes** por especialidad entre el 15 % y el 35 % sobre la referencia de jugadores (`spread`: Kecleon 15, Bill 20, Lisia 25, Giovanni 35 %). Sin referencia, compran entre el 70 % y el 100 % del tope (según demanda y stock) y venden desde el suelo (× multiplicador de personalidad, más baratos cuanto más stock). Siempre `venta × (1 − impuesto) > compra`: cada vuelta les deja beneficio (test «creadores de mercado»).
 * **Nunca abaratan:** la venta nunca baja de la tienda (objetos de tienda, Balls, piedras), del coste de fabricar una MT (monedas + materiales a su precio de venta) ni del suelo de cada rareza; la compra nunca supera lo que dan liberar un duplicado (Pokémon), reciclar (Balls y piedras: 40 % del precio) ni el `cap`. Las MT se compran a ≤ 10 % de su coste en monedas (< el coste de una tirada de la Máquina MT, 1.500).
 * **Valor ancla = valor estimado** (`server/valuation.js`) solo informativo: no entra en los topes de `transfer.js` ni decide los precios de los NPC (esos siguen saliendo de `bounds()` y `reference()`, más conservadores).
 
@@ -984,7 +984,7 @@ Los artículos sin precio en monedas (MT de premio, materiales, megapiedras, Ter
 | Kecleon | 56.042 | 128.831 (beneficio 68.831; mínimo 59.989) |
 | ColeccionBill / Bill | 45.890 | 130.407 |
 | MercaderGinger / Lisia | 40.175 | 129.885 |
-| TratanteDorado / VendeMagikarp | 6.694 | 133.954 |
+| TratanteDorado / Giovanni | 6.694 | 133.954 |
 | Operaciones entre NPC | 0 | 122 (≈ 4 al día) |
 | Artículos con compra y venta a la vez | 0 | 76-90 pares NPC con ambos lados |
 | Cobertura de cotización | 81,7 % (2.086 de 2.553) | 100 % |

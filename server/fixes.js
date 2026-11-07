@@ -216,7 +216,7 @@ const FIXES = [
     // distinguir mayúsculas) no se le quita: el NPC toma una variante («BillPC») y queda anotado en el registro del anfitrión.
     id: 'npc-nombres-2026-11-07',
     apply() {
-      const WANT = { 'npc-kecleon': 'Kecleon', 'npc-bill': 'Bill', 'npc-ginger': 'Lisia', 'npc-dorado': 'VendeMagikarp' };
+      const WANT = { 'npc-kecleon': 'Kecleon', 'npc-bill': 'Bill', 'npc-ginger': 'Lisia', 'npc-dorado': 'Giovanni' };
       const out = [];
       const taken = (name, self) => Object.values(db.data.users).some((u) => u.id !== self && String(u.username).toLowerCase() === name.toLowerCase());
       for (const [id, want] of Object.entries(WANT)) {

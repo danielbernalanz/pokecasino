@@ -132,16 +132,16 @@ const NPCS = [
     seeks: 'Cosméticos (marcos, dorsos, títulos), Huevos Misteriosos, Megapiedras, Teralitos y Fragmentos del Tutor.',
     sells: 'Cosméticos y Huevos Misteriosos. A veces una oferta flash.',
     quotes: ['Un buen marco hace al entrenador.', 'Un Concurso se gana con estilo, no solo con fuerza.', 'Altaria y yo no regateamos: negociamos con gracia.', 'Lo bonito también cotiza.', 'Si brilla, lo quiero. Si brilla más, lo vendo.', 'Mi bolsa siempre tiene sitio para un dorso raro.', 'Mira, mira… ¡cómo combina!'] },
-  { id: 'npc-dorado', name: 'VendeMagikarp', treasury: 60000, bidFrac: 0.95, askMult: 1.8, spread: 0.35, jitter: 0.05, bids: 2, asks: 2,
+  { id: 'npc-dorado', name: 'Giovanni', treasury: 60000, bidFrac: 0.95, askMult: 1.8, spread: 0.35, jitter: 0.05, bids: 2, asks: 2,
     focus: { poke: ['L', 'M'], shiny: true, cats: ['rare', 'bp'], dust: false }, also: ['cosmetic', 'mega'], enc: { poke: ['L'] },
-    art: 129, title: 'El vendedor de Magikarp',
-    bio: 'Te vendió un Magikarp por 500 monedas y ahora quiere venderte una leyenda. Es caro, y rara vez pregunta de dónde viene lo que le traes.',
+    art: 53, title: 'El jefe del Team Rocket',
+    bio: 'Antiguo jefe del Team Rocket, siempre con su Persian a los pies. Trafica con legendarios, variocolores y objetos raros: es caro, y rara vez pregunta de dónde viene lo que le traes.',
     seeks: 'Legendarias, míticas y variocolores, Master Ball, Amuletos Iris y objetos de la Tienda de Combate. Algún encargo de legendarias con premio.',
     sells: 'Leyendas y variocolores que consigue de vez en cuando, a precio de coleccionista.',
-    quotes: ['¿Un Magikarp? Una ganga. ¿Una leyenda? Una inversión.', 'Salpica, salpica… y mi precio sube.', 'Si es variocolor, hablamos. Si no, también, pero más bajo.', 'Mi precio es mi palabra, y mi palabra es Magikarp.', 'Dicen que soy caro. Dicen bien.', 'Lo legendario no se regala; se negocia. El Magikarp tampoco.', 'No pregunto de dónde viene. Tú tampoco.'] },
+    quotes: ['Lo raro tiene un precio. Lo legendario, otro más alto.', 'Persian y yo valoramos el género con una sola mirada.', 'Si es variocolor, hablamos. Si no, también, pero más bajo.', 'Dicen que soy caro. Dicen bien.', 'Un buen negocio se cierra sin preguntas.', 'Lo legendario no se regala; se negocia.', 'No pregunto de dónde viene. Tú tampoco.'] },
 ];
 // Los nombres antiguos siguen reservados (nadie puede hacerse pasar por un comerciante de antes).
-const LEGACY_NAMES = ['ColeccionBill', 'MercaderGinger', 'TratanteDorado'];
+const LEGACY_NAMES = ['ColeccionBill', 'MercaderGinger', 'TratanteDorado', 'VendeMagikarp'];
 const NAMES = new Set([...NPCS.map((n) => n.name.toLowerCase()), ...LEGACY_NAMES.map((n) => n.toLowerCase())]);
 const isNpcName = (name) => NAMES.has(String(name || '').toLowerCase());
 const isNpc = (u) => !!(u && u.npc);
@@ -526,7 +526,7 @@ function restock() {
   const done = { poke: 0, eggs: 0, rare: 0, epic: 0, legend: 0 };
   const pokeTotal = (u) => Object.values(u.collection).reduce((s, c) => s + c.n, 0);
   const give = (p) => {
-    // Al NPC que comercia esa rareza (o que la pide en encargos); nunca L/M salvo la legendaria de Dorado.
+    // Al NPC que comercia esa rareza (o que la pide en encargos); nunca L/M salvo la legendaria de Giovanni.
     const who = us.filter((x) => (x.p.focus.poke.includes(p.rarity) || (x.p.enc.poke || []).includes(p.rarity)) && pokeTotal(x.u) < RESTOCK.pokeCap);
     if (!who.length) return false;
     gacha.grant(pick(who).u, p.id, false);
