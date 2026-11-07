@@ -270,7 +270,8 @@ let current = null;
 // Enlaces antiguos de la Tienda (#/shop/craft…) → el sitio nuevo de cada cosa.
 const LEGACY_SHOP = { bag: '#/bag', craft: '#/workshop/craft', tm: '#/workshop/tm', exchange: '#/workshop/exchange', recycle: '#/workshop/recycle', tmg: '#/gacha/tm', bp: '#/combates/bp' };
 function route() {
-  const id = (location.hash.match(/^#\/(\w+)/) || [])[1] || 'lobby';
+  if (!S.me) return; // sin sesión todavía (cambio de enlace antes de «hello»): se enruta al recibir los datos
+  const id =(location.hash.match(/^#\/(\w+)/) || [])[1] || 'lobby';
   const legacy = id === 'shop' && LEGACY_SHOP[(location.hash.match(/^#\/shop\/(\w+)/) || [])[1]];
   if (legacy) { location.replace(legacy); return; }
   const view = VIEWS.find((v) => v.id === id) || (id === 'lobby' ? lobby : notFound);

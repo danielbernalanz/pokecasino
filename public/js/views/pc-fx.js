@@ -124,7 +124,7 @@ export async function askEvolution(info) {
       h('div', { class: 'row gap wrap evo-ask-btns' },
         ...info.to.map((t) => h('button', { class: 'btn primary', type: 'button', 'data-evo-to': t.to, onclick: () => finish(t.to) }, info.to.length > 1 ? `Evolucionar a ${t.name}` : `Sí, a ${t.name}`)),
         h('button', { class: 'btn', type: 'button', 'data-evo-cancel': '1', onclick: () => finish(0) }, 'No, que siga como está')),
-      h('p', { class: 'small muted' }, 'info.auto ? 'Si ahora no, podrás hacerlo más tarde con un Cordón Unión o un intercambio pendiente (Caja PC → Datos → Entrenar).' : 'Si ahora no, podrás hacerlo cuando quieras en Caja PC → Datos → Entrenar.'));
+      h('p', { class: 'small muted' }, info.auto ? 'Si ahora no, podrás hacerlo más tarde con un Cordón Unión o un intercambio pendiente (Caja PC → Datos → Entrenar).' : 'Si ahora no, podrás hacerlo cuando quieras en Caja PC → Datos → Entrenar.'));
     const m = modal(body, { title: 'Evolución', onClose: () => finish(0) });
   });
   if (!choice) { if (info.auto) await act('pc:evocancel', { uid: info.uid }); return false; } // cancelar = pulsar B: sin evolucionar; después, Cordón Unión o intercambio pendiente

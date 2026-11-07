@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.11.07-g",
+    "date": "2026-11-07",
+    "title": "Arreglo: la web se quedaba cargando",
+    "items": [
+      "🛠️ Un error en la pantalla de «¿Quieres que evolucione?» impedía que la web arrancara: se quedaba cargando sin mostrar nada. Ya está arreglado."
+    ]
+  },
+  {
     "version": "2026.11.07-f",
     "date": "2026-11-07",
     "title": "Evoluciones como en los juegos",
