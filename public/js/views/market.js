@@ -18,7 +18,8 @@ let state = null;
 let values = null; // ref -> [valor|null, base, PB?]: valor estimado (solo informativo, ver server/valuation.js)
 let valuesPending = null;
 function loadValues() {
-  if (values || valuesPending) return valuesPending;
+  if (values) return Promise.resolve(values); // ya cargados: siempre devuelve una promesa
+  if (valuesPending) return valuesPending;
   valuesPending = act('market:values').then((r) => { if (r) values = r; valuesPending = null; return values; }).catch(() => { valuesPending = null; });
   return valuesPending;
 }
