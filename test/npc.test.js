@@ -746,3 +746,25 @@ test('migración de tesorerías NPC: repone comisiones vistas y mínimo del 40 %
   assert.deepStrictEqual(Object.values(db.data.users).filter((u) => !u.npc).map((u) => u.coins), jug, 'ningún jugador pierde monedas');
   resetSpecial();
 });
+
+test('nombres de los comerciantes: personajes de Pokémon, sin espacios, y migración que respeta a los jugadores', () => {
+  assert.deepStrictEqual(npc.NPCS.map((p) => p.name), ['Kecleon', 'Bill', 'Lisia', 'VendeMagikarp']);
+  for (const p of npc.NPCS) assert.match(p.name, /^[A-Za-z0-9_-]{3,16}$/);
+  for (const n of ['bill', 'LISIA', 'vendemagikarp', 'ColeccionBill', 'mercaderginger', 'tratantedorado']) assert.ok(npc.isNpcName(n), n);
+  const fix = require('../server/fixes').FIXES.find((f) => f.id === 'npc-nombres-2026-11-07');
+  const old = { 'npc-kecleon': 'Kecleon', 'npc-bill': 'ColeccionBill', 'npc-ginger': 'MercaderGinger', 'npc-dorado': 'TratanteDorado' };
+  const keep = Object.fromEntries(npcs().map((u) => [u.id, u.username]));
+  for (const [id, nm] of Object.entries(old)) db.userById(id).username = nm;
+  const ocupa = user('LISIA'); // un jugador ya se llama así
+  db.data.market.trades.push({ ref: 'dust', qty: 1, price: 3, seller: 'ColeccionBill', buyer: 'TratanteDorado', at: 1 });
+  fix.apply();
+  assert.strictEqual(N('bill').username, 'Bill');
+  assert.strictEqual(N('dorado').username, 'VendeMagikarp');
+  assert.strictEqual(N('ginger').username, 'LisiaPC', 'el jugador conserva su nombre');
+  assert.strictEqual(ocupa.username, 'LISIA');
+  const t = db.data.market.trades[db.data.market.trades.length - 1];
+  assert.deepStrictEqual([t.seller, t.buyer], ['Bill', 'VendeMagikarp']);
+  db.data.market.trades.pop();
+  for (const [id, nm] of Object.entries(keep)) db.userById(id).username = nm;
+  db.removeUser ? db.removeUser(ocupa.id) : delete db.data.users[ocupa.id];
+});

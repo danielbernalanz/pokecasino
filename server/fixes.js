@@ -211,6 +211,35 @@ const FIXES = [
       return out.length ? out : ['sin NPC'];
     },
   },
+  {
+    // Los comerciantes NPC pasan a ser personajes de Pokémon (mismos id internos). Si un JUGADOR ya usa ese nombre (sin
+    // distinguir mayúsculas) no se le quita: el NPC toma una variante («BillPC») y queda anotado en el registro del anfitrión.
+    id: 'npc-nombres-2026-11-07',
+    apply() {
+      const WANT = { 'npc-kecleon': 'Kecleon', 'npc-bill': 'Bill', 'npc-ginger': 'Lisia', 'npc-dorado': 'VendeMagikarp' };
+      const out = [];
+      const taken = (name, self) => Object.values(db.data.users).some((u) => u.id !== self && String(u.username).toLowerCase() === name.toLowerCase());
+      for (const [id, want] of Object.entries(WANT)) {
+        const u = db.data.users[id];
+        if (!u || u.username === want) continue;
+        let name = want;
+        for (const suffix of ['PC', 'NPC', '_NPC', '2']) { if (!taken(name, id)) break; name = (want + suffix).slice(0, 16); }
+        if (taken(name, id)) { out.push(`${u.username}: sin cambio (nombre ocupado)`); continue; }
+        const old = u.username;
+        u.username = name;
+        const m = db.data.market || {};
+        for (const o of m.orders || []) if (o.userId === id) o.username = name;
+        for (const t of [...(m.trades || []), ...Object.values(db.data.users).flatMap((x) => x.tradeLog || [])]) {
+          if (t.seller === old) t.seller = name;
+          if (t.buyer === old) t.buyer = name;
+        }
+        out.push(`${old} → ${name}${name !== want ? ` (variante: «${want}» ya lo usa un jugador)` : ''}`);
+      }
+      db.data.adminLog ||= [];
+      db.data.adminLog.push({ at: Date.now(), by: 'sistema', action: 'fix', target: 'NPC', detail: ('Nombres NPC: ' + out.join(' · ')).slice(0, 400) });
+      return out.length ? out : ['nombres ya al día'];
+    },
+  },
 ];
 
 // Copia de seguridad y después las correcciones pendientes.

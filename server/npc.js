@@ -112,29 +112,31 @@ const NPCS = [
     seeks: 'Comunes y poco comunes, objetos de la tienda y polvo estelar. A veces un encargo de raras.',
     sells: 'Lo que ha ido comprando: Pokémon corrientes, tickets, caramelos y polvo.',
     quotes: ['Hoy me siento verde esperanza. ¿Y tú?', 'Si no lo ves, es que me lo he camuflado.', 'Un buen trato no necesita tinta.', 'Compro barato, vendo justo. Lo prometo.', 'Los tickets se agotan rápido, ¡avisado estás!', 'Cambio de color, no de precio.', 'Tráeme tus repetidos, que me cuadra el inventario.'] },
-  { id: 'npc-bill', name: 'ColeccionBill', treasury: 60000, bidFrac: 0.9, askMult: 1.5, spread: 0.18, jitter: 0.05, bids: 2, asks: 2, sets: true,
+  { id: 'npc-bill', name: 'Bill', treasury: 60000, bidFrac: 0.9, askMult: 1.5, spread: 0.18, jitter: 0.05, bids: 2, asks: 2, sets: true,
     focus: { poke: ['R', 'E'], shiny: false, items: 'none', cosmetics: false, dust: false }, enc: { poke: ['R', 'E'] },
-    art: 137, title: 'Coleccionista de colecciones',
-    bio: 'Solo le falta uno para completar cada colección… siempre. Paga bien lo que le falta y presume de ello.',
+    art: 133, title: 'El Pokémaníaco de Kanto',
+    bio: 'El mayor Pokémaníaco de Kanto: ordena su colección por tipo, por región y por tipo otra vez. Siempre le falta uno.',
     seeks: 'Pokémon raros y épicos, sobre todo los que completan colecciones. Publica encargos con premio.',
     sells: 'Raros y épicos que le sobran de sus colecciones.',
-    quotes: ['Me falta uno. Siempre me falta uno.', 'Una colección sin completar es una herida abierta.', 'Mi álbum huele a victoria.', 'Los repetidos son para quien no sabe colocarlos.', 'Hoy huelo un encargo gordo.', 'Ordenar por tipo… no, por región… no, por tipo.', 'Pago más a quien trae justo lo que necesito.'] },
-  { id: 'npc-ginger', name: 'MercaderGinger', treasury: 60000, bidFrac: 0.7, askMult: 1.25, spread: 0.12, jitter: 0.05, bids: 3, asks: 2,
+    quotes: ['Me falta uno. Siempre me falta uno.', 'Una colección sin completar es una herida abierta.', 'Mi álbum huele a victoria.', 'Los repetidos son para quien no sabe colocarlos.', 'Hoy huelo un encargo gordo.', 'Ordenar por tipo… no, por región… no, por tipo.', 'Soy Bill. Sí, el del Sistema de Almacenamiento. No, no es una máquina del tiempo.'] },
+  { id: 'npc-ginger', name: 'Lisia', treasury: 60000, bidFrac: 0.7, askMult: 1.25, spread: 0.12, jitter: 0.05, bids: 3, asks: 2,
     focus: { poke: [], shiny: false, items: 'noshop', cosmetics: true, dust: false }, enc: { cos: ['R', 'E', 'L'] },
-    art: 225, title: 'La mercader de lo bonito',
-    bio: 'Marcos, dorsos y títulos para lucir en tu perfil. Regatea con una sonrisa y nunca se queda sin huevos.',
+    art: 334, title: 'La Coordinadora estrella de Hoenn',
+    bio: 'Coordinadora estrella de Hoenn, siempre con su Altaria. Vive para el estilo: marcos, dorsos y títulos para lucir en tu perfil.',
     seeks: 'Cosméticos (marcos, dorsos, títulos), Huevos Misteriosos, Master Ball y Amuletos Iris.',
     sells: 'Cosméticos y Huevos Misteriosos. A veces una oferta flash.',
-    quotes: ['Un buen marco hace al entrenador.', 'Los huevos de hoy, los cosméticos de mañana.', 'No regateo, negocio.', 'Lo bonito también cotiza.', 'Si brilla, lo quiero. Si brilla más, lo vendo.', 'Mi bolsa siempre tiene sitio para un dorso raro.', 'Mira, mira… ¡cómo combina!'] },
-  { id: 'npc-dorado', name: 'TratanteDorado', treasury: 60000, bidFrac: 0.95, askMult: 1.8, spread: 0.25, jitter: 0.05, bids: 2, asks: 2,
+    quotes: ['Un buen marco hace al entrenador.', 'Un Concurso se gana con estilo, no solo con fuerza.', 'Altaria y yo no regateamos: negociamos con gracia.', 'Lo bonito también cotiza.', 'Si brilla, lo quiero. Si brilla más, lo vendo.', 'Mi bolsa siempre tiene sitio para un dorso raro.', 'Mira, mira… ¡cómo combina!'] },
+  { id: 'npc-dorado', name: 'VendeMagikarp', treasury: 60000, bidFrac: 0.95, askMult: 1.8, spread: 0.25, jitter: 0.05, bids: 2, asks: 2,
     focus: { poke: ['L', 'M'], shiny: true, items: 'none', cosmetics: false, dust: false }, enc: { poke: ['L'] },
-    art: 52, title: 'El tratante de leyendas',
-    bio: 'Solo habla de oro, de leyendas y de variocolores. Es caro, pero rara vez pregunta de dónde viene lo que le traes.',
+    art: 129, title: 'El vendedor de Magikarp',
+    bio: 'Te vendió un Magikarp por 500 monedas y ahora quiere venderte una leyenda. Es caro, y rara vez pregunta de dónde viene lo que le traes.',
     seeks: 'Legendarias, míticas y variocolores. Algún encargo de legendarias con premio.',
     sells: 'Leyendas y variocolores que consigue de vez en cuando, a precio de coleccionista.',
-    quotes: ['El brillo no engaña… casi nunca.', 'Una leyenda cada cien tiradas. Yo las colecciono.', 'El oro llama al oro.', 'Si es variocolor, hablamos. Si no, también, pero más bajo.', 'Mi precio es mi palabra.', 'Dicen que soy caro. Dicen bien.', 'Lo legendario no se regala; se negocia.'] },
+    quotes: ['¿Un Magikarp? Una ganga. ¿Una leyenda? Una inversión.', 'Salpica, salpica… y mi precio sube.', 'Si es variocolor, hablamos. Si no, también, pero más bajo.', 'Mi precio es mi palabra, y mi palabra es Magikarp.', 'Dicen que soy caro. Dicen bien.', 'Lo legendario no se regala; se negocia. El Magikarp tampoco.', 'No pregunto de dónde viene. Tú tampoco.'] },
 ];
-const NAMES = new Set(NPCS.map((n) => n.name.toLowerCase()));
+// Los nombres antiguos siguen reservados (nadie puede hacerse pasar por un comerciante de antes).
+const LEGACY_NAMES = ['ColeccionBill', 'MercaderGinger', 'TratanteDorado'];
+const NAMES = new Set([...NPCS.map((n) => n.name.toLowerCase()), ...LEGACY_NAMES.map((n) => n.toLowerCase())]);
 const isNpcName = (name) => NAMES.has(String(name || '').toLowerCase());
 const isNpc = (u) => !!(u && u.npc);
 const npcUsers = () => Object.values(db.data.users).filter((u) => u.npc);
