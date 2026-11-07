@@ -348,6 +348,24 @@ test('NPC: la visita respeta límites, no repite pedido y oferta, y marca sus ó
   clearNpcOrders();
 });
 
+test('NPC: los comerciantes no pagan comisión de publicación (los jugadores sí), pero sí el impuesto al vender', () => {
+  clearNpcOrders();
+  const g = N('ginger');
+  const before = g.coins;
+  const feeLogs = () => (hub.econDay().sink.market_fee || 0);
+  const f0 = feeLogs();
+  market.buy(g, { ...item('master-ball'), qty: 1, price: 1500 });
+  assert.strictEqual(g.coins, before - 1500, 'el pedido de un NPC solo aparta el precio, sin comisión');
+  assert.strictEqual(feeLogs(), f0, 'sin comisión registrada');
+  assert.strictEqual(market.fee(100000, g), 0);
+  const p = user('sincomision', { coins: 10000 });
+  market.buy(p, { ...item('master-ball'), qty: 1, price: 1000 });
+  assert.strictEqual(p.coins, 10000 - 1000 - market.fee(1000, p), 'un jugador sigue pagando la comisión');
+  assert.ok(market.fee(1000, p) > 0);
+  clearNpcOrders();
+  for (const o of db.data.market.orders.filter((x) => x.userId === p.id)) market.cancel(p, { id: o.id });
+});
+
 test('NPC: operaciones con NPC se marcan y no ensucian la media de precios de los jugadores', () => {
   const g = N('ginger');
   delete npc.state().spent[g.id];

@@ -118,7 +118,8 @@ function validQtyPrice(a, qty, price) {
 const marketDay = () => require('./events').has('market');
 const setupFee = () => (marketDay() ? SETUP_FEE / 2 : SETUP_FEE);
 const salesTax = () => (marketDay() ? 0 : SALES_TAX);
-const fee = (total) => Math.max(1, Math.ceil(total * setupFee()));
+// Los comerciantes NPC no pagan comisión de publicación: es un sumidero pensado para jugadores y, en una cuenta de NPC, solo vaciaría una caja cerrada.
+const fee = (total, user = null) => (user && user.npc ? 0 : Math.max(1, Math.ceil(total * setupFee())));
 
 // ---- Historial de precios ----
 function record(a, qty, price, seller, buyer, npcFlags = {}) {
@@ -194,7 +195,7 @@ function sell(user, payload) {
   const days = validDays(payload);
   validQtyPrice(a, qty, price);
   if (owned(user, a) < qty) throw new Error(`No tienes ${describe(a, qty)}.`);
-  if (!instant && user.coins < fee(qty * price)) throw new Error('No tienes monedas para la comisión de publicación.');
+  if (!instant && user.coins < fee(qty * price, user)) throw new Error('No tienes monedas para la comisión de publicación.');
   checkOrderLimit(user, instant);
   let left = qty;
   let earned = 0;
@@ -219,8 +220,9 @@ function sell(user, payload) {
   }
   let order = null;
   if (left && !instant) {
-    user.coins -= fee(left * price);
-    hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
+    const f = fee(left * price, user);
+    user.coins -= f;
+    hub.ledger(user, -f, 'market_fee', a.ref);
     const snaps = takeGoods(user, a, left);
     order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}), ...(snaps && snaps.length ? { snaps } : {}) };
     M().orders.push(order);
@@ -244,7 +246,7 @@ function buy(user, payload) {
   validQtyPrice(a, qty, price);
   const maxP = require('./transfer').maxBuyPrice(user, a);
   if (price > maxP) throw new Error(`Las cuentas nuevas (menos de nivel 3 o de 3 días) o ayudadas por la Enfermera Joy en las últimas 24 h no pueden pagar más de ${maxP.toLocaleString('es')} por unidad de esto.`);
-  const worst = qty * price + (instant ? 0 : fee(qty * price));
+  const worst = qty * price + (instant ? 0 : fee(qty * price, user));
   if (user.coins < worst) throw new Error(`Necesitas hasta ${worst.toLocaleString('es')} monedas.`);
   checkOrderLimit(user, instant);
   let left = qty;
@@ -271,9 +273,10 @@ function buy(user, payload) {
   }
   let order = null;
   if (left && !instant) {
-    user.coins -= left * price + fee(left * price);
+    const f = fee(left * price, user);
+    user.coins -= left * price + f;
     hub.ledger(user, -left * price, 'market_buy', `Pedido: ${left} × ${a.ref}`);
-    hub.ledger(user, -fee(left * price), 'market_fee', a.ref);
+    hub.ledger(user, -f, 'market_fee', a.ref);
     order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');

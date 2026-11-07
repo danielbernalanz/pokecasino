@@ -6,7 +6,8 @@
 //     a partir del valor de liberar un duplicado, del precio de la tienda o de tablas fijas. Los precios de los
 //     jugadores solo mueven al NPC DENTRO de esos límites.
 //  2. LÍMITES DIARIOS por jugador (monedas y unidades) y cuentas nuevas/novatas sin acceso a sus compras.
-//  3. TESORERÍA FINITA: solo pujan con monedas que tienen; sin fondos solo venden.
+//  3. TESORERÍA FINITA: solo pujan con monedas que tienen; sin fondos solo venden. No pagan comisión de publicación
+//     (es un sumidero para jugadores); sí pagan el impuesto de venta, que retira monedas de lo que los jugadores les pagan.
 //  4. STOCK PROPIO: solo venden lo que han comprado + un reabastecimiento diario de bienes (crea objetos, no
 //     monedas, y se vende por encima del suelo: es un sumidero). Los precios suben y bajan con su stock.
 //  5. ENCARGOS y OFERTAS FLASH: pedidos especiales con premio que no son monedas (más una prima de monedas
@@ -393,7 +394,7 @@ function act(u, now = Date.now()) {
     if (free < 1) continue;
     const qty = s.a.kind === 'dust' ? Math.min(free, randInt(20, 100)) : Math.min(free, randInt(1, 3));
     const price = askPrice(s.a, p, undefined, { have: s.n });
-    if (u.coins < market.fee(qty * price)) continue;
+    if (u.coins < market.fee(qty * price, u)) continue;
     try { market.sell(u, { ...s.a, qty, price }); res.asks++; open = openOrders(u); } catch { /* sin comisión, etc. */ }
   }
 
@@ -411,7 +412,7 @@ function act(u, now = Date.now()) {
       if (room < 1) continue;
       const qty = a.kind === 'dust' ? Math.min(room, randInt(20, 120)) : Math.min(room, randInt(1, 3));
       const price = bidPrice(a, p, undefined, { have, demand: dem.has(a.ref) });
-      const cost = qty * price + market.fee(qty * price);
+      const cost = qty * price + market.fee(qty * price, u);
       // Un pedido nunca supera el 5 % de la tesorería ni lo que queda de su gasto diario.
       if (cost > u.coins || qty * price > spendLeft(u) || qty * price > 0.05 * (u.npcStart || 1)) continue;
       try {
@@ -530,7 +531,7 @@ function newEncargo(now = Date.now()) {
     const [type, amount] = (() => { const o = weightedPick(BONUS[r], (e) => e[2]); return [o[0], o[1]]; })();
     const price = bidPrice(a, p, null, { have: 0, demand: true, r: rand() });
     const qty = Math.min(ENC.qty, Math.floor((ENC.spendFrac * (u.npcStart || 1)) / price), Math.floor(spendLeft(u) / price));
-    if (qty < 1 || qty * price + market.fee(qty * price) > u.coins) continue;
+    if (qty < 1 || qty * price + market.fee(qty * price, u) > u.coins) continue;
     let order;
     try { ({ order } = market.buy(u, { ...a, qty, price, days: 1 })); } catch { continue; }
     if (!order) continue; // se llenó al momento con ofertas de jugadores
@@ -595,7 +596,7 @@ function newFlash(now = Date.now()) {
     if (price >= normal) continue;
     for (const o of openOrders(u).filter((x) => x.side === 'sell' && x.ref === s.a.ref)) market.cancel(u, { id: o.id });
     const qty = Math.min(held(u, s.a), FLASH.qty);
-    if (qty < 1 || u.coins < market.fee(qty * price)) continue;
+    if (qty < 1 || u.coins < market.fee(qty * price, u)) continue;
     let order;
     try { ({ order } = market.sell(u, { ...s.a, qty, price, days: 1 })); } catch { continue; }
     if (!order) continue;
