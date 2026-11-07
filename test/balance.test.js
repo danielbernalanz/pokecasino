@@ -197,21 +197,34 @@ test('subir de nivel: monedas 3 × nivel, Caramelo cada 5 desde el 10 y Master B
   assert.strictEqual(items5[24], 'master-ball');
 });
 
-test('el bonus de un día nunca supera la fracción de ventaja de lo apostado, juego a juego', () => {
-  for (const g of ['videopoker', 'blackjack', 'baccarat', 'slots', 'roulette', 'mines', 'quiz']) {
-    const u = user('bonus-' + g, { coins: 1e9, buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 3600e3 } });
-    let staked = 0;
-    let bonus = 0;
-    for (let i = 0; i < 300; i++) {
-      hub.takeBet(u, 1000, g);
-      staked += 1000;
-      bonus += hub.pay(u, 3000, 1000, g).bonus;
+// El fin de semana del Compañero (sábado y domingo en España) cambia el tope del bonus: estos tests fijan el evento a mano
+// para no depender de la fecha en que se ejecutan.
+function withBuddyEvent(on, fn) {
+  const events = require('../server/events');
+  const orig = events.has;
+  events.has = (id) => (id === 'buddy' ? on : orig(id));
+  try { return fn(); } finally { events.has = orig; }
+}
+
+for (const weekend of [false, true]) {
+  test(`el bonus de un día nunca supera la fracción de ventaja de lo apostado, juego a juego (${weekend ? 'fin de semana del Compañero' : 'día normal'})`, () => withBuddyEvent(weekend, () => {
+    for (const g of ['videopoker', 'blackjack', 'baccarat', 'slots', 'roulette', 'mines', 'quiz']) {
+      const u = user(`bonus-${weekend ? 'fs' : 'nl'}-${g}`, { coins: 1e9, buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 3600e3 } });
+      let staked = 0;
+      let bonus = 0;
+      for (let i = 0; i < 300; i++) {
+        hub.takeBet(u, 1000, g);
+        staked += 1000;
+        bonus += hub.pay(u, 3000, 1000, g).bonus;
+      }
+      const share = BAL.BONUS_SHARE_AMULET * (weekend ? BAL.BONUS_SHARE_EVENT : 1);
+      const limit = staked * BAL.edge(g) * share + 1;
+      assert.ok(bonus <= limit, `${g}: bonus ${bonus} > ${limit}`);
+      assert.ok(bonus < staked * BAL.edge(g) * 0.6, `${g}: más del 60 % de la ventaja de la casa`);
+      assert.ok(bonus < staked * BAL.edge(g), `${g}: más que la ventaja de la casa`);
     }
-    const limit = staked * BAL.edge(g) * BAL.BONUS_SHARE_AMULET + 1;
-    assert.ok(bonus <= limit, `${g}: bonus ${bonus} > ${limit}`);
-    assert.ok(bonus < staked * BAL.edge(g), `${g}: más que la ventaja de la casa`);
-  }
-});
+  }));
+}
 
 test('los duelos no dan XP al crear ni cancelar retos y la XP fija tiene tope diario', () => {
   const u = user('cultivador', { coins: 1e6, collection: { 6: { n: 1, s: 0 } }, level: 3 });
