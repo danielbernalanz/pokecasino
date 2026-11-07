@@ -6,6 +6,7 @@ import { leagueTab } from './league-ui.js';
 import { towerTab } from './tower-ui.js';
 import { eliteTab } from './elite-ui.js';
 import { openSpecimen } from './pc.js';
+import { exportDialog, fileName } from '../export-ui.js';
 import { expBar } from './pc-fx.js';
 import { BattleScreen, loadNames, moveEs, abilityEs, moveMeta, CAT, moveDesc } from '../battle-screen.js';
 
@@ -390,8 +391,16 @@ export default {
         const r = await act('battle:delteam', { slot: e.slot }, ev.currentTarget);
         if (r) { st.teams = r.teams; e.loaded = false; drawTeams(); }
       } }, 'Borrar') : null;
+      const exp = teams[e.slot] ? h('button', { class: 'btn', type: 'button', 'data-testid': 'team-export', title: 'Copia o descarga este equipo guardado', onclick: () => {
+        const slot = e.slot;
+        exportDialog({
+          title: `📤 Exportar «${teams[slot].name}»`, intro: 'Se exporta el equipo guardado. «Copiar para Showdown» da el texto que se pega en Pokémon Showdown o en calculadoras de daño.', showdown: true,
+          file: (o) => fileName('equipo-' + String(o.teamName || slot + 1).replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, ''), o.trainer.name),
+          async load() { const { ok, me, ...obj } = await emit('pc:export', { what: 'team', team: slot }); return { obj, count: obj.team.length }; },
+        });
+      } }, '📤 Exportar equipo') : null;
       content.replaceChildren(h('div', { class: 'tm-layout' },
-        h('div', { class: 'card stack' }, slotTabs, h('label', {}, 'Nombre', nameIn), rows, h('div', { class: 'row gap wrap' }, save, del),
+        h('div', { class: 'card stack' }, slotTabs, h('label', {}, 'Nombre', nameIn), rows, h('div', { class: 'row gap wrap' }, save, del, exp),
           h('p', { class: 'muted small' }, 'Los movimientos (solo los que ha aprendido: por nivel, MT, huevo o tutor) de cada Pokémon se eligen aquí y valen en todos tus equipos. La habilidad viene de nacimiento (se hereda en el Criadero) y solo cambia con una Cápsula o un Parche Habilidad. Una Megaevolución por equipo (hace falta haberla desbloqueado).')),
         h('div', { class: 'card stack' }, h('h3', {}, 'Caja PC'), h('div', { class: 'row gap' }, q), pc)));
       drawRows(); drawPc();

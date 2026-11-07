@@ -177,3 +177,7 @@
 @media (prefers-reduced-motion: reduce) { .lvlup-pop { animation: none; } .exp-bar i { transition: none; } }
 .rw-img { width: 18px; height: 18px; vertical-align: -4px; margin-right: 3px; image-rendering: pixelated; }
 @media (max-width: 420px) { .exp-tiers { gap: 4px; } .exp-tier .item-img { width: 26px; height: 26px; } }
+
+/* Exportar equipo / Caja PC (export-ui.js) */
+.export-text { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; min-height: 110px; resize: vertical; }
+.export-choices { gap: 6px; }

@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.07-c",
+    "date": "2026-11-07",
+    "title": "Exporta tu equipo y tu Caja PC",
+    "items": [
+      "📤 Caja PC: nuevo botón «Exportar» para copiar o descargar tus Pokémon en un archivo JSON (toda la caja, lo que tengas filtrado o solo favoritos).",
+      "🧩 Combates > Mis equipos: «Exportar equipo» copia o descarga el equipo guardado en JSON y también en el texto de Pokémon Showdown, listo para pegar en Showdown o en calculadoras de daño.",
+      "🔒 La exportación solo incluye datos de tus Pokémon: nunca monedas, mochila ni datos de la cuenta."
+    ]
+  },
+  {
     "version": "2026.11.07-b",
     "date": "2026-11-07",
     "title": "Giovanni abre su tienda en el Mercado",

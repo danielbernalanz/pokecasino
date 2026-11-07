@@ -648,6 +648,7 @@ io.on('connection', (socket) => {
   on('me:history', (u) => ({ history: hub.history(u) }), { push: false });
   on('buddy:set', setBuddy);
   on('pc:box', (u) => ({ ...specimen.boxView(u), ...candy.boxExtra(u) }), { push: false });
+  on('pc:export', require('./export').exportData, { push: false });
   on('pc:nick', specimen.nick);
   on('pc:moves', require('./moves').setEquipped);
   on('bp:state', (u) => require('./bp').state(u), { push: false });

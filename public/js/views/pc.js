@@ -6,6 +6,7 @@ import { heartsEl, friendLabel, friendTier, movePower, petButton, berryImg, berr
 import { movesPage, learnPrompt, swapDialog } from './moves-ui.js';
 import { gearPage } from './bp-ui.js';
 import { loadNames, moveEs } from '../battle-screen.js';
+import { exportDialog, fileName } from '../export-ui.js';
 
 const STAT_NAMES = ['PS', 'Ataque', 'Defensa', 'At. Esp.', 'Def. Esp.', 'Velocidad'];
 
@@ -526,8 +527,27 @@ export default {
       drawSide();
       drawPickBar();
     }
+    // ---- Exportar la Caja a JSON ----
+    const exportBtn = h('button', { class: 'btn', type: 'button', 'data-testid': 'pc-export', title: 'Copia o descarga tus Pokémon en un archivo JSON', onclick: () => {
+      const nFav = mons.filter((m) => m.fav).length;
+      let full = null; // caja completa (una sola petición por diálogo)
+      exportDialog({
+        title: '📤 Exportar la Caja PC', intro: 'Datos de tus Pokémon (especie, nivel, naturaleza, IV, EV, movimientos, objeto…). No incluye monedas, mochila ni datos de la cuenta.',
+        choices: [{ id: 'all', label: `Toda la caja (${fmt(mons.length)})` }, { id: 'filtered', label: `Lo filtrado ahora mismo (${fmt(list.length)})` }, { id: 'fav', label: `Solo favoritos (${fmt(nFav)})` }],
+        file: (o) => fileName('caja', o.trainer.name),
+        async load(c) {
+          full ||= await emit('pc:export', { what: 'box' });
+          let keep = null;
+          if (c === 'filtered') keep = new Set(list.map((m) => m.uid));
+          else if (c === 'fav') keep = new Set(mons.filter((m) => m.fav).map((m) => m.uid));
+          const { ok, me, ...obj } = full;
+          const sel = keep ? obj.box.filter((x) => keep.has(x.id)) : obj.box;
+          return { obj: { ...obj, box: sel }, count: sel.length };
+        },
+      });
+    } }, '📤 Exportar');
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🖥️ Caja PC'), counter, searchBtn, pickBtn, allBtn),
+      h('div', { class: 'game-head' }, h('h1', {}, '🖥️ Caja PC'), counter, searchBtn, pickBtn, allBtn, exportBtn),
       chip, filters, pickBar,
       h('div', { class: 'pc-layout' }, h('div', { class: 'pc-boxwrap' }, boxHead, grid), side));
     root.append(loader('Abriendo la Caja…'));
