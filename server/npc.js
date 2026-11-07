@@ -149,6 +149,8 @@ function N() {
   n.enc ||= []; // encargos: { id, npc, ref, price, bonus, createdAt, expiresAt, done: {userId: 1}, orderId }
   n.flash ||= []; // ofertas flash: { id, npc, ref, price, normal, until, orderId }
   n.feed ||= { day: null, n: 0 };
+  n.pool ||= { paid: 0, given: 0 }; // monedas que pagaron JUGADORES en comisiones/impuestos del Mercado y lo ya repartido a los NPC
+  n.refill ||= {}; // npcId -> { day, amt }: relleno recibido hoy
   n.nextId ||= 1;
   return n;
 }
@@ -186,6 +188,36 @@ const treasury = () => {
   const locked = us.reduce((s, u) => s + market.lockedIn(u), 0);
   return { n: us.length, coins, locked, start: us.reduce((s, u) => s + (u.npcStart || 0), 0) };
 };
+
+// ---- Relleno de tesorería ----
+// Una parte de lo que el casino retira del Mercado a los JUGADORES (comisión de publicación e impuesto de venta; los NPC no
+// pagan comisión y su impuesto no cuenta) vuelve a las tesorerías de los NPC, para que no se queden sin fondos. Nunca crea
+// monedas de la nada: solo se reparte hasta REFILL.share de lo que la bolsa ha recogido (`pool.paid`), una tesorería nunca
+// pasa de su inicial (`npcStart`) y cada NPC recibe como mucho REFILL.dailyFrac de su inicial al día.
+const REFILL = { share: 0.5, dailyFrac: 0.05 };
+const notePaid = (amount) => { if (Number.isFinite(amount) && amount > 0) N().pool.paid += Math.floor(amount); };
+const poolLeft = () => Math.max(0, Math.floor(N().pool.paid * REFILL.share) - N().pool.given);
+function refillTreasuries() {
+  const n = N();
+  const out = [];
+  if (n.refillDay === today()) return out;
+  n.refillDay = today();
+  const us = npcUsers().filter((u) => u.npcStart).sort((x, y) => (x.coins + market.lockedIn(x)) / x.npcStart - (y.coins + market.lockedIn(y)) / y.npcStart);
+  for (const u of us) {
+    let r = n.refill[u.id];
+    if (!r || r.day !== today()) r = n.refill[u.id] = { day: today(), amt: 0 };
+    const room = u.npcStart - (u.coins + market.lockedIn(u));
+    const amt = Math.floor(Math.min(room, REFILL.dailyFrac * u.npcStart - r.amt, poolLeft()));
+    if (amt <= 0) continue;
+    u.coins += amt;
+    r.amt += amt;
+    n.pool.given += amt;
+    hub.ledger(u, amt, 'npc_refill', 'Relleno con comisiones e impuestos de jugadores');
+    out.push({ npc: u.username, amt });
+  }
+  if (out.length) db.save();
+  return out;
+}
 
 // ---- Límites diarios ----
 const oldEnough = (u) => u.createdAt == null || u.createdAt < (N().launchedAt || 0) || Date.now() - u.createdAt >= MIN_AGE;
@@ -728,6 +760,7 @@ function publicState(now = Date.now()) {
 // Un «turno»: reabastece si toca, publica encargos/ofertas si toca y hace actuar a uno o dos NPC.
 function run(now = Date.now()) {
   restock();
+  refillTreasuries();
   special(now);
   const us = shuffle(npcUsers());
   const out = [];
@@ -756,5 +789,5 @@ module.exports = {
   state: N, start, ensure, run, act, restock, isNpc, isNpcName, treasury, bounds, inFocus, maxBid, reference, bidPrice, askPrice, eligible,
   cap, whyBlocked, note, sellLimit, NPCS, MIN_LEVEL, MIN_AGE, SELL_UNITS, BUY_UNITS, POKE_FLOOR, LOW_FUNDS, SPEND_DAILY,
   // encargos y ofertas flash
-  ENC, FLASH, BONUS, BONUS_VALUE, FEED_DAILY, flashEligible, flashFloor, encArticles, bonusValue, newEncargo, newFlash, internalTrade, internalPrice, INTERNAL, claim, special, sweepSpecial, publicState, npcFeed, dayPlan,
+  ENC, FLASH, BONUS, BONUS_VALUE, FEED_DAILY, flashEligible, flashFloor, encArticles, bonusValue, newEncargo, newFlash, notePaid, poolLeft, refillTreasuries, REFILL, internalTrade, internalPrice, INTERNAL, claim, special, sweepSpecial, publicState, npcFeed, dayPlan,
 };

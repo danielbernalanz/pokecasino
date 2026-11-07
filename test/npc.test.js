@@ -390,10 +390,12 @@ test('NPC: conservación de monedas con jugadores y NPC operando (solo bajan com
   const holders = Object.values(db.data.users); // también quien dejó órdenes de otros tests
   const total = () => holders.reduce((s, u) => s + u.coins + market.lockedIn(u), 0);
   const sinks = () => { const d = hub.econDay(); return (d.sink.market_fee || 0) + (d.sink.market_tax || 0); };
-  const created = () => Object.values(hub.econDay().src).reduce((s, v) => s + v, 0);
+  const refilled = () => hub.econDay().src.npc_refill || 0; // relleno con lo que pagaron los jugadores (acotado por la bolsa, ver su prueba)
+  const created = () => Object.values(hub.econDay().src).reduce((s, v) => s + v, 0) - refilled();
   const t0 = total();
   const s0 = sinks();
   const c0 = created();
+  const r0 = refilled();
   const articles = [poke(16), poke(19), poke(149), poke(144, true), item('ticket'), item('rare-candy'), item('master-ball'), item('mystery-egg'), item('frame-poke'), item('back-mew'), { kind: 'dust' }];
   for (let i = 0; i < 300; i++) {
     if (i % 3 === 0) npc.run();
@@ -415,7 +417,7 @@ test('NPC: conservación de monedas con jugadores y NPC operando (solo bajan com
     }
   }
   assert.strictEqual(created(), c0, 'nadie crea monedas');
-  assert.strictEqual(total(), t0 - (sinks() - s0), 'solo salen comisiones e impuestos');
+  assert.strictEqual(total(), t0 - (sinks() - s0) + (refilled() - r0), 'solo salen comisiones e impuestos (y vuelve el relleno de NPC)');
   assert.strictEqual(db.data.market.trades.filter((t) => t.sellerNpc && t.buyerNpc && !t.npcInternal).length, 0, 'en el libro los NPC no se cruzan (solo hay operaciones directas marcadas)');
   assert.ok(db.data.market.trades.some((t) => t.npc), 'hubo operaciones con NPC');
   for (const u of players) {
@@ -674,4 +676,51 @@ test('NPC: el precio entre comerciantes sube con la escasez y nunca sale de [top
   const avg = (total) => Array.from({ length: 200 }, () => npc.internalPrice(a, total)).reduce((x, y) => x + y, 0) / 200;
   assert.ok(avg(1) > avg(8), 'escaso es más caro que abundante');
   for (const total of [0, 1, 3, 50]) for (const r of [0, 0.5, 1]) { const p = npc.internalPrice(a, total, r); assert.ok(p >= bn.cap && p <= bn.floor); }
+});
+
+test('NPC: el relleno de tesorería sale solo de lo que pagan los jugadores, con techo en la inicial y máximo diario', () => {
+  resetSpecial();
+  const n = npc.state();
+  n.pool = { paid: 0, given: 0 };
+  n.refill = {};
+  n.refillDay = null;
+  const total = () => npcs().reduce((s, u) => s + u.coins, 0);
+  // Los NPC no alimentan la bolsa: ni comisión ni su impuesto.
+  const g = N('ginger');
+  market.buy(g, { ...item('master-ball'), qty: 1, price: 1500 });
+  assert.strictEqual(n.pool.paid, 0);
+  clearNpcOrders();
+  // Un jugador paga comisión (publicar) e impuesto (vender a un NPC): eso sí entra.
+  const p = user('rellena', { coins: 10000, items: { 'master-ball': 2 } });
+  market.sell(p, { ...item('master-ball'), qty: 1, price: 8000 }); // publica
+  const fee = market.fee(8000, p);
+  assert.strictEqual(n.pool.paid, fee);
+  for (const o of db.data.market.orders.filter((x) => x.userId === p.id)) market.cancel(p, { id: o.id });
+  const paid0 = n.pool.paid;
+  // Tesorerías vacías: reparto limitado por la bolsa, por el máximo diario y por el techo.
+  n.pool.paid = 100000; // lo recogido en el casino
+  for (const u of npcs()) u.coins = 0;
+  const t0 = total();
+  n.refillDay = null;
+  const out = npc.refillTreasuries();
+  const given = total() - t0;
+  assert.ok(given > 0 && given <= Math.floor(100000 * npc.REFILL.share), 'no supera la bolsa');
+  for (const u of npcs()) assert.ok(u.coins <= 0.05 * u.npcStart && u.coins <= u.npcStart, 'máximo diario del 5 % de la inicial');
+  assert.strictEqual(n.pool.given, given);
+  assert.strictEqual(npc.refillTreasuries().length, 0, 'una vez al día');
+  // Bolsa pequeña: solo reparte la mitad de lo recogido, nunca más.
+  n.pool = { paid: 1000, given: 0 };
+  n.refill = {}; n.refillDay = null;
+  for (const u of npcs()) u.coins = 0;
+  npc.refillTreasuries();
+  assert.strictEqual(total(), 500);
+  // Techo: con la tesorería casi llena no pasa de la inicial.
+  n.pool = { paid: 1e7, given: 0 };
+  n.refill = {}; n.refillDay = null;
+  const k = N('kecleon');
+  k.coins = k.npcStart - 100;
+  npc.refillTreasuries();
+  assert.strictEqual(k.coins, k.npcStart);
+  assert.ok(out.length > 0 && paid0 > 0);
+  resetSpecial();
 });

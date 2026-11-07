@@ -155,6 +155,7 @@ function settle(a, qty, price, seller, buyer, snaps = null) {
   seller.coins += gross - tax;
   hub.ledger(seller, gross, 'market_sale', `${qty} × ${a.ref}`);
   if (tax) hub.ledger(seller, -tax, 'market_tax', `${qty} × ${a.ref}`);
+  if (tax && !seller.npc) npc().notePaid(tax); // solo el impuesto que paga un jugador (el de un NPC no cuenta)
   seller.stats.sold = (seller.stats.sold || 0) + qty;
   buyer.stats.bought = (buyer.stats.bought || 0) + qty;
   const dust = giveGoods(buyer, a, qty, snaps);
@@ -250,6 +251,7 @@ function sell(user, payload) {
     const f = fee(left * price, user);
     user.coins -= f;
     hub.ledger(user, -f, 'market_fee', a.ref);
+    if (!user.npc) npc().notePaid(f); // lo que pagan los jugadores alimenta el relleno de las tesorerías NPC
     const snaps = takeGoods(user, a, left);
     order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}), ...(snaps && snaps.length ? { snaps } : {}) };
     M().orders.push(order);
@@ -304,6 +306,7 @@ function buy(user, payload) {
     user.coins -= left * price + f;
     hub.ledger(user, -left * price, 'market_buy', `Pedido: ${left} × ${a.ref}`);
     hub.ledger(user, -f, 'market_fee', a.ref);
+    if (!user.npc) npc().notePaid(f);
     order = { id: M().nextId++, side: 'buy', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');
