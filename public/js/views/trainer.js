@@ -1,5 +1,5 @@
 import { historyCard } from './history.js';
-import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, playingCard, fmtPlay } from '../core.js';
+import { S, h, fmt, act, sfx, toast, bus, sprite, avatar, titleTag, badgeImg, itemImg, goMarket, playingCard, fmtPlay, dexState } from '../core.js';
 import { openEgg } from '../rewards.js';
 import { hofList } from './elite-ui.js';
 import { lotteryPanel } from './lottery-ui.js';
@@ -73,7 +73,7 @@ export default {
       const sets = h('div', { class: 'set-grid' }, pr.sets.map((s) => h('div', { class: 'set-card' + (s.done ? ' done' : '') },
         h('div', { class: 'row between' }, h('b', {}, s.name), h('span', { class: s.done ? 'good' : 'muted' }, s.done ? '✔ Completa' : `${s.have}/${s.ids.length}`)),
         h('div', { class: 'set-mons' }, s.ids.map((id) => {
-          const owned = me.collection[id];
+          const owned = dexState(id) === 'caught';
           const p = S.dexById.get(id);
           const n = counts[id] || 0;
           return h('button', { class: 'set-mon' + (owned ? ' owned' : ''), title: owned ? p.name : `Te falta ${p.name}`, onclick: () => { if (!owned) goMarket(p.name); } },

@@ -95,12 +95,16 @@ test('pc:release da el mismo polvo que release y quita ese uid', () => {
   assert.strictEqual(u1.collection[25].n, 2);
   assert.ok(!uids(u1, 25).includes(target));
   assert.strictEqual(u1.mons[25].length, 2);
-  // Última copia: no se puede.
+  // Última copia: se puede (la Pokédex es un registro permanente), salvo si es el compañero.
   const solo = user({ collection: { 25: { n: 1, s: 0 } } });
   sp.sync(solo, 25);
-  assert.throws(() => sp.release(solo, { id: 25, uid: solo.mons[25][0].uid }));
+  solo.buddy = { id: 25, shiny: false, uid: solo.mons[25][0].uid };
+  assert.throws(() => sp.release(solo, { id: 25, uid: solo.mons[25][0].uid }), /compañero/);
   assert.strictEqual(solo.mons[25].length, 1);
   assert.ok(!solo.mons[25][0].drop);
+  solo.buddy = null;
+  sp.release(solo, { id: 25, uid: solo.mons[25][0].uid });
+  assert.ok(!solo.collection[25] && !solo.mons[25]);
 });
 
 test('liberar un variocolor baja s; liberar uno normal no', () => {

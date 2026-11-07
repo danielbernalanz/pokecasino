@@ -60,7 +60,7 @@ test('completar Kanto da el diploma (título + marco) una sola vez, sin monedas,
   assert.strictEqual(u.progress.titles.filter((t) => t === 'dex-kanto').length, 1);
   // Lo ya obtenido sigue contando aunque se haya liberado o regalado (dexSeen) y lo equipable se equipa.
   u.collection = {};
-  assert.strictEqual(regions.view(u)[0].have, 151);
+  assert.strictEqual(regions.view(u)[0].have, 151, 'lo obtenido no se pierde al liberar o regalar (registro permanente)');
   items.equip(u, { slot: 'title', id: 'dex-kanto' });
   items.equip(u, { slot: 'frame', id: 'frame-dex-kanto' });
   assert.strictEqual(u.equip.title, 'dex-kanto');
@@ -68,9 +68,13 @@ test('completar Kanto da el diploma (título + marco) una sola vez, sin monedas,
   assert.strictEqual(regions.view(u)[1].diploma, 0, 'las demás regiones no se tocan');
 });
 
-test('cuentas antiguas: una Pokédex ya completa recibe el diploma al evaluar; lo con candado y lo visto también cuentan', () => {
+test('cuentas antiguas: una Pokédex ya completa recibe el diploma al evaluar; lo con candado NO cuenta hasta recuperarlo', () => {
   const ids = idsOf('kalos');
-  const u = user({ collection: Object.fromEntries(ids.slice(0, 40).map((id) => [id, { n: 1, s: 0 }])), locked: Object.fromEntries(ids.slice(40, 60).map((id) => [id, { n: 1, s: 0 }])), dexSeen: Object.fromEntries(ids.slice(60).map((id) => [id, 1])) });
+  const u = user({ collection: Object.fromEntries(ids.slice(0, 40).map((id) => [id, { n: 1, s: 0 }])), locked: Object.fromEntries(ids.slice(40, 60).map((id) => [id, { n: 1, s: 0 }])), dexCaught: Object.fromEntries(ids.slice(40).map((id) => [id, 1])) });
+  assert.strictEqual(regions.view(u)[5].have, 52, 'el candado excluye aunque conste en el registro');
+  progress.evaluate(u);
+  assert.strictEqual(u.items['frame-dex-kalos'], undefined, 'sin diploma mientras haya candado');
+  u.locked = {}; // el anfitrión (o el jugador) recupera lo que tenía con candado
   assert.strictEqual(regions.view(u)[5].have, 72);
   assert.strictEqual(u.items['frame-dex-kalos'], undefined);
   progress.evaluate(u);

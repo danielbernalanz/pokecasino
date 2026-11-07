@@ -321,6 +321,7 @@ function startBattle(raid, now = Date.now()) {
   const avoid = new Set([raid.boss.id, ...raid.players.map((p) => p.mon.id)]);
   while (raid.players.length < MAX_PLAYERS) raid.players.push({ userId: null, name: 'Aliado CPU', human: false, mon: makeAlly(raid.star, raid.boss.tera, avoid), choice: null, acts: 0, timeouts: 0, afk: false, left: false, dismissed: true });
   raid.state = 'battle';
+  for (const p of humans(raid)) { const hu = db.userById(p.userId); if (hu) require('./dexreg').markSeen(hu, raid.boss.id); } // el jefe queda como visto
   raid.open = false;
   raid.turn = 1;
   const solo = humans(raid).length === 1;

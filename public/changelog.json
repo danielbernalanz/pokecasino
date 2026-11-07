@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026.11.07-e",
+    "date": "2026-11-07",
+    "title": "Pokédex como en los juegos",
+    "items": [
+      "📕 La Pokédex ahora es un registro permanente: cada Pokémon está sin ver («???»), visto (silueta y nombre) u obtenido (a color con la Poké Ball), aunque ya lo hayas evolucionado, intercambiado, liberado o transferido a Oak. Arriba: «Vistos X · Obtenidos Y», con filtros nuevos y «En tu Caja: N» en cada ficha.",
+      "🧬 Evolucionar transforma el ejemplar, también el último que tengas (adiós a «Necesitas otra copia»). Ya no se crea una copia gratis de la primera evolución; a quien ya la tenía no se le quita.",
+      "🕊️ Puedes transferir, liberar o cambiar tu último ejemplar: la especie sigue registrada. Se mantienen las protecciones del compañero y de las estrellas de Caramelo Raro.",
+      "📚 Colecciones, Pokédex regionales, diplomas y ranking cuentan lo obtenido, no las copias de tu Caja. Las colecciones ya completadas siguen completas. Los Pokémon de la Caja con candado siguen sin contar.",
+      "💎 Nueva Piedra Eterna (Tienda Poké, 1.800): el portador no evoluciona de forma natural (las piedras sí funcionan). Los Pokémon que ves en combates, encuentros e incursiones se anotan como vistos."
+    ]
+  },
+  {
     "version": "2026.11.07-d",
     "date": "2026-11-07",
     "title": "Filtros en la Tienda Poké",

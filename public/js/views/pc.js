@@ -30,6 +30,8 @@ const transferExpOf = (rarity, count = 1) => box.rules.transfer[rarity].exp * co
 const effIv = (m, i) => (m.hyper && m.hyper[i] ? 31 : m.ivs[i]);
 const pkrsBadge = (m) => (m.pkrs ? h('span', { class: 'pkrs-badge' + (m.pkrs === 'cured' ? ' cured' : ''), title: m.pkrs === 'cured' ? 'Pokérus curado: sigue ganando el doble de EVs, pero ya no contagia' : 'Pokérus: gana el doble de EVs y puede contagiar a su equipo', 'data-testid': 'pkrs' }, 'PKRS') : null);
 const spareCount = (id) => { const c = S.me.collection[id]; return c ? Math.max(0, c.n - (c.cn || 0) - 1) : 0; };
+// Copias que se pueden transferir, liberar o cambiar: todas las reales, también la última (la Pokédex es un registro permanente); si hay estrellas de Caramelo Raro, queda una.
+const giveCount = (id) => { const c = S.me.collection[id]; return c ? Math.max(0, (c.cn || 0) > 0 ? c.n - c.cn - 1 : c.n) : 0; };
 // Mismo criterio que el servidor: ni favoritos, ni compañero, ni variocolor; si no hay protegidos se conserva el mejor.
 function bulkList(id) {
   const all = mons.filter((m) => m.id === id);
@@ -118,14 +120,17 @@ function openMon(uid, openPage = 'info') {
     const needs = evoNeeds(t);
     for (const n of needs) if (!n.ok) reasons.push(n.text);
     if (m.level < need) reasons.push(`Nv. ${need}`);
-    if (spareCount(m.id) < 1 && !(ru.evoFirst && ru.evoFirst.includes(t.id))) reasons.push('otra copia');
+    const cc = S.me.collection[m.id];
+    if (cc && (cc.cn || 0) > 0 && cc.n - cc.cn <= 1) reasons.push('sus estrellas de Caramelo Raro la necesitan');
+    const lastOne = !!cc && cc.n === 1;
     const tc = S.me.collection[t.id];
     if (tc && tc.n >= 5) reasons.push('ya tienes 5 estrellas');
     const reqs = [need ? `Nv. ${need}` : null, byFriend ? `amistad ≥ ${ru.friendEvoMin}` : null].filter(Boolean);
     return h('div', { class: 'pc-evo', 'data-testid': 'evo-row' }, h('img', { src: sprite(t.id, m.shiny), alt: t.name }),
       h('div', { class: 'grow small' }, h('b', {}, t.name),
         needs.length ? h('div', { class: 'pc-evo-needs', 'data-testid': 'evo-needs' }, 'Necesita: ', needs.flatMap((n, i) => [i ? (i === needs.length - 1 ? ' y ' : ', ') : '', h('span', { class: n.ok ? 'good' : 'bad' }, (n.ok ? '✓ ' : '✗ ') + n.text)])) : null,
-        h('div', { class: 'muted' }, (reqs.length ? `Requisitos: ${reqs.join(' · ')}` : 'Sin requisito de nivel') + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ' · ¡Listo!'))),
+        h('div', { class: 'muted' }, (reqs.length ? `Requisitos: ${reqs.join(' · ')}` : 'Sin requisito de nivel') + (reasons.length ? ` · Falta: ${reasons.join(', ')}` : ' · ¡Listo!')),
+        lastOne ? h('div', { class: 'small muted', 'data-testid': 'evo-registered' }, `📕 ${S.dexById.get(m.id).name} seguirá registrado en tu Pokédex (tu último ejemplar se transforma en ${t.name}).`) : null),
       h('button', { class: 'btn primary', disabled: reasons.length > 0, onclick: async (ev) => {
         const r = await act('pc:evolve', { id: m.id, uid, to: t.id }, ev.target);
         if (!r) return;
@@ -281,6 +286,8 @@ function openMon(uid, openPage = 'info') {
   // «⋯ Más»: lo que sirve para deshacerse de un ejemplar. Nunca junto a las acciones frecuentes.
   function openMore() {
     const spare = spareCount(m.id);
+    const give = giveCount(m.id);
+    const lastCopy = (S.me.collection[m.id] || {}).n === 1;
     const tDust = S.data.rarity[p.rarity].dust;
     const tCandy = transferText(p.rarity);
     const special = [m.shiny ? 'variocolor ✨' : '', m.fav ? 'favorito' : '', m.buddy ? 'tu compañero' : ''].filter(Boolean).join(' y ');
@@ -288,9 +295,9 @@ function openMon(uid, openPage = 'info') {
     const more = modal(h('div', { class: 'stack pc-more' },
       h('p', { class: 'small muted' }, `${label(m)} · Nv. ${m.level}. Estas acciones son definitivas; si el ejemplar es especial te pediremos confirmación.`),
       h('div', { class: 'pc-box' }, h('h4', {}, '🎓 Transferir al Profesor Oak'),
-        h('p', { class: 'small muted' }, `Recibes ${tDust} ✦ de polvo y ${tCandy}. Hace falta otra copia (se conserva siempre una de cada Pokémon).`),
+        h('p', { class: 'small muted' }, `Recibes ${tDust} ✦ de polvo y ${tCandy}. ${lastCopy ? `Es tu último ${p.name}: seguirá registrado en tu Pokédex.` : ''}`),
         h('div', { class: 'row gap wrap' },
-          h('button', { class: 'btn', disabled: spare < 1 || !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
+          h('button', { class: 'btn', disabled: give < 1 || !!m.away || (m.buddy && lastCopy), title: m.away ? awayText(m) : (m.buddy && lastCopy ? 'Es tu compañero y tu única copia' : ''), onclick: async (e) => {
             if (special && !(await confirmRisk('release-precious', { title: 'Vas a transferir un ejemplar especial', danger: 'Transferir igualmente', safe: 'Conservarlo',
               text: `${label(m)} es ${special}. Solo recibes ${tDust} ✦ y ${tCandy} y no se puede deshacer.` }))) return;
             const r = await act('pc:transfer', { id: m.id, uid }, e.target);
@@ -298,7 +305,7 @@ function openMon(uid, openPage = 'info') {
           spare > 0 ? h('button', { class: 'btn', onclick: (e) => bulkTransfer(m.id, e.target, () => done()) }, 'Transferir repetidos') : null)),
       h('div', { class: 'pc-box' }, h('h4', {}, '🎁 Intercambio Milagroso'),
         h('p', { class: 'small muted' }, 'Entregas una copia sobrante (no favorita, compañero ni variocolor) y recibes otra de la misma rareza. Sin monedas.'),
-        h('button', { class: 'btn', disabled: spare < 1 || !!m.away || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
+        h('button', { class: 'btn', disabled: give < 1 || !!m.away || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
           const r = await act('pc:wonder', { id: m.id, uid }, e.target);
           if (!r) return;
           more.close(); modalRef.close();
@@ -306,10 +313,11 @@ function openMon(uid, openPage = 'info') {
           await load(); render && render();
         } }, `Intercambio Milagroso (${box.wonderLeft}/${ru.wonderDaily})`)),
       h('div', { class: 'pc-box' }, h('h4', {}, '🕊️ Liberar'),
-        h('p', { class: 'small muted' }, `Solo recibes ${S.data.rarity[p.rarity].dust} ✦ de polvo (sin Caramelos Exp.): casi siempre es mejor Transferir.`),
+        h('p', { class: 'small muted' }, `Solo recibes ${S.data.rarity[p.rarity].dust} ✦ de polvo (sin Caramelos Exp.): casi siempre es mejor Transferir.${lastCopy ? ` Seguirá registrado en tu Pokédex.` : ''}`),
         h('button', { class: 'btn danger', disabled: !!m.away, title: m.away ? awayText(m) : '', onclick: async (e) => {
           const c = S.me.collection[m.id];
-          if (!c || c.n - (c.cn || 0) < 2) return toast('Debes conservar al menos una copia de cada Pokémon.', 'error');
+          if (!c || giveCount(m.id) < 1) return toast('Tus estrellas de Caramelo Raro necesitan una copia real.', 'error');
+          if (m.buddy && c.n === 1) return toast('Es tu compañero y tu única copia: elige otro compañero antes.', 'error');
           const dust = S.data.rarity[p.rarity].dust;
           if (!(await confirmRisk('release-one', { section: 'la Caja PC', title: `¿Liberar a ${label(m)}?`, danger: 'Liberar', safe: 'Conservarlo',
             text: `${special ? `${label(m)} es ${special}. ` : ''}Solo recibes ${dust} ✦ de polvo y no se puede deshacer.` }))) return;

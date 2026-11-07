@@ -234,7 +234,7 @@ function leaderboard() {
     .sort((a, b) => b.value - a.value).slice(0, 10);
   return {
     coins: top((u) => u.coins),
-    dex: top((u) => Object.keys(u.collection).length),
+    dex: top((u) => require('./dexreg').caughtCount(u)),
     shinies: top((u) => Object.values(u.collection).reduce((s, c) => s + (c.s > 0 ? 1 : 0), 0)),
     badges: top((u) => (u.progress ? u.progress.badges.length * 1000 + u.progress.sets.length : 0)),
     biggestWin: top((u) => u.stats.biggestWin),
@@ -407,7 +407,7 @@ const admin = {
     return {
       users: Object.values(db.data.users).filter((u) => !u.npc).map((u) => ({
         username: u.username, coins: u.coins, dust: u.dust, level: u.level, banned: u.banned, isAdmin: u.isAdmin,
-        dex: Object.keys(u.collection).length, createdAt: u.createdAt, online: online.has(u.id),
+        dex: require('./dexreg').caughtCount(u), createdAt: u.createdAt, online: online.has(u.id),
       })),
       invites: Object.entries(db.data.invites).map(([code, i]) => ({ code, ...i })),
       accessKey: config.ACCESS_KEY,

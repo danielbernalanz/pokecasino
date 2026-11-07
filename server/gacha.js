@@ -165,9 +165,11 @@ function grant(user, id, shiny, { unlock = false } = {}) {
   let back = 0;
   if (unlocked) back = require('./locked').restore(user, id);
   const c = (user.collection[id] ||= { n: 0, s: 0 });
-  if (!user.npc) (user.dexSeen ||= {})[id] = 1; // «visto» para la GTS: sigue contando aunque luego se regale o transfiera (server/gts.js)
+  const dex = require('./dexreg');
+  const wasCaught = dex.caught(user, id); // «nuevo» = primera vez que se registra como obtenido (el registro es permanente: ver dexreg.js)
+  dex.markCaught(user, id); // obtenido (y visto) para siempre: sigue contando aunque luego se evolucione, regale, libere o transfiera
   if (!user.npc) require('./regions').onObtain(user, id); // Diploma del Game Freak al completar una Pokédex regional
-  const isNew = c.n === 0;
+  const isNew = c.n === 0 && !wasCaught;
   const newShiny = shiny && c.s === 0;
   let dust = back;
   if (c.n < 5) c.n++;
@@ -216,7 +218,7 @@ function pull(user, { banner: bannerId, count, free, ticket }, now = Date.now())
       const minRare = count === 10 && i === 9 && !results.some((r) => RANK[r.rarity] >= 2);
       rarity = rollRarity(banner, { minRare });
     }
-    const poke = rollPokemon(rarity, banner, { masterBall, phase, owned: (id) => !!(user.collection[id] && user.collection[id].n > 0) });
+    const poke = rollPokemon(rarity, banner, { masterBall, phase, owned: (id) => require('./dexreg').caught(user, id) });
     const charm = user.buffs.shinyCharges > 0;
     if (charm) user.buffs.shinyCharges--;
     const shiny = rand() < SHINY_RATE * (charm ? 4 : 1) * (require('./events').has('shiny') ? 2 : 1);
@@ -260,6 +262,9 @@ function craft(user, { id }) {
 // liberación o venta daría más de lo que cuesta). Siempre queda una copia real que las respalda.
 const realCopies = (c) => c.n - (c.cn || 0);
 const spareCopies = (c) => Math.max(0, realCopies(c) - 1);
+// Copias que se pueden liberar, transferir o dar a cambio de algo: TODAS las reales, también la última (como en los juegos: el registro de la Pokédex
+// ya no depende de tener el ejemplar). Solo se conserva una copia real si respalda estrellas de Caramelo Raro.
+const giveable = (c) => Math.max(0, (c.cn || 0) > 0 ? realCopies(c) - 1 : realCopies(c));
 
 // Liberar repetidos y cambiar el polvo no puede devolver más de lo que cuesta tirar (el polvo de una tirada ×1
 // vale ≈55 % de su coste a DUST_RATE).
@@ -281,9 +286,11 @@ function release(user, { id, count }) {
   count = Number(count) || 1;
   const busy = require('./specimen').busyCount(user, p ? p.id : 0).total;
   if (busy && c && count >= 1 && count > realCopies(c) - busy) throw new Error('Esa copia está de expedición o en el criadero: espera a que vuelva.');
-  if (!c || !Number.isInteger(count) || count < 1 || count > spareCopies(c)) throw new Error('Debes conservar al menos una copia (las estrellas de Caramelo Raro no se pueden liberar).');
+  if (!c || !Number.isInteger(count) || count < 1 || count > giveable(c)) throw new Error('Tus estrellas de Caramelo Raro necesitan una copia real: no puedes quitar la última.');
+  require('./dexreg').markCaught(user, p.id); // red de seguridad: lo que se tiene consta como obtenido antes de soltarlo
   c.n -= count;
   if (c.s > realCopies(c)) c.s = realCopies(c);
+  if (c.n <= 0) { delete user.collection[p.id]; if (user.buddy && user.buddy.id === p.id) user.buddy = null; } // la especie sigue en el registro de la Pokédex (dexreg.js)
   const dust = RARITY[p.rarity].dust * count;
   user.dust += dust;
   db.save();
@@ -303,6 +310,7 @@ function takePoke(user, id, shiny) {
   if (busy.total && realCopies(c) - busy.total < 1) throw new Error(`${p.name} está de expedición o en el criadero: espera a que vuelva para venderlo o regalarlo.`);
   if (busy.shiny && shiny && c.s - busy.shiny < 1) throw new Error(`Tu ${p.name} variocolor está de expedición o en el criadero.`);
   if (busy.total && !shiny && (c.n - c.s) - (busy.total - busy.shiny) < 1) throw new Error(`Tus ${p.name} normales están de expedición o en el criadero.`);
+  require('./dexreg').markCaught(user, p.id);
   c.n--;
   if (shiny) c.s--;
   if (c.n <= 0) {
@@ -314,4 +322,4 @@ function takePoke(user, id, shiny) {
   return p;
 }
 
-module.exports = { weightOf: (p, phase) => stageWeight(p) * daytime.mult(p.id, phase), X10_GIFTS, realCopies, spareCopies, STAGE_WEIGHT, stageWeight, pull, takePoke, craft, exchangeDust, release, grant, activeBanners, bannersInfo, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon, TUNING };
+module.exports = { weightOf: (p, phase) => stageWeight(p) * daytime.mult(p.id, phase), X10_GIFTS, realCopies, spareCopies, giveable, STAGE_WEIGHT, stageWeight, pull, takePoke, craft, exchangeDust, release, grant, activeBanners, bannersInfo, BANNERS, COST, RATES, SHINY_RATE, DUST_RATE, rollRarity, rollPokemon, TUNING };

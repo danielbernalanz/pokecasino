@@ -116,6 +116,14 @@ export function emit(ev, payload = {}) {
     });
   });
 }
+// Estado de Pokédex de una especie: 'caught' | 'seen' | 'none'. Lo calcula el servidor (server/dexreg.js, `me.dex`); aquí solo se lee.
+let dexMemo = null;
+export function dexState(id) {
+  const d = S.me && S.me.dex;
+  if (!d) return 'none';
+  if (!dexMemo || dexMemo.src !== d) dexMemo = { src: d, caught: new Set(d.caught), seen: new Set(d.seen) };
+  return dexMemo.caught.has(id) ? 'caught' : dexMemo.seen.has(id) ? 'seen' : 'none';
+}
 export function setMe(me) { S.me = me; bus.emit('me', me); }
 
 // Saldo de la cabecera durante una jugada: al apostar se descuenta la apuesta y el premio no aparece hasta que

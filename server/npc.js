@@ -18,6 +18,7 @@
 //    [tope, suelo], marcadas `npcInternal`: salen en el historial, pero no cuentan para reference() ni para los topes
 //    de transfer.js, y ninguna moneda llega a un jugador.
 const db = require('./db');
+const dexreg = require('./dexreg');
 const hub = require('./hub');
 const market = require('./market');
 const gacha = require('./gacha');
@@ -586,9 +587,9 @@ function needWeights(list, now) {
   const recent = new Set([...orders().filter((o) => o.side === 'sell' && !o.npc && o.createdAt > now - 48 * 3600e3).map((o) => o.ref),
     ...db.data.market.trades.filter((t) => !t.npc && t.at > now - 48 * 3600e3).map((t) => t.ref)]);
   const setNeed = new Map(); // pokeId -> jugadores a los que les falta y está en una colección sin completar
-  for (const u of us) for (const s of sets) if (s.ids.some((id) => !u.collection[id])) for (const id of s.ids) if (!u.collection[id]) setNeed.set(id, (setNeed.get(id) || 0) + 1);
+  for (const u of us) for (const s of sets) if (s.ids.some((id) => !dexreg.caught(u, id))) for (const id of s.ids) if (!dexreg.caught(u, id)) setNeed.set(id, (setNeed.get(id) || 0) + 1);
   return new Map(list.map((a) => {
-    const missing = us.filter((u) => (a.kind === 'poke' ? !u.collection[a.pokeId] : !(u.items[a.itemId] > 0))).length;
+    const missing = us.filter((u) => (a.kind === 'poke' ? !dexreg.caught(u, a.pokeId) : !(u.items[a.itemId] > 0))).length;
     return [a.ref, 1 + missing + (a.kind === 'poke' ? 3 * (setNeed.get(a.pokeId) || 0) : 0) + (recent.has(a.ref) ? 5 : 0)];
   }));
 }

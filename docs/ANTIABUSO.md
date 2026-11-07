@@ -141,7 +141,7 @@ Joy es aparte (+6.000 como mucho, solo con menos de 200 monedas). El techo norma
 - **Mismos topes que los regalos** (`server/transfer.js`): hace falta nivel 3 y 3 días de cuenta y no haber sido ayudado por la Enfermera Joy en 24 h (para depositar, para ofrecer y también para el dueño al intercambiar), y cada cuenta recibe como mucho **10 Pokémon y 2 legendarios o míticos al día** (compartido con los regalos) y hace **5 intercambios al día** en la GTS.
 - **Sin monedas entre jugadores:** solo hay una comisión de **150 monedas** por depositar (sumidero, no reembolsable), así que la GTS no sirve para pasar monedas ni para granjear: el trueque es 1×1 y el valor que se mueve queda acotado por los topes de arriba. Detalle del nivel y la EXP conservados en `docs/BALANCE.md`.
 - **Nada ya ganado se pierde:** el ejemplar depositado se guarda entero (nivel, EXP, EVs, amistad, movimientos, objeto…) y vuelve intacto al retirar o caducar; si no cabe en la Caja (5 copias de la especie) espera guardado. Lo recibido que no cabe también espera en la GTS en vez de convertirse en polvo.
-- **Pokédex «vista»:** solo se puede pedir una especie que hayas tenido (`u.dexSeen`, que se rellena al obtener un Pokémon y no se pierde al regalarlo o transferirlo), así no se usa la GTS para «ojear» el catálogo.
+- **Pokédex «vista»:** solo se puede pedir una especie que hayas **visto** (`u.dexSeen`, ver «Registro permanente de la Pokédex»): obtenida alguna vez, vista en un combate, un encuentro o una incursión, o con candado. Ver el depósito de otro NO la registra como vista (como en los juegos), así no se usa la GTS para «ojear» el catálogo.
 
 ## Torneos entre amigos (server/tourney.js)
 
@@ -158,7 +158,7 @@ Joy es aparte (+6.000 como mucho, solo con menos de 200 monedas). El techo norma
 
 ## Pokédex regionales y diplomas (server/regions.js)
 
-- Solo cosméticos (título y marco), una vez por cuenta y región: no hay nada que repetir ni vender (los marcos de diploma son `event` y los Huevos Misteriosos no los dan). Se calcula en el servidor con `collection ∪ locked ∪ dexSeen`; el cliente solo lo pinta.
+- Solo cosméticos (título y marco), una vez por cuenta y región: no hay nada que repetir ni vender (los marcos de diploma son `event` y los Huevos Misteriosos no los dan). Se calcula en el servidor con el registro de **obtenidos** (`dexreg.caught`, que excluye lo que siga con candado); el cliente solo lo pinta. Los diplomas ya concedidos no se quitan.
 - Una cuenta secundaria puede completar una región, pero cada Pokémon que obtiene ya está sometido a los topes de Gacha/Captura/regalos/GTS; no obtiene nada que no sea cosmético.
 
 ## Intercambio directo (server/trade.js)
@@ -183,3 +183,11 @@ Joy es aparte (+6.000 como mucho, solo con menos de 200 monedas). El techo norma
 - **Topes de EXP y amistad del día:** viajan con el ejemplar en GTS, intercambio directo y regalos (`xc`, `fd`), junto con la menta, las Chapas y la casilla de habilidad.
 - **Objetos equipados:** al transferir, liberar, vender o regalar un ejemplar con objeto, este vuelve a la mochila (en la GTS y el intercambio viaja con el ejemplar). Los regalos de Pokémon respetan los mismos bloqueos que la GTS (compañero, expedición, criadero, sala de intercambio, Alto Mando, incursión, combate).
 - **Invitaciones** (Teraincursión y torneo): máximo 30 al día por usuario, además del tope por sala o torneo.
+
+## Registro permanente de la Pokédex y Caja con candado (server/dexreg.js)
+
+- **Dos registros permanentes** por cuenta: `u.dexSeen` (visto) y `u.dexCaught` (obtenido). Obtenido implica visto. Ni evolucionar, ni regalar, vender, intercambiar, liberar o transferir al Profesor Oak los quitan. Una única función (`dexreg.status`: `caught` | `seen` | `none`) decide el estado para Pokédex, ranking, regionales, colecciones, perfil público, GTS y captura; el cliente lee `me.dex` y no lo recalcula.
+- **El candado sigue siendo una sanción**: una especie en `u.locked` NO cuenta como obtenida mientras tenga candado, conste o no en el registro (`caught = copias en la Caja ∨ (dexCaught ∧ ¬locked)`). Cuenta como «vista». Al recuperarla (crédito o gacha) vuelve a contar. Una copia nueva y legítima en la Caja sí cuenta, como antes.
+- **Migración de una sola vez** (`pokedex-registro-2026-11-07` en `server/fixes.js`, tras una copia de seguridad): obtenidos = lo que cada jugador tiene ahora ∪ `evoReg` ∪ lo que ya constaba en `dexSeen` (solo se marcaba al obtener un ejemplar) ∪ especies de sus colecciones ya completadas, **menos todo lo que esté con candado**. Idempotente. Los diplomas y colecciones ya ganados no se pierden.
+- **Sin nuevas fuentes de valor**: el registro no da monedas ni objetos; solo cuenta para Pokédex, colecciones y diplomas (cosméticos y +1 % por colección, con los mismos topes). «¡Nuevo!» y el Caramelo Exp. S de la primera vez se dan **una sola vez por especie y cuenta** (antes se repetían al volver a obtener una especie que habías regalado o transferido).
+- **Evolución sin copia gratis** y último ejemplar transferible: no se crean ejemplares de la nada (ver `docs/BALANCE.md`, «Registro permanente de la Pokédex y evolución»).

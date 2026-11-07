@@ -1,4 +1,4 @@
-import { S, h, multiSelect, fmt, act, art as artwork, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk } from '../core.js';
+import { S, h, multiSelect, fmt, act, art as artwork, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk, dexState } from '../core.js';
 
 // Mercado estilo Albion Online: libro de órdenes por artículo (ventas y pedidos de compra).
 let tab = 'browse';
@@ -69,7 +69,7 @@ function owned(a) {
   return me.dust;
 }
 function setsNeeding(a) {
-  if (a.kind !== 'poke' || S.me.collection[a.pokeId]) return [];
+  if (a.kind !== 'poke' || dexState(a.pokeId) === 'caught') return [];
   return S.me.progress.sets.filter((s) => !s.done && s.ids.includes(a.pokeId));
 }
 

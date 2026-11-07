@@ -34,13 +34,10 @@ const nameOf = (id) => BY_ID.get(Number(id)).name;
 const isRare = (id) => ['L', 'M'].includes(BY_ID.get(Number(id)).rarity);
 const sexOf = (id, m) => eggroups.genderOf(id, m);
 
-// ---- Pokédex «vista»: no hay seguimiento de vistos, así que cuenta lo que tienes, lo que tienes con candado y lo que has llegado a tener ----
-const seenBy = (u, id) => !!((u.collection && u.collection[id]) || (u.locked && u.locked[id]) || (u.dexSeen && u.dexSeen[id]));
-function seenList(u) {
-  const out = new Set([...Object.keys(u.collection || {}), ...Object.keys(u.locked || {}), ...Object.keys(u.dexSeen || {})].map(Number));
-  return [...out].filter((id) => BY_ID.has(id)).sort((a, b) => a - b);
-}
-const noteSeen = (u, id) => { if (!u.npc) (u.dexSeen ||= {})[id] = 1; };
+// ---- Pokédex «vista» (dexreg.js): en los juegos solo puedes pedir en la GTS lo que ya has visto. Ver un depósito de otro NO lo registra como visto. ----
+const seenBy = (u, id) => require('./dexreg').seen(u, id);
+const seenList = (u) => [...require('./dexreg').seenSet(u)].sort((a, b) => a - b);
+const noteSeen = (u, id) => { require('./dexreg').markSeen(u, id); };
 
 // ---- Qué piden ----
 const lvRange = (lv) => (lv ? [(lv - 1) * 10 + 1, lv * 10] : [1, 100]);
@@ -48,7 +45,7 @@ function cleanWant(u, w) {
   w = w && typeof w === 'object' ? w : {};
   const id = Number(w.id);
   if (!Number.isInteger(id) || !BY_ID.has(id)) throw new Error('Elige qué especie quieres a cambio.');
-  if (!seenBy(u, id)) throw new Error('Solo puedes pedir Pokémon que has visto (que tengas o hayas tenido en tu Pokédex).');
+  if (!seenBy(u, id)) throw new Error('Solo puedes pedir Pokémon que has visto (que tengas o hayas tenido en tu Pokédex, o hayas visto en combates y encuentros).');
   const g = w.g === 'M' || w.g === 'F' ? w.g : 'any';
   if (g !== 'any' && eggroups.fixedGender(id) !== undefined && eggroups.fixedGender(id) !== g) throw new Error(`${nameOf(id)} ${eggroups.fixedGender(id) ? 'es solo ' + (eggroups.fixedGender(id) === 'M' ? 'macho' : 'hembra') : 'no tiene sexo'}.`);
   const lv = Number(w.lv ?? 0);
@@ -169,7 +166,7 @@ function deposit(u, p, now = Date.now()) {
   pull(u, id, m);
   u.coins -= FEE;
   hub.ledger(u, -FEE, 'gts_fee', 'Depósito en la GTS');
-  noteSeen(u, id); noteSeen(u, want.id);
+  noteSeen(u, id);
   const d = { id: g.nextId++, userId: u.id, username: u.username, at: now, expiresAt: now + EXPIRE_MS, state: 'open', mon: { id, m }, want };
   g.deps.push(d);
   db.save();

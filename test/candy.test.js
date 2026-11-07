@@ -41,10 +41,13 @@ test('transferir da el mismo polvo que liberar más Caramelos Exp. (sin caramelo
   assert.ok(!b.candy, 'ya no hay caramelos de familia');
   assert.strictEqual(b.collection[pid].n, 2);
   assert.throws(() => candy.transfer(user({ collection: { [pid]: { n: 1, s: 0 } } }), { id: pid, uid: 'zzzz' }));
+  // El último ejemplar también se puede transferir (como en los juegos): la especie sigue registrada en la Pokédex.
   const solo = user({ collection: { [pid]: { n: 1, s: 0 } } });
   sp.syncAll(solo);
-  assert.throws(() => candy.transfer(solo, { id: pid, uid: solo.mons[pid][0].uid }), /conservar/);
-  assert.ok(!solo.items['exp-s']);
+  const tr1 = candy.transfer(solo, { id: pid, uid: solo.mons[pid][0].uid });
+  assert.strictEqual(tr1.dust, rel.dust);
+  assert.strictEqual(solo.items['exp-s'], 1);
+  assert.ok(!solo.collection[pid] && !solo.mons[pid], 'ya no la tiene en la Caja');
 });
 
 test('Caramelos Exp. por transferir: XS para C/U, S para R/E, M para L/M', () => {
@@ -113,7 +116,7 @@ test('evolucionar no cuesta caramelos: requisitos de nivel, datos del ejemplar, 
   const coinsBefore = u.coins; const dustBefore = u.dust;
   const r = candy.evolve(u, { id: charm, uid: shinyMon.uid, to: charme });
   assert.strictEqual(r.cost, undefined, 'sin coste');
-  assert.strictEqual(u.collection[charm].n, 2, 'la primera evolución a una especie nueva no gasta la copia de origen');
+  assert.strictEqual(u.collection[charm].n, 1, 'evolucionar transforma el ejemplar: no deja copia gratis');
   assert.strictEqual(u.collection[charm].s, 0);
   assert.strictEqual(u.collection[charme].n, 1);
   assert.strictEqual(u.collection[charme].s, 1);
@@ -123,15 +126,17 @@ test('evolucionar no cuesta caramelos: requisitos de nivel, datos del ejemplar, 
   assert.deepStrictEqual(moved.ivs, [1, 2, 3, 4, 5, 6]);
   assert.ok(moved.exp >= exp.expAt(charme, 20) && moved.exp < exp.expAt(charme, 21), 'la EXP se recoloca dentro de su nivel');
   assert.deepStrictEqual(u.buddy, { id: charme, shiny: true, uid: shinyMon.uid });
-  assert.strictEqual(u.mons[charm].length, 2);
+  assert.strictEqual(u.mons[charm].length, 1);
   assert.ok(u.mons[charm].some((m) => m.uid === plain.uid) && !u.mons[charm].some((m) => m.uid === shinyMon.uid));
-  assert.ok(u.evoReg[charme], 'queda registrada: vender la copia no permite repetir el truco');
+  assert.ok(!u.evoReg, 'ya no hay registro de primeras evoluciones');
   assert.strictEqual(u.coins, coinsBefore);
   assert.strictEqual(u.dust, dustBefore);
   plain.level = 20;
-  // Ya tienes el destino: evolucionar gasta una copia y la última no se puede gastar.
-  u.collection[charm].n = 1; sp.syncAll(u);
-  assert.throws(() => candy.evolve(u, { id: charm, uid: plain.uid, to: charme }), /otra copia/);
+  // Ya tienes el destino: el último ejemplar también puede evolucionar (la especie origen queda registrada).
+  candy.evolve(u, { id: charm, uid: plain.uid, to: charme });
+  assert.ok(!u.collection[charm] && !u.mons[charm]);
+  assert.strictEqual(u.collection[charme].n, 2);
+  assert.ok(require('../server/dexreg').caught(u, charm) && require('../server/dexreg').caught(u, charme));
 });
 
 test('evolucionar: ya tienes 5 del destino y nivel', () => {
@@ -212,9 +217,12 @@ test('Intercambio Milagroso: misma rareza, restricciones y límite diario', () =
   v.buddy = { id: pid, shiny: false, uid: plain[1].uid };
   assert.throws(() => candy.wonder(v, { id: pid, uid: plain[1].uid }), /compañero/);
   assert.throws(() => candy.wonder(v, { id: 151, uid: v.mons[151][0].uid }), /míticos/);
+  // El último ejemplar también se puede intercambiar (el registro de la Pokédex permanece).
   const solo = user({ collection: { [pid]: { n: 1, s: 0 } } });
   sp.syncAll(solo);
-  assert.throws(() => candy.wonder(solo, { id: pid, uid: solo.mons[pid][0].uid }), /conservar/);
+  const rs = candy.wonder(solo, { id: pid, uid: solo.mons[pid][0].uid });
+  assert.ok(!solo.collection[pid] && solo.collection[rs.id].n === 1);
+  assert.ok(require('../server/dexreg').caught(solo, pid) === false || solo.dexCaught === undefined, 'sin marcar (el usuario de prueba no pasó por grant)');
   // Legendaria: otra legendaria, nunca una destacada de los banners activos.
   const act = gacha.activeBanners();
   const feat = new Set([...act.permanent.featuredL, ...act.promo.featuredL]);
@@ -274,10 +282,10 @@ test('transferir varios de una vez: suma polvo y caramelos, salta al compañero 
   const dust0 = u.dust;
   // Elige todos los Bulbasaur (incluido el compañero) y los dos Charmander.
   const r = candy.transferMany(u, { list: [...a, ...b].map((m) => ({ id: m === a[0] || a.includes(m) ? 1 : 4, uid: m.uid })) });
-  assert.strictEqual(r.count, 3 + 1, 'tres Bulbasaur (no el compañero) y un Charmander (se conserva uno)');
-  assert.strictEqual(r.skipped, 2);
+  assert.strictEqual(r.count, 3 + 2, 'tres Bulbasaur (no el compañero) y los dos Charmander (también el último)');
+  assert.strictEqual(r.skipped, 1);
   assert.strictEqual(u.collection[1].n, 1);
-  assert.strictEqual(u.collection[4].n, 1);
+  assert.ok(!u.collection[4]);
   assert.strictEqual(u.dust - dust0, r.dust);
   assert.ok(r.exp > 0 && Object.keys(r.given).length);
 });

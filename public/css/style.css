@@ -521,6 +521,13 @@ label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-
 .dex-card.missing { opacity: .7; }
 .dex-card.shiny { background: linear-gradient(160deg, #ffcb0522, var(--panel)); }
 .dex-card.buddy { box-shadow: 0 0 0 2px var(--gold); }
+.dex-card.dex-seen img.pixel { filter: brightness(0) opacity(.7); }
+.dex-card.dex-none img.pixel { filter: brightness(0) opacity(.25); }
+.dex-card.dex-caught { opacity: 1; }
+.dex-ball { position: absolute; top: 2px; right: 4px; width: 18px !important; height: 18px !important; }
+h2 .dex-ball { position: static; width: 22px !important; height: 22px !important; vertical-align: middle; margin-left: 6px; }
+.dex-eye { position: absolute; top: 4px; right: 6px; font-size: 12px; }
+.dex-box { font: 600 10px Nunito; color: var(--muted); }
 .dex-no { position: absolute; top: 4px; left: 8px; font-size: 10px; color: var(--muted); }
 .buddy-tag { position: absolute; top: 2px; right: 6px; }
 .detail { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }

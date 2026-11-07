@@ -183,7 +183,7 @@ function evaluate(user) {
   const p = user.progress;
   if (!user.npc) require('./regions').check(user); // Pokédex regionales completas (cuentas antiguas incluidas)
   for (const s of SETS) {
-    if (!p.sets.includes(s.id) && s.ids.every((id) => user.collection[id])) {
+    if (!p.sets.includes(s.id) && s.ids.every((id) => require('./dexreg').caught(user, id))) {
       p.sets.push(s.id);
       grant(user, { items: { 'mystery-egg': 1 }, title: 'set-' + s.id }, `Colección «${s.name}» completada (+1 % permanente)`);
       hub.feed('set', `📚 ${user.username} completó la colección «${s.name}»`);
@@ -234,7 +234,7 @@ function view(user) {
         .map(([m, d]) => ({ ...m, title: d.title, n: d.n || 1, reward: d.reward })),
     },
     badges: BADGES.map((b, k) => ({ id: b.id, n: k + 1, name: b.name, leader: b.leader, city: b.city, lv: b.lv, req: badgeReq(b), got: p.badges.includes(b.id), prog: [p.badges.includes(b.id) ? 1 : 0, 1] })),
-    sets: SETS.map((s) => ({ id: s.id, name: s.name, ids: s.ids, title: s.title, done: p.sets.includes(s.id), have: s.ids.filter((id) => user.collection[id]).length })),
+    sets: SETS.map((s) => ({ id: s.id, name: s.name, ids: s.ids, title: s.title, done: p.sets.includes(s.id), have: s.ids.filter((id) => require('./dexreg').caught(user, id)).length })),
     titles: p.titles.map((id) => ({ id, text: TITLES[id] })),
     setBonus: setBonus(user),
   };

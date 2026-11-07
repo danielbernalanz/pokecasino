@@ -25,8 +25,10 @@ const PULL_NEW_ITEM = 'exp-s';
 const MIN_LEVEL = 5;
 const MAX_LEVEL = exp.MAX_LEVEL;
 
-// La PRIMERA evolución a una especie que aún no tienes («registro de Pokédex») no gasta la copia de origen: el ejemplar evoluciona y la especie origen
-// conserva su entrada. Esa copia nueva es la última de su especie (no se puede liberar ni vender), así que no crea valor en polvo ni monedas.
+// Evolucionar TRANSFORMA el ejemplar (como en los juegos): sale de la especie origen y entra en la nueva, sin copia gratis y sin gastar otra copia.
+// También el último de su especie: la Pokédex es un registro permanente (dexreg.js), así que la especie origen sigue «obtenida» aunque ya no la tengas.
+// (Hasta la v59 la PRIMERA evolución a una especie nueva dejaba una copia de nivel 5 de la especie origen para no perder su entrada: ya no hace falta
+// ni se da; las cuentas que ya la recibieron la conservan y `u.evoReg` solo queda como historial.)
 const WONDER_DAILY = 5;
 const RECYCLE_RATE = 0.4; // del precio de tienda
 const RECYCLE_DAILY_DUST = 300;
@@ -68,16 +70,18 @@ function evoCheck(u, m, id, to) {
   if (forced && forced !== to) throw new Error(`${m.nick || BY_ID.get(id).name} solo puede evolucionar a ${BY_ID.get(forced).name}.`);
   const bond = require('./bond');
   if (bond.isFriendEvo(id, to) && bond.friendOf(m) < bond.FRIEND_EVO_MIN) throw new Error(`${target.name} solo evoluciona con mucha amistad (≥ ${bond.FRIEND_EVO_MIN}).`);
+  // Piedra Eterna (como en los juegos): el portador no evoluciona «de forma natural» (nivel, amistad, intercambio…); las piedras y objetos que se USAN sobre él sí funcionan.
+  if (m.item === 'everstone') { const r = evoreq.reqOf(to); if (!(r && r.item && !r.trade)) throw new Error(`${m.nick || BY_ID.get(id).name} lleva una Piedra Eterna: no evoluciona (quítasela en la Caja PC).`); }
   exp.ensure(id, m);
   const need = evoLevel(to);
   if (m.level < need) throw new Error(`Necesita nivel ${need} (ahora ${m.level}).`);
   const tc = u.collection[to];
-  const first = isFirstEvo(u, to);
   const c = u.collection[id];
-  if (!first && gacha.spareCopies(c) < 1) throw new Error(`Necesitas otra copia de ${BY_ID.get(id).name}: ya tienes ${target.name} y evolucionar gasta una copia.`);
+  // Las estrellas de Caramelo Raro (`cn`) necesitan una copia real que las respalde: el último ejemplar real no puede irse si las hay.
+  if (c && (c.cn || 0) > 0 && gacha.realCopies(c) <= 1) throw new Error(`Las estrellas de Caramelo Raro de ${BY_ID.get(id).name} necesitan este ejemplar: no puede evolucionar mientras sea el único real.`);
   if (tc && tc.n >= 5) throw new Error(`Ya tienes 5 estrellas de ${target.name}.`);
   const special = evoreq.plan(u, m, id, to); // objeto, intercambio, sexo, hora… (lanza error sin gastar nada si falta algo)
-  return { special, first, target };
+  return { special, target };
 }
 // Evoluciones que el ejemplar puede hacer AHORA al subir de nivel (las «de nivel»: nivel, amistad, objeto equipado, movimiento…).
 // Es el aviso «¿Quieres que evolucione?»: si se cancela, sigue igual y puede evolucionar después desde la Caja PC.
@@ -184,29 +188,29 @@ function transferAllDupes(u, p = {}) {
 }
 
 // ---- Evolucionar ----
-// Primera evolución a una especie: no la tienes y nunca la has registrado así (si vendes la copia, la próxima vez ya no es «primera»).
-const isFirstEvo = (u, to) => !(u.collection[to] && u.collection[to].n > 0) && !(u.evoReg && u.evoReg[to]);
 function evolve(u, p) {
   const m = specimen.find(u, p);
   const id = Number(p.id);
   const to = Number(p.to);
-  const { special, first, target } = evoCheck(u, m, id, to);
+  const { special, target } = evoCheck(u, m, id, to);
   const c = u.collection[id];
   const tc = u.collection[to];
   const oldEntry = exp.ensure(id, m) && { exp: m.exp, lo: exp.expAt(id, m.level), hi: exp.expAt(id, m.level + 1) };
   special.consume();
-  if (first) (u.evoReg ||= {})[to] = 1; // una sola vez por especie y cuenta (aunque luego vendas la copia)
-  // Sale el ejemplar concreto de la especie origen (si es la primera vez, la especie origen conserva su entrada y
-  // `sync` le crea un ejemplar nuevo de nivel 5)…
+  require('./dexreg').markCaught(u, id); // red de seguridad: lo que se tiene consta como obtenido antes de que el ejemplar salga
+  // Sale el ejemplar concreto de la especie origen…
   moves.ensure(id, m); // si aún no estaba migrado, con los movimientos de la especie de origen
   const arr = specimen.sync(u, id);
   arr.splice(arr.indexOf(m), 1);
-  if (!first) c.n--;
+  c.n--;
   if (m.shiny) c.s = Math.max(0, (c.s || 0) - 1);
   if (c.s > gacha.realCopies(c)) c.s = gacha.realCopies(c);
+  if (c.n <= 0) delete u.collection[id]; // era el último: la especie origen sigue en el registro de la Pokédex
   // …y entra, con sus datos, en la especie destino.
   if (tc) specimen.sync(u, to);
   const dest = (u.collection[to] ||= { n: 0, s: 0 });
+  require('./dexreg').markCaught(u, to); // obtenido para siempre (y visto); si es nuevo, puede completar una Pokédex regional o una colección
+  if (m.tera === undefined) m.tera = require('./tera').teraOf(id, m); // el Teratipo es del ejemplar: no cambia al evolucionar aunque cambien sus tipos
   (u.mons[to] ||= []).push(m);
   dest.n++;
   if (m.shiny) dest.s = (dest.s || 0) + 1;
@@ -224,6 +228,7 @@ function evolve(u, p) {
   if (u.buddy && u.buddy.id === id && u.buddy.uid === m.uid) u.buddy = { id: to, shiny: m.shiny, uid: m.uid };
   specimen.sync(u, id);
   specimen.sync(u, to);
+  if (!u.npc) { require('./regions').onObtain(u, to); if (u.progress) require('./progress').evaluate(u); }
   if (target.rarity === 'L' || target.rarity === 'M') hub.feed('evolve', `🌟 ${u.username} hizo evolucionar a ${BY_ID.get(id).name} en ${target.name}`, { pokeId: to, shiny: m.shiny });
   db.save();
   return { from: id, to, uid: m.uid, name: target.name, used: special.uses, form, learned: learnt.auto, pending: learnt.pending, evo: evoOptions(u, m, to) };
@@ -249,18 +254,19 @@ function wonder(u, p) {
   if (m.shiny) throw new Error('No puedes intercambiar un variocolor.');
   if (u.buddy && u.buddy.id === id && u.buddy.uid === m.uid) throw new Error('No puedes intercambiar a tu compañero.');
   const c = u.collection[id];
-  if (gacha.spareCopies(c) < 1) throw new Error('Debes conservar al menos una copia de cada Pokémon.');
+  if (gacha.giveable(c) < 1) throw new Error('Tus estrellas de Caramelo Raro necesitan una copia real: no puedes intercambiarla.');
   const d = day(u);
   if (d.wonder >= WONDER_DAILY) throw new Error(`Solo ${WONDER_DAILY} intercambios milagrosos al día.`);
   const pool = wonderPool(u, src.rarity).filter((x) => x.id !== id);
   if (!pool.length) throw new Error('No hay nada que recibir a cambio ahora mismo.');
   // Las especies que ya tienes pesan menos (igual que en el gacha): el Milagroso sirve para completar la Pokédex.
-  const got = weighted(pool, (x) => (src.rarity === 'L' ? 1 : gacha.stageWeight(x)) * (u.collection[x.id] && u.collection[x.id].n > 0 ? gacha.TUNING.dupKeep : 1));
+  const got = weighted(pool, (x) => (src.rarity === 'L' ? 1 : gacha.stageWeight(x)) * (require('./dexreg').caught(u, x.id) ? gacha.TUNING.dupKeep : 1));
   // Sale el ejemplar entregado y entra una copia nueva y aleatoria.
   const arr = specimen.sync(u, id);
   arr.splice(arr.indexOf(m), 1);
   c.n--;
   if (c.s > gacha.realCopies(c)) c.s = gacha.realCopies(c);
+  if (c.n <= 0) delete u.collection[id];
   const g = gacha.grant(u, got.id, false);
   specimen.sync(u, id);
   specimen.sync(u, got.id);
@@ -306,7 +312,7 @@ function boxExtra(u) {
   return {
     tradeTokens: evoreq.tokensOf(u), phase: require('./daytime').phase(), wonderLeft: WONDER_DAILY - d.wonder, recycleLeft: RECYCLE_DAILY_DUST - d.recycle,
     rules: { transfer: Object.fromEntries(Object.keys(TRANSFER_EXP).map((r) => [r, { item: TRANSFER_EXP[r][0], n: TRANSFER_EXP[r][1], exp: transferExp(r) }])),
-      evoFirst: DEX.filter((x) => x.evolvesFrom && isFirstEvo(u, x.id)).map((x) => x.id), evoLevel: Object.fromEntries(DEX.filter((x) => x.evolvesFrom && evoLevel(x.id)).map((x) => [x.id, evoLevel(x.id)])),
+      evoLevel: Object.fromEntries(DEX.filter((x) => x.evolvesFrom && evoLevel(x.id)).map((x) => [x.id, evoLevel(x.id)])),
       feedCap: bond.CAP.feed, betStep: bond.BET_STEP, wonderDaily: WONDER_DAILY, maxLevel: MAX_LEVEL, recycleDaily: RECYCLE_DAILY_DUST, recycle: Object.fromEntries(recycleList()),
       loveMin: bond.LOVE_MIN, friendEvoMin: bond.FRIEND_EVO_MIN, friendEvo: [...bond.FRIEND_EVO.keys()], friendOnly: [...bond.FRIEND_ONLY], exp: exp.STATIC, hyper: require('./hyper').STATIC, forms: forms.STATIC },
   };
@@ -315,6 +321,6 @@ function boxExtra(u) {
 module.exports = {
   transferMany, transferAllDupes, MANY_MAX,
   TRANSFER_EXP, PULL_ITEM, PULL_NEW_ITEM, MIN_LEVEL, MAX_LEVEL, WONDER_DAILY, RECYCLE_RATE, RECYCLE_DAILY_DUST, RECYCLE_BERRY_DAILY, RECYCLE_BERRY_DUST,
-  transferExp, giveExp, evoCheck, evoOptions, canEvolveTo, evoLevel, isFirstEvo, evolutionsOf, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
+  transferExp, giveExp, evoCheck, evoOptions, canEvolveTo, evoLevel, evolutionsOf, onPull, bulkPlan, recycleValue, recycleList, boxExtra,
   transfer, transferBulk, evolve, wonder, recycle,
 };

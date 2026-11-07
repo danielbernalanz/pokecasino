@@ -244,6 +244,7 @@ function release(u, p) {
   const id = Number(p.id);
   const c = u.collection[id];
   const sBefore = c.s || 0;
+  if (u.buddy && u.buddy.id === id && u.buddy.uid === m.uid && require('./gacha').realCopies(c) <= 1) throw new Error('Es tu compañero y tu única copia: elige otro compañero antes.');
   m.drop = true;
   let res;
   try { res = gacha.release(u, { id, count: 1 }); } catch (e) { delete m.drop; throw e; }

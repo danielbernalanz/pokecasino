@@ -211,6 +211,17 @@ class Battle {
   humans() { return this.sides.filter((s) => s.human); }
   emitTo(side, ev, payload) { if (side.userId) hub.emitUser(side.userId, ev, payload); }
 
+  // Pokédex «vista» (dexreg.js): todo Pokémon que sale al campo en un combate real (CPU, líderes, Alto Mando, Torre, PvP, torneos) queda registrado como visto.
+  noteSeenSpecies(side, line) {
+    const m = /^\|(?:switch|drag|replace)\|p[12][ab]: [^|]*\|([^|]+)\|/.exec(line);
+    if (!m) return;
+    try {
+      const sp = sd.speciesNumByName(m[1]);
+      const u = sp && db.userById(side.userId);
+      if (u) require('./dexreg').markSeen(u, sp.num);
+    } catch { /* nunca debe romper un combate */ }
+  }
+
   onChunk(side, chunk) {
     if (this.over && this.finished) return;
     this.chunks = (this.chunks || 0) + 1;
@@ -227,6 +238,7 @@ class Battle {
     for (const line of out) {
       const m = /^\|(?:switch|drag)\|p[12][ab]: ([^|]*)\|/.exec(line);
       if (m) side.seen.add(m[1]);
+      if (side.userId && !this.replaying && this.mode !== 'sim') this.noteSeenSpecies(side, line);
       if (side.n === 0 && line.startsWith('|turn|')) this.turn = Number(line.slice(6)) || this.turn;
       if (line.startsWith('|win|')) this.queueEnd(line.slice(5));
       else if (line === '|tie') this.queueEnd(null);

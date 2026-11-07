@@ -254,7 +254,7 @@ test('bucle Caramelo Raro → liberar/vender: las estrellas de caramelo están l
   items.use(u, { itemId: 'rare-candy', pokeId: 150 });
   items.use(u, { itemId: 'rare-candy', pokeId: 150 });
   assert.strictEqual(u.collection[150].n, 3);
-  assert.throws(() => gacha.release(u, { id: 150, count: 1 }), /conservar/);
+  assert.throws(() => gacha.release(u, { id: 150, count: 1 }), /copia real/);
   assert.throws(() => gacha.takePoke(u, 150, false), /Caramelo Raro/);
   assert.strictEqual(market.owned(u, { kind: 'poke', pokeId: 150, shiny: false }), 0);
   assert.throws(() => market.sell(u, { kind: 'poke', pokeId: 150, shiny: false, qty: 1, price: 1000 }), /No tienes/);
@@ -264,7 +264,7 @@ test('bucle Caramelo Raro → liberar/vender: las estrellas de caramelo están l
   assert.strictEqual(market.owned(u, { kind: 'poke', pokeId: 150, shiny: false }), 1);
   assert.deepStrictEqual(gacha.release(u, { id: 150, count: 1 }), { dust: dex.RARITY.L.dust });
   assert.strictEqual(u.collection[150].n, 3);
-  assert.throws(() => gacha.release(u, { id: 150, count: 1 }), /conservar/);
+  assert.throws(() => gacha.release(u, { id: 150, count: 1 }), /copia real/);
   // y un caramelo nunca da más de lo que vale en polvo si se pudiera liberar (red de seguridad numérica).
   assert.ok(dex.RARITY.M.dust * gacha.DUST_RATE < items.ITEMS['rare-candy'].price * 3);
 });

@@ -1001,3 +1001,39 @@ Se comprobó cada regla de `docs/ANTIABUSO.md` contra el código, los tests y si
 | Voltorb Flip daba una Moneda de la Suerte por cada tablero limpiado (nivel ≥ 5) con la apuesta mínima (10) y los PNJ la compran a 229 | Máximo 1 al día (`voltorb.prizeDay`); test de regresión |
 | «≈ 4–5 mil monedas/día sin apostar» | Cifra real: techo ≈ 8.500 (9.100 miércoles; típico 5–6 mil), detalle en `scripts/max-free-income.js`; incluye el valor real de un Huevo Misterioso abierto (≈ 417, no 172) |
 | Bucles con PNJ | Sin cambios: venta ≥ 2 × compra en todo, la fabricación de Pokémon (60/144/360/960/1.600/3.200) queda por debajo de los suelos (90/200/500/1.500/9.000/18.000), polvo 3 compra / 8 venta |
+
+## Registro permanente de la Pokédex y evolución (server/dexreg.js, server/candy.js; test/dexreg.test.js)
+
+> **07-11-2026.** Hasta ahora la Pokédex, las colecciones, el ranking y los diplomas contaban lo que tenías EN LA CAJA (`collection[id].n > 0`) y por eso «evolucionar el último Deino con un Zweilous» daba «Necesitas otra copia». Ahora se parte de cómo lo hacen los juegos.
+
+### Qué se cambió y por qué
+| Antes | Ahora | Efecto económico |
+|---|---|---|
+| Pokédex = copias actuales (con `dexSeen` solo para la GTS) | Dos registros permanentes: **visto** (`dexSeen`) y **obtenido** (`dexCaught`); `dexreg.status` → `caught`/`seen`/`none`. Pokédex, ranking, regionales, colecciones, perfil público, captura crítica y Ball Acopio/Repetición leen «obtenido» | Ninguno en monedas. Ranking de Pokédex = especies obtenidas (nadie baja; quien regaló/transfirió/evolucionó sube) |
+| Evolucionar exigía una copia sobrante, salvo la **primera** evolución a una especie nueva, que dejaba una copia Nv. 5 de la origen | Evolucionar **transforma** el ejemplar (sale de la especie origen, entra en la nueva, conserva todo). Sin copia gratis, sin gastar otra copia; también el último ejemplar. La origen queda «obtenida» | Se elimina la única forma de crear un ejemplar evolucionando: el nº total de ejemplares nunca crece. Quien ya recibió la copia la conserva (`u.evoReg` queda como historial) |
+| Transferir/liberar/Milagroso exigían conservar una copia | Se puede con la última copia; sigue la protección de las **estrellas de Caramelo Raro** (`cn`) y del compañero si es su única copia. «Transferir repetidos» y «Transferir todos los repetidos» siguen conservando el mejor ejemplar | Mismo polvo y EXP por ejemplar que ya se daban con copias sobrantes |
+| «Nuevo» (y Caramelo Exp. S) cada vez que la especie no estaba en la Caja | Solo la primera vez que se registra como obtenida | Recompensa menor por volver a obtener algo transferido: estrictamente menos valor |
+
+### Cómo se comprobó que no hay bucles de monedas
+* **Evolución + transferir** (`test/progression.test.js`, «anti-arbitraje…»): Magikarp → Gyarados deja el nº de ejemplares igual (1 → 1), 0 polvo y 0 monedas al evolucionar; transferir el Gyarados da lo mismo que transferir cualquier ejemplar. Antes, la primera evolución creaba un segundo ejemplar (liberable con 2 copias): ahora no. El techo de polvo/EXP al día (`techo de polvo al día evolucionando y transfiriendo`) no cambia: depende solo de la EXP externa.
+* **Transferir el último y volver a tirar**: polvo por ejemplar ≤ 55 % de lo que cuesta una tirada (`DUST_RATE`), y fabricar cuesta ≥ 2,3 duplicados (`bucle crear → liberar`), así que se pierde igual. Re-obtener lo transferido ya no da «Nuevo» ni el Caramelo Exp. S.
+* **Coste de completar la Pokédex**: el cálculo de tiradas (≈ 14.400, ver más arriba) no cambia: el sesgo `dupKeep` y el Milagroso usan ahora «obtenido», es decir, el jugador que evolucionó o transfirió sigue sin recibir duplicados de lo registrado. Antes, transferir el último ejemplar volvía a sesgar hacia esa especie (la regla de «conservar una» lo impedía); no hay ahorro neto porque obtener cuesta una tirada.
+* **Colecciones y diplomas**: contar lo registrado no crea ganancias nuevas (cosméticos, +1 % por colección con los mismos topes de bonus). Las completadas siguen completadas.
+
+### Qué dicen los juegos (fuente por punto) y qué NO se pudo verificar
+Verificado con **PokeAPI** (`data/v2/csv`, vía GitHub) y el simulador **pokemon-showdown** incluido en el proyecto; Bulbapedia y Serebii **no eran accesibles** desde el entorno (sin red a esos dominios), así que lo marcado «recuerdo» es conocimiento del equipo sin comprobar:
+| Punto | Fuente | Estado |
+|---|---|---|
+| Piedra Eterna: «el portador no evoluciona de forma natural; la evolución iniciada por el entrenador (piedras, etc.) sigue funcionando» | PokeAPI `item_prose.csv` (id 206) | Verificado. Aquí bloquea nivel, amistad, hora, movimiento, sexo, estadísticas e intercambio, y **no** bloquea las piedras/objetos que se usan (`item` sin `trade` en `evodata.json`) |
+| Precio de la Piedra Eterna: 3.000 en los juegos → 1.800 monedas (×0,6 como las Poké Balls) | PokeAPI `items.csv` (coste 3.000) | Verificado el dato base |
+| Evolucionar conserva nivel, EXP, IV/EV, naturaleza (y menta), casilla de habilidad, amistad, Ball, entrenador original, variocolor, sexo, marcas, tamaño, Pokérus, mote personalizado | Implementación (mismo objeto de ejemplar `m`, sólo cambia la especie); regla de los juegos por recuerdo | Comportamiento comprobado en tests; regla «recuerdo» |
+| El Teratipo no cambia al evolucionar | Recuerdo de Escarlata/Púrpura (el Teratipo es del individuo) | **No verificado**; se fija en el ejemplar al evolucionar (`m.tera`) para que no cambie con los tipos de la especie |
+| Habilidad: misma casilla (1/2/oculta) en la nueva especie; si no existe esa casilla, la 1.ª | Código (`abilities.resolve`) | Regla de las casillas por recuerdo; no verificada la rama «no existe esa casilla» |
+| GTS: ver un depósito NO registra al Pokémon como visto; «visto» exige combatirlo, encontrarlo, verlo evolucionar o intercambiarlo | Recuerdo | **No verificado**. Se implementó así: ver un depósito no marca; combates reales (CPU, líderes, Alto Mando, Torre, PvP, torneos), encuentros de Captura y jefes de Teraincursión marcan «visto» |
+| Variocolor / formas vistas por especie en SV | – | **No implementado** (no se pudo verificar qué registra exactamente el juego); el contador principal es por especie |
+
+### No implementado en esta entrega (a decidir)
+* **Nincada → Ninjask + Shedinja** (copia extra si hay hueco y una Poké Ball): no está; crear un ejemplar nuevo al evolucionar hay que diseñarlo con su coste en Balls y su tope para no abrir un bucle.
+* **Evolución por intercambio automática** al recibir un Pokémon por intercambio/GTS (con opción de cancelar): hoy sigue el «intercambio pendiente»/Cordón Unión manual.
+* **Objetos equipados que se consumen al evolucionar** (Revestimiento Metálico…): los objetos de evolución salen de la mochila, no del equipado.
+* **Registro de «visto» en el historial**: la migración marca «visto» = obtenido ∪ visto previo ∪ candado; no se reconstruyen los rivales del historial de combates (no se guardan por especie).

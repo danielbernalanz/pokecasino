@@ -1,5 +1,5 @@
 import { aniImg } from '../anim.js';
-import { S, h, multiSelect, fmt, act, sfx, toast, sprite, art, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk } from '../core.js';
+import { S, h, multiSelect, fmt, act, sfx, toast, sprite, art, item, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, dexState } from '../core.js';
 import { useFx } from '../rewards.js';
 import { burstAt, centerOf } from '../fx.js';
 import { openItem } from './market.js';
@@ -22,9 +22,11 @@ export function openDetail(id) {
   const p = S.dexById.get(id);
   const c = S.me.collection[id];
   const lk = !c && S.me.locked && S.me.locked[id];
+  const st = dexState(id); // 'caught' | 'seen' | 'none' (lo decide el servidor: dexreg.js)
   let shiny = false;
-  // Si lo tienes, sprite animado (arte oficial de respaldo); si no, la silueta estática.
-  const mkBig = () => (c ? aniImg(id, { shiny, cls: 'detail-art', alt: p.name, fallback: art(id, shiny) }) : h('img', { class: 'detail-art silhouette', src: art(id), alt: p.name }));
+  // Si lo tienes, sprite animado (arte oficial de respaldo); si está obtenido pero ya no lo tienes, arte a color; si solo está visto o no, la silueta.
+  const mkBig = () => (c ? aniImg(id, { shiny, cls: 'detail-art', alt: p.name, fallback: art(id, shiny) })
+    : st === 'caught' ? h('img', { class: 'detail-art', src: art(id), alt: p.name }) : h('img', { class: 'detail-art silhouette', src: art(id), alt: st === 'none' ? '???' : p.name }));
   let big = mkBig();
   if (lk) big.classList.add('locked-art');
   const toggle = c && c.s > 0 ? h('button', { class: 'btn', onclick: () => { shiny = !shiny; const nb = mkBig(); big.replaceWith(nb); big = nb; toggle.textContent = shiny ? 'Ver normal' : 'Ver variocolor ✨'; } }, 'Ver variocolor ✨') : null;
@@ -32,12 +34,13 @@ export function openDetail(id) {
   const giftTo = h('input', { list: 'gift-users', placeholder: 'Entrenador' });
   // «⋯ Más»: acciones definitivas (liberar, regalar), aparte de las frecuentes.
   function openMore() {
+    const canRelease = (c.cn || 0) > 0 ? c.n - c.cn > 1 : true; // la última copia también se puede liberar; solo la respaldan las estrellas de Caramelo Raro
     const gift = async (e) => {
       const to = giftTo.value.trim();
       if (!to) return toast('Escribe el nombre del entrenador.', 'error');
       const isBuddy = S.me.buddy && S.me.buddy.id === id;
       if (!(await confirmRisk('gift-poke', { title: `¿Regalar ${p.name} a ${to}?`, danger: 'Regalar', safe: 'Cancelar',
-        text: `Perderás una copia de ${p.name}.${c.n === 1 ? ' Es tu única copia: tu Pokédex dejaría de tenerlo registrado.' : ''}${isBuddy ? ` Es tu compañero actual: dejarías de recibir su bonus hasta que elijas otro.` : ''} El regalo no se puede deshacer.` }))) return;
+        text: `Perderás una copia de ${p.name}.${c.n === 1 ? ' Es tu última copia: seguirá registrado como obtenido en tu Pokédex.' : ''}${isBuddy ? ` Es tu compañero actual: dejarías de recibir su bonus hasta que elijas otro.` : ''} El regalo no se puede deshacer.` }))) return;
       if (await act('gift:poke', { to, id, shiny: false }, e.target)) { toast('¡Regalo enviado!', 'success'); more.close(); m.close(); }
     };
     const release = async (e) => {
@@ -52,8 +55,8 @@ export function openDetail(id) {
       h('div', { class: 'pc-box' }, h('h4', {}, '🎁 Regalar una copia'),
         h('div', { class: 'row gap wrap' }, giftTo, h('datalist', { id: 'gift-users' }, S.online.filter((u) => u.username !== S.me.username).map((u) => h('option', { value: u.username }))),
           h('button', { class: 'btn', type: 'button', onclick: gift }, 'Regalar'))),
-      c.n > 1 ? h('div', { class: 'pc-box' }, h('h4', {}, '🕊️ Liberar una copia'), h('p', { class: 'small muted' }, `Solo recibes ${r.dust} ✦ de polvo (sin Caramelos Exp.).`),
-        h('button', { class: 'btn danger', type: 'button', onclick: release }, `Liberar 1 copia (+${r.dust} ✦)`)) : h('p', { class: 'small muted' }, 'Solo tienes una copia: se conserva siempre una de cada Pokémon.')),
+      canRelease ? h('div', { class: 'pc-box' }, h('h4', {}, '🕊️ Liberar una copia'), h('p', { class: 'small muted' }, `Solo recibes ${r.dust} ✦ de polvo (sin Caramelos Exp.).${c.n === 1 ? ' Seguirá registrado en tu Pokédex.' : ''}`),
+        h('button', { class: 'btn danger', type: 'button', onclick: release }, `Liberar 1 copia (+${r.dust} ✦)`)) : h('p', { class: 'small muted' }, 'Tus estrellas de Caramelo Raro necesitan esta copia real.')),
     { title: `⋯ Más: ${p.name}` });
   }
   let actions = c ? h('div', { class: 'stack' },
@@ -64,7 +67,8 @@ export function openDetail(id) {
       h('button', { class: 'btn', onclick: () => { m.close(); openInPc(id); } }, '🖥️ Ver en la Caja PC'),
       h('button', { class: 'btn', onclick: () => { m.close(); openItem({ kind: 'poke', pokeId: id, shiny: false }, 'sell'); } }, '🏪 Vender en el Mercado'),
       h('button', { class: 'btn', type: 'button', title: 'Liberar o regalar una copia', onclick: () => openMore() }, '⋯ Más'))) : h('div', { class: 'stack' },
-    h('p', { class: 'muted' }, '¿Quién es ese Pokémon? Aún no lo has atrapado.'),
+    st === 'caught' ? h('p', { class: 'small', 'data-testid': 'dex-registered' }, '📕 Registrado como obtenido · ahora no tienes ninguno en tu Caja.')
+      : h('p', { class: 'muted' }, st === 'seen' ? '👁 Lo has visto, pero aún no lo has atrapado.' : '¿Quién es ese Pokémon? Aún no lo has visto.'),
     h('button', { class: 'btn primary', onclick: () => { m.close(); openItem({ kind: 'poke', pokeId: id, shiny: false }); } }, '🏪 Comprarlo en el Mercado'),
     h('a', { class: 'btn', href: '#/workshop/craft', onclick: () => { Object.assign(craftFilter, { q: S.dexById.get(id).name, show: 'all' }); m.close(); } }, `Fabricar por ${fmt(r.craft)} ✦`));
   if (lk) {
@@ -79,7 +83,9 @@ export function openDetail(id) {
   const m = modal(h('div', { class: 'detail' },
     h('div', { class: 'detail-left r-' + p.rarity }, big, toggle),
     h('div', { class: 'stack' },
-      h('h2', {}, `#${String(id).padStart(3, '0')} ${p.name}`),
+      h('h2', {}, `#${String(id).padStart(3, '0')} ${st === 'none' ? '???' : p.name}`, st === 'caught' ? h('img', { class: 'dex-ball', src: item('poke-ball'), alt: 'Obtenido', title: 'Obtenido' }) : st === 'seen' ? h('span', { class: 'dex-eye', title: 'Visto' }, '👁') : null),
+      st !== 'none' || c ? null : h('div', { class: 'small muted' }, 'Aún no lo has visto: combate contra él, encuéntralo en Captura o consíguelo.'),
+      c ? h('div', { class: 'small muted', 'data-testid': 'dex-box-n' }, 'Registrado como obtenido · en tu Caja: ' + c.n) : null,
       h('div', { class: 'muted small' }, `${['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Teselia', 'Kalos', 'Alola', 'Galar', 'Paldea'][p.gen - 1]} · PS ${p.stats[0]} · Atq ${p.stats[1]} · Def ${p.stats[2]} · AtqEsp ${p.stats[3]} · DefEsp ${p.stats[4]} · Vel ${p.stats[5]}`),
       h('div', { class: 'types' }, p.types.map(typeBadge)),
       h('div', {}, h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity))),
@@ -93,7 +99,7 @@ export default {
   id: 'pokedex', title: 'Pokédex', icon: '📕',
   mount(root) {
     // La primera vez se abre en «Atrapados» si ya tienes alguno (con 1.025 es lo más útil).
-    if (filter.show === null) filter.show = Object.keys(S.me.collection).length ? 'owned' : 'all';
+    if (filter.show === null) filter.show = S.me.dex && S.me.dex.caught.length ? 'owned' : 'all';
     const grid = h('div', { class: 'dex-grid' });
     const BATCH = 150;
     let observer = null;
@@ -115,21 +121,25 @@ export default {
       banner.replaceChildren(...(nl ? [h('span', {}, `🔒 ${nl} Pokémon con candado · ${(S.me.lockedProg && S.me.lockedProg.credits) || 0} recuperaciones disponibles · ${lockedLine()}`),
         h('button', { class: 'btn small', onclick: () => { filter.show = 'locked'; showSel.value = 'locked'; renderedCount = 0; render(); } }, 'Verlos')] : []));
       banner.hidden = !nl;
-      const owned = Object.keys(col).length;
+      const dx = S.me.dex || { seen: [], caught: [] };
+      const owned = dx.caught.length; // obtenidos (registro permanente)
       const shinies = Object.values(col).filter((c) => c.s > 0).length;
-      counter.replaceChildren(h('b', {}, `${owned}/${S.data.dex.length}`), ' atrapados · ', h('b', {}, shinies), ' variocolor',
+      counter.replaceChildren(h('span', { 'data-testid': 'dex-seen' }, 'Vistos ', h('b', {}, dx.seen.length)), ' · ', h('span', { 'data-testid': 'dex-caught' }, 'Obtenidos ', h('b', {}, `${owned}/${S.data.dex.length}`)), ' · ', h('b', {}, shinies), ' variocolor',
         h('div', { class: 'pity-bar' }, h('i', { style: { width: (owned / S.data.dex.length) * 100 + '%' } })));
       const q = filter.q.trim().toLowerCase();
       const list = S.data.dex.filter((p) => {
         const c = col[p.id];
-        if (filter.show === 'owned' && !c) return false;
-        if (filter.show === 'missing' && c) return false;
+        const st = dexState(p.id);
+        if (filter.show === 'owned' && st !== 'caught') return false;
+        if (filter.show === 'seen' && st !== 'seen') return false;
+        if (filter.show === 'inbox' && !c) return false;
+        if (filter.show === 'missing' && st === 'caught') return false;
         if (filter.show === 'shiny' && !(c && c.s)) return false;
         if (filter.show === 'locked' && !(!c && lockedOf[p.id])) return false;
         if (filter.rarity.length && !filter.rarity.includes(p.rarity)) return false;
         if (filter.type.length && !p.types.some((t) => filter.type.includes(t))) return false;
         if (filter.gen.length && !filter.gen.includes(String(p.gen))) return false;
-        if (q && !(c ? p.name.toLowerCase().includes(q) : String(p.id).includes(q))) return false;
+        if (q && !(st !== 'none' ? p.name.toLowerCase().includes(q) : String(p.id).includes(q))) return false;
         return true;
       });
       // Se pintan por tandas al hacer scroll: 1.025 tarjetas de golpe van lentas en el móvil.
@@ -141,11 +151,15 @@ export default {
           h('span', { class: 'dex-no' }, '#' + String(p.id).padStart(3, '0')),
           h('img', { class: 'pixel', src: sprite(p.id, false), alt: p.name, loading: 'lazy' }),
           h('b', {}, p.name), h('span', { class: 'stars dim' }, '—'), h('span', { class: 'lock-tag' }, '🔒'));
-        return h('button', { class: `dex-card r-${p.rarity}${c ? '' : ' missing'}${c && c.s ? ' shiny' : ''}${isBuddy ? ' buddy' : ''}`, onclick: () => openDetail(p.id) },
+        const st = dexState(p.id);
+        // Como en los juegos: sin ver → «???»; visto → silueta con nombre y ojo; obtenido → a color con la Poké Ball (aunque ya no lo tengas).
+        return h('button', { class: `dex-card r-${p.rarity} dex-${st}${st === 'caught' ? '' : ' missing'}${c && c.s ? ' shiny' : ''}${isBuddy ? ' buddy' : ''}`, 'data-testid': `dex-card-${p.id}`, 'data-state': st, onclick: () => openDetail(p.id) },
           h('span', { class: 'dex-no' }, '#' + String(p.id).padStart(3, '0')),
-          h('img', { class: 'pixel', src: sprite(p.id, !!(c && c.s)), alt: c ? p.name : '?', loading: 'lazy' }),
-          h('b', {}, c ? p.name : '???'),
+          st === 'caught' ? h('img', { class: 'dex-ball', src: item('poke-ball'), alt: 'Obtenido', title: 'Obtenido' }) : st === 'seen' ? h('span', { class: 'dex-eye', title: 'Visto' }, '👁') : null,
+          h('img', { class: 'pixel', src: sprite(p.id, !!(c && c.s)), alt: st === 'none' ? '?' : p.name, loading: 'lazy' }),
+          h('b', {}, st === 'none' ? '???' : p.name),
           c ? h('span', { class: 'stars' }, '★'.repeat(Math.min(5, c.n))) : h('span', { class: 'stars dim' }, '—'),
+          st === 'caught' ? h('span', { class: 'dex-box' }, 'En tu Caja: ' + (c ? c.n : 0)) : null,
           isBuddy ? h('span', { class: 'buddy-tag' }, '🤝') : null);
       };
       if (observer) observer.disconnect();
@@ -166,7 +180,7 @@ export default {
         currentSentinel = sentinel;
       }
     }
-    const showSel = sel('show', [['all', 'Todos'], ['owned', 'Atrapados'], ['missing', 'Faltan'], ['shiny', 'Variocolor'], ['locked', 'Con candado']]);
+    const showSel = sel('show', [['all', 'Todos'], ['owned', 'Obtenidos'], ['seen', 'Solo vistos'], ['missing', 'Faltan (sin obtener)'], ['inbox', 'En mi Caja'], ['shiny', 'Variocolor'], ['locked', 'Con candado']]);
     root.append(
       h('div', { class: 'game-head' }, h('h1', {}, '📕 Pokédex'), counter),
       banner,

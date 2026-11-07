@@ -206,8 +206,7 @@ test('el sesgo de Pokédex no cambia las rarezas ni a los destacados: solo repar
   assert.ok(Math.abs(feat / 20000 - 0.5) < 0.03, `${feat / 20000}`);
 });
 
-test('anti-arbitraje de la progresión casual: la primera evolución a una especie es única y la copia no se puede liberar', () => {
-  // La «primera evolución» no gasta la copia de origen pero solo se da una vez por especie y cuenta.
+test('anti-arbitraje de la progresión casual: evolucionar transforma el ejemplar, sin copia gratis, y el último también evoluciona', () => {
   const g = DEX.find((p) => p.name === 'Gyarados'); const m = DEX.find((p) => p.name === 'Magikarp');
   assert.ok(candy.evoLevel(g.id) >= 20, 'Magikarp → Gyarados: nivel ' + candy.evoLevel(g.id));
   const u = { id: 'x', username: 'x', coins: 0, dust: 0, items: {}, buffs: {}, collection: { [m.id]: { n: 1, s: 0 } }, mons: {} };
@@ -215,15 +214,20 @@ test('anti-arbitraje de la progresión casual: la primera evolución a una espec
   const uid = u.mons[m.id][0].uid;
   assert.throws(() => candy.evolve(u, { id: m.id, uid, to: g.id }), /nivel/);
   u.mons[m.id][0].level = candy.evoLevel(g.id);
+  const dust0 = u.dust;
   candy.evolve(u, { id: m.id, uid, to: g.id });
-  assert.strictEqual(u.collection[m.id].n, 1);
+  assert.ok(!u.collection[m.id] && !u.mons[m.id], 'el único Magikarp se transforma: no queda copia de origen');
   assert.strictEqual(u.collection[g.id].n, 1);
-  assert.throws(() => gacha.release(u, { id: g.id, count: 1 }), /conservar/);
-  // Si vende la copia, ya no vuelve a ser «primera» (no se puede imprimir copias).
-  delete u.collection[g.id]; delete u.mons[g.id];
-  assert.strictEqual(candy.isFirstEvo(u, g.id), false);
-  u.mons[m.id][0].level = 100;
-  assert.throws(() => candy.evolve(u, { id: m.id, uid: u.mons[m.id][0].uid, to: g.id }), /otra copia/);
+  assert.strictEqual(u.dust, dust0, 'evolucionar no crea polvo ni monedas');
+  assert.strictEqual(u.coins, 0);
+  const dex = require('../server/dexreg');
+  assert.ok(dex.caught(u, m.id) && dex.caught(u, g.id), 'las dos especies constan como obtenidas');
+  // Ciclo evolución + transferir: el total de ejemplares nunca aumenta (sin copia gratis), así que el polvo/EXP acumulado no crece.
+  const total = () => Object.values(u.collection).reduce((s, c) => s + c.n, 0);
+  assert.strictEqual(total(), 1);
+  candy.transfer(u, { id: g.id, uid });
+  assert.strictEqual(total(), 0);
+  assert.ok(dex.caught(u, g.id), 'transferirlo al Profesor Oak no quita el registro');
 });
 
 test('techo de polvo al día evolucionando y transfiriendo: acotado por los topes diarios de EXP', () => {

@@ -240,6 +240,24 @@ const FIXES = [
       return out.length ? out : ['nombres ya al día'];
     },
   },
+  {
+    // Pokédex como en los juegos: registro permanente de «obtenidos» (`u.dexCaught`) y «vistos» (`u.dexSeen`). Se rellena con lo que cada jugador tiene
+    // ahora, su registro de primeras evoluciones, lo que ya constaba en `dexSeen` (solo se marcaba al obtener un ejemplar) y las especies de sus colecciones ya
+    // completadas. Las especies de la Caja con candado NO se registran (sanción antiabuso: ver dexreg.js). Idempotente: volver a ejecutarla no cambia nada.
+    id: 'pokedex-registro-2026-11-07',
+    apply() {
+      const dex = require('./dexreg');
+      let users = 0; let added = 0;
+      for (const u of Object.values(db.data.users)) {
+        if (u.npc) continue;
+        users++;
+        added += dex.migrate(u);
+      }
+      db.data.adminLog ||= [];
+      db.data.adminLog.push({ at: Date.now(), by: 'sistema', action: 'fix', target: 'todos', detail: `Registro de Pokédex: ${added} especies registradas en ${users} cuentas` });
+      return [`${added} especies registradas en ${users} cuentas`];
+    },
+  },
 ];
 
 // Copia de seguridad y después las correcciones pendientes.

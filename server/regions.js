@@ -3,8 +3,8 @@
 // DIPLOMA DEL GAME FREAK por completar cada una: título + marco de avatar, una sola vez por cuenta y región. Sin monedas.
 //  · Las regiones son las generaciones de la Pokédex del casino (`dexdata.json`, campo `gen`): Kanto = n.º 1-151 … Paldea = n.º 906-1025.
 //    Galar incluye los 7 Pokémon de Hisui (n.º 899-905), que son de la 8.ª generación.
-//  · «Obtenido» = lo que tienes ahora, lo que tienes en la Caja con candado y lo que has llegado a tener (`u.dexSeen`, que se rellena al recibir
-//    un ejemplar y no se pierde al regalarlo, liberarlo o transferirlo), como el registro de «capturados» de los juegos. Así nada ya ganado se pierde.
+//  · «Obtenido» = el registro permanente de la Pokédex (`dexreg.js`, como los «capturados» de los juegos: no se pierde al evolucionar, regalar, liberar ni
+//    transferir), sin las especies que sigan en la Caja con candado (sanción antiabuso). Los diplomas ya concedidos no se quitan.
 //  · Los diplomas ya merecidos se conceden solos la próxima vez que se comprueba (al obtener un Pokémon o al evaluar las colecciones).
 const db = require('./db');
 const { DEX } = require('./pokedex');
@@ -30,7 +30,7 @@ const REGION_OF = new Map();
 for (const r of REGIONS) for (const id of r.ids) REGION_OF.set(id, r);
 
 // Pokémon que la cuenta ha obtenido alguna vez (ver arriba).
-const got = (u, id) => !!((u.collection && u.collection[id] && u.collection[id].n > 0) || (u.locked && u.locked[id]) || (u.dexSeen && u.dexSeen[id]));
+const got = (u, id) => require('./dexreg').caught(u, id);
 const haveOf = (u, r) => { let n = 0; for (const id of r.ids) if (got(u, id)) n++; return n; };
 const diplomas = (u) => (u.dexDip ||= {});
 

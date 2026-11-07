@@ -112,7 +112,7 @@ function stateOf(u) {
 const bump = (c, k) => { c.st[k] = (c.st[k] || 0) + 1; };
 const badgeCount = (u) => ((u.progress && u.progress.badges) || []).length;
 const isChampion = (u) => !!(u.elite && u.elite.hof && u.elite.hof.length);
-const speciesOwned = (u) => Object.values(u.collection || {}).filter((c) => c && c.n > 0).length;
+const speciesOwned = (u) => require('./dexreg').caughtCount(u); // especies obtenidas en la Pokédex (captura crítica, como en los juegos)
 const phaseOf = (now) => daytime.phase(now);
 
 // Estado de un legendario para este jugador: 'ok' | 'got' | 'tried' (hoy) | 'locked' (faltan medallas / Liga).
@@ -228,7 +228,7 @@ const encView = (e) => e && ({ zone: e.zone, id: e.id, level: e.level, hp: hpPct
 // Multiplicador de cada Ball en el encuentro abierto (999 = captura segura): los juegos lo explican en la descripción de la Ball; aquí se muestra qué Balls rinden ahora.
 function ballBonuses(u, e, now) {
   if (!e) return null;
-  const owned = !!(u.collection[e.id] && u.collection[e.id].n > 0);
+  const owned = require('./dexreg').caught(u, e.id);
   const ctx = { night: phaseOf(now) === 'night', turn: e.turn, types: BY_ID.get(e.id).types, level: e.level, owned };
   return Object.fromEntries(balls.IDS.map((id) => { const b = balls.bonus(id, ctx); return [id, b === Infinity ? 999 : Math.round(b * 100) / 100]; }));
 }
@@ -266,6 +266,7 @@ function encounter(u, p = {}, now = Date.now(), rng = rand) {
   c.n++;
   if (legend) c.lt[legend.id] = c.day; // el intento de hoy cuenta aunque escape o se debilite
   c.enc = makeEncounter(u, z, now, rng, legend);
+  require('./dexreg').markSeen(u, c.enc.id); // visto en la Pokédex nada más aparecer (obtenido solo si lo capturas)
   bump(c, 'encounters');
   db.save();
   return { ...view(u, now), msg: legend ? `¡${BY_ID.get(legend.id).name} apareció!` : `¡Ha aparecido un ${BY_ID.get(c.enc.id).name} salvaje!` };
@@ -407,7 +408,7 @@ function throwBall(u, p = {}, now = Date.now(), rng = rand) {
   if (!balls.isBall(ballId)) throw new Error('Esa Ball no existe.');
   if (!(u.items[ballId] > 0)) throw new Error(`No te queda ninguna ${balls.nameOf(ballId)}.`);
   const pk = BY_ID.get(e.id);
-  const owned = !!(u.collection[e.id] && u.collection[e.id].n > 0);
+  const owned = require('./dexreg').caught(u, e.id);
   const mult = balls.bonus(ballId, { night: phaseOf(now) === 'night', turn: e.turn, types: pk.types, level: e.level, owned });
   items.take(u, ballId);
   const log = [`¡Lanzaste una ${balls.nameOf(ballId)}!`];

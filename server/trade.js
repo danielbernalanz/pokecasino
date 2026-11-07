@@ -170,7 +170,7 @@ function confirm(u, _p = {}, now = Date.now()) {
   return execute(r, u, now);
 }
 
-const SAVE = ['collection', 'mons', 'dexSeen', 'locked', 'buddy', 'dust'];
+const SAVE = ['collection', 'mons', 'dexSeen', 'dexCaught', 'locked', 'buddy', 'dust'];
 const snapshot = (u) => JSON.parse(JSON.stringify(Object.fromEntries(SAVE.map((k) => [k, u[k] === undefined ? null : u[k]]))));
 function restore(u, s) { for (const k of SAVE) { if (s[k] === null) delete u[k]; else u[k] = s[k]; } }
 
