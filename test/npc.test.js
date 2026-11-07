@@ -768,3 +768,122 @@ test('nombres de los comerciantes: personajes de Pokémon, sin espacios, y migra
   for (const [id, nm] of Object.entries(keep)) db.userById(id).username = nm;
   db.removeUser ? db.removeUser(ocupa.id) : delete db.data.users[ocupa.id];
 });
+
+// ---- Creadores de mercado: cobertura, nunca abaratar, tope de objetos «de granja» y arbitraje ----
+const allArticles = () => {
+  const out = [];
+  for (const p of DEX) out.push(poke(p.id), poke(p.id, true));
+  for (const [id, it] of Object.entries(items.ITEMS)) if (!it.key) out.push(item(id));
+  out.push({ kind: 'dust' });
+  return out.map((a) => market.parseRef(a));
+};
+const quoted = (a) => npc.NPCS.filter((p) => npc.inFocus(p, a));
+
+test('creadores de mercado: todo lo comerciable lo cotiza al menos un comerciante (≥ 95 %) y los objetos clave no se comercian', () => {
+  const all = allArticles();
+  const sin = all.filter((a) => !quoted(a).length);
+  assert.ok(1 - sin.length / all.length >= 0.95, `cobertura ${(100 - 100 * sin.length / all.length).toFixed(1)} %: ${sin.slice(0, 5).map((a) => a.ref)}`);
+  assert.strictEqual(sin.length, 0, 'sin huecos: ' + sin.slice(0, 5).map((a) => a.ref));
+  assert.strictEqual(npc.categoryOf({ kind: 'item', itemId: 'tera-orb' }), null);
+  assert.ok(quoted(market.parseRef(poke(150, true)))[0].name === 'VendeMagikarp');
+  assert.ok(quoted(market.parseRef(item('frame-poke')))[0].name === 'Lisia');
+  assert.ok(quoted(market.parseRef(item('poke-ball')))[0].name === 'Kecleon');
+});
+
+test('creadores de mercado: nunca abaratan (la venta no baja de las otras vías) y la compra no supera lo que dan reciclar o liberar', () => {
+  for (const a of allArticles()) {
+    const b = npc.bounds(a);
+    assert.ok(b.floor >= 2 * b.cap, a.ref);
+    if (a.kind === 'poke' && !a.shiny) {
+      const r = DEX.find((p) => p.id === a.pokeId).rarity;
+      assert.ok(b.cap <= RARITY[r].dust * gacha.DUST_RATE, 'compra ≤ liberar: ' + a.ref);
+      assert.ok(b.floor >= npc.POKE_FLOOR[r], a.ref);
+    }
+    if (a.kind !== 'item') continue;
+    const it = items.ITEMS[a.itemId];
+    if (it.price) assert.ok(b.floor >= it.price, 'venta ≥ tienda: ' + a.ref);
+    if (it.price && (it.ball || it.evo)) assert.ok(b.cap <= 0.4 * it.price, 'compra ≤ reciclar: ' + a.ref);
+    if (it.tm) {
+      const mats = Object.entries(it.craft[1] || {}).reduce((t, [id, n]) => t + n * npc.bounds(item(id)).floor, 0);
+      assert.ok(b.floor >= it.craft[0] + mats, 'venta ≥ coste de fabricar: ' + a.ref);
+      assert.ok(b.cap <= 0.1 * it.craft[0] + 1);
+    }
+  }
+  // Y los precios que ponen respetan siempre el margen: venta ≥ compra + comisiones/impuesto (cada vuelta les deja beneficio).
+  for (const a of allArticles().filter((_, i) => i % 7 === 0)) for (const p of quoted(a)) {
+    const bid = npc.bidPrice(a, p, undefined, { have: 1 });
+    const ask = npc.askPrice(a, p, undefined, { have: 1 });
+    assert.ok(bid <= npc.bounds(a).cap && ask >= npc.bounds(a).floor);
+    assert.ok(ask * (1 - market.SALES_TAX) > bid, `vuelta con beneficio: ${a.ref} ${p.name}`);
+  }
+  for (const p of npc.NPCS) assert.ok(p.spread >= 0.15 && p.spread <= 0.35, p.name + ' margen 15-35 %');
+});
+
+test('creadores de mercado: lo que sale de fuentes gratuitas con tope (MT, materiales, megapiedras, Balls…) paga como mucho FARM_DAY al día', () => {
+  clearNpcOrders();
+  resetSpecial();
+  const k = N('kecleon'), g = N('ginger');
+  k.coins = g.coins = 60000;
+  const stone = Object.keys(items.ITEMS).find((id) => /^stone-/.test(id));
+  const tms = Object.keys(items.ITEMS).filter((id) => items.ITEMS[id].tm).slice(0, 12);
+  const p = user('granjero', { level: 50, items: { [stone]: 10, 'mat-escama': 500, 'mat-pluma': 500, ...Object.fromEntries(tms.map((t) => [t, 10])) } });
+  const before = p.coins;
+  for (const id of [stone, 'mat-escama', 'mat-pluma', ...tms]) {
+    const b = npc.bounds(item(id));
+    const holder = npc.NPCS.find((x) => npc.inFocus(x, market.parseRef(item(id))));
+    const u = holder.id === 'npc-ginger' ? g : k;
+    try { market.buy(u, { ...item(id), qty: 10, price: b.cap }); } catch { /* sin fondos o tope de gasto */ }
+    try { market.sell(p, { ...item(id), qty: 10, price: b.cap, instant: true }); } catch { /* ya sin cupo */ }
+  }
+  const got = p.coins - before;
+  assert.ok(got > 0 && got <= npc.FARM_DAY, `cobró ${got} ≤ ${npc.FARM_DAY}`);
+  assert.ok(npc.state().daily[p.id].farm <= npc.FARM_DAY);
+  assert.ok(npc.state().daily[p.id].got <= npc.sellLimit(p));
+  clearNpcOrders();
+  resetSpecial();
+});
+
+test('creadores de mercado: arbitraje entre comerciantes, con el Mercado y liberando pierde siempre', () => {
+  resetSpecial();
+  const jug = user('arbitro', { level: 20, coins: 500000 });
+  const bench = user('banco', { level: 20, coins: 500000 });
+  let worst = -Infinity;
+  for (const a of allArticles().filter((_, i) => i % 11 === 0)) {
+    const b = npc.bounds(a);
+    // Comprar al precio más bajo posible de un comerciante (su suelo) y vender al precio más alto de otro (su tope): siempre pierde.
+    const neto = Math.floor(b.cap * (1 - market.SALES_TAX)) - b.floor;
+    worst = Math.max(worst, neto);
+    assert.ok(neto < 0, a.ref);
+    // Vender a un comerciante y volver a comprarle: también.
+    assert.ok(b.cap < b.floor);
+  }
+  assert.ok(worst < 0);
+  // Operación real: comprar a Kecleon su oferta y revenderla a otro comerciante que la pide al tope pierde monedas.
+  const k = N('kecleon'), b = N('bill');
+  const id = byRarity('R');
+  k.collection = { [id]: { n: 2, s: 0 } };
+  const price = npc.askPrice(market.parseRef(poke(id)), npc.NPCS[0], undefined, { have: 2 });
+  market.sell(k, { ...poke(id), qty: 1, price });
+  const c0 = jug.coins;
+  market.buy(jug, { ...poke(id), qty: 1, price, instant: true });
+  const bid = npc.bidPrice(market.parseRef(poke(id)), npc.NPCS[1], undefined, { have: 0, demand: true, r: 1 });
+  market.buy(b, { ...poke(id), qty: 1, price: bid });
+  market.sell(jug, { ...poke(id), qty: 1, price: bid, instant: true });
+  assert.ok(jug.coins < c0, 'el arbitraje pierde');
+  resetSpecial();
+  for (const o of db.data.market.orders.filter((x) => x.userId === bench.id || x.userId === jug.id)) market.cancel(db.userById(o.userId), { id: o.id });
+});
+
+test('creadores de mercado: el excedente de beneficios por encima del techo (2 × inicial) se destruye', () => {
+  resetSpecial();
+  const n = npc.state();
+  const k = N('kecleon');
+  k.coins = 3 * k.npcStart;
+  n.refillDay = null;
+  const burn0 = hub.econDay().sink.npc_burn || 0;
+  const out = npc.refillTreasuries();
+  assert.strictEqual(k.coins, npc.TREASURY_MAX * k.npcStart);
+  assert.strictEqual((hub.econDay().sink.npc_burn || 0) - burn0, k.npcStart);
+  assert.ok(out.some((x) => x.burned));
+  resetSpecial();
+});

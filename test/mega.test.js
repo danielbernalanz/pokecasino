@@ -57,12 +57,12 @@ test('NPC: los límites de las megapiedras existen (cap < floor) y los NPC no la
   }
   for (const id of ['frame-mega', 'back-megastone', 'title-megaevolver']) assert.ok(npc.bounds({ kind: 'item', itemId: id }));
   npc.ensure();
-  const p = { focus: { poke: [], shiny: false, items: 'noshop', cosmetics: true, dust: false } };
-  assert.ok(!npc.eligible || true);
-  // Ninguna orden de NPC trata megapiedras tras muchas visitas.
-  for (let i = 0; i < 30; i++) for (const u of Object.values(db.data.users).filter((x) => x.npc)) npc.act(u);
-  assert.ok(!db.data.market.orders.some((o) => o.kind === 'item' && /^stone-/.test(o.itemId)));
-  void p;
+  // Lisia las cotiza, pero muy barato (tope ≤ 5 % de su suelo) y con tope diario propio de monedas (FARM_DAY).
+  const stone = { kind: 'item', itemId: Object.keys(require('../server/items').ITEMS).find((id) => /^stone-/.test(id)) };
+  assert.ok(npc.NPCS.some((p) => npc.inFocus(p, stone)));
+  const bs = npc.bounds(stone);
+  assert.ok(bs.cap <= 0.05 * bs.floor);
+  assert.ok(npc.FARM_CATS.has(npc.categoryOf(stone)));
 });
 
 test('fragmentos por jugar: 1 por 200 monedas, tope diario y sin NPC/duelos', () => {

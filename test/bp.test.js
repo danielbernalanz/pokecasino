@@ -151,13 +151,14 @@ test('habilidad oculta heredada: 60 % si la madre la tiene y la especie del beb�
   assert.strictEqual(daycare.motherOf(a, b, 25, daycare.DITTO), a, 'con Ditto, el otro es la madre');
 });
 
-test('los PB, los objetos de combate y las MT no los compran los PNJ', () => {
+test('los objetos de la Tienda de Combate: los PNJ los compran a ≤ la mitad de sus PB en monedas y no los venden por menos de 4 × PB', () => {
   for (const [id, it] of Object.entries(items.ITEMS)) {
     if (!it.bp) continue;
     const a = { kind: 'item', itemId: id };
     const b = npc.bounds(a);
     assert.ok(b && b.cap < b.floor, id);
-    for (const p of npc.NPCS) assert.ok(!npc.inFocus(p, a), id);
+    assert.ok(b.cap <= it.bp / 2 && b.floor >= 4 * it.bp, id);
+    assert.ok(npc.NPCS.some((p) => npc.inFocus(p, a)), id + ' tiene un comerciante');
   }
 });
 

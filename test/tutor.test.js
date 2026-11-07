@@ -57,7 +57,7 @@ test('fragmentos: tope diario, PNJ no los comercian', () => {
   for (const id of Object.keys(tutor.SHARDS)) {
     const a = { kind: 'item', itemId: id };
     assert.ok(npc.bounds(a));
-    for (const p of npc.NPCS) assert.ok(!npc.inFocus(p, a));
+    assert.ok(npc.NPCS.some((p) => npc.inFocus(p, a)), 'cotizado por un comerciante (con tope diario de monedas propio)');
     assert.ok(items.ITEMS[id].shard);
   }
   assert.ok(realRand);

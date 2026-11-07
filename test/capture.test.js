@@ -178,8 +178,9 @@ test('Poké Balls: efectos reales y precios coherentes', () => {
   assert.strictEqual(r.cost, 360);
   assert.strictEqual(u.items['poke-ball'], 3);
   assert.strictEqual(u.coins, 10000 - 360);
-  // Los PNJ no comercian con Balls (solo entre jugadores).
-  assert.strictEqual(npc.inFocus({ focus: { items: 'shop', poke: [], cosmetics: true, dust: true, shiny: true } }, { kind: 'item', itemId: 'poke-ball' }), false);
+  // Los PNJ compran Balls como mucho al 40 % de su precio (lo que da reciclarlas) y las venden a precio de tienda o más.
+  const bb = npc.bounds({ kind: 'item', itemId: 'poke-ball' });
+  assert.ok(bb.cap <= 0.4 * 120 && bb.floor >= 120);
 });
 
 test('encuentro: tope diario de 30, uno abierto a la vez, se reinicia al día siguiente', () => {

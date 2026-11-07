@@ -135,20 +135,20 @@ test('targets, owned y compat', () => {
   assert.throws(() => tm.targets(u, { itemId: 'ticket' }));
 });
 
-test('fabricar → vender a un PNJ nunca devuelve más de lo que cuesta (los PNJ ni siquiera las compran)', () => {
+test('fabricar → vender a un PNJ nunca devuelve más de lo que cuesta (compran al 10 % del coste y venden a su coste de fabricación)', () => {
   const all = [...tmdata.TMS.map((t) => items.ITEMS[t.id]), ...Object.values(tmdata.MATERIALS).map((m) => m)];
   for (const t of tmdata.TMS) {
     const a = { kind: 'item', itemId: t.id };
     const b = npc.bounds(a);
     assert.ok(b && b.cap < b.floor && b.floor >= 2 * b.cap, t.id);
     assert.ok(b.cap <= 0.25 * t.coins, `${t.id}: tope ${b.cap} ≤ 25 % de ${t.coins}`);
-    assert.ok(b.floor >= t.coins);
-    for (const p of npc.NPCS) assert.ok(!npc.inFocus(p, a), `${p.name} no comercia ${t.id}`);
+    assert.ok(b.floor >= t.coins, 'nunca más barato que fabricarla (monedas)');
+    assert.ok(npc.NPCS.some((p) => npc.inFocus(p, a)), `alguien cotiza ${t.id}`);
   }
   for (const id of Object.keys(tmdata.MATERIALS)) {
     const b = npc.bounds({ kind: 'item', itemId: id });
     assert.ok(b && b.cap < b.floor);
-    for (const p of npc.NPCS) assert.ok(!npc.inFocus(p, { kind: 'item', itemId: id }));
+    assert.ok(npc.NPCS.some((p) => npc.inFocus(p, { kind: 'item', itemId: id })));
   }
   assert.ok(all.length > 0);
 });

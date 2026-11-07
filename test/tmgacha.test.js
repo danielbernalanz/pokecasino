@@ -118,7 +118,7 @@ test('límite diario de tiradas, que se reinicia al cambiar de día', () => {
   assert.throws(() => tmg.pull(v, { count: 10 }), /te quedan 5/);
 });
 
-test('los PNJ no tiran ni comercian MT', () => {
+test('los PNJ no tiran en la Máquina MT y, si compran MT, nunca por encima de lo que cuesta una tirada', () => {
   assert.throws(() => tmg.pull({ npc: true, coins: 1e6, items: {}, id: 'x' }, { count: 1 }), /NPC/);
-  for (const t of tmdata.TMS) for (const p of npc.NPCS) assert.ok(!npc.inFocus(p, { kind: 'item', itemId: t.id }), `${p.name} ${t.id}`);
+  for (const t of tmdata.TMS) assert.ok(npc.bounds({ kind: 'item', itemId: t.id }).cap < tmg.COST[1], `${t.id}: tirar y vender a un PNJ pierde`);
 });

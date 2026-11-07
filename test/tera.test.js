@@ -79,7 +79,7 @@ test('objetos: Orbe Teracristal (clave) y 18 Teralitos; el Orbe no se comercia n
   for (const id of [tera.shardId('fire'), tera.ORB]) {
     const b = npc.bounds({ kind: 'item', itemId: id });
     assert.ok(b && b.floor >= 2 * b.cap);
-    assert.strictEqual(npc.inFocus({ focus: { items: 'noshop', poke: [], cosmetics: false } }, { kind: 'item', itemId: id }), false, 'los PNJ no los comercian');
+    assert.strictEqual(npc.NPCS.some((p) => npc.inFocus(p, { kind: 'item', itemId: id })), id !== tera.ORB, 'los Teralitos se cotizan; el Orbe (clave) no');
   }
   const u = user();
   u.items[tera.ORB] = 1;

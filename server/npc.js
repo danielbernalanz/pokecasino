@@ -46,6 +46,7 @@ const DRIFT = 0.25; // se retira una orden si se aleja más de un 25 % del objet
 // Invariante: floor ≥ 2 × cap para TODO artículo (un NPC nunca vende a menos del doble de lo que paga).
 const POKE_FLOOR = { C: 90, U: 200, R: 500, E: 1500, L: 9000, M: 18000 };
 const BID_FRAC = 1; // compran a como mucho lo que da liberar un duplicado (el tope exacto; nunca por encima, salvo la prima de encargo)
+const RECYCLE_BID = 0.4; // Balls y piedras: reciclar da el 40 % del precio, así que nunca se paga más
 const SHOP_BID = 0.575; // objetos de tienda: tope = 57,5 % del precio (y el suelo sube a 2 × tope si hace falta: ≥ precio de tienda)
 // Objetos sin precio en la tienda y cosméticos: { cap, floor } fijos (floor ≥ 2 × cap).
 const NOSHOP = {
@@ -56,11 +57,12 @@ const NOSHOP = {
 // Megapiedras: los NPC NO las compran ni las venden (inFocus las excluye). Los límites existen para que el
 // invariante cap < floor valga para todos los objetos y por si algún día se activan.
 Object.setPrototypeOf(NOSHOP, null);
-const MEGASTONE = { cap: 1725, floor: 9000 };
+const MEGASTONE = { cap: 300, floor: 9000 }; // se compran muy barato (≤ 25 % del valor de una Mega: salen de eventos y 💠 gratis) y se venden caras
 const COSMETIC = { // por rareza
   C: { cap: 69, floor: 150 }, U: { cap: 172, floor: 350 }, R: { cap: 450, floor: 900 }, E: { cap: 1350, floor: 2700 }, L: { cap: 4500, floor: 9000 },
 };
 Object.setPrototypeOf(COSMETIC, null);
+const MATERIAL = { cap: 10, floor: 60 };
 const ASK_MAX_MULT = 8; // el precio de venta nunca pasa de 8 × el suelo (si los jugadores comercian a precios absurdos)
 const SHINY_ASK_DEFAULT = 3; // sin referencia de mercado, un variocolor se pide a 3 × su suelo
 
@@ -81,14 +83,18 @@ function bounds(a) {
   }
   const it = typeof a.itemId === 'string' && Object.hasOwn(items.ITEMS, a.itemId) ? items.ITEMS[a.itemId] : null;
   if (!it) return null;
+  // Poké Balls y objetos de evolución: se compran como mucho a lo que da reciclarlos (40 % del precio) y se venden a la tienda o más.
+  if (it.price && (it.ball || it.evo)) { const cap = Math.max(1, Math.floor(it.price * RECYCLE_BID)); return { cap, floor: Math.max(it.price, 2 * cap) }; }
   if (it.price) { const cap = Math.max(1, Math.floor(it.price * SHOP_BID)); return { cap, floor: Math.max(it.price, 2 * cap) }; } // nunca por debajo de la tienda
   if (NOSHOP[a.itemId]) return NOSHOP[a.itemId];
-  if (it.megaStone) return MEGASTONE; // inerte: los NPC no las comercian (ver inFocus)
-  // MT y materiales: inertes (los NPC no los comercian). Si algún día se activaran, comprarían a ≤ 25 % del coste en monedas de fabricarla.
-  if (it.tm) { const cap = Math.max(1, Math.floor(it.craft[0] * 0.25)); return { cap, floor: Math.max(it.craft[0], 2 * cap) }; }
-  if (it.material) return { cap: 20, floor: 60 };
-  if (it.shard) return { cap: 20, floor: 80 };
-  if (it.teraShard || it.key) return { cap: 20, floor: 80 }; // Teralitos y objetos clave: inertes (los PNJ no los comercian; ver inFocus)
+  if (it.megaStone) return MEGASTONE;
+  // MT: compran al 10 % de lo que cuesta fabricarla en monedas (también se obtienen de premio) y venden a su coste de fabricación
+  // (monedas + materiales a su precio de venta).
+  if (it.tm) { const cap = Math.max(1, Math.floor(it.craft[0] * 0.1)); const mats = Object.values(it.craft[1] || {}).reduce((t, n) => t + n * MATERIAL.floor, 0); return { cap, floor: Math.max(it.craft[0] + mats, 2 * cap) }; }
+  if (it.material) return MATERIAL;
+  if (it.shard) return { cap: 10, floor: 80 };
+  if (it.teraShard) return { cap: 10, floor: 80 };
+  if (it.key) return { cap: 10, floor: 80 }; // objetos clave: no se comercian (market.noKey); límites solo para el invariante
   // Objetos de la Tienda de Combate (se pagan con PB, no con monedas): inertes; el tope teórico sería muy bajo.
   if (it.expCandy && !it.bp) { const cap = Math.max(1, Math.floor(it.expCandy / 200)); return { cap, floor: 8 * cap }; } // Caramelos Exp.: inertes (no se compran con monedas)
   if (it.bp) { const cap = Math.max(1, Math.floor(it.bp / 2)); return { cap, floor: Math.max(4 * it.bp, 2 * cap) }; }
@@ -105,32 +111,32 @@ const maxBid = (rarity) => Math.max(1, Math.floor(BID_FRAC * RARITY[rarity].dust
 // art: Pokémon cuyo arte oficial es su avatar · title/bio/quotes (una al día)/seeks/sells: ficha del comerciante ·
 // enc: qué encargos pide (poke: rarezas de Pokémon · cos: rarezas de cosméticos).
 const NPCS = [
-  { id: 'npc-kecleon', name: 'Kecleon', treasury: 60000, bidFrac: 0.85, askMult: 1.15, spread: 0.10, jitter: 0.05, bids: 3, asks: 2,
-    focus: { poke: ['C', 'U'], shiny: false, items: 'shop', cosmetics: false, dust: true }, enc: { poke: ['R'] },
+  { id: 'npc-kecleon', name: 'Kecleon', treasury: 60000, bidFrac: 0.85, askMult: 1.15, spread: 0.15, jitter: 0.05, bids: 3, asks: 2,
+    focus: { poke: ['C', 'U'], shiny: false, cats: ['shop', 'ball', 'evo', 'tm', 'material', 'expcandy'], dust: true }, enc: { poke: ['R'] },
     art: 352, title: 'El camaleón del bazar',
     bio: 'Cambia de color según el cliente, pero no de palabra: precios justos y trato rápido. Lo compra todo lo cotidiano.',
-    seeks: 'Comunes y poco comunes, objetos de la tienda y polvo estelar. A veces un encargo de raras.',
+    seeks: 'Comunes y poco comunes, objetos de la tienda, Poké Balls, piedras, MT, materiales, caramelos y polvo estelar. A veces un encargo de raras.',
     sells: 'Lo que ha ido comprando: Pokémon corrientes, tickets, caramelos y polvo.',
     quotes: ['Hoy me siento verde esperanza. ¿Y tú?', 'Si no lo ves, es que me lo he camuflado.', 'Un buen trato no necesita tinta.', 'Compro barato, vendo justo. Lo prometo.', 'Los tickets se agotan rápido, ¡avisado estás!', 'Cambio de color, no de precio.', 'Tráeme tus repetidos, que me cuadra el inventario.'] },
-  { id: 'npc-bill', name: 'Bill', treasury: 60000, bidFrac: 0.9, askMult: 1.5, spread: 0.18, jitter: 0.05, bids: 2, asks: 2, sets: true,
-    focus: { poke: ['R', 'E'], shiny: false, items: 'none', cosmetics: false, dust: false }, enc: { poke: ['R', 'E'] },
+  { id: 'npc-bill', name: 'Bill', treasury: 60000, bidFrac: 0.9, askMult: 1.5, spread: 0.20, jitter: 0.05, bids: 2, asks: 2, sets: true,
+    focus: { poke: ['R', 'E'], react: ['C', 'U'], shiny: false, cats: [], dust: false }, enc: { poke: ['R', 'E'] },
     art: 133, title: 'El Pokémaníaco de Kanto',
     bio: 'El mayor Pokémaníaco de Kanto: ordena su colección por tipo, por región y por tipo otra vez. Siempre le falta uno.',
-    seeks: 'Pokémon raros y épicos, sobre todo los que completan colecciones. Publica encargos con premio.',
+    seeks: 'Pokémon raros y épicos, sobre todo los que completan colecciones (y cualquier común o poco común si hace falta). Publica encargos con premio.',
     sells: 'Raros y épicos que le sobran de sus colecciones.',
     quotes: ['Me falta uno. Siempre me falta uno.', 'Una colección sin completar es una herida abierta.', 'Mi álbum huele a victoria.', 'Los repetidos son para quien no sabe colocarlos.', 'Hoy huelo un encargo gordo.', 'Ordenar por tipo… no, por región… no, por tipo.', 'Soy Bill. Sí, el del Sistema de Almacenamiento. No, no es una máquina del tiempo.'] },
-  { id: 'npc-ginger', name: 'Lisia', treasury: 60000, bidFrac: 0.7, askMult: 1.25, spread: 0.12, jitter: 0.05, bids: 3, asks: 2,
-    focus: { poke: [], shiny: false, items: 'noshop', cosmetics: true, dust: false }, enc: { cos: ['R', 'E', 'L'] },
+  { id: 'npc-ginger', name: 'Lisia', treasury: 60000, bidFrac: 0.7, askMult: 1.25, spread: 0.25, jitter: 0.05, bids: 3, asks: 2,
+    focus: { poke: [], shiny: false, cats: ['cosmetic', 'egg', 'mega', 'tera', 'shard'], dust: false }, enc: { cos: ['R', 'E', 'L'] },
     art: 334, title: 'La Coordinadora estrella de Hoenn',
     bio: 'Coordinadora estrella de Hoenn, siempre con su Altaria. Vive para el estilo: marcos, dorsos y títulos para lucir en tu perfil.',
-    seeks: 'Cosméticos (marcos, dorsos, títulos), Huevos Misteriosos, Master Ball y Amuletos Iris.',
+    seeks: 'Cosméticos (marcos, dorsos, títulos), Huevos Misteriosos, Megapiedras, Teralitos y Fragmentos del Tutor.',
     sells: 'Cosméticos y Huevos Misteriosos. A veces una oferta flash.',
     quotes: ['Un buen marco hace al entrenador.', 'Un Concurso se gana con estilo, no solo con fuerza.', 'Altaria y yo no regateamos: negociamos con gracia.', 'Lo bonito también cotiza.', 'Si brilla, lo quiero. Si brilla más, lo vendo.', 'Mi bolsa siempre tiene sitio para un dorso raro.', 'Mira, mira… ¡cómo combina!'] },
-  { id: 'npc-dorado', name: 'VendeMagikarp', treasury: 60000, bidFrac: 0.95, askMult: 1.8, spread: 0.25, jitter: 0.05, bids: 2, asks: 2,
-    focus: { poke: ['L', 'M'], shiny: true, items: 'none', cosmetics: false, dust: false }, enc: { poke: ['L'] },
+  { id: 'npc-dorado', name: 'VendeMagikarp', treasury: 60000, bidFrac: 0.95, askMult: 1.8, spread: 0.35, jitter: 0.05, bids: 2, asks: 2,
+    focus: { poke: ['L', 'M'], shiny: true, cats: ['rare', 'bp'], dust: false }, enc: { poke: ['L'] },
     art: 129, title: 'El vendedor de Magikarp',
     bio: 'Te vendió un Magikarp por 500 monedas y ahora quiere venderte una leyenda. Es caro, y rara vez pregunta de dónde viene lo que le traes.',
-    seeks: 'Legendarias, míticas y variocolores. Algún encargo de legendarias con premio.',
+    seeks: 'Legendarias, míticas y variocolores, Master Ball, Amuletos Iris y objetos de la Tienda de Combate. Algún encargo de legendarias con premio.',
     sells: 'Leyendas y variocolores que consigue de vez en cuando, a precio de coleccionista.',
     quotes: ['¿Un Magikarp? Una ganga. ¿Una leyenda? Una inversión.', 'Salpica, salpica… y mi precio sube.', 'Si es variocolor, hablamos. Si no, también, pero más bajo.', 'Mi precio es mi palabra, y mi palabra es Magikarp.', 'Dicen que soy caro. Dicen bien.', 'Lo legendario no se regala; se negocia. El Magikarp tampoco.', 'No pregunto de dónde viene. Tú tampoco.'] },
 ];
@@ -197,6 +203,7 @@ const treasury = () => {
 // monedas de la nada: solo se reparte hasta REFILL.share de lo que la bolsa ha recogido (`pool.paid`), una tesorería nunca
 // pasa de su inicial (`npcStart`) y cada NPC recibe como mucho REFILL.dailyFrac de su inicial al día.
 const REFILL = { share: 0.5, dailyFrac: 0.05 };
+const TREASURY_MAX = 2; // múltiplo de la tesorería inicial a partir del cual se destruye el excedente
 const notePaid = (amount) => { if (Number.isFinite(amount) && amount > 0) N().pool.paid += Math.floor(amount); };
 const poolLeft = () => Math.max(0, Math.floor(N().pool.paid * REFILL.share) - N().pool.given);
 function refillTreasuries() {
@@ -205,6 +212,11 @@ function refillTreasuries() {
   if (n.refillDay === today()) return out;
   n.refillDay = today();
   const us = npcUsers().filter((u) => u.npcStart).sort((x, y) => (x.coins + market.lockedIn(x)) / x.npcStart - (y.coins + market.lockedIn(y)) / y.npcStart);
+  // Techo de beneficios: lo que pasa de TREASURY_MAX × la tesorería inicial se destruye (sumidero), no se acumula.
+  for (const u of us) {
+    const over = u.coins - Math.floor(TREASURY_MAX * u.npcStart);
+    if (over > 0) { u.coins -= over; hub.ledger(u, -over, 'npc_burn', 'Beneficio por encima del techo'); out.push({ npc: u.username, burned: over }); }
+  }
   for (const u of us) {
     let r = n.refill[u.id];
     if (!r || r.day !== today()) r = n.refill[u.id] = { day: today(), amt: 0 };
@@ -228,7 +240,7 @@ const sellLimit = (u) => SELL_COINS_BASE + SELL_COINS_PER_LEVEL * (u.level || 1)
 function dayRec(userId) {
   const n = N();
   let r = n.daily[userId];
-  if (!r || r.day !== today()) r = n.daily[userId] = { day: today(), got: 0, sold: {}, bought: {}, enc: 0 };
+  if (!r || r.day !== today()) r = n.daily[userId] = { day: today(), got: 0, sold: {}, bought: {}, enc: 0, farm: 0 };
   return r;
 }
 function spendRec(npcUser) {
@@ -249,7 +261,9 @@ function cap(seller, buyer, a, price) {
     const units = SELL_UNITS[a.kind] - (r.sold[a.ref] || 0);
     const coins = Math.floor((sellLimit(seller) - r.got) / price);
     const spend = Math.floor(spendLeft(buyer) / price);
-    return Math.max(0, Math.min(units, coins, spend));
+    // Lo que sale de fuentes gratuitas con tope (MT, materiales, Teralitos, megapiedras…) tiene además un tope propio de monedas al día.
+    const farm = FARM_CATS.has(categoryOf(a)) ? Math.floor((FARM_DAY - (r.farm || 0)) / price) : Infinity;
+    return Math.max(0, Math.min(units, coins, spend, farm));
   }
   // un NPC vende a un jugador
   return Math.max(0, BUY_UNITS[a.kind] - (dayRec(buyer.id).bought[a.ref] || 0));
@@ -261,6 +275,7 @@ function whyBlocked(seller, buyer, a) {
     if (!oldEnough(seller)) return `Los comerciantes NPC solo compran a cuentas con más de 24 h: podrás venderles dentro de ${Math.ceil((seller.createdAt + MIN_AGE - Date.now()) / 3600e3)} h.`;
     const r = dayRec(seller.id);
     if ((r.sold[a.ref] || 0) >= SELL_UNITS[a.kind] || r.got >= sellLimit(seller)) return 'Hoy ya no puedes vender más a los comerciantes NPC.';
+    if (FARM_CATS.has(categoryOf(a)) && (r.farm || 0) >= FARM_DAY - 1) return `Hoy ya has cobrado el máximo (${FARM_DAY.toLocaleString('es')} monedas) por este tipo de objetos a los comerciantes NPC.`;
     return null;
   }
   if (seller.npc && (dayRec(buyer.id).bought[a.ref] || 0) >= BUY_UNITS[a.kind]) return 'Hoy ya no puedes comprar más a los comerciantes NPC.';
@@ -272,6 +287,7 @@ function note(seller, buyer, a, qty, price) {
     const r = dayRec(seller.id);
     r.sold[a.ref] = (r.sold[a.ref] || 0) + qty;
     r.got += qty * price;
+    if (FARM_CATS.has(categoryOf(a))) r.farm = (r.farm || 0) + qty * price;
     spendRec(buyer).amt += qty * price;
     claim(seller, buyer, a, price);
   } else if (seller.npc && !buyer.npc) {
@@ -284,7 +300,7 @@ function note(seller, buyer, a, qty, price) {
 // Mediana de las operaciones recientes ENTRE JUGADORES (sin NPC): al menos 3 operaciones de 2 vendedores distintos.
 const REF_DAYS = 7;
 function reference(refKey, now = Date.now()) {
-  const trades = db.data.market.trades.filter((t) => t.ref === refKey && !t.npc && t.at > now - REF_DAYS * 864e5).slice(-15);
+  const trades = db.data.market.trades.filter((t) => t.ref === refKey && !t.npc && !t.young && t.at > now - REF_DAYS * 864e5).slice(-15);
   if (trades.length < 3 || new Set(trades.map((t) => t.seller)).size < 2) return null;
   const ps = trades.map((t) => t.price).sort((x, y) => x - y);
   const mid = Math.floor(ps.length / 2);
@@ -325,16 +341,38 @@ function askPrice(a, p, med = reference(a.ref), ctx = {}) {
 
 // ---- Artículos que le interesan a cada NPC ----
 const art = (a) => market.parseRef(a);
+// Categoría de un artículo comerciable (null si no se comercia). Cada comerciante cotiza las categorías de su especialidad.
+function categoryOf(a) {
+  if (a.kind === 'poke') return a.shiny ? 'shiny' : 'poke';
+  if (a.kind === 'dust') return 'dust';
+  if (typeof a.itemId !== 'string' || !Object.hasOwn(items.ITEMS, a.itemId)) return null;
+  const it = items.ITEMS[a.itemId];
+  if (it.key) return null;
+  if (it.cosmetic) return 'cosmetic';
+  if (it.megaStone) return 'mega';
+  if (it.tm) return 'tm';
+  if (it.material) return 'material';
+  if (it.shard) return 'shard';
+  if (it.teraShard) return 'tera';
+  if (it.bp) return 'bp'; // Tienda de Combate (incluye Chapas y Caramelos Exp. que se compran con PB)
+  if (it.expCandy) return 'expcandy';
+  if (it.ball) return 'ball';
+  if (it.evo) return 'evo';
+  if (it.price) return 'shop';
+  if (a.itemId === 'mystery-egg') return 'egg';
+  return 'rare'; // Master Ball, Amuleto Iris
+}
+// Categorías que salen de fuentes gratuitas con tope diario y no tienen precio en monedas: lo que un jugador cobra por ellas al día
+// tiene un tope propio (FARM_DAY) además del tope general.
+const FARM_CATS = new Set(['tm', 'material', 'shard', 'tera', 'bp', 'expcandy', 'mega', 'ball', 'evo']);
+const FARM_DAY = 400;
 function inFocus(p, a) {
   const f = p.focus;
   if (!bounds(a)) return false;
-  if (a.kind === 'poke') return a.shiny ? f.shiny : f.poke.includes(BY_ID.get(a.pokeId).rarity);
-  if (a.kind === 'dust') return f.dust;
-  const it = items.ITEMS[a.itemId];
-  if (it.megaStone || it.event || it.tm || it.material || it.bp || it.shard || it.teraShard || it.key || it.evo || it.expCandy || it.hyper || it.ball) return false; // evento, MT, materiales, Tienda de Combate y Poké Balls: solo entre jugadores
-  if (it.cosmetic) return f.cosmetics;
-  if (it.price) return f.items === 'shop';
-  return f.items === 'noshop';
+  if (a.kind === 'poke') { const r = BY_ID.get(a.pokeId).rarity; return a.shiny ? !!f.shiny : !!(f.poke || []).includes(r) || !!(f.react || []).includes(r); }
+  if (a.kind === 'dust') return !!f.dust;
+  const c = categoryOf(a);
+  return !!c && (f.cats || []).includes(c);
 }
 // Pokémon de colecciones (Bill los busca para completarlas).
 let setIds = null;
@@ -344,8 +382,7 @@ function randomArticle(p) {
   const kinds = [];
   if (f.poke.length) kinds.push('poke');
   if (f.shiny) kinds.push('shiny');
-  if (f.items !== 'none') kinds.push('item');
-  if (f.cosmetics) kinds.push('cosmetic');
+  for (const c of f.cats || []) kinds.push('cat:' + c);
   if (f.dust) kinds.push('dust');
   const kind = pick(kinds);
   let a;
@@ -358,7 +395,8 @@ function randomArticle(p) {
     a = { kind: 'poke', pokeId: id, shiny: kind === 'shiny' };
   } else if (kind === 'dust') a = { kind: 'dust' };
   else {
-    const list = Object.keys(items.ITEMS).filter((id) => (kind === 'cosmetic') === !!items.ITEMS[id].cosmetic && inFocus(p, { kind: 'item', itemId: id }));
+    const cat = kind.slice(4);
+    const list = Object.keys(items.ITEMS).filter((id) => categoryOf({ kind: 'item', itemId: id }) === cat && inFocus(p, { kind: 'item', itemId: id }));
     a = list.length ? { kind: 'item', itemId: pick(list) } : { kind: 'dust' };
   }
   return art(a);
@@ -499,7 +537,7 @@ function restock() {
   for (let i = randInt(RESTOCK.epic[0], RESTOCK.epic[1]); i > 0; i--) if (give(pickSpecies('E'))) done.epic++;
   if (rand() < RESTOCK.legendChance && give(pickSpecies('L'))) done.legend++;
   for (let i = randInt(RESTOCK.eggs[0], RESTOCK.eggs[1]); i > 0; i--) {
-    const who = us.filter((x) => x.p.focus.items === 'noshop' && (x.u.items['mystery-egg'] || 0) < RESTOCK.eggCap);
+    const who = us.filter((x) => x.p.focus.cats.includes('egg') && (x.u.items['mystery-egg'] || 0) < RESTOCK.eggCap);
     if (!who.length) continue;
     const u = pick(who).u;
     u.items['mystery-egg'] = (u.items['mystery-egg'] || 0) + 1;
@@ -691,6 +729,9 @@ function special(now = Date.now()) {
   }
 }
 
+// Unidades de un artículo que tienen entre todos los comerciantes (escasez global).
+const totalHeld = (a) => npcUsers().reduce((t, u) => t + held(u, a), 0);
+
 // ---- Comercio entre comerciantes: unas pocas operaciones directas al día (4-10) para que el Mercado tenga vida ----
 // Un NPC vende a otro algo que tiene de sobra y que el otro busca (su especialidad o sus encargos), a un precio dentro de
 // [tope, suelo]: el punto medio desplazado por la escasez global (poco stock entre todos → hacia el suelo; mucho → hacia el
@@ -788,8 +829,8 @@ function start() {
 }
 
 module.exports = {
-  state: N, start, ensure, run, act, restock, isNpc, isNpcName, treasury, bounds, inFocus, maxBid, reference, bidPrice, askPrice, eligible,
+  totalHeld, categoryOf, FARM_CATS, FARM_DAY, state: N, start, ensure, run, act, restock, isNpc, isNpcName, treasury, bounds, inFocus, maxBid, reference, bidPrice, askPrice, eligible,
   cap, whyBlocked, note, sellLimit, NPCS, MIN_LEVEL, MIN_AGE, SELL_UNITS, BUY_UNITS, POKE_FLOOR, LOW_FUNDS, SPEND_DAILY,
   // encargos y ofertas flash
-  ENC, FLASH, BONUS, BONUS_VALUE, FEED_DAILY, flashEligible, flashFloor, encArticles, bonusValue, newEncargo, newFlash, notePaid, poolLeft, refillTreasuries, REFILL, internalTrade, internalPrice, INTERNAL, claim, special, sweepSpecial, publicState, npcFeed, dayPlan,
+  ENC, FLASH, BONUS, BONUS_VALUE, FEED_DAILY, flashEligible, flashFloor, encArticles, bonusValue, newEncargo, newFlash, notePaid, poolLeft, TREASURY_MAX, refillTreasuries, REFILL, internalTrade, internalPrice, INTERNAL, claim, special, sweepSpecial, publicState, npcFeed, dayPlan,
 };

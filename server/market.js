@@ -129,6 +129,8 @@ function record(a, qty, price, seller, buyer, npcFlags = {}) {
   if (npcFlags.sellerNpc || npcFlags.buyerNpc) Object.assign(t, { npc: true, sellerNpc: !!npcFlags.sellerNpc, buyerNpc: !!npcFlags.buyerNpc });
   // Entre dos comerciantes: se ve en el historial, pero ni entra en medias ni en la referencia de precios ni en los topes antiabuso.
   if (npcFlags.internal) t.npcInternal = true;
+  // Cuentas nuevas o ayudadas por la Enfermera Joy: sus precios no cuentan como referencia (ni siquiera entre jugadores).
+  if (npcFlags.young) t.young = true;
   m.trades.push(t);
   if (m.trades.length > 500) m.trades.splice(0, m.trades.length - 500);
   if (!t.npc) {
@@ -160,7 +162,9 @@ function settle(a, qty, price, seller, buyer, snaps = null) {
   buyer.stats.bought = (buyer.stats.bought || 0) + qty;
   const dust = giveGoods(buyer, a, qty, snaps);
   if (a.kind === 'poke') require('./evoreq').noteTrade(buyer, seller); // intercambio real: vale como un Cordón Unión
-  const t = record(a, qty, price, seller.username, buyer.username, { sellerNpc: seller.npc, buyerNpc: buyer.npc });
+  const tr = require('./transfer');
+  const young = !seller.npc && !buyer.npc && [seller, buyer].some((u) => tr.young(u) || tr.healed(u));
+  const t = record(a, qty, price, seller.username, buyer.username, { sellerNpc: seller.npc, buyerNpc: buyer.npc, young });
   // Historial propio de cada jugador (el del mercado solo guarda las últimas operaciones de todos).
   for (const u of [seller, buyer]) {
     if (u.npc) continue;
