@@ -13,7 +13,10 @@
 //  5. ENCARGOS y OFERTAS FLASH: pedidos especiales con premio que no son monedas (más una prima de monedas
 //     acotada: ≤ 50 % del precio, una vez por encargo y 2 al día por jugador) y rebajas que nunca bajan del 80 %
 //     del suelo (siempre por encima de cualquier tope de compra). Nada de esto habla por el chat.
-// Los NPC nunca operan entre sí (lo garantiza market.js y el invariante cap < floor de cada artículo).
+// 6. En el libro de órdenes los NPC nunca se cruzan entre sí (lo garantiza market.js y el invariante cap < floor).
+//    Solo hay unas pocas OPERACIONES DIRECTAS al día entre ellos (internalTrade): suma cero, a un precio dentro de
+//    [tope, suelo], marcadas `npcInternal`: salen en el historial, pero no cuentan para reference() ni para los topes
+//    de transfer.js, y ninguna moneda llega a un jugador.
 const db = require('./db');
 const hub = require('./hub');
 const market = require('./market');
@@ -633,24 +636,77 @@ function sweepSpecial(now = Date.now()) {
 // Plan del día: instantes al azar para los encargos (3-6) y las ofertas flash (1-2); NPC_FAST los pone en segundos.
 function dayPlan(now = Date.now()) {
   const n = N();
-  if (n.plan && n.plan.day === today()) return n.plan;
+  if (n.plan && n.plan.day === today()) { n.plan.int ||= Array.from({ length: randInt(INTERNAL.perDay[0], INTERNAL.perDay[1]) }, () => now + rand() * (Date.parse(today() + 'T00:00:00Z') + 864e5 - now)).sort((x, y) => x - y); return n.plan; }
   const end = Date.parse(today() + 'T00:00:00Z') + 864e5;
   const share = Math.max(0.15, Math.min(1, (end - now) / 864e5)); // si se arranca a mitad de día, menos encargos
   const times = (cnt) => Array.from({ length: cnt }, () => now + rand() * (end - now)).sort((x, y) => x - y);
+  const ints = () => times(Math.max(1, Math.round(randInt(INTERNAL.perDay[0], INTERNAL.perDay[1]) * share)));
   n.plan = FAST
-    ? { day: today(), enc: [4, 9, 14, 19, 24].map((s) => now + s * 1000), flash: [6, 20].map((s) => now + s * 1000) }
-    : { day: today(), enc: times(Math.max(1, Math.round(randInt(ENC.perDay[0], ENC.perDay[1]) * share))), flash: times(Math.max(1, Math.round(randInt(FLASH.perDay[0], FLASH.perDay[1]) * share))) };
+    ? { day: today(), enc: [4, 9, 14, 19, 24].map((s) => now + s * 1000), flash: [6, 20].map((s) => now + s * 1000), int: [8, 13, 18, 23, 28, 33].map((s) => now + s * 1000) }
+    : { day: today(), enc: times(Math.max(1, Math.round(randInt(ENC.perDay[0], ENC.perDay[1]) * share))), flash: times(Math.max(1, Math.round(randInt(FLASH.perDay[0], FLASH.perDay[1]) * share))), int: ints() };
   return n.plan;
 }
 function special(now = Date.now()) {
   sweepSpecial(now);
   const plan = dayPlan(now);
-  for (const key of ['enc', 'flash']) {
+  for (const key of ['enc', 'flash', 'int']) {
     while (plan[key].length && plan[key][0] <= now) {
       const at = plan[key].shift();
-      if (FAST || now - at < ENC.maxAge) (key === 'enc' ? newEncargo : newFlash)(now);
+      if (FAST || now - at < ENC.maxAge) (key === 'enc' ? newEncargo : key === 'flash' ? newFlash : internalTrade)(now);
     }
   }
+}
+
+// ---- Comercio entre comerciantes: unas pocas operaciones directas al día (4-10) para que el Mercado tenga vida ----
+// Un NPC vende a otro algo que tiene de sobra y que el otro busca (su especialidad o sus encargos), a un precio dentro de
+// [tope, suelo]: el punto medio desplazado por la escasez global (poco stock entre todos → hacia el suelo; mucho → hacia el
+// tope) con algo de ruido. Respeta STOCK_MAX del comprador (así nunca pasa de 5 copias y no se convierte en polvo).
+const INTERNAL = { perDay: [4, 10], qty: 2, maxFrac: 0.05, keepFrac: 0.4 };
+const wantsRefs = (p) => new Set(encArticles(p).map((a) => a.ref));
+function internalPrice(a, total, r = rand()) {
+  const b = bounds(a);
+  const t = clamp(0.5 + 0.1 * (2 - total), 0.1, 0.9) + (r * 2 - 1) * 0.08;
+  return clamp(Math.round(b.cap + t * (b.floor - b.cap)), b.cap, b.floor);
+}
+function internalTrade(now = Date.now()) {
+  const us = npcUsers().filter((u) => profile(u));
+  const totalHeld = (a) => us.reduce((t, u) => t + held(u, a), 0);
+  const wants = new Map(us.map((u) => [u.id, wantsRefs(profile(u))]));
+  const cands = [];
+  for (const s of us) {
+    const sp = profile(s);
+    const flashRefs = new Set(activeFlash(now).filter((f) => f.npc === s.id).map((f) => f.ref));
+    const refs = new Map(stock(s).map((x) => [x.a.ref, x.a]));
+    for (const o of openOrders(s)) if (o.side === 'sell') refs.set(o.ref, art(o));
+    for (const a of refs.values()) {
+      if (!bounds(a) || flashRefs.has(a.ref)) continue;
+      const keep = inFocus(sp, a) ? 1 : 0;
+      for (const b of us) {
+        if (b.id === s.id) continue;
+        const bp = profile(b);
+        if (!inFocus(bp, a) && !wants.get(b.id).has(a.ref)) continue;
+        const mine = held(s, a);
+        const room = STOCK_MAX[a.kind] - held(b, a);
+        if (mine - keep < 1 || room < 1 || mine <= held(b, a)) continue;
+        cands.push({ s, b, a, mine, room, keep });
+      }
+    }
+  }
+  for (const c of shuffle(cands)) {
+    const { s, b, a } = c;
+    const total = totalHeld(a);
+    const qty = a.kind === 'dust' ? Math.min(c.mine - c.keep, c.room, randInt(20, 100)) : Math.min(c.mine - c.keep, c.room, randInt(1, INTERNAL.qty));
+    if (qty < 1) continue;
+    const price = internalPrice(a, total);
+    const cost = qty * price;
+    // El comprador gasta como mucho un 5 % de su tesorería inicial y se queda por encima del doble del umbral de fondos bajos.
+    if (cost > INTERNAL.maxFrac * (b.npcStart || 1) || b.coins - cost < INTERNAL.keepFrac * (b.npcStart || 0)) continue;
+    // Si lo que vende está en sus ofertas, se retiran antes (el depósito vuelve al inventario).
+    if (market.owned(s, a) < qty) for (const o of openOrders(s).filter((x) => x.side === 'sell' && x.ref === a.ref)) market.cancel(s, { id: o.id });
+    if (market.owned(s, a) < qty) continue;
+    try { return market.npcTrade(s, b, { ...a, qty, price }); } catch { /* sin monedas, etc. */ }
+  }
+  return null;
 }
 
 // ---- Estado público (mercado y fichas de los comerciantes; sin identificadores de jugadores) ----
@@ -700,5 +756,5 @@ module.exports = {
   state: N, start, ensure, run, act, restock, isNpc, isNpcName, treasury, bounds, inFocus, maxBid, reference, bidPrice, askPrice, eligible,
   cap, whyBlocked, note, sellLimit, NPCS, MIN_LEVEL, MIN_AGE, SELL_UNITS, BUY_UNITS, POKE_FLOOR, LOW_FUNDS, SPEND_DAILY,
   // encargos y ofertas flash
-  ENC, FLASH, BONUS, BONUS_VALUE, FEED_DAILY, flashEligible, flashFloor, encArticles, bonusValue, newEncargo, newFlash, claim, special, sweepSpecial, publicState, npcFeed, dayPlan,
+  ENC, FLASH, BONUS, BONUS_VALUE, FEED_DAILY, flashEligible, flashFloor, encArticles, bonusValue, newEncargo, newFlash, internalTrade, internalPrice, INTERNAL, claim, special, sweepSpecial, publicState, npcFeed, dayPlan,
 };

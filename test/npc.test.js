@@ -416,7 +416,7 @@ test('NPC: conservación de monedas con jugadores y NPC operando (solo bajan com
   }
   assert.strictEqual(created(), c0, 'nadie crea monedas');
   assert.strictEqual(total(), t0 - (sinks() - s0), 'solo salen comisiones e impuestos');
-  assert.strictEqual(db.data.market.trades.filter((t) => t.sellerNpc && t.buyerNpc).length, 0);
+  assert.strictEqual(db.data.market.trades.filter((t) => t.sellerNpc && t.buyerNpc && !t.npcInternal).length, 0, 'en el libro los NPC no se cruzan (solo hay operaciones directas marcadas)');
   assert.ok(db.data.market.trades.some((t) => t.npc), 'hubo operaciones con NPC');
   for (const u of players) {
     const r = npc.state().daily[u.id];
@@ -616,6 +616,7 @@ test('NPC: el plan diario tiene 3-6 encargos y 1-2 ofertas flash', () => {
   n.plan = null;
   const plan = npc.dayPlan(Date.parse(hub.dayKey() + 'T00:00:00Z') + 1000);
   assert.ok(plan.enc.length >= 3 && plan.enc.length <= 6 && plan.flash.length >= 1 && plan.flash.length <= 2, JSON.stringify([plan.enc.length, plan.flash.length]));
+  assert.ok(plan.int.length >= 4 && plan.int.length <= 10, 'operaciones entre comerciantes: ' + plan.int.length);
   n.plan = null;
 });
 
@@ -625,4 +626,52 @@ test('claves de prototipo: los límites de los comerciantes NPC no existen para 
     assert.strictEqual(npc.bounds({ kind: 'item', itemId: k }), null, k);
     assert.strictEqual(npc.inFocus({ focus: 'all' }, { kind: 'item', itemId: k }) || false, false, k);
   }
+});
+
+test('NPC: operaciones directas entre comerciantes: suma cero, dentro de [tope, suelo], marcadas y sin efecto en referencias ni topes', () => {
+  resetSpecial();
+  const k = N('kecleon'), b = N('bill');
+  const id = byRarity('R');
+  for (const u of npcs()) u.dust = 0;
+  k.collection = { [id]: { n: 3, s: 0 } };
+  const a = market.parseRef(poke(id));
+  const ref0 = npc.reference(a.ref);
+  const hist0 = JSON.stringify(db.data.market.history);
+  const young = user('novato-int', { level: 1, createdAt: Date.now() });
+  const mb0 = require('../server/transfer').maxBuyPrice(young, a);
+  const jugadores = Object.values(db.data.users).filter((u) => !u.npc);
+  const coinsJug = jugadores.map((u) => u.coins);
+  const total0 = k.coins + b.coins;
+  const t = npc.internalTrade();
+  assert.ok(t, 'hubo operación');
+  const bn = npc.bounds(a);
+  assert.ok(t.price >= bn.cap && t.price <= bn.floor, 'precio en [tope, suelo] ' + JSON.stringify([t, bn]));
+  assert.deepStrictEqual([t.npc, t.npcInternal, t.sellerNpc, t.buyerNpc], [true, true, true, true]);
+  assert.strictEqual(k.coins + b.coins, total0, 'suma cero');
+  assert.strictEqual(b.coins, 60000 - t.qty * t.price);
+  assert.strictEqual(k.collection[id].n, 3 - t.qty);
+  assert.strictEqual(b.collection[id].n, t.qty);
+  assert.ok(b.collection[id].n <= 5);
+  assert.strictEqual(npc.reference(a.ref), ref0, 'no cuenta para la referencia de precios');
+  assert.strictEqual(JSON.stringify(db.data.market.history), hist0, 'ni para las medias');
+  assert.strictEqual(require('../server/transfer').maxBuyPrice(young, a), mb0, 'ni para los topes antiabuso');
+  assert.deepStrictEqual(jugadores.map((u) => u.coins), coinsJug, 'ningún jugador cobra');
+  assert.strictEqual(market.state().internal[a.ref].price, t.price);
+  assert.ok(market.state().trades.some((x) => x.npcInternal));
+  // Solo NPC distintos y dentro de los límites.
+  assert.throws(() => market.npcTrade(k, k, { ...poke(id), qty: 1, price: bn.cap }), /distintos/);
+  assert.throws(() => market.npcTrade(k, b, { ...poke(id), qty: 1, price: bn.floor + 1 }), /límites/);
+  assert.throws(() => market.npcTrade(k, young, { ...poke(id), qty: 1, price: bn.cap }), /NPC/);
+  // El comprador no pasa de su tope de stock (3): nunca acaba en polvo.
+  for (let i = 0; i < 20; i++) { k.collection[id] = { n: 5, s: 0 }; npc.internalTrade(); }
+  assert.ok((b.collection[id] || { n: 0 }).n <= 5);
+  resetSpecial();
+});
+
+test('NPC: el precio entre comerciantes sube con la escasez y nunca sale de [tope, suelo]', () => {
+  const a = market.parseRef(poke(byRarity('E')));
+  const bn = npc.bounds(a);
+  const avg = (total) => Array.from({ length: 200 }, () => npc.internalPrice(a, total)).reduce((x, y) => x + y, 0) / 200;
+  assert.ok(avg(1) > avg(8), 'escaso es más caro que abundante');
+  for (const total of [0, 1, 3, 50]) for (const r of [0, 0.5, 1]) { const p = npc.internalPrice(a, total, r); assert.ok(p >= bn.cap && p <= bn.floor); }
 });

@@ -127,6 +127,8 @@ function record(a, qty, price, seller, buyer, npcFlags = {}) {
   const t = { ref: a.ref, kind: a.kind, pokeId: a.pokeId, shiny: a.shiny, itemId: a.itemId, qty, price, seller, buyer, at: Date.now() };
   // Operaciones con un comerciante NPC: se marcan y no entran en las medias de precio de los jugadores.
   if (npcFlags.sellerNpc || npcFlags.buyerNpc) Object.assign(t, { npc: true, sellerNpc: !!npcFlags.sellerNpc, buyerNpc: !!npcFlags.buyerNpc });
+  // Entre dos comerciantes: se ve en el historial, pero ni entra en medias ni en la referencia de precios ni en los topes antiabuso.
+  if (npcFlags.internal) t.npcInternal = true;
   m.trades.push(t);
   if (m.trades.length > 500) m.trades.splice(0, m.trades.length - 500);
   if (!t.npc) {
@@ -171,6 +173,31 @@ function settle(a, qty, price, seller, buyer, snaps = null) {
   hub.emitUser(buyer.id, 'toast', { kind: 'market', text: `🏪 Compraste ${describe(a, qty)} por ${gross.toLocaleString('es')} monedas${dust ? ` (+${dust} ✦ por copias de más)` : ''}` });
   hub.pushMe(seller);
   hub.pushMe(buyer);
+}
+
+// Operación DIRECTA entre dos comerciantes NPC (no pasa por el libro de órdenes: allí los NPC nunca se cruzan).
+// Suma cero: las monedas pasan de un NPC a otro, sin comisión ni impuesto, y el precio queda dentro de [tope, suelo] del artículo.
+// Los jugadores no intervienen: ninguna moneda llega a un jugador y la operación no cuenta para npc.reference() ni para transfer.js.
+function npcTrade(seller, buyer, payload) {
+  if (!seller || !buyer || !seller.npc || !buyer.npc || seller.id === buyer.id) throw new Error('Solo entre comerciantes NPC distintos.');
+  const a = noKey(parseRef(payload));
+  const qty = Number(payload.qty);
+  const price = Number(payload.price);
+  validQtyPrice(a, qty, price);
+  const b = npc().bounds(a);
+  if (!b || price < b.cap || price > b.floor) throw new Error('Precio fuera de los límites del artículo.');
+  if (owned(seller, a) < qty) throw new Error(`No tiene ${describe(a, qty)}.`);
+  if (buyer.coins < qty * price) throw new Error('Sin monedas.');
+  takeGoods(seller, a, qty);
+  giveGoods(buyer, a, qty);
+  buyer.coins -= qty * price;
+  seller.coins += qty * price;
+  hub.ledger(buyer, -qty * price, 'npc_trade', `${qty} × ${a.ref}`);
+  hub.ledger(seller, qty * price, 'npc_trade', `${qty} × ${a.ref}`);
+  const t = record(a, qty, price, seller.username, buyer.username, { sellerNpc: true, buyerNpc: true, internal: true });
+  db.save();
+  push();
+  return t;
 }
 
 // Se comprueba antes de operar para no dejar una operación a medias si luego falla.
@@ -313,6 +340,12 @@ function history(_user, payload) {
   return { ref: a.ref, days: Object.entries(h).sort(([x], [y]) => x.localeCompare(y)).map(([day, d]) => ({ day, ...d, avg: Math.round(d.sum / d.n) })) };
 }
 
+// Última operación entre comerciantes de cada artículo (informativa, aparte del último precio real).
+function lastInternal() {
+  const out = {};
+  for (const t of M().trades) if (t.npcInternal) out[t.ref] = { price: t.price, qty: t.qty, at: t.at };
+  return out;
+}
 function state() {
   const m = M();
   const stats = {};
@@ -323,7 +356,7 @@ function state() {
   }
   return {
     orders: m.orders.map(({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt, npc, flash }) => ({ id, side, ref, kind, pokeId, shiny, itemId, username, price, qty, qty0, createdAt, expiresAt: expiresAt || createdAt + EXPIRE_MS, ...(npc ? { npc: true } : {}), ...(flash ? { flash } : {}) })),
-    trades: m.trades.slice(-40).reverse(), stats, setupFee: setupFee(), salesTax: salesTax(), npcs: npc().publicState(),
+    trades: m.trades.slice(-40).reverse(), stats, internal: lastInternal(), setupFee: setupFee(), salesTax: salesTax(), npcs: npc().publicState(),
   };
 }
 function push() { hub.broadcast('market', state()); }
@@ -360,4 +393,4 @@ function init() {
   setInterval(sweep, 10 * 60 * 1000).unref();
 }
 
-module.exports = { init, push, sell, buy, cancel, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee, DURATIONS, sweep };
+module.exports = { init, push, sell, buy, cancel, npcTrade, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee, DURATIONS, sweep };

@@ -42,7 +42,7 @@ const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 const HIST_DAYS = 60;
 const ECON_DAYS = 45;
 // Movimientos entre jugadores (no crean ni destruyen monedas).
-const TRANSFERS = new Set(['gift_in', 'gift_out', 'market_sale', 'market_buy', 'market_refund', 'poker_in', 'poker_out', 'refund', 'mega_spin', 'mega_bote_out']);
+const TRANSFERS = new Set(['gift_in', 'gift_out', 'market_sale', 'market_buy', 'market_refund', 'poker_in', 'poker_out', 'refund', 'mega_spin', 'mega_bote_out', 'npc_trade']);
 function prune(obj, keep) {
   const keys = Object.keys(obj).sort();
   for (const k of keys.slice(0, Math.max(0, keys.length - keep))) delete obj[k];
