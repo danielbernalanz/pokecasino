@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.07-d",
+    "date": "2026-11-07",
+    "title": "Filtros en la Tienda Poké",
+    "items": [
+      "🔎 Tienda: buscador por nombre o efecto (sin distinguir mayúsculas ni acentos) y filtro de categoría con selección múltiple.",
+      "💰 Nuevo «Solo lo que puedo pagar» y orden por precio (menor o mayor) o por nombre, con contador «N de M artículos» y botón «Limpiar filtros».",
+      "🍬 Los Caramelos de Exp. ahora aparecen en su propia sección de la Tienda. Los filtros se recuerdan al volver."
+    ]
+  },
+  {
     "version": "2026.11.07-c",
     "date": "2026-11-07",
     "title": "Exporta tu equipo y tu Caja PC",

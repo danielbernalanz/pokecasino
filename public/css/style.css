@@ -1689,3 +1689,6 @@ a.pill:hover, a.jackpot-pill:hover { filter: brightness(1.06); }
 .mk-int-tag { margin-left: 6px; padding: 1px 6px; border-radius: 4px; font: 700 10px Nunito; background: #64748b33; color: var(--muted, #94a3b8); white-space: nowrap; }
 .mk-hist.internal { opacity: .8; border-style: dashed; }
 .mk-sug { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.shop-filters .mkf-row > .mkf-f { flex: 0 1 200px; }
+.shop-filters .mkf-reset { font-size: 13px; white-space: nowrap; }
+@media (max-width: 720px) { .shop-filters .mkf-q { flex: 1 1 100%; } .shop-filters .mkf-row > .mkf-f, .shop-filters .mkf-chk, .shop-filters .mkf-reset { flex: 1 1 40%; } .shop-filters .mkf-chk, .shop-filters .mkf-reset { justify-content: center; font-size: 12px; } }
