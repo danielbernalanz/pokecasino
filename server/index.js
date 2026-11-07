@@ -731,6 +731,7 @@ io.on('connection', (socket) => {
   on('market:buy', market.buy);
   on('market:cancel', market.cancel);
   on('market:history', market.history, { push: false });
+  on('market:values', () => require('./valuation').all(), { push: false }); // valor estimado (solo informativo)
   on('bj:state', (u) => blackjack.view(u), { push: false });
   on('bj:deal', blackjack.deal);
   on('bj:act', blackjack.act);
