@@ -105,3 +105,36 @@ test('valor estimado: dos cuentas compinchadas no lo suben más de un 25 % sobre
   }
   assert.strictEqual(npc.reference('poke:149:0'), null);
 });
+
+test('precio sugerido: usa el libro y el valor estimado, y respeta el tope de las cuentas nuevas', () => {
+  for (const o of db.data.market.orders.filter((x) => x.npc)) market.cancel(db.userById(o.userId), { id: o.id });
+  db.data.market.orders = [];
+  const me = user('sugiere', { collection: { 25: { n: 3, s: 0 } } });
+  const other = user('otro-sug', { collection: { 25: { n: 3, s: 0 } } });
+  const a = { kind: 'poke', pokeId: 25, shiny: false };
+  const v = val.estimate('poke:25:0').value;
+  let s = val.suggest(me, { ...a, side: 'sell' });
+  assert.strictEqual(s.basis, 'valor estimado');
+  assert.ok(Math.abs(s.price - v) <= Math.max(10, v * 0.05));
+  // Una compra abierta por encima del valor: vender al instante a ella.
+  market.buy(other, { ...a, qty: 1, price: v * 2 });
+  s = val.suggest(me, { ...a, side: 'sell' });
+  assert.deepStrictEqual([s.price, s.basis], [v * 2, 'mejor compra']);
+  for (const o of db.data.market.orders) market.cancel(db.userById(o.userId), { id: o.id });
+  // Una venta más barata que el valor: comprarla; vender un poco por debajo.
+  market.sell(other, { ...a, qty: 1, price: Math.max(2, Math.floor(v / 2)) });
+  s = val.suggest(me, { ...a, side: 'buy' });
+  assert.deepStrictEqual([s.price, s.basis], [Math.max(2, Math.floor(v / 2)), 'mejor venta']);
+  s = val.suggest(me, { ...a, side: 'sell' });
+  assert.strictEqual(s.basis, 'mejor venta');
+  assert.ok(s.price < Math.max(2, Math.floor(v / 2)));
+  for (const o of db.data.market.orders) market.cancel(db.userById(o.userId), { id: o.id });
+  // Cuentas nuevas: nunca por encima de su tope.
+  const young = user('joven-sug', { level: 1, createdAt: Date.now() });
+  const b = npc.bounds(market.parseRef({ kind: 'poke', pokeId: 150, shiny: true }));
+  s = val.suggest(young, { kind: 'poke', pokeId: 150, shiny: true, side: 'buy' });
+  assert.ok(s.price <= transfer.maxBuyPrice(young, market.parseRef({ kind: 'poke', pokeId: 150, shiny: true })));
+  assert.ok(b && s.price >= 1);
+  // Sin estimación ni libro: sin sugerencia (el cliente conserva su comportamiento).
+  assert.strictEqual(val.suggest(me, { kind: 'item', itemId: 'tera-shard-fire', side: 'buy' }).price, null);
+});

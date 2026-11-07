@@ -76,4 +76,41 @@ function all(now = Date.now()) {
   cache = { at: now, map };
   return map;
 }
-module.exports = { estimate, all, allRefs, BAND_UP };
+
+// ---- Precio sugerido al crear una orden (solo una propuesta que el jugador puede cambiar) ----
+const MAX_PRICE = 10_000_000;
+const friendly = (v) => {
+  const step = v < 50 ? 1 : v < 500 ? 5 : v < 5000 ? 10 : v < 50000 ? 50 : 100;
+  return Math.max(1, Math.round(v / step) * step);
+};
+// side 'sell': mejor compra abierta si supera al valor estimado (se vende al instante); si hay una venta más barata, un poco por debajo
+// de ella; si no, el valor estimado. side 'buy': la venta más barata si no supera al valor estimado (compra al instante) o el valor
+// estimado. Respeta los límites del servidor y el tope de las cuentas nuevas (transfer.maxBuyPrice).
+function suggest(user, payload) {
+  const a = market.parseRef(payload);
+  const side = payload.side === 'sell' ? 'sell' : 'buy';
+  const est = estimate(a.ref);
+  const v = est && est.value ? est.value : null;
+  const others = db().data.market.orders.filter((o) => o.ref === a.ref && o.qty > 0 && o.userId !== user.id);
+  const lowAsk = Math.min(Infinity, ...others.filter((o) => o.side === 'sell').map((o) => o.price));
+  const topBid = Math.max(0, ...others.filter((o) => o.side === 'buy').map((o) => o.price));
+  let price = null;
+  let basis = null;
+  if (side === 'sell') {
+    if (topBid && (v == null || topBid >= v)) { price = topBid; basis = 'mejor compra'; }
+    else if (lowAsk < Infinity && (v == null || lowAsk <= v)) { price = Math.max(1, lowAsk - Math.max(1, Math.round(lowAsk * 0.01))); basis = 'mejor venta'; }
+    else if (v != null) { price = friendly(v); basis = 'valor estimado'; }
+    else if (topBid) { price = topBid; basis = 'mejor compra'; }
+    else if (lowAsk < Infinity) { price = lowAsk; basis = 'mejor venta'; }
+  } else if (lowAsk < Infinity && (v == null || lowAsk <= v)) { price = lowAsk; basis = 'mejor venta'; }
+  else if (v != null) { price = friendly(v); basis = 'valor estimado'; }
+  else if (topBid) { price = topBid + 1; basis = 'mejor compra'; }
+  else if (lowAsk < Infinity) { price = lowAsk; basis = 'mejor venta'; }
+  let max = MAX_PRICE;
+  if (side === 'buy') max = Math.min(max, require('./transfer').maxBuyPrice(user, a));
+  if (price == null) return { price: null, basis: null, max: Number.isFinite(max) ? max : MAX_PRICE };
+  const capped = Math.min(Math.max(1, Math.round(price)), max);
+  return { price: capped, basis: capped < price ? 'tope de tu cuenta' : basis, max: Number.isFinite(max) ? max : MAX_PRICE };
+}
+const db = () => require('./db');
+module.exports = { estimate, all, allRefs, suggest, BAND_UP };
