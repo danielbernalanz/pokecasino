@@ -160,6 +160,7 @@ function deposit(u, p, now = Date.now()) {
   const m = specimen.find(u, { id, uid: p.uid });
   const why = busyReason(u, id, m);
   if (why) throw new Error(why);
+  require('./protect').needConfirm(u, id, m, p.confirmUids);
   const g = G();
   if (g.deps.filter((d) => d.userId === u.id).length >= MAX_ACTIVE) throw new Error(`Ya tienes ${MAX_ACTIVE} depósitos: retira uno o recoge los pendientes.`);
   if (u.coins < FEE) throw new Error(`Depositar cuesta ${FEE} monedas (no se devuelven).`);
@@ -259,6 +260,7 @@ function offer(u, p, now = Date.now()) {
   const id = d.want.id;
   const m = specimen.find(u, { id, uid: p.uid });
   const owner = checkOffer(u, d, m, now);
+  require('./protect').needConfirm(u, id, m, p.confirmUids);
   const mine = snapOf(u, id, m); // lo que sale de mi Caja (con mis rasgos) …
   const theirs = snapOf(owner, d.mon.id, d.mon.m); // … y lo que sale del depósito
   pull(u, id, m);

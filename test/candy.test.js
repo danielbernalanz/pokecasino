@@ -322,13 +322,14 @@ test('transferir, liberar o el objeto equipado vuelve a la mochila', () => {
   const m = u.mons[25][0];
   require('../server/bp').hold(u, { id: 25, uid: m.uid, item: 'leftovers' });
   assert.strictEqual(u.items['hi-leftovers'], undefined);
-  candy.transfer(u, { id: 25, uid: m.uid });
+  assert.throws(() => candy.transfer(u, { id: 25, uid: m.uid }), /combate/, 'con objeto equipado es un ejemplar de combate: pide confirmación');
+  candy.transfer(u, { id: 25, uid: m.uid, confirmUids: [m.uid] });
   assert.strictEqual(u.items['hi-leftovers'], 1, 'transferir un ejemplar con objeto lo devuelve');
   // Liberar un ejemplar concreto.
   const w = user({ collection: { 25: { n: 2, s: 0 } }, items: { 'hi-leftovers': 1 } });
   sp.syncAll(w);
   require('../server/bp').hold(w, { id: 25, uid: w.mons[25][0].uid, item: 'leftovers' });
-  sp.release(w, { id: 25, uid: w.mons[25][0].uid });
+  sp.release(w, { id: 25, uid: w.mons[25][0].uid, confirmUids: [w.mons[25][0].uid] });
   sp.syncAll(w);
   assert.strictEqual(w.items['hi-leftovers'], 1, 'liberar también lo devuelve');
 });

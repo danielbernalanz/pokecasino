@@ -3,6 +3,7 @@
 import { S, h, act, emit, sfx, toast, modal, sprite, typeBadge, say, emptyState, loader, confirmRisk, MON } from '../core.js';
 import { monPicker, loadMons, clock } from './afk-common.js';
 import { openSpecimen } from './pc.js';
+import { resolveProtect } from './spec-list.js';
 
 let tab = 'deposit';
 const cfg = () => S.data.gts;
@@ -95,12 +96,14 @@ export default {
         if (!(await confirmRisk('gts-deposit', { section: 'la GTS', title: `¿Depositar ${label(m)}?`, danger: 'Depositar', safe: 'Cancelar',
           text: 'Sale de tu Caja hasta que alguien lo intercambie, lo retires o caduque (entonces vuelve intacto). La comisión no se devuelve.',
           details: [`Das: ${label(m)} Nv. ${m.level}`, `Pides: ${wantText(want)}`, `Comisión: ${cfg().fee} monedas`, ...extra] }))) return;
-        const r = await act('gts:deposit', { id: m.id, uid: m.uid, want: { id: want.id, g: want.g, lv: want.lv } }, e.currentTarget);
+        const cb = await resolveProtect([m], 'depositar', e.currentTarget);
+        if (!cb.ok) return;
+        const r = await act('gts:deposit', { id: m.id, uid: m.uid, confirmUids: cb.confirmUids, want: { id: want.id, g: want.g, lv: want.lv } }, e.currentTarget);
         if (!r) return;
         sfx('win'); toast(`${label(m)} está en la GTS. ¡Te avisaremos cuando alguien lo cambie!`, 'success');
         apply(r); mons = await loadMons(); tab = 'mine'; draw();
       }
-      const picker = monPicker(mons, { max: 1, selected: sel, onChange: sync,
+      const picker = monPicker(mons, { max: 1, selected: sel, onChange: sync, combat: true,
         can: (m) => (m.away ? (m.away === 'care' ? 'En el Criadero' : 'De expedición') : m.buddy ? 'Compañero' : null),
         rank: (m) => m.level });
       const view = h('button', { class: 'btn small', type: 'button', onclick: () => { const m = picker.get()[0]; if (m) openSpecimen(m.uid); } }, '📋 Ver ficha');
@@ -147,13 +150,15 @@ export default {
           const extra = [m.fav ? '⚠ Es uno de tus favoritos' : '', m.shiny ? '⚠ Es variocolor' : ''].filter(Boolean);
           if (!(await confirmRisk('gts-offer', { section: 'la GTS', title: `¿Intercambiar ${label(m)}?`, danger: 'Intercambiar', safe: 'Cancelar',
             text: 'El intercambio es inmediato y no se puede deshacer.', details: [`Das: ${label(m)} Nv. ${m.level}`, `Recibes: ${d.mon.shiny ? '✨ ' : ''}${dex(d.mon.id).name} Nv. ${d.mon.level}`, ...extra] }))) return;
-          const r = await act('gts:offer', { dep: d.id, uid: m.uid }, e.currentTarget);
+          const cb = await resolveProtect([m], 'intercambiar', e.currentTarget);
+          if (!cb.ok) return;
+          const r = await act('gts:offer', { dep: d.id, uid: m.uid, confirmUids: cb.confirmUids }, e.currentTarget);
           if (!r) { await run({ currentTarget: null }); return; }
           mdl.close(); sfx('shiny');
           toast(`¡Intercambio hecho! Recibiste ${dex(r.got.id).name} Nv. ${r.got.level}`, 'success');
           apply(r); mons = await loadMons(); found = null; draw();
         } }, '🔁 Intercambiar');
-        const pk = monPicker(opts, { max: 1, selected: sel, onChange: () => { go.disabled = !sel.size; }, rank: (m) => m.level });
+        const pk = monPicker(opts, { max: 1, selected: sel, combat: true, onChange: () => { go.disabled = !sel.size; }, rank: (m) => m.level });
         const mdl = modal(h('div', { class: 'stack' }, h('div', { class: 'gts-card-in' }, monLine(d.mon), h('span', { class: 'gts-arrow' }, '⇄'), wantLine(d.want)),
           h('h4', {}, 'Elige tu ejemplar'), pk.el, h('div', { class: 'row gap wrap' }, go,
             h('button', { class: 'btn small', type: 'button', onclick: () => { const m = opts.find((x) => sel.has(x.uid)); if (m) openSpecimen(m.uid); } }, '📋 Ver ficha'))), { title: `Intercambiar con ${d.user}`, wide: true });

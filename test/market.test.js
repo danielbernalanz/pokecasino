@@ -273,7 +273,8 @@ test('mercado: un Pokémon vendido se guarda entero en la orden y vuelve intacto
   sp.syncAll(u);
   const m = u.mons[25][0];
   m.level = 80; m.exp = exp.expAt(25, 80); m.evs = [252, 0, 0, 0, 0, 0]; m.friendship = 200; m.mint = 'Audaz'; m.hyper = [true, false, false, false, false, false]; m.item = 'leftovers';
-  const r = market.sell(u, { kind: 'poke', pokeId: 25, qty: 1, price: 50000 });
+  assert.throws(() => market.sell(u, { kind: 'poke', pokeId: 25, qty: 1, price: 50000 }), /preparados para combate/);
+  const r = market.sell(u, { kind: 'poke', pokeId: 25, qty: 1, price: 50000, uids: [m.uid], confirmUids: [m.uid] });
   assert.strictEqual(r.order.snaps.length, 1);
   assert.strictEqual(u.items['hi-leftovers'], 1, 'el objeto equipado vuelve a la mochila');
   assert.ok(!market.state().orders.some((o) => o.snaps), 'la vista pública no lleva los ejemplares');

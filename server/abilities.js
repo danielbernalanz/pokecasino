@@ -39,6 +39,7 @@ function applyCapsule(id, m) {
   if (m.ha) throw new Error('Con la habilidad oculta no sirve la Cápsula Habilidad.');
   if (normal.length < 2) throw new Error('Esa especie solo tiene una habilidad normal.');
   m.abSlot = 1 - m.abSlot;
+  m.abUsed = true; // Cápsula o Parche aplicados: el ejemplar cuenta como «de combate» (protect.js)
   return resolve(id, m);
 }
 function applyPatch(id, m) {
@@ -47,6 +48,7 @@ function applyPatch(id, m) {
   if (!hidden) throw new Error('Esa especie no tiene habilidad oculta.');
   if (m.ha) throw new Error('Ya tiene la habilidad oculta.');
   m.ha = true;
+  m.abUsed = true;
   return resolve(id, m);
 }
 

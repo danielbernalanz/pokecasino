@@ -37,7 +37,7 @@ function swap(a, b, give, want, tweak = () => {}) {
   const mb = b.mons[want][0];
   tweak(mb);
   const d = require('../server/db').data.gts.deps.find((x) => x.userId === a.id && x.state === 'open');
-  gts.offer(b, { dep: d.id, uid: mb.uid });
+  gts.offer(b, { dep: d.id, uid: mb.uid, confirmUids: [mb.uid] });
   return a.mons[want] && a.mons[want][0];
 }
 

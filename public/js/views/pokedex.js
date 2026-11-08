@@ -4,6 +4,7 @@ import { useFx } from '../rewards.js';
 import { burstAt, centerOf } from '../fx.js';
 import { openItem } from './market.js';
 import { openInPc } from './pc.js';
+import { pickSpecimens } from './spec-list.js';
 import { craftFilter } from './workshop.js';
 
 let filter = { q: '', show: null, rarity: [], type: [], gen: [] };
@@ -39,17 +40,21 @@ export function openDetail(id) {
       const to = giftTo.value.trim();
       if (!to) return toast('Escribe el nombre del entrenador.', 'error');
       const isBuddy = S.me.buddy && S.me.buddy.id === id;
+      const ch = await pickSpecimens({ id, shiny: false, count: 1, verb: 'regalar', action: `Regalar a ${to}`, title: `Regalar ${p.name} a ${to}`, exact: true });
+      if (!ch) return;
       if (!(await confirmRisk('gift-poke', { title: `¿Regalar ${p.name} a ${to}?`, danger: 'Regalar', safe: 'Cancelar',
         text: `Perderás una copia de ${p.name}.${c.n === 1 ? ' Es tu última copia: seguirá registrado como obtenido en tu Pokédex.' : ''}${isBuddy ? ` Es tu compañero actual: dejarías de recibir su bonus hasta que elijas otro.` : ''} El regalo no se puede deshacer.` }))) return;
-      if (await act('gift:poke', { to, id, shiny: false }, e.target)) { toast('¡Regalo enviado!', 'success'); more.close(); m.close(); }
+      if (await act('gift:poke', { to, id, shiny: false, uid: ch.uids[0], confirmUids: ch.confirmUids }, e.target)) { toast('¡Regalo enviado!', 'success'); more.close(); m.close(); }
     };
     const release = async (e) => {
       if (c.s > 0 && c.n - 1 < c.s && !(await confirmRisk('release-precious', { title: 'Vas a liberar una copia variocolor', danger: 'Liberar igualmente', safe: 'Conservarla',
         text: `Tienes ${c.n} copia(s) de ${p.name} y ${c.s} es variocolor ✨. Si liberas una, perderías una versión variocolor (solo recibes ${r.dust} ✦ de polvo), y es mucho más difícil de conseguir.` }))) return;
       if (!(await confirmRisk('release-one', { section: 'la Pokédex', title: `¿Liberar una copia de ${p.name}?`, danger: 'Liberar', safe: 'Cancelar',
         text: `Solo recibes ${r.dust} ✦ de polvo y no se puede deshacer. Si quieres también Caramelos Exp., usa Transferir en la Caja PC.` }))) return;
+      const ch = await pickSpecimens({ id, shiny: null, count: 1, verb: 'liberar', action: 'Liberar', title: `Liberar una copia de ${p.name}`, exact: true });
+      if (!ch) return;
       const at = centerOf(e.target);
-      if (await act('shop:release', { id, count: 1 }, e.target)) { burstAt(...at, '#a5b4fc', 18, { spread: 120, stars: 0.8 }); sfx('shiny'); toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); more.close(); m.close(); openDetail(id); }
+      if (await act('shop:release', { id, count: ch.uids.length, uids: ch.uids, confirmUids: ch.confirmUids }, e.target)) { burstAt(...at, '#a5b4fc', 18, { spread: 120, stars: 0.8 }); sfx('shiny'); toast(`Liberaste una copia: +${r.dust} ✦`, 'success'); more.close(); m.close(); openDetail(id); }
     };
     const more = modal(h('div', { class: 'stack pc-more' },
       h('div', { class: 'pc-box' }, h('h4', {}, '🎁 Regalar una copia'),

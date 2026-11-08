@@ -64,14 +64,21 @@ function owned(user, a) {
 // Los Pokémon que se venden son ejemplares concretos (el menos valioso libre de cada especie): salen con todo lo suyo (nivel, EXP,
 // rasgos, topes del día…) y quedan guardados en la orden, para devolverlos intactos si se cancela o caduca, o entregárselos al comprador.
 // El objeto equipado vuelve a la mochila del vendedor. Devuelve la lista de ejemplares (una por unidad) o null si no es un Pokémon.
-function takeGoods(user, a, qty) {
+// `picks`: ejemplares ya elegidos y validados (protect.select); se van gastando en orden. Los comerciantes NPC no tienen ejemplares concretos.
+function pokePicks(user, a, qty, payload = {}) {
+  if (a.kind !== 'poke' || user.npc) return null;
+  const gts = require('./gts');
+  return require('./protect').select(user, a.pokeId, a.shiny, qty, { uids: payload.uids, confirmUids: payload.confirmUids, hard: (x) => gts.busyReason(user, a.pokeId, x, 'el Mercado') });
+}
+function takeGoods(user, a, qty, picks = null) {
   if (owned(user, a) < qty) throw new Error(`No tienes ${describe(a, qty)}.`);
   if (a.kind === 'poke') {
     const gts = require('./gts');
     const sp = require('./specimen');
     const snaps = [];
     for (let i = 0; i < qty; i++) {
-      const m = user.npc ? null : sp.leastValuable(user, a.pokeId, a.shiny, (x) => !gts.busyReason(user, a.pokeId, x, 'el Mercado')) || sp.leastValuable(user, a.pokeId, a.shiny, (x) => !x.away);
+      // Nunca «el menos valioso» a ciegas: sale el ejemplar elegido o, sin elección, el menos valioso NO protegido (protect.select).
+      const m = user.npc ? null : (picks && picks.length ? picks.shift() : pokePicks(user, a, 1)[0]);
       if (!m) { gacha.takePoke(user, a.pokeId, a.shiny); continue; } // sin ejemplar concreto (comerciantes NPC): como antes
       const snap = gts.snapOf(user, a.pokeId, m);
       snap.item = null; // el objeto equipado vuelve a la mochila (lo hace sync al quitar el ejemplar)
@@ -227,6 +234,7 @@ function sell(user, payload) {
   const days = validDays(payload);
   validQtyPrice(a, qty, price);
   if (owned(user, a) < qty) throw new Error(`No tienes ${describe(a, qty)}.`);
+  const picks = pokePicks(user, a, qty, payload); // se elige y valida TODO antes de tocar nada: sin ejemplares libres, error claro
   if (!instant && user.coins < fee(qty * price, user)) throw new Error('No tienes monedas para la comisión de publicación.');
   checkOrderLimit(user, instant);
   let left = qty;
@@ -244,7 +252,7 @@ function sell(user, payload) {
       q = Math.min(q, npc().cap(user, buyer, a, o.price));
       if (q <= 0) { why ||= npc().whyBlocked(user, buyer, a); continue; }
     }
-    const snaps = takeGoods(user, a, q);
+    const snaps = takeGoods(user, a, q, picks);
     o.qty -= q; // las monedas ya estaban en depósito en la orden de compra
     settle(a, q, o.price, user, buyer, snaps);
     earned += q * o.price;
@@ -256,7 +264,7 @@ function sell(user, payload) {
     user.coins -= f;
     hub.ledger(user, -f, 'market_fee', a.ref);
     if (!user.npc) npc().notePaid(f); // lo que pagan los jugadores alimenta el relleno de las tesorerías NPC
-    const snaps = takeGoods(user, a, left);
+    const snaps = takeGoods(user, a, left, picks);
     order = { id: M().nextId++, side: 'sell', ...a, userId: user.id, username: user.username, price, qty: left, qty0: left, createdAt: Date.now(), expiresAt: Date.now() + days * DAY_MS, ...(user.npc ? { npc: true } : {}), ...(snaps && snaps.length ? { snaps } : {}) };
     M().orders.push(order);
     hub.track(user, 'market_list');
@@ -400,4 +408,4 @@ function init() {
   setInterval(sweep, 10 * 60 * 1000).unref();
 }
 
-module.exports = { init, push, sell, buy, cancel, npcTrade, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee, DURATIONS, sweep };
+module.exports = { pokePicks, init, push, sell, buy, cancel, npcTrade, history, state, refKey, SETUP_FEE, SALES_TAX, owned, parseRef, lockedIn, describe, fee, DURATIONS, sweep };

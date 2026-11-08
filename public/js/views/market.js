@@ -1,3 +1,4 @@
+import { specList, resolveProtect } from './spec-list.js';
 import { S, h, multiSelect, fmt, act, art as artwork, sfx, toast, bus, sprite, modal, typeBadge, TYPE_ES, rarityName, itemImg, itemName, RARITY_ORDER, confirmRisk, dexState } from '../core.js';
 
 // Mercado estilo Albion Online: libro de órdenes por artículo (ventas y pedidos de compra).
@@ -296,6 +297,7 @@ function qtyField(max, init, onChange) {
   return {
     el: h('div', { class: 'mk-qty' }, h('div', { class: 'mk-stepper' }, step(-1), num, step(1)), rng, h('button', { class: 'chip', type: 'button', onclick: () => set(mx) }, 'Máx')),
     get value() { return clamp(num.value); },
+    set(v) { set(v); },
     setMax(m) { mx = Math.max(1, m); num.max = mx; rng.max = mx; num.value = clamp(num.value); rng.value = num.value; },
   };
 }
@@ -345,6 +347,30 @@ function itemDialog(a, o = {}) {
     }
     return true;
   }
+  // Pokémon: en vez de elegir a ciegas, se ve la lista de ejemplares y se marcan los que salen (el servidor recibe esos uid).
+  let syncing = false;
+  const spec = sell && a.kind === 'poke' ? specList({ id: a.pokeId, shiny: !!a.shiny, count: vals.qty, itemNote: 'vuelve a tu mochila', onChange: (n) => { if (n > 0 && panel) { syncing = true; panel.q.set(n); syncing = false; } if (panel) panel.upd(); } }) : null;
+  const specBox = spec ? h('div', { class: 'cmb-box' }, h('h4', {}, 'Qué ejemplares salen'), h('p', { class: 'small', 'data-testid': 'will-sell' }), spec.el) : null;
+  const paintSpec = () => {
+    if (!spec || !spec.ready) return;
+    const line = specBox.querySelector('[data-testid=will-sell]');
+    const rows = spec.rows().filter((r) => spec.uids().includes(r.uid));
+    const prot = rows.filter((r) => r.protected);
+    const free = spec.rows().filter((r) => !r.blocked && !r.protected).length;
+    if (!rows.length) line.textContent = free ? 'Marca al menos un ejemplar.' : 'No te queda ningún ejemplar libre: solo tienes Pokémon de combate. Marca uno a mano si de verdad quieres venderlo.';
+    else line.replaceChildren('Se venderá: ', rows.map((r) => `${r.nick || nameOf(a)} Nv. ${r.level}`).join(', '), prot.length ? ` · ⚠ ${prot.length} de combate (te pediremos confirmar)` : rows.length === 1 ? ' (no está en ningún equipo)' : ' (ninguno es de combate)');
+    line.classList.toggle('bad', !rows.length || prot.length > 0);
+  };
+  const specOk = () => !spec || !spec.ready || spec.uids().length > 0;
+  // Datos extra de la petición de venta y confirmación de los ejemplares de combate. Devuelve null si el jugador cancela.
+  async function specPayload(n, btn) {
+    if (!spec) return {};
+    const uids = spec.uids().slice(0, n);
+    const prot = spec.protectedChosen().filter((r) => uids.includes(r.uid));
+    const res = await resolveProtect(prot, 'vender', btn);
+    if (!res.ok) return null;
+    return { uids, confirmUids: res.confirmUids };
+  }
   const head = h('div', { class: 'mk-dhead' });
   const toggle = h('div', { class: 'mk-toggle ' + (sell ? 'buyside' : 'sellside'), role: 'tablist' });
   const panelBox = h('div', { class: 'stack mk-mbody' });
@@ -391,11 +417,13 @@ function itemDialog(a, o = {}) {
     const info = h('div', { class: 'mk-sum ' + (sell ? 'buyside' : 'sellside') });
     const q = qtyField(cap(), vals.qty, upd);
     const say = h('p', { class: 'mk-say small' }, sell ? 'Se vende ahora al pedido de compra más alto, hasta agotar la cantidad.' : 'Se compra ahora a la oferta más barata, hasta completar la cantidad.');
-    const el = h('div', { class: 'stack' }, say, h('label', {}, 'Cantidad', q.el), info);
+    const el = h('div', { class: 'stack' }, say, h('label', {}, 'Cantidad', q.el), specBox, info);
     function upd() {
       const list = nowList();
-      q.setMax(cap());
+      q.setMax(spec && spec.ready ? Math.min(cap(), Math.max(1, spec.total)) : cap());
       vals.qty = q.value;
+      if (spec && spec.ready && !syncing && spec.uids().length !== q.value) spec.setCount(q.value);
+      paintSpec();
       confirm.textContent = sell ? 'Vender' : 'Comprar';
       if (!list.length || (sell && !have)) {
         info.replaceChildren(h('div', { class: 'muted small' }, sell ? (have ? 'Nadie ha publicado pedidos de compra ahora mismo.' : 'No tienes este artículo.') : 'Nadie vende este artículo ahora mismo.'));
@@ -407,7 +435,7 @@ function itemDialog(a, o = {}) {
         const tax = taxOf(w.total);
         info.replaceChildren(kv('Mejor pedido', money(list[0].price)), kv('Pedidos que se llenarán', fmt(w.orders)), kv('Precio medio de la venta', money(Math.round(w.avg))),
           kv('Total bruto', money(w.total)), kv(`Impuesto de venta (${pct(salesTax())} %)`, '− ' + fmt(tax)), kv('Recibirás', money(w.total - tax), 'strong'), kv('Monedas después', money(S.me.coins + w.total - tax)));
-        confirm.disabled = !w.filled;
+        confirm.disabled = !w.filled || !specOk();
       } else {
         const after = S.me.coins - w.total;
         info.replaceChildren(kv('Precio más bajo', money(list[0].price)), kv('Órdenes que se tomarán', fmt(w.orders)), kv('Precio medio de la compra', money(Math.round(w.avg))),
@@ -416,11 +444,13 @@ function itemDialog(a, o = {}) {
       }
     }
     return {
-      el, upd,
+      el, upd, q,
       async run(e) {
         const w = walk(nowList(), q.value);
         if (w.filled && !(await warnTrade({ price: w.avg, qty: w.filled }))) return false;
-        const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: w.filled, price: w.worst, instant: true, ...(orderId ? { orderId } : {}) }, e.target);
+        const sp = await specPayload(w.filled, e.target);
+        if (!sp) return false;
+        const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: w.filled, price: w.worst, instant: true, ...sp, ...(orderId ? { orderId } : {}) }, e.target);
         if (!res) return false;
         sfx('win');
         toast(sell ? `Vendiste ${fmt(res.filled)}: recibes ${fmt(res.earned - taxOf(res.earned))} monedas` : `Compraste ${fmt(res.filled)} por ${fmt(res.spent)} monedas`, 'success');
@@ -470,7 +500,7 @@ function itemDialog(a, o = {}) {
     price.oninput = () => { touched = true; upd(); };
     const el = h('div', { class: 'stack' }, say, mkt,
       h('label', {}, 'Precio por unidad', h('div', { class: 'mk-priceRow' }, h('span', { class: 'coin-ico' }), stepP(-1), price, stepP(1))), sugLine, chips,
-      h('label', {}, 'Cantidad', q.el), h('label', {}, 'Duración', days), info, note);
+      h('label', {}, 'Cantidad', q.el), specBox, h('label', {}, 'Duración', days), info, note);
     function upd() {
       const { lowAsk, topBid, av } = ctx();
       const avg = av && av.v;
@@ -479,8 +509,10 @@ function itemDialog(a, o = {}) {
         ? [quick('Igualar', lowAsk && lowAsk.price), quick('−1', lowAsk && lowAsk.price - 1), quick('Precio medio', avg || null)]
         : [quick('Igualar', topBid && topBid.price), quick('+1', topBid && topBid.price + 1), quick('Precio medio', avg || null)]));
       mkt.replaceChildren('Se vende desde ', h('b', { class: 'c-sell' }, lowAsk ? fmt(lowAsk.price) : '—'), ' · Se compra hasta ', h('b', { class: 'c-buy' }, topBid ? fmt(topBid.price) : '—'), ` · Medio ${av ? av.label : '24 h'}: ${avg ? fmt(avg) : '—'}`);
-      q.setMax(cap());
+      q.setMax(spec && spec.ready ? Math.min(cap(), Math.max(1, spec.total)) : cap());
       vals.qty = q.value;
+      if (spec && spec.ready && !syncing && spec.uids().length !== q.value) spec.setCount(q.value);
+      paintSpec();
       const p = Math.max(0, Math.floor(Number(price.value)) || 0);
       vals.price = p || vals.price;
       const total = q.value * p;
@@ -490,7 +522,7 @@ function itemDialog(a, o = {}) {
       if (sell) {
         const tax = taxOf(total);
         lines.push(kv(`Impuesto de venta (${pct(salesTax())} %)`, money(tax)), kv('Recibirás', money(total - tax), 'strong'), kv('Monedas después de publicar', S.me.coins - fee >= 0 ? money(S.me.coins - fee) : 'No te llegan', S.me.coins - fee >= 0 ? '' : 'bad'));
-        confirm.disabled = !p || !have || S.me.coins < fee;
+        confirm.disabled = !p || !have || S.me.coins < fee || !specOk();
         note.textContent = have ? `El impuesto se cobra al venderse. Caduca en ${days.value} ${Number(days.value) === 1 ? 'día' : 'días'}.` : 'No tienes este artículo.';
         if (have && topBid && p && p <= topBid.price) note.textContent += ' Con ese precio parte se venderá al momento a pedidos ya publicados.';
       } else {
@@ -503,12 +535,14 @@ function itemDialog(a, o = {}) {
       info.replaceChildren(...lines);
     }
     return {
-      el, upd,
+      el, upd, q,
       async run(e) {
         const p = Math.floor(Number(price.value)) || 0;
         const { topBid } = ctx();
         if (p && !(await warnTrade({ price: p, qty: q.value, lock: sell ? 0 : q.value * p + feeOf(q.value * p), topBid }))) return false;
-        const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: q.value, price: Math.floor(Number(price.value)), days: vals.days }, e.target);
+        const sp = await specPayload(q.value, e.target);
+        if (!sp) return false;
+        const res = await act(sell ? 'market:sell' : 'market:buy', { ...a, qty: q.value, price: Math.floor(Number(price.value)), days: vals.days, ...sp }, e.target);
         if (!res) return false;
         sfx('click');
         const f = res.filled ? ` (ya se ${sell ? 'vendieron' : 'compraron'} ${fmt(res.filled)})` : '';

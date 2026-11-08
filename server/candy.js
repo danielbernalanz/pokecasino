@@ -130,7 +130,8 @@ function bulkPlan(u, id) {
   if (!BY_ID.has(id) || !u.collection[id]) throw new Error('Pokémon no válido.');
   const arr = specimen.sync(u, id);
   const buddyUid = u.buddy && u.buddy.id === id ? u.buddy.uid : null;
-  const cand = arr.filter((m) => !m.fav && !m.shiny && !m.away && m.uid !== buddyUid);
+  const prot = require('./protect');
+  const cand = arr.filter((m) => !m.fav && !m.shiny && !m.away && m.uid !== buddyUid && !prot.isProtected(u, m, id)); // los de combate nunca entran en el lote
   const keepers = arr.length - cand.length;
   const best = (a, b) => b.level - a.level || specimen.ivTotal(b) - specimen.ivTotal(a) || a.at - b.at;
   cand.sort(best);
@@ -140,7 +141,7 @@ function bulkPlan(u, id) {
 function transferBulk(u, p) {
   const id = Number(p.id);
   const list = bulkPlan(u, id);
-  if (!list.length) throw new Error('No hay repetidos que transferir (se conservan favoritos, compañero, variocolores y el mejor ejemplar).');
+  if (!list.length) throw new Error('No hay repetidos que transferir (se conservan favoritos, compañero, variocolores, Pokémon de combate y el mejor ejemplar).');
   for (const m of list) m.drop = true;
   let res;
   try { res = gacha.release(u, { id, count: list.length }); } catch (e) { for (const m of list) delete m.drop; throw e; }
@@ -163,7 +164,7 @@ function transferMany(u, p) {
     try {
       if (!x || typeof x.uid !== 'string') throw new Error('Pokémon no válido.');
       if (u.buddy && u.buddy.id === Number(x.id) && u.buddy.uid === x.uid) throw new Error('Tu compañero no se transfiere.');
-      const r = transfer(u, { id: x.id, uid: x.uid });
+      const r = transfer(u, { id: x.id, uid: x.uid, confirmUids: p.confirmUids });
       out.count++; out.dust += r.dust || 0; mergeItems(out.given, r.given); out.exp += r.exp;
     } catch (e) { out.skipped++; out.reason ||= e.message; }
   }
@@ -182,7 +183,7 @@ function transferAllDupes(u, p = {}) {
   const sum = (f) => plan.reduce((s, x) => s + f(x), 0);
   const preview = { species: plan.length, count: sum((x) => x.n), dust: sum((x) => RARITY[x.rarity].dust * x.n), exp: sum((x) => transferExp(x.rarity) * x.n) };
   if (p.preview) return preview;
-  if (!plan.length) throw new Error('No tienes repetidos que transferir (se conservan favoritos, compañero, variocolores y el mejor de cada especie).');
+  if (!plan.length) throw new Error('No tienes repetidos que transferir (se conservan favoritos, compañero, variocolores, Pokémon de combate y el mejor de cada especie).');
   const out = { species: 0, count: 0, dust: 0, given: {}, exp: 0 };
   for (const x of plan) {
     try { const r = transferBulk(u, { id: x.id }); out.species++; out.count += r.count; out.dust += r.dust || 0; mergeItems(out.given, r.given); out.exp += r.exp; } catch { /* esa especie ya no tenía repetidos */ }
@@ -322,6 +323,7 @@ function wonder(u, p) {
   specimen.assertFree(m, src.name);
   if (m.fav) throw new Error('No puedes intercambiar un favorito.');
   if (m.shiny) throw new Error('No puedes intercambiar un variocolor.');
+  require('./protect').needConfirm(u, id, m, p.confirmUids);
   if (u.buddy && u.buddy.id === id && u.buddy.uid === m.uid) throw new Error('No puedes intercambiar a tu compañero.');
   const c = u.collection[id];
   if (gacha.giveable(c) < 1) throw new Error('Tus estrellas de Caramelo Raro necesitan una copia real: no puedes intercambiarla.');

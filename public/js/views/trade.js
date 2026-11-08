@@ -1,6 +1,7 @@
 // Intercambio directo entre dos jugadores conectados (server/trade.js): invitación, cada uno elige un ejemplar, ve el del otro y los dos confirman.
 import { S, h, act, emit, bus, sfx, toast, modal, sprite, typeBadge, itemName, TYPE_ES, loader } from '../core.js';
 import { monPicker, loadMons } from './afk-common.js';
+import { resolveProtect } from './spec-list.js';
 
 const dex = (id) => S.dexById.get(Number(id));
 const sexTag = (g) => (g === 'M' ? '♂' : g === 'F' ? '♀' : '');
@@ -44,8 +45,8 @@ export default {
       const mons = await loadMons();
       const sel = new Set();
       let m = null;
-      const go = h('button', { class: 'btn primary', type: 'button', disabled: true, onclick: async (e) => { if (!m) return; const r = await act('trade:offer', { id: m.id, uid: m.uid }, e.currentTarget); if (r) { sfx('click'); mdl.close(); apply(r); } } }, 'Ofrecer este Pokémon');
-      const pk = monPicker(mons, { max: 1, selected: sel, onChange: () => { m = pk.get()[0] || null; go.disabled = !m; }, rank: (x) => x.level,
+      const go = h('button', { class: 'btn primary', type: 'button', disabled: true, onclick: async (e) => { if (!m) return; const cb = await resolveProtect([m], 'intercambiar', e.currentTarget); if (!cb.ok) return; const r = await act('trade:offer', { id: m.id, uid: m.uid, confirmUids: cb.confirmUids }, e.currentTarget); if (r) { sfx('click'); mdl.close(); apply(r); } } }, 'Ofrecer este Pokémon');
+      const pk = monPicker(mons, { max: 1, selected: sel, combat: true, onChange: () => { m = pk.get()[0] || null; go.disabled = !m; }, rank: (x) => x.level,
         can: (x) => (x.away ? (x.away === 'care' ? 'En el Criadero' : 'De expedición') : x.buddy ? 'Compañero' : null) });
       const mdl = modal(h('div', { class: 'stack' }, pk.el, go), { title: 'Elige el Pokémon que ofreces' });
     }

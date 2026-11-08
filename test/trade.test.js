@@ -42,8 +42,8 @@ function room(a, b, ma, mb) {
   trade.invite(a, { to: b.username });
   const id = trade.state(a).room.id;
   trade.accept(b, { id });
-  trade.offer(a, { id: ma.id, uid: ma.uid });
-  trade.offer(b, { id: mb.id, uid: mb.uid });
+  trade.offer(a, { id: ma.id, uid: ma.uid, confirmUids: [ma.uid] });
+  trade.offer(b, { id: mb.id, uid: mb.uid, confirmUids: [mb.uid] });
   return id;
 }
 const mon = (u, id) => ({ id, uid: one(u, id).uid });
@@ -59,10 +59,10 @@ test('invitar, aceptar, ofrecer y confirmar: se intercambian los ejemplares exac
   trade.invite(a, { to: b.username });
   assert.ok(notify.list(b).list.some((x) => x.kind === 'trade'), 'avisa al invitado');
   const id = trade.state(a).room.id;
-  assert.throws(() => trade.offer(a, { id: A, uid: ma.uid }), /aún no está abierta/);
+  assert.throws(() => trade.offer(a, { id: A, uid: ma.uid, confirmUids: [ma.uid] }), /aún no está abierta/);
   assert.throws(() => trade.accept(a, { id }), /ya no existe/, 'solo el invitado acepta');
   trade.accept(b, { id });
-  trade.offer(a, { id: A, uid: ma.uid });
+  trade.offer(a, { id: A, uid: ma.uid, confirmUids: [ma.uid] });
   const seenByB = trade.state(b).room.theirs.offer;
   assert.strictEqual(seenByB.level, 42);
   assert.strictEqual(seenByB.nature, 'Audaz');
@@ -70,7 +70,7 @@ test('invitar, aceptar, ofrecer y confirmar: se intercambian los ejemplares exac
   assert.strictEqual(seenByB.item, 'oran-berry');
   assert.ok(seenByB.otn);
   assert.strictEqual(trade.state(a).room.theirs.offer, null);
-  trade.offer(b, { id: B, uid: mb.uid });
+  trade.offer(b, { id: B, uid: mb.uid, confirmUids: [mb.uid] });
   const r1 = trade.confirm(a, {});
   assert.strictEqual(r1.done, undefined, 'con una sola confirmación no se mueve nada');
   assert.ok(trade.state(b).room.theirs.confirmed);
@@ -105,7 +105,7 @@ test('cambiar la oferta anula las confirmaciones y un ejemplar que cambia a esco
   trade.offer(b, { id: C, uid: one(b, C).uid }); // b cambia de Pokémon
   const v = trade.state(a).room;
   assert.strictEqual(v.mine.confirmed, false); assert.strictEqual(v.theirs.confirmed, false);
-  trade.offer(b, { id: B, uid: mb.uid });
+  trade.offer(b, { id: B, uid: mb.uid, confirmUids: [mb.uid] });
   trade.confirm(a, {});
   ma.level = 99; // a sube de nivel a su Pokémon (o le cambia el objeto) después de confirmar y antes de que b lo haga
   assert.throws(() => trade.confirm(b, {}), /ha cambiado/);

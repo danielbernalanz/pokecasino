@@ -130,6 +130,7 @@ function offer(u, p = {}, now = Date.now()) {
     const m = require('./specimen').find(u, { id, uid: p.uid });
     const why = gts.busyReason(u, id, m, WHAT, r.id);
     if (why) throw new Error(why);
+    require('./protect').needConfirm(u, id, m, p.confirmUids);
     me.offer = { id, uid: m.uid }; me.sig = sigOf(u, id, m);
   }
   me.confirmed = false; other(r, u).confirmed = false;

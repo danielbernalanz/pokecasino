@@ -1,4 +1,5 @@
 import { teraRow } from './tera-ui.js';
+import { combatBadge, resolveProtect, pickSpecimens } from './spec-list.js';
 import { aniImg } from '../anim.js';
 import { S, h, multiSelect, fmt, act, emit, sfx, toast, sprite, art, itemImg, modal, typeBadge, rarityName, TYPE_ES, bus, confirmRisk, hpBar, emptyState, loader, MON } from '../core.js';
 import { evolveAnim, wonderReveal, expBar, levelUpFx, askEvolution } from './pc-fx.js';
@@ -35,20 +36,21 @@ const giveCount = (id) => { const c = S.me.collection[id]; return c ? Math.max(0
 // Mismo criterio que el servidor: ni favoritos, ni compañero, ni variocolor; si no hay protegidos se conserva el mejor.
 function bulkList(id) {
   const all = mons.filter((m) => m.id === id);
-  const cand = all.filter((m) => !m.fav && !m.shiny && !m.buddy && !m.away);
+  const cand = all.filter((m) => !m.fav && !m.shiny && !m.buddy && !m.away && !(m.battle && m.battle.protected));
   cand.sort((a, b) => b.level - a.level || ivTotal(b) - ivTotal(a) || a.at - b.at);
   return all.length - cand.length ? cand : cand.slice(1);
 }
 async function bulkTransfer(id, btn, after) {
   const list = bulkList(id);
   const p = S.dexById.get(id);
-  if (!list.length) return toast('No hay repetidos que transferir: se conservan favoritos, compañero, variocolores y el mejor ejemplar.', 'error');
+  if (!list.length) return toast('No hay repetidos que transferir: se conservan favoritos, compañero, variocolores, Pokémon de combate y el mejor ejemplar.', 'error');
   const dust = S.data.rarity[p.rarity].dust * list.length;
-  if (!(await confirmRisk('transfer-bulk', { section: 'la Caja PC', title: `¿Transferir ${list.length} ${p.name}?`, danger: 'Transferir', safe: 'Cancelar',
-    text: 'Se transferirán al Profesor Oak y no se pueden recuperar. Se conserva el mejor ejemplar y nunca se tocan favoritos, compañero ni variocolores.',
-    details: [`${list.length} ejemplar${list.length > 1 ? 'es' : ''} de ${p.name}`, `+${fmt(dust)} ✦ de polvo estelar`, `+${transferText(p.rarity, list.length)}`] }))) return;
-  const r = await act('pc:transferBulk', { id }, btn);
-  if (r) { sfx('shiny'); toast(`Transferiste ${r.count} ${p.name}: +${fmt(r.dust)} ✦ y +${givenText(r.given)}`, 'success'); await load(); if (after) after(); }
+  // Se ven los ejemplares concretos (los de combate ⚔️ nunca vienen marcados) y se transfieren exactamente los marcados.
+  const ch = await pickSpecimens({ id, shiny: null, count: list.length, preselect: list.map((m) => m.uid), verb: 'transferir', action: 'Transferir', title: `Transferir repetidos de ${p.name}`, itemNote: 'vuelve a tu mochila',
+    extra: h('p', { class: 'small' }, `Se transfieren al Profesor Oak y no se pueden recuperar (≈ +${fmt(dust)} ✦ y ${transferText(p.rarity, list.length)}). Se conserva el mejor ejemplar.`) });
+  if (!ch) return;
+  const r = await act('pc:transferMany', { list: ch.uids.map((uid) => ({ id, uid })), confirmUids: ch.confirmUids }, btn);
+  if (r) { sfx('shiny'); toast(`Transferiste ${r.count} ${p.name}: +${fmt(r.dust)} ✦ y +${givenText(r.given)}${r.skipped ? ` · ${r.skipped} no se pudieron (${r.reason})` : ''}`, r.count ? 'success' : 'error'); await load(); if (after) after(); }
 }
 
 // Abre la ficha «Datos» de un ejemplar desde otra pantalla (p. ej. el montador de equipos de Combates), sin ir a
@@ -301,13 +303,17 @@ function openMon(uid, openPage = 'info') {
           h('button', { class: 'btn', disabled: give < 1 || !!m.away || (m.buddy && lastCopy), title: m.away ? awayText(m) : (m.buddy && lastCopy ? 'Es tu compañero y tu única copia' : ''), onclick: async (e) => {
             if (special && !(await confirmRisk('release-precious', { title: 'Vas a transferir un ejemplar especial', danger: 'Transferir igualmente', safe: 'Conservarlo',
               text: `${label(m)} es ${special}. Solo recibes ${tDust} ✦ y ${tCandy} y no se puede deshacer.` }))) return;
-            const r = await act('pc:transfer', { id: m.id, uid }, e.target);
+            const cb = await resolveProtect([m], 'transferir', e.target);
+            if (!cb.ok) return;
+            const r = await act('pc:transfer', { id: m.id, uid, confirmUids: cb.confirmUids }, e.target);
             if (r) { sfx('shiny'); toast(`Transferido: +${fmt(r.dust)} ✦ y +${givenText(r.given)}`, 'success'); await done(); } } }, `Transferir (+${tDust} ✦ +${tCandy})`),
           spare > 0 ? h('button', { class: 'btn', onclick: (e) => bulkTransfer(m.id, e.target, () => done()) }, 'Transferir repetidos') : null)),
       h('div', { class: 'pc-box' }, h('h4', {}, '🎁 Intercambio Milagroso'),
         h('p', { class: 'small muted' }, 'Entregas una copia sobrante (no favorita, compañero ni variocolor) y recibes otra de la misma rareza. Sin monedas.'),
         h('button', { class: 'btn', disabled: give < 1 || !!m.away || m.shiny || m.fav || m.buddy || p.rarity === 'M' || box.wonderLeft < 1, title: 'Recibes un Pokémon al azar de la misma rareza', onclick: async (e) => {
-          const r = await act('pc:wonder', { id: m.id, uid }, e.target);
+          const cb = await resolveProtect([m], 'intercambiar', e.target);
+          if (!cb.ok) return;
+          const r = await act('pc:wonder', { id: m.id, uid, confirmUids: cb.confirmUids }, e.target);
           if (!r) return;
           more.close(); modalRef.close();
           await wonderReveal(r);
@@ -322,11 +328,14 @@ function openMon(uid, openPage = 'info') {
           const dust = S.data.rarity[p.rarity].dust;
           if (!(await confirmRisk('release-one', { section: 'la Caja PC', title: `¿Liberar a ${label(m)}?`, danger: 'Liberar', safe: 'Conservarlo',
             text: `${special ? `${label(m)} es ${special}. ` : ''}Solo recibes ${dust} ✦ de polvo y no se puede deshacer.` }))) return;
-          if (await act('pc:release', { id: m.id, uid }, e.target)) { sfx('shiny'); toast(`Liberaste a ${label(m)}: +${dust} ✦`, 'success'); await done(); } } }, 'Liberar'))),
+          const cb = await resolveProtect([m], 'liberar', e.target);
+          if (!cb.ok) return;
+          if (await act('pc:release', { id: m.id, uid, confirmUids: cb.confirmUids }, e.target)) { sfx('shiny'); toast(`Liberaste a ${label(m)}: +${dust} ✦`, 'success'); await done(); } } }, 'Liberar'))),
     { title: '⋯ Más acciones' });
   }
   const pages = {
     info: () => h('div', { class: 'stack' },
+      m.battle.protected ? h('div', { class: 'cmb-note', 'data-testid': 'combat-note' }, h('b', {}, '⚔️ Pokémon de combate: '), m.battle.reasons.join(' · '), '. Antes de venderlo, regalarlo o transferirlo te pediremos confirmación.') : null,
       m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}: no se puede liberar, transferir, evolucionar ni llevar a combates hasta que vuelva.`) : null,
       h('div', { class: 'muted small' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level} · Naturaleza ${m.nature}${m.buddy ? ' · 🤝 Compañero' : ''}`),
       h('div', { class: 'types' }, p.types.map(typeBadge), h('span', { class: 'rar r-' + p.rarity }, rarityName(p.rarity)), pkrsBadge(m)),
@@ -410,13 +419,13 @@ export default {
     const pickable = (m) => !m.buddy && !m.away;
     const pickBar = h('div', { class: 'pc-pickbar hidden' });
     const pickBtn = h('button', { class: 'btn', type: 'button', title: 'Marca varios Pokémon y transfiérelos de una vez', onclick: () => { picking = picking ? null : new Set(); render(); } }, '🎓 Transferir varios');
-    const allBtn = h('button', { class: 'btn', type: 'button', title: 'Transfiere todos los repetidos de todas las especies (se conservan favoritos, compañero, variocolores y el mejor de cada especie)', onclick: async (e) => {
+    const allBtn = h('button', { class: 'btn', type: 'button', title: 'Transfiere todos los repetidos de todas las especies (se conservan favoritos, compañero, variocolores, Pokémon de combate y el mejor de cada especie)', onclick: async (e) => {
       const btn = e.currentTarget;
       const pre = await act('pc:transferAll', { preview: true }, btn);
       if (!pre) return;
-      if (!pre.count) return toast('No tienes repetidos que transferir: se conservan favoritos, compañero, variocolores y el mejor de cada especie.', 'info');
+      if (!pre.count) return toast('No tienes repetidos que transferir: se conservan favoritos, compañero, variocolores, Pokémon de combate y el mejor de cada especie.', 'info');
       if (!(await confirmRisk('transfer-all', { section: 'la Caja PC', title: `¿Transferir ${fmt(pre.count)} repetidos?`, danger: 'Transferir todos', safe: 'Cancelar',
-        text: 'Se transfieren al Profesor Oak todos los repetidos de todas tus especies. Se conserva siempre el mejor de cada una y nunca se tocan favoritos, compañero ni variocolores.',
+        text: 'Se transfieren al Profesor Oak todos los repetidos de todas tus especies. Se conserva siempre el mejor de cada una y nunca se tocan favoritos, compañero, variocolores ni Pokémon de combate (⚔️).',
         details: [`${fmt(pre.count)} Pokémon de ${fmt(pre.species)} especies`, `+${fmt(pre.dust)} ✦ de polvo estelar`, `+${fmt(pre.exp)} EXP en Caramelos Exp.`] }))) return;
       const r = await act('pc:transferAll', {}, btn);
       if (r) { sfx('shiny'); toast(`Transferiste ${fmt(r.count)} Pokémon: +${fmt(r.dust)} ✦ y +${givenText(r.given)}`, 'success'); await load(); render(); }
@@ -428,26 +437,28 @@ export default {
       const chosen = mons.filter((m) => picking.has(m.uid));
       const dust = chosen.reduce((s, m) => s + S.data.rarity[S.dexById.get(m.id).rarity].dust, 0);
       const cdy = box.rules ? chosen.reduce((s, m) => s + transferExpOf(S.dexById.get(m.id).rarity), 0) : 0;
-      const slice = list.slice(boxIdx * PER_BOX, (boxIdx + 1) * PER_BOX).filter((m) => pickable(m) && !m.fav && !m.shiny);
+      const slice = list.slice(boxIdx * PER_BOX, (boxIdx + 1) * PER_BOX).filter((m) => pickable(m) && !m.fav && !m.shiny && !m.battle.protected);
       // Según los filtros (rareza, tipo, búsqueda…): todos los que se ven en todas las cajas, o solo sus repetidos.
-      const filtered = list.filter((m) => pickable(m) && !m.fav && !m.shiny);
+      const filtered = list.filter((m) => pickable(m) && !m.fav && !m.shiny && !m.battle.protected);
       const dupes = filtered.filter((m) => bulkList(m.id).some((x) => x.uid === m.uid));
       pickBar.replaceChildren(
         h('span', {}, h('b', {}, `${chosen.length} marcados`), chosen.length ? ` · +${fmt(dust)} ✦ · +${fmt(cdy)} EXP` : ' · toca los Pokémon que quieras transferir'),
-        h('button', { class: 'btn small', type: 'button', title: 'Marca los de esta caja (sin favoritos, variocolores ni compañero)', onclick: () => { for (const m of slice) picking.add(m.uid); render(); } }, 'Marcar la caja'),
+        h('button', { class: 'btn small', type: 'button', title: 'Marca los de esta caja (sin favoritos, variocolores, compañero ni Pokémon de combate)', onclick: () => { for (const m of slice) picking.add(m.uid); render(); } }, 'Marcar la caja'),
         h('button', { class: 'btn small', type: 'button', disabled: !filtered.length, title: 'Marca todos los que cumplen los filtros de 🔍 Buscar (rareza, tipo…), en todas las cajas', onclick: () => { for (const m of filtered) picking.add(m.uid); render(); } }, `Marcar lo filtrado (${filtered.length})`),
         h('button', { class: 'btn small', type: 'button', disabled: !dupes.length, title: 'Solo los repetidos de lo filtrado: se conserva el mejor de cada especie', onclick: () => { for (const m of dupes) picking.add(m.uid); render(); } }, `Repetidos de lo filtrado (${dupes.length})`),
         h('button', { class: 'btn small', type: 'button', disabled: !chosen.length, onclick: () => { picking.clear(); render(); } }, 'Desmarcar'),
         h('button', { class: 'btn primary', type: 'button', disabled: !chosen.length, onclick: async (e) => {
           const btn = e.currentTarget;
           const special = chosen.filter((m) => m.fav || m.shiny).length;
+          const combat = await resolveProtect(chosen.filter((m) => m.battle.protected), 'transferir', btn); // los de combate: aviso propio y sin «no volver a avisar»
+          if (!combat.ok) return;
           if (!(await confirmRisk('transfer-many', { section: 'la Caja PC', title: `¿Transferir ${chosen.length} Pokémon?`, danger: 'Transferir', safe: 'Cancelar',
             text: 'Se transfieren al Profesor Oak y no se pueden recuperar. De cada especie se conserva al menos una copia.',
             details: [`+${fmt(dust)} ✦ de polvo estelar`, `+${fmt(cdy)} EXP en Caramelos Exp.`, ...(special ? [`⚠ Incluye ${special} favorito(s) o variocolor(es)`] : [])] }))) return;
           // En tandas (el servidor acepta hasta 300 por llamada).
           let r = null;
           for (let i = 0; i < chosen.length; i += 300) {
-            const part = await act('pc:transferMany', { list: chosen.slice(i, i + 300).map((m) => ({ id: m.id, uid: m.uid })) }, btn);
+            const part = await act('pc:transferMany', { list: chosen.slice(i, i + 300).map((m) => ({ id: m.id, uid: m.uid })), confirmUids: combat.confirmUids }, btn);
             if (!part) break;
             r = r ? { count: r.count + part.count, dust: r.dust + part.dust, given: Object.entries(part.given || {}).reduce((a, [k, v]) => ({ ...a, [k]: (a[k] || 0) + v }), { ...r.given }), skipped: r.skipped + part.skipped, reason: r.reason || part.reason } : part;
           }
@@ -470,7 +481,7 @@ export default {
         h('div', { class: 'pc-sel-name' }, `${m.shiny ? '✨ ' : ''}${label(m)} ${genderTag(m)}`),
         h('div', { class: 'small muted' }, `#${String(m.id).padStart(3, '0')} ${p.name} · Nv. ${m.level}`),
         expBar(m, { compact: true }),
-        h('div', { class: 'types' }, p.types.map(typeBadge), pkrsBadge(m)),
+        h('div', { class: 'types' }, p.types.map(typeBadge), pkrsBadge(m), combatBadge(m.battle)),
         heartsEl(m.friendship, 'sm'),
         m.away ? h('div', { class: 'pc-away-note' }, `${awayIcon(m)} ${awayText(m)}`) : null,
         h('div', { class: 'pc-sel-actions' },
@@ -523,6 +534,7 @@ export default {
           h('img', { class: 'pixel', src: sprite(m.id, m.shiny), alt: '', loading: 'lazy' }),
           m.shiny ? h('span', { class: 'sl-shiny' }, '✨') : null,
           m.fav ? h('span', { class: 'sl-fav' }, '★') : null,
+          m.battle.protected ? h('span', { class: 'sl-cmb', title: m.battle.reasons.join('\n'), 'data-testid': 'slot-combat' }, '⚔️') : null,
           m.buddy ? h('span', { class: 'sl-buddy' }, '🤝') : null,
           m.pending && m.pending.length ? h('span', { class: 'sl-new', title: 'Quiere aprender un movimiento' }, '🆕') : null,
           m.canEvo && m.canEvo.length ? h('span', { class: 'sl-evo', title: 'Puede evolucionar' }, '🌟') : null,

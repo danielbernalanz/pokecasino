@@ -110,6 +110,7 @@ function setEquipped(u, p) {
   if (new Set(ids).size !== ids.length) throw new Error('Movimiento repetido.');
   for (const x of ids) if (!m.learned.includes(x)) throw new Error('Ese Pokémon aún no ha aprendido uno de esos movimientos.');
   m.sdMoves = ids;
+  m.mvHand = true; // movimientos elegidos a mano: el ejemplar cuenta como «de combate» (protect.js)
   db.save();
   return { eq: m.sdMoves };
 }
@@ -132,6 +133,7 @@ function learn(u, p) {
   } else if (p.equip && m.sdMoves.length < MAX_EQUIP && !m.sdMoves.includes(move)) {
     m.sdMoves.push(move);
   }
+  if (replace || p.equip) m.mvHand = true;
   db.save();
   return { eq: m.sdMoves, learned: m.learned, pending: m.pending };
 }
@@ -142,7 +144,7 @@ function teach(id, m, move, { equip = true } = {}) {
   if (m.learned.includes(move)) throw new Error('Ya conoce ese movimiento.');
   m.learned.push(move);
   m.pending = m.pending.filter((x) => x !== move);
-  if (equip && m.sdMoves.length < MAX_EQUIP) { m.sdMoves.push(move); return 'equipped'; }
+  if (equip && m.sdMoves.length < MAX_EQUIP) { m.sdMoves.push(move); m.mvHand = true; return 'equipped'; }
   return 'learned';
 }
 

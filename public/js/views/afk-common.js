@@ -1,5 +1,6 @@
 // Piezas compartidas por Expediciones y Criadero (fases B5 y B6).
 import { S, h, emit, sprite, typeBadge } from '../core.js';
+import { combatBadge } from './spec-list.js';
 
 export const HOUR = 3600 * 1000;
 export const label = (m) => m.nick || S.dexById.get(m.id).name;
@@ -17,12 +18,13 @@ export async function loadMons() {
 }
 
 // Ficha pequeña de un ejemplar: sprite, nombre, nivel y tipos.
-export function monTile(m, { cls = '', mark = '', eggInfo = false } = {}) {
+export function monTile(m, { cls = '', mark = '', eggInfo = false, combat = false } = {}) {
   const p = S.dexById.get(m.id);
   return h('div', { class: 'afk-tile ' + cls },
     h('img', { class: 'pixel', src: sprite(m.id, m.shiny), alt: '', loading: 'lazy', draggable: 'false' }),
     h('div', { class: 'afk-tile-txt' }, h('b', {}, `${m.shiny ? '✨ ' : ''}${label(m)}`), h('span', { class: 'small muted' }, `${m.level ? `Nv. ${m.level} · ` : ''}#${String(m.id).padStart(3, '0')}`),
       h('span', { class: 'types' }, p.types.map(typeBadge)),
+      combat && m.battle && m.battle.protected ? combatBadge(m.battle) : null,
       eggInfo && m.eg ? h('span', { class: 'small muted' }, `${m.gender === 'M' ? '♂' : m.gender === 'F' ? '♀' : 'sin sexo'} · ${m.eg.join('/')}`) : null),
     mark ? h('span', { class: 'afk-mark' }, mark) : null);
 }
@@ -32,7 +34,7 @@ export function monTile(m, { cls = '', mark = '', eggInfo = false } = {}) {
  * `selected`: Set de uid. Devuelve { el, get() }.
  */
 // `rank(m)`: puntuación para ordenar (los más adecuados primero); por defecto, el nivel.
-export function monPicker(mons, { max = 3, can = () => null, selected = new Set(), onChange = () => {}, mark = () => '', rank = (m) => m.level, eggInfo = false } = {}) {
+export function monPicker(mons, { max = 3, can = () => null, selected = new Set(), onChange = () => {}, mark = () => '', rank = (m) => m.level, eggInfo = false, combat = false } = {}) {
   const list = h('div', { class: 'afk-pick' });
   const search = h('input', { type: 'search', placeholder: 'Buscar nombre, mote o nº…', 'aria-label': 'Buscar Pokémon', oninput: draw });
   function draw() {
@@ -51,7 +53,7 @@ export function monPicker(mons, { max = 3, can = () => null, selected = new Set(
           else if (selected.size < max) selected.add(m.uid);
           else return;
           onChange(); draw();
-        } }, monTile(m, { eggInfo, mark: why && !on ? why : (on ? '✔' : mark(m)) }));
+        } }, monTile(m, { eggInfo, combat, mark: why && !on ? why : (on ? '✔' : mark(m)) }));
     }));
     if (!rows.length) list.append(h('p', { class: 'muted small' }, 'No hay Pokémon que coincidan.'));
   }

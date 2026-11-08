@@ -82,6 +82,7 @@ function setType(u, { id, uid, type }) {
   if ((u.items[shardId(type)] || 0) < SHARDS_PER_CHANGE) throw new Error(`Necesitas ${SHARDS_PER_CHANGE} ${items.ITEMS[shardId(type)].name} (tienes ${u.items[shardId(type)] || 0}).`);
   items.take(u, shardId(type), SHARDS_PER_CHANGE);
   m.tera = type;
+  m.teraSet = true; // Teratipo cambiado a propósito (m.tera también lo fijan la evolución y los jefes capturados): cuenta como «de combate» (protect.js)
   db.save();
   return { tera: type, view: view(u) };
 }

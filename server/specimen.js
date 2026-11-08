@@ -179,7 +179,7 @@ function boxView(u) {
     const pk = require('./pokerus');
     const fm = require('./forms');
     for (const m of arr) ex.ensure(Number(id), m);
-    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), expMax: ex.expAt(Number(id), 100), evoForced: fm.forcedTarget(Number(id), m), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, ball: require('./balls').ballOf(m), mark: m.mark || null, size: Number.isInteger(m.size) ? m.size : null, caught: m.caught || null, tera: require('./tera').teraOf(Number(id), m), ot: lot().otOf(u, m), otn: lot().otNameOf(u, m), at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
+    for (const m of arr) mons.push({ id: Number(id), uid: m.uid, exp: m.exp, expLo: ex.expAt(Number(id), m.level), expHi: m.level >= 100 ? m.exp : ex.expAt(Number(id), m.level + 1), expMax: ex.expAt(Number(id), 100), evoForced: fm.forcedTarget(Number(id), m), group: ex.groupOf(Number(id)), canEvo: cd.canEvolveTo(u, m, Number(id)), hyper: hyper.hyperOf(m) ? m.hyper.slice() : null, pkrs: pk.state(m), form: fm.label(Number(id), m), capLeft: ex.capLeft(Number(id), m), nature: m.nature, mint: m.mint || null, up: NATURE_BY_NAME.get(natureOf(m)).up, down: NATURE_BY_NAME.get(natureOf(m)).down, ivs: m.ivs, level: m.level, friendship: m.friendship, gender: eggroups.genderOf(Number(id), m), eg: eggroups.groupsEs(Number(id)), ability: abilities.name(m.sdAbility), ab: m.sdAbility, ha: !!m.ha, abOpts: abilities.optionsOf(Number(id)), item: m.item || null, eq: m.sdMoves, learned: m.learned, pending: m.pending, nick: m.nick, fav: m.fav, shiny: m.shiny, ball: require('./balls').ballOf(m), mark: m.mark || null, size: Number.isInteger(m.size) ? m.size : null, caught: m.caught || null, tera: require('./tera').teraOf(Number(id), m), ot: lot().otOf(u, m), otn: lot().otNameOf(u, m), at: m.at, away: m.away || null, stats: computeStats(Number(id), m), evs: evs.ensure(m).slice(), evTotal: evs.total(m), buddy: !!(u.buddy && u.buddy.id === Number(id) && u.buddy.uid === m.uid), battle: (({ protected: p, reasons }) => ({ protected: p, reasons }))(require('./protect').battleBuilt(u, m, Number(id))), phrase: bond().phraseFor(m, m.nick || BY_ID.get(Number(id)).name, 'pc'), petted: bond().petted(m) });
   }
   db.save();
   return { mons };
@@ -227,6 +227,7 @@ function fav(u, p) {
 // Ejemplares ocupados (expedición, criadero): `m.away = 'exp:<id>' | 'care'`. No se liberan, transfieren, venden,
 // regalan, intercambian, evolucionan ni combaten mientras estén fuera.
 const AWAY_MSG = 'está fuera (expedición o criadero): espera a que vuelva.';
+const AWAY_TEXT = 'Está fuera (expedición o criadero): espera a que vuelva.';
 function assertFree(m, name) { if (m && m.away) throw new Error(`${name || 'Ese Pokémon'} ${AWAY_MSG}`); }
 // Cuántos ejemplares de la especie están ocupados (en total y variocolor).
 function busyCount(u, id) {
@@ -241,6 +242,7 @@ function release(u, p) {
   const gacha = require('./gacha');
   const m = find(u, p);
   assertFree(m, BY_ID.get(Number(p.id)).name);
+  require('./protect').needConfirm(u, Number(p.id), m, p.confirmUids); // un ejemplar de combate solo se suelta con confirmación expresa
   const id = Number(p.id);
   const c = u.collection[id];
   const sBefore = c.s || 0;
@@ -256,4 +258,4 @@ function release(u, p) {
   return res;
 }
 
-module.exports = { leastValuable, traitsOf, applyTraits, NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };
+module.exports = { AWAY_TEXT, byValue, leastValuable, traitsOf, applyTraits, NATURES, STAT_KEYS, ABILITIES, GENERIC_ABILITY, isFixed, movesFor, make, sanitizeNick, sync, syncAll, bestFor, computeStats, natureMult, natureOf, ivTotal, boxView, find, nick, fav, release, assertFree, busyCount };

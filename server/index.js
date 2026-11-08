@@ -288,41 +288,6 @@ function giftCoins(user, { to, amount }) {
   return {};
 }
 
-function giftPoke(user, { to, id, shiny }) {
-  canGift(user);
-  const t = db.userByName(to);
-  if (!t || t.id === user.id) throw new Error('Destinatario no válido.');
-  if (t.npc) throw new Error('Los comerciantes NPC no aceptan regalos.');
-  const rare = ['L', 'M'].includes((dex.BY_ID.get(Number(id)) || {}).rarity);
-  require('./transfer').pokeInCheck(t, rare);
-  // Se regala un ejemplar concreto (el menos valioso libre): no uno en uso (sala de intercambio, Alto Mando, incursión, expedición, criadero, compañero).
-  // Sus IV, naturaleza, Ball, marca y tamaño viajan con él; el objeto equipado vuelve a tu mochila.
-  const gts = require('./gts');
-  const nid = Number(id);
-  const free = (m) => !gts.busyReason(user, nid, m, 'los regalos');
-  let gone = specimen.leastValuable(user, nid, !!shiny, free);
-  if (!gone) {
-    const any = specimen.leastValuable(user, nid, !!shiny);
-    if (!any) { gacha.takePoke(user, id, !!shiny); throw new Error('No tienes ese Pokémon.'); } // takePoke explica por qué no
-    throw new Error(gts.busyReason(user, nid, any, 'los regalos'));
-  }
-  gts.pull(user, nid, gone, false);
-  const p = dex.BY_ID.get(nid);
-  require('./transfer').notePokeIn(t, rare);
-  const seen = new Set(specimen.sync(t, p.id).map((m) => m.uid));
-  gacha.grant(t, p.id, !!shiny);
-  const got = gone && specimen.sync(t, p.id).find((m) => !seen.has(m.uid));
-  if (got) specimen.applyTraits(p.id, got, specimen.traitsOf(gone, user));
-  require('./evoreq').noteTrade(t, user); // intercambio real: vale como un Cordón Unión
-  hub.track(t, 'gift_recv');
-  db.save();
-  hub.emitUser(t.id, 'toast', { kind: 'gift', text: `🎁 ${user.username} te envió un ${shiny ? p.name + ' variocolor' : p.name}` });
-  require('./notify').push(t, { kind: 'gift', text: `🎁 ${user.username} te envió un ${shiny ? p.name + ' variocolor' : p.name}`, link: '#/pc' });
-  hub.feed('trade', `🤝 ${user.username} le regaló ${shiny ? 'un ' + p.name + ' variocolor' : p.name} a ${t.username}`);
-  hub.pushMe(t);
-  return {};
-}
-
 // ---- Chat ----
 const lastMsg = new Map();
 function chat(user, { text }) {
@@ -642,7 +607,9 @@ io.on('connection', (socket) => {
   on('gacha:banners', () => gacha.bannersInfo(), { push: false });
   on('shop:craft', gacha.craft);
   on('shop:exchange', gacha.exchangeDust);
-  on('shop:release', gacha.release);
+  on('shop:release', (u, p) => require('./protect').releaseCopies(u, p));
+  on('protect:unteam', (u, p) => require('./protect').unteam(u, p));
+  on('protect:list', (u, p) => ({ list: require('./protect').listView(u, p && p.id, p && p.shiny != null ? !!p.shiny : null, (m) => (m.away ? require('./specimen').AWAY_TEXT : null)) }), { push: false });
   on('locked:unlock', locked.unlock);
   on('locked:state', (u) => locked.view(u) || { box: {}, prog: null }, { push: false });
   on('me:history', (u) => ({ history: hub.history(u) }), { push: false });
@@ -763,7 +730,7 @@ io.on('connection', (socket) => {
   on('poker:rebuy', holdem.rebuy);
   on('poker:action', holdem.action);
   on('gift:coins', giftCoins);
-  on('gift:poke', giftPoke);
+  on('gift:poke', require('./giftpoke').giftPoke);
   on('trade:state', (u) => require('./trade').state(u), { push: false });
   on('trade:invite', (u, p) => require('./trade').invite(u, p));
   on('trade:accept', (u, p) => require('./trade').accept(u, p));

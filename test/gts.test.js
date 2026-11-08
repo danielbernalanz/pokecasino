@@ -105,7 +105,8 @@ test('intercambio: se cambian los ejemplares exactos con sus rasgos, nivel, EXP 
   const mb = b.mons[B][1];
   mb.level = 12; mb.exp = ex.expAt(B, 12); mb.ivs = [0, 1, 2, 3, 4, 5];
   const aCoins = a.coins; const bCoins = b.coins;
-  const dep = gts.deposit(a, { id: A, uid: ma.uid, want: { id: B, g: 'any', lv: 2 } }).mine[0];
+  assert.throws(() => gts.deposit(a, { id: A, uid: ma.uid, want: { id: B, g: 'any', lv: 2 } }), /combate/);
+  const dep = gts.deposit(a, { id: A, uid: ma.uid, confirmUids: [ma.uid], want: { id: B, g: 'any', lv: 2 } }).mine[0];
   const before = count(a) + count(b);
   const r = gts.offer(b, { dep: dep.id, uid: mb.uid });
   assert.deepStrictEqual(r.got, { id: A, shiny: false, level: 44 });

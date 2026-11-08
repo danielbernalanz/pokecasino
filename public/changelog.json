@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.11.08-a",
+    "date": "2026-11-08",
+    "title": "Tus Pokémon de combate no se venden por error",
+    "items": [
+      "⚔️ Los Pokémon que has preparado para combatir (en un equipo guardado, favoritos, compañero, con EVs, Chapas, Menta, Cápsula/Parche, objeto equipado, movimientos elegidos, Teratipo cambiado o nivel 50 o más) llevan el distintivo «⚔️ Combate» en la Caja PC, con las razones al pasar el ratón.",
+      "🏪 Al vender, regalar, liberar o transferir repetidos, el juego nunca elige solo un Pokémon de combate. Si solo te quedan de esos, te avisa y no hace nada; si de verdad quieres soltar uno, tienes que elegirlo tú y confirmarlo (con «Quitar del equipo y vender» si está en un equipo).",
+      "📋 En el Mercado, en los regalos, al liberar y en «Transferir repetidos» ahora ves la lista de tus ejemplares (nivel, naturaleza, habilidad, objeto, 4 movimientos, IV y EV) y marcas exactamente cuáles salen, con «Ver ficha» en cada uno."
+    ]
+  },
+  {
     "version": "2026.11.07-g",
     "date": "2026-11-07",
     "title": "Arreglo: la web se quedaba cargando",
