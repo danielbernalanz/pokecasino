@@ -72,6 +72,7 @@ Efecto en la Pokédex: completarla solo con tiradas pasa de ≈ 13.800 a ≈ 14.
 | Baccarat (Banca / Punto / Empate) | 98,9 / 98,8 / 85,8 % | igual | 99,12 % ± 0,18 (Banca) |
 | Video Póker 9/6 | 99,54 % (óptimo) | 99,54 % | 99,18 % ± 0,84 (jerarquía casi óptima) |
 | Blackjack | 99,45 % | 99,45 % | 99,55 % ± 0,20 (1 M); 99,45 % ± 0,08 (2 M manos) |
+| Blackjack con re-división (2026-11-08: dividir hasta 4 manos, Ases incluidos; un As dividido recibe una carta salvo que sea otro As) | — | ≈ 99,68 % (teórico, 6 barajas, S17, DAS, RSA; cota declarada 99,7 %) | 99,76 % ± 0,16 (2 M manos) |
 | Voltorb Flip (inferencia exacta) | **155-1.310 %** según nivel | **≈ 92 %** | heurística sencilla: 55-70 % |
 | Gran Carrera | ≤ 90 % | ≤ 90 % | |
 | Duelos | 95 % (comisión 5 %) | igual | |

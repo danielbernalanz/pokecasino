@@ -65,9 +65,10 @@ function bjTotal(cards) {
   while (t > 21 && aces) { t -= 10; aces--; }
   return { t, soft: aces > 0 };
 }
-function bjAction(cards, up, { canDouble, canSplit }) {
+function bjAction(cards, up, { canDouble, canSplit, canHit }) {
   const u = bjVal(up);
   const { t, soft } = bjTotal(cards);
+  if (canHit === false && !canSplit) return 'stand'; // As dividido: una sola carta
   if (canSplit) {
     const v = bjVal(cards[0]);
     if (v === 11 || v === 8) return 'split';

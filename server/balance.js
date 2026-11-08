@@ -13,7 +13,7 @@ const RTP = {
   crash: 0.97,
   voltorb: 0.95, // se recalcula con test/balance.test.js (estrategia razonable)
   videopoker: 0.9954, // Jacks or Better 9/6 con juego óptimo
-  blackjack: 0.9955, // estrategia básica, 6 barajas, 3:2
+  blackjack: 0.997, // estrategia básica, 6 barajas, se planta en 17, 3:2, doblar tras dividir, re-dividir hasta 4 manos (Ases incluidos): ventaja ≈ 0,32 %
   baccarat: 0.9893, // Banca (1,95); Punto 98,8 %
   race: 0.9,
   duel: 0.95, // comisión del 5 % del bote

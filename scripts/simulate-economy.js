@@ -89,7 +89,7 @@ const GAMES = {
     while (!v.game.done) {
       const g = v.game;
       const h = g.hands[g.active];
-      v = blackjack.act(u, { action: S.bjAction(h.cards, g.dealer[0], { canDouble: g.canDouble, canSplit: g.canSplit }) });
+      v = blackjack.act(u, { action: S.bjAction(h.cards, g.dealer[0], { canDouble: g.canDouble, canSplit: g.canSplit, canHit: g.canHit }) });
     }
     return v;
   },

@@ -48,13 +48,20 @@ export default {
           if (bj) { flash('#ffe08a', 450); floatText('¡BLACKJACK!', handsBox, { size: 30 }); burstEl(handsBox, '#ffd54f', 36, { spread: 240, stars: 0.6 }); vibrate([40, 30, 80]); }
           winFx(g.paid, stake, { el: handsBox, icon: '🃏' });
         }
-      } else msg.textContent = '¿Pides carta o te plantas?';
+      } else {
+        const hd = g.hands[g.active];
+        const n = g.hands.length;
+        const which = n > 1 ? `Mano ${g.active + 1} de ${n}: ` : '';
+        msg.textContent = hd && hd.aceSplit
+          ? `${which}otro As. ¿Lo vuelves a dividir o te plantas?`
+          : `${which}¿Pides carta o te plantas?`;
+      }
     }
     function setButtons(g) {
       const playing = g && !g.done;
       dealBtn.classList.toggle('hidden', !!playing);
       bet.lock(!!playing);
-      actions.hit.classList.toggle('hidden', !playing);
+      actions.hit.classList.toggle('hidden', !playing || g.canHit === false);
       actions.stand.classList.toggle('hidden', !playing);
       actions.double.classList.toggle('hidden', !playing || !g.canDouble);
       actions.split.classList.toggle('hidden', !playing || !g.canSplit);
@@ -102,7 +109,7 @@ export default {
     document.addEventListener('keydown', onLetter);
 
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🃏 Blackjack de Snorlax'), h('p', { class: 'muted' }, 'Blackjack paga 3:2 · El crupier se planta en 17 · Doblar con 2 cartas · Dividir una vez')),
+      h('div', { class: 'game-head' }, h('h1', {}, '🃏 Blackjack de Snorlax'), h('p', { class: 'muted' }, 'Blackjack paga 3:2 · El crupier se planta en 17 · Doblar con 2 cartas (también tras dividir) · Dividir hasta 4 manos, Ases incluidos (un As dividido recibe una carta; si es otro As, puedes volver a dividir)')),
       h('div', { class: 'felt' },
         h('div', { class: 'dealer-area' }, h('img', { class: 'pixel dealer-mon', src: sprite(143), alt: 'Snorlax' }), h('div', {}, h('div', { class: 'muted small' }, 'Crupier ', dealerTotal), dealerBox)),
         handsBox, msg,

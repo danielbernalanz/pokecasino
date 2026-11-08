@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.11.08-b",
+    "date": "2026-11-08",
+    "title": "Blackjack: volver a dividir, Ases incluidos",
+    "items": [
+      "🃏 Ahora puedes dividir y volver a dividir hasta 4 manos. Si divides Ases, cada uno recibe una carta; si esa carta es otro As, el juego te pregunta si lo vuelves a dividir o te plantas.",
+      "🃏 La partida te indica qué mano estás jugando («Mano 2 de 3») y un 21 tras dividir se planta solo."
+    ]
+  },
+  {
     "version": "2026.11.08-a",
     "date": "2026-11-08",
     "title": "Tus Pokémon de combate no se venden por error",

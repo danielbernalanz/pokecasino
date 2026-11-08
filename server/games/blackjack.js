@@ -1,6 +1,7 @@
 'use strict';
 // Blackjack "Mesa de Snorlax": 6 barajas, el crupier se planta en 17, BJ paga 3:2,
-// doblar con dos cartas y dividir parejas una vez.
+// doblar con dos cartas (también tras dividir) y dividir parejas hasta 4 manos, Ases incluidos: cada As dividido
+// recibe una sola carta, salvo que sea otro As, que se puede volver a dividir (o plantarse).
 const db = require('../db');
 const hub = require('../hub');
 const { deck, rankOf } = require('../cards');
@@ -21,23 +22,34 @@ function view(user, reveal = false) {
   const showDealer = reveal || g.done;
   return {
     game: {
-      hands: g.hands.map((h) => ({ cards: h.cards, bet: h.bet, done: h.done, total: total(h.cards).t, result: h.result, split: h.split })),
+      hands: g.hands.map((h) => ({ cards: h.cards, bet: h.bet, done: h.done, total: total(h.cards).t, result: h.result, split: h.split, aceSplit: !!h.aceSplit })),
       active: g.active,
       dealer: showDealer ? g.dealer : [g.dealer[0], '??'],
       dealerTotal: showDealer ? total(g.dealer).t : cardValue(g.dealer[0]),
       done: g.done,
       paid: g.paid,
+      canHit: !g.done && canHit(g),
       canDouble: !g.done && canDouble(user, g),
       canSplit: !g.done && canSplit(user, g),
+      maxHands: MAX_HANDS,
     },
   };
 }
 
+const MAX_HANDS = 4; // dividir y volver a dividir hasta 4 manos (como en muchos casinos)
 const cur = (g) => g.hands[g.active];
-function canDouble(user, g) { const h = cur(g); return h && h.cards.length === 2 && user.coins >= h.bet && !h.aceSplit; }
+// Un As dividido solo recibe una carta: no se puede pedir ni doblar (sí volver a dividir si esa carta es otro As).
+function canHit(g) { const h = cur(g); return !!h && !h.aceSplit; }
+function canDouble(user, g) { const h = cur(g); return !!h && h.cards.length === 2 && user.coins >= h.bet && !h.aceSplit; }
 function canSplit(user, g) {
   const h = cur(g);
-  return h && g.hands.length === 1 && h.cards.length === 2 && cardValue(h.cards[0]) === cardValue(h.cards[1]) && user.coins >= h.bet;
+  return !!h && g.hands.length < MAX_HANDS && h.cards.length === 2 && cardValue(h.cards[0]) === cardValue(h.cards[1]) && user.coins >= h.bet;
+}
+// Tras dividir, cada mano con su segunda carta: un As dividido se cierra (salvo que reciba otro As, que puede volver
+// a dividirse) y un 21 se planta solo.
+function afterSplitCard(g, h) {
+  if (h.aceSplit) h.done = !(rankOf(h.cards[1]) === 14 && g.hands.length < MAX_HANDS);
+  else if (total(h.cards).t === 21) h.done = true;
 }
 
 function deal(user, { bet }) {
@@ -65,6 +77,7 @@ function act(user, { action }) {
   if (!g || g.done) throw new Error('No hay mano en juego.');
   const h = cur(g);
   if (action === 'hit') {
+    if (!canHit(g)) throw new Error('Con un As dividido solo se recibe una carta: plántate o vuelve a dividir si es otro As.');
     h.cards.push(g.shoe.pop());
     if (total(h.cards).t >= 21) h.done = true;
   } else if (action === 'stand') {
@@ -79,12 +92,14 @@ function act(user, { action }) {
     if (!canSplit(user, g)) throw new Error('No puedes dividir ahora.');
     hub.takeBet(user, h.bet, 'blackjack', { extra: true });
     const aces = rankOf(h.cards[0]) === 14;
-    const second = { cards: [h.cards.pop(), g.shoe.pop()], bet: h.bet, done: aces, split: true, aceSplit: aces };
+    // La nueva mano va justo detrás de la actual: se juegan en orden, de izquierda a derecha.
+    const second = { cards: [h.cards.pop(), g.shoe.pop()], bet: h.bet, done: false, split: true, aceSplit: aces };
     h.cards.push(g.shoe.pop());
     h.split = true;
     h.aceSplit = aces;
-    h.done = aces; // con ases solo se recibe una carta
-    g.hands.push(second);
+    g.hands.splice(g.active + 1, 0, second);
+    afterSplitCard(g, h);
+    afterSplitCard(g, second);
   } else {
     throw new Error('Acción no válida.');
   }
@@ -122,4 +137,4 @@ function settle(user) {
   return view(user, true);
 }
 
-module.exports = { deal, act, view, total };
+module.exports = { deal, act, view, total, MAX_HANDS };

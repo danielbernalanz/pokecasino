@@ -39,9 +39,10 @@ function user(name, extra = {}) {
 }
 
 // ---------- RTP de los juegos ----------
-test('cada juego declara un RTP máximo en el rango objetivo (95-99 %; VP/BJ ≤ 99,6 %; carrera ≤ 92 %)', () => {
+test('cada juego declara un RTP máximo en el rango objetivo (95-99 %; VP ≤ 99,6 %; BJ ≤ 99,7 % con re-división de Ases; carrera ≤ 92 %)', () => {
   for (const [g, rtp] of Object.entries(BAL.RTP)) {
-    assert.ok(rtp <= 0.9960, `${g}: ${rtp}`);
+    assert.ok(rtp <= (g === 'blackjack' ? 0.997 : 0.9960), `${g}: ${rtp}`);
+    assert.ok(rtp < 1, `${g}: la casa siempre tiene ventaja`);
     if (g === 'race') assert.ok(rtp <= 0.92);
     else if (g !== 'duel') assert.ok(rtp >= 0.945, `${g}: ${rtp}`);
   }
