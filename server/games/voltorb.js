@@ -18,10 +18,13 @@ const CONFIGS = [
 // Los puntos se multiplican con cada carta ×2/×3 y sin tope llegan a miles (nivel 8: 2⁷·3³ = 3.456). Un jugador
 // que deduzca bien las pistas limpia casi todos los tableros, así que con el pago original (apuesta × puntos ÷ ≈20)
 // devolvía entre un 155 % (nivel 1) y un 1.300 % (nivel 8). Ahora los puntos que cuentan tienen un tope y los
-// divisores están calibrados (scripts/calibrate-voltorb.js) para que la MEJOR estrategia conocida (inferencia exacta
-// sobre todos los tableros posibles) recupere ≈92 %; un jugador normal recupera bastante menos.
+// divisores están calibrados (scripts/calibrate-voltorb.js) con la MEJOR estrategia conocida: inferencia exacta sobre
+// todos los tableros posibles + la mejor de 90 reglas de parada (umbral de riesgo × valor esperado de la siguiente
+// carta). Con los divisores anteriores (11-9,7) esa estrategia recuperaba hasta un 97 % en el nivel 4 (la regla simple
+// de «retirarse con > 25 % de riesgo» solo el 92 %); los actuales dejan la mejor estrategia hallada + 2 errores
+// estándar en el 93,5 % (cota declarada 95,7 %, ver docs/BALANCE.md). Un jugador normal recupera bastante menos.
 const SCORE_CAP = 12;
-const DIVISORS = [11, 10.7, 10.5, 9.8, 9.7, 10, 10.2, 10.5];
+const DIVISORS = [11.3, 10.9, 10.9, 10.4, 10.1, 10.2, 10.1, 10.6];
 const divisor = (level) => DIVISORS[level - 1];
 
 function makeBoard(level) {

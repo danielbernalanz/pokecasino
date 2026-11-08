@@ -1,13 +1,14 @@
 'use strict';
-// Plinko "Caída de Poké Balls": 12 filas de clavos, tres niveles de riesgo.
+// Plinko "Caída de Poké Balls": 12 filas de clavos, tres niveles de riesgo. RTP exacto: bajo 97,51 %, medio 97,50 %, alto 97,45 %
+// (antes 97,5 / 96,4 / 95,5 %): los tres por debajo de BAL.RTP.plinko = 97,6 %.
 const hub = require('../hub');
 const { randInt } = require('../rng');
 
 const ROWS = 12;
 const TABLES = {
   low: [8.6, 3, 1.5, 1.3, 1.1, 1, 0.5, 1, 1.1, 1.3, 1.5, 3, 8.6],
-  medium: [31, 10, 4, 2, 1.1, 0.55, 0.3, 0.55, 1.1, 2, 4, 10, 31],
-  high: [165, 23, 8, 2, 0.6, 0.2, 0.2, 0.2, 0.6, 2, 8, 23, 165],
+  medium: [31, 10, 4, 2, 1.1, 0.55, 0.35, 0.55, 1.1, 2, 4, 10, 31],
+  high: [165, 23, 8, 2, 0.6, 0.22, 0.25, 0.22, 0.6, 2, 8, 23, 165],
 };
 
 function rtp(risk) {

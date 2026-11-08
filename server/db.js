@@ -12,7 +12,7 @@ const empty = () => ({
   invites: {},
   chat: [],
   feed: [],
-  state: { jackpot: 10000 },
+  state: { jackpot: 2500 },
   market: { orders: [], trades: [], history: {}, nextId: 1 },
   gts: { deps: [], log: [], nextId: 1 },
   escrow: {},

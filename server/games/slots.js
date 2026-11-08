@@ -7,7 +7,7 @@ const { randInt } = require('../rng');
 const SYMBOLS = {
   berry: { pay: 4, two: 1 },
   poke: { pay: 8 },
-  great: { pay: 15 },
+  great: { pay: 16 },
   ultra: { pay: 30 },
   pika: { pay: 60 },
   ditto: { pay: 120, wild: true },
@@ -39,7 +39,9 @@ const LINES = [
   [[0, 2], [1, 1], [2, 0]],
 ];
 const JACKPOT_CUT = 0.02;
-const JACKPOT_SEED = 10000;
+// Semilla del bote tras un premio. Antes 10.000 (1,8 % del RTP con la apuesta mínima); con 2.500 pesa 0,46 % y esa
+// diferencia se devuelve a las líneas (93,7 % → 95,0 %): el RTP máximo del juego (apuesta mínima) sigue siendo ≤ 97,6 %.
+const JACKPOT_SEED = 2500;
 
 function grid(stops) {
   // grid[reel][row]

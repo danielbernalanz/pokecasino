@@ -11,8 +11,13 @@ const GROUPS = {
   elemental: ['water', 'ice', 'electric', 'flying', 'steel', 'normal'],
   mistico: ['grass', 'bug', 'poison', 'psychic', 'ghost', 'fairy'],
 };
-// Pagos totales (incluyen la apuesta). Con 19 casillas el RTP ronda el 94,7 %.
-const PAYOUT = { type: 18, group: 3, parity: 2 };
+// Pagos totales (incluyen la apuesta), en décimas para no arrastrar decimales: tipo ×18,2 · grupo ×3 · par/impar ×2.
+// «La Partage» (como en la ruleta francesa): si sale la Poké Ball (el «cero»), las apuestas a grupo y a par/impar
+// recuperan el 20 % de la ficha. Con 19 casillas el RTP es 18,2/19 = 95,79 % en TODAS las apuestas (antes 18/19 = 94,74 %).
+const TENTHS = { type: 182, group: 30, parity: 20 };
+const PAYOUT = Object.fromEntries(Object.entries(TENTHS).map(([k, v]) => [k, v / 10]));
+const PARTAGE = 0.2;
+const partageOf = (bet, slotIndex) => (WHEEL[slotIndex] === 'pokeball' && bet.kind !== 'type' ? Math.floor((bet.amount * 2) / 10) : 0);
 
 function wins(bet, slotIndex) {
   const t = WHEEL[slotIndex];
@@ -40,13 +45,17 @@ function spin(user, { bets }) {
   const stake = hub.takeBet(user, total, 'roulette');
   const slot = randInt(0, WHEEL.length - 1);
   let win = 0;
+  let partage = 0;
   const results = bets.map((b) => {
     const ok = wins(b, slot);
-    if (ok) win += b.amount * PAYOUT[b.kind];
-    return { ...b, won: ok };
+    if (ok) win += Math.floor((b.amount * TENTHS[b.kind]) / 10);
+    const back = ok ? 0 : partageOf(b, slot);
+    partage += back;
+    return { ...b, won: ok, partage: back };
   });
+  win += partage;
   const { paid, bonus } = win > 0 ? hub.pay(user, win, stake, 'roulette') : { paid: 0, bonus: 0 };
-  return { slot, type: WHEEL[slot], results, paid, bonus };
+  return { slot, type: WHEEL[slot], results, paid, bonus, partage };
 }
 
-module.exports = { spin, WHEEL, GROUPS, PAYOUT, wins };
+module.exports = { spin, WHEEL, GROUPS, PAYOUT, TENTHS, PARTAGE, partageOf, wins };

@@ -11,7 +11,7 @@ const POOL = [
   { id: 65, spe: 120 }, { id: 123, spe: 105 }, { id: 19, spe: 72 }, { id: 129, spe: 80 },
   { id: 143, spe: 30 }, { id: 79, spe: 15 }, { id: 25, spe: 90 }, { id: 245, spe: 85 },
 ];
-const EDGE = 0.9;
+const EDGE = 0.957; // cuota = 0,957 / probabilidad (antes 0,9): la cota BAL.RTP.race; con mínimo ×1,2 y máximo ×60 nunca se supera
 const MAX_ODDS = 60;
 const PHASES = { betting: 25000, racing: 11000, results: 7000 };
 const MAX_PER_ROUND = 100000;

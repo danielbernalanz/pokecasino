@@ -39,34 +39,91 @@ function user(name, extra = {}) {
 }
 
 // ---------- RTP de los juegos ----------
-test('cada juego declara un RTP máximo en el rango objetivo (95-99 %; VP ≤ 99,6 %; BJ ≤ 99,7 % con re-división de Ases; carrera ≤ 92 %)', () => {
+test('cada juego declara un RTP máximo en el rango objetivo (≥ 94,5 %; VP ≤ 99,6 %; BJ ≤ 99,7 % con re-división de Ases; resto ≤ 98 %)', () => {
   for (const [g, rtp] of Object.entries(BAL.RTP)) {
-    assert.ok(rtp <= (g === 'blackjack' ? 0.997 : 0.9960), `${g}: ${rtp}`);
+    assert.ok(rtp <= (g === 'blackjack' ? 0.997 : g === 'videopoker' ? 0.9960 : g === 'baccarat' ? 0.9895 : 0.9760 + 1e-9), `${g}: ${rtp}`);
     assert.ok(rtp < 1, `${g}: la casa siempre tiene ventaja`);
-    if (g === 'race') assert.ok(rtp <= 0.92);
-    else if (g !== 'duel') assert.ok(rtp >= 0.945, `${g}: ${rtp}`);
+    assert.ok(rtp >= 0.945, `${g}: ${rtp}`);
   }
 });
 
+// Política «máxima ventaja para el jugador» (docs/BALANCE.md): para cada juego contra la casa
+//   RTP (mejor estrategia) + rakeback máximo (XP ×2 del Huevo Suerte × recompensas por nivel en el peor nivel)
+//   + bonus máximo (Amuleto × fin de semana del Compañero × ventaja) + otras devoluciones  <  1 − margen.
+// Los juegos entre jugadores (duelos, Hold'em) cobran comisión y no entran.
+test('retorno total máximo por juego (RTP + rakeback + bonus + otras) < 100 % con margen, y la XP por moneda nunca baja', () => {
+  // XP por moneda que daba cada juego antes de desacoplarla de la ventaja: min(0,1; 2,5 × ventaja) con el RTP de entonces.
+  const OLD_RTP = { slots: 0.976, roulette: 18 / 19, plinko: 0.976, mines: 0.97, quiz: 0.97, crash: 0.97, voltorb: 0.95, videopoker: 0.9954, blackjack: 0.997, baccarat: 0.9893, race: 0.9, duel: 0.95 };
+  for (const g of Object.keys(BAL.RTP)) {
+    const oldXp = Math.min(0.1, 2.5 * (1 - OLD_RTP[g]));
+    assert.ok(BAL.xpRate(g) >= oldXp - 1e-9, `${g}: la XP por moneda no puede bajar (${BAL.xpRate(g)} < ${oldXp})`);
+    if (g === 'duel') continue;
+    const margin = 1 - BAL.returnMax(g);
+    assert.ok(margin >= BAL.marginMin(g) - 1e-9, `${g}: margen ${(margin * 100).toFixed(3)} pts < ${(BAL.marginMin(g) * 100).toFixed(3)}`);
+    assert.ok(margin > 0, `${g}: devolvería más del 100 %`);
+    assert.ok(BAL.edge(g) >= BAL.minEdge(g, BAL.marginMin(g)) - 1e-9, `${g}: la ventaja ${BAL.edge(g)} no cubre XP + bonus + margen`);
+  }
+  // Cada juego cuyo RTP se ha subido en esta revisión conserva la política completa (0,3 puntos).
+  for (const g of ['roulette', 'voltorb', 'race']) assert.ok(1 - BAL.returnMax(g) >= BAL.MARGIN_POLICY - 1e-9, g);
+  // El peor nivel de recompensas está en el nivel 10 (≈ 0,0756 monedas por XP).
+  assert.ok(BAL.levelRebatePerXp() < 0.08);
+});
+
+test('grinder óptimo con compañero épico, colecciones, Amuleto, Huevo Suerte y evento: balance esperado negativo juego a juego (hub real, pagos deterministas)', () => withBuddyEvent(true, () => {
+  for (const g of Object.keys(BAL.RTP)) {
+    if (g === 'duel') continue;
+    const u = user(`grinder-${g}`, { coins: 1e9, buddy: { id: 151, shiny: true }, collection: { 151: { n: 5, s: 1 } }, buffs: { amuletUntil: Date.now() + 36e5, luckyUntil: Date.now() + 36e5 } });
+    const start = u.coins;
+    const bet = 1000;
+    // Apuesta hasta justo pasar del nivel 10 (el peor para la devolución por XP): XP = apuesta × tasa × 2 (Huevo Suerte).
+    const rounds = Math.ceil(8100 / (bet * BAL.xpRate(g) * 2)) + 1;
+    let staked = 0;
+    let bonus = 0;
+    let acc = 0;
+    for (let i = 0; i < rounds; i++) {
+      hub.takeBet(u, bet, g);
+      staked += bet;
+      // Pago ×3 con la frecuencia justa para devolver exactamente el RTP máximo (la forma que más bonus saca: ganancias frecuentes).
+      acc += BAL.RTP[g] * bet;
+      if (acc >= 3 * bet) { acc -= 3 * bet; bonus += hub.pay(u, 3 * bet, bet, g).bonus; }
+    }
+    const items = Object.entries(u.items).reduce((s, [id, n]) => s + n * (BAL.LEVEL_CASH[id] || 0), 0);
+    const net = u.coins - start + items;
+    assert.ok(u.level >= 10, `${g}: nivel ${u.level}`);
+    assert.ok(net < 0, `${g}: el grinder ganaría ${net} con ${staked} apostadas (bonus ${bonus})`);
+    // Y el retorno por moneda queda por debajo del máximo teórico calculado.
+    assert.ok((staked + net) / staked <= BAL.returnMax(g) + 0.002, `${g}: ${(staked + net) / staked} > ${BAL.returnMax(g)}`);
+  }
+}));
+
 test('Pika-Slots: líneas + 2 % del bote + semilla ≤ RTP declarado', () => {
   const lines = slots.computeRTP();
-  assert.ok(lines > 0.92 && lines < 0.95, `líneas ${lines}`);
+  assert.ok(lines > 0.92 && lines < 0.955, `líneas ${lines}`);
   const pJackpot = 1 / slots.REELS.reduce((p, r) => p * r.length, 1);
   const seedShare = (slots.JACKPOT_SEED * pJackpot) / MIN_BET; // la semilla vale más cuanto menor es la apuesta
   const total = lines + slots.JACKPOT_CUT + seedShare;
   assert.ok(total <= BAL.RTP.slots + 1e-9, `${total} > ${BAL.RTP.slots}`);
-  assert.ok(total > 0.95, `${total}`);
+  assert.ok(total > 0.97, `${total}`);
+  // Con una apuesta de 100 o más la semilla casi no pesa: el RTP ronda el 97,1 %.
+  assert.ok(lines + slots.JACKPOT_CUT + (slots.JACKPOT_SEED * pJackpot) / 100 > 0.965);
 });
 
 test('Ruleta, Plinko, Minas y Crash: RTP exacto ≤ declarado', () => {
-  for (const [kind, pay] of Object.entries(roulette.PAYOUT)) {
-    const n = roulette.WHEEL.length;
-    const wins = { type: 1, group: 6, parity: 9 }[kind];
-    assert.ok((wins * pay) / n <= BAL.RTP.roulette + 1e-9, `ruleta ${kind}`);
+  // Ruleta exacta (con «La Partage»): se recorre cada casilla con la función real de pagos.
+  for (const [kind, values] of [['type', roulette.WHEEL], ['group', Object.keys(roulette.GROUPS)], ['parity', ['par', 'impar']]]) {
+    for (const value of values) {
+      let back = 0;
+      roulette.WHEEL.forEach((_, i) => {
+        const b = { kind, value, amount: 10000 };
+        back += roulette.wins(b, i) ? Math.floor((b.amount * roulette.TENTHS[kind]) / 10) : roulette.partageOf(b, i);
+      });
+      assert.ok(back / 10000 / roulette.WHEEL.length <= BAL.RTP.roulette + 1e-9, `ruleta ${kind}/${value}: ${back / 10000 / roulette.WHEEL.length}`);
+    }
   }
+  assert.ok(Math.abs(BAL.RTP.roulette - 18.2 / 19) < 1e-12);
   for (const risk of Object.keys(plinko.TABLES)) {
     const r = plinko.rtp(risk);
-    assert.ok(r <= BAL.RTP.plinko && r >= 0.95, `plinko ${risk}: ${r}`);
+    assert.ok(r <= BAL.RTP.plinko && r >= 0.974, `plinko ${risk}: ${r}`);
   }
   for (const m of [1, 3, 5, 10, 15, 20, 24]) {
     let survive = 1;
@@ -135,6 +192,16 @@ test('Voltorb Flip: el pago tiene tope y los divisores no dejan pagos de miles d
   assert.strictEqual(voltorb.view(u).game.cashout, Math.floor((1000 * voltorb.SCORE_CAP) / voltorb.divisor(8)));
 });
 
+test('Voltorb Flip: los divisores dejan la mejor estrategia hallada (scripts/calibrate-voltorb.js) + 2 errores estándar por debajo del 94 %, lejos de la cota declarada', () => {
+  // E[min(puntos,12)] de la mejor de 90 reglas de parada con inferencia exacta, 2.500 tableros por nivel (error estándar ≈ 0,1).
+  const E = [10.3964, 10.0272, 10.0092, 9.512, 9.2156, 9.3548, 9.2364, 9.6936];
+  E.forEach((e, i) => {
+    const rtp = (e + 0.2) / voltorb.divisor(i + 1);
+    assert.ok(rtp <= 0.94, `nivel ${i + 1}: ${rtp}`);
+    assert.ok(rtp + 0.015 <= BAL.RTP.voltorb, `nivel ${i + 1}: sin colchón frente a la cota ${BAL.RTP.voltorb}`);
+  });
+});
+
 test('Voltorb Flip: con inferencia exacta (la mejor estrategia) el RTP del nivel 1 no pasa del 100 %', () => {
   const S = require('../scripts/strategies');
   const conf = voltorb.CONFIGS[0];
@@ -175,16 +242,15 @@ function levelRebatePerXp(maxLevel = 300) {
   return worst;
 }
 
-test('la XP es proporcional a la ventaja de la casa: nunca devuelve más que ella', () => {
+test('la devolución por XP queda dentro de la ventaja de cada juego (con el Huevo Suerte y todo el bonus): ventaja ≥ ventaja mínima', () => {
   const vpx = levelRebatePerXp(); // monedas de recompensa por XP, en el peor nivel
+  assert.ok(Math.abs(vpx - BAL.levelRebatePerXp()) < 1e-12);
   for (const g of Object.keys(BAL.RTP)) {
     const edge = BAL.edge(g);
-    // Lo que se espera perder por cada XP ganada: ≥ 0,4 monedas (2,5 XP por moneda de ventaja) salvo en juegos de mucha ventaja.
-    const lossPerXp = edge / BAL.xpRate(g);
-    assert.ok(lossPerXp >= 1 / BAL.XP_PER_EDGE - 1e-9, `${g}: ${lossPerXp}`);
-    // Huevo Suerte (XP ×2) + todo el bonus posible (Amuleto + fin de semana del Compañero): < 100 % de la ventaja.
+    // Huevo Suerte (XP ×2) + todo el bonus posible (Amuleto + fin de semana del Compañero) como fracción de la ventaja.
     const rebate = (2 * vpx * BAL.xpRate(g)) / edge + BAL.BONUS_SHARE_AMULET * BAL.BONUS_SHARE_EVENT;
-    assert.ok(rebate < 0.97, `${g}: devuelve ${(rebate * 100).toFixed(0)} % de la ventaja`);
+    assert.ok(rebate < 1, `${g}: devuelve ${(rebate * 100).toFixed(0)} % de la ventaja`);
+    assert.ok(g === 'duel' || rebate <= 1 - BAL.marginMin(g) / edge + 1e-9, `${g}: sin margen`);
   }
   assert.ok(vpx < 0.1, `recompensa por XP: ${vpx}`);
 });
