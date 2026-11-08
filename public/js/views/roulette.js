@@ -37,7 +37,7 @@ export default {
     function cell(kind, value, label, cls, style) {
       const key = kind + ':' + value;
       const amt = h('span', { class: 'bet-amt' });
-      const el = h('button', { class: 'bcell ' + cls, style, title: `Paga ×${payout[kind]}`,
+      const el = h('button', { class: 'bcell ' + cls, style, title: `Paga ×${String(payout[kind]).replace('.', ',')}`,
         onclick: (e) => { if (e.detail) e.currentTarget.blur(); if (spinning) return; bets.set(key, (bets.get(key) || 0) + chip); sfx('click'); refresh(); },
         oncontextmenu: (e) => { e.preventDefault(); if (!spinning) { bets.delete(key); refresh(); } } }, label, amt);
       cells.set(key, amt);
@@ -71,7 +71,7 @@ export default {
       const single = list.filter((b) => b.kind === 'type').sort((a, b) => b.amount - a.amount)[0];
       if (single && single.amount >= S.me.coins * 0.5 && !(await confirmRisk('roulette-single', {
         title: 'Todo a un solo tipo',
-        text: `Pones ${fmt(single.amount)} de tus ${fmt(S.me.coins)} monedas (${Math.round(single.amount / S.me.coins * 100)} %) a un único tipo (${TYPE_ES[single.value] || single.value}). Paga ×${payout.type}, pero solo sale en 1 de cada ${n} giros (~${(100 / n).toFixed(1)} %): lo más probable es perderlo todo.`,
+        text: `Pones ${fmt(single.amount)} de tus ${fmt(S.me.coins)} monedas (${Math.round(single.amount / S.me.coins * 100)} %) a un único tipo (${TYPE_ES[single.value] || single.value}). Paga ×${String(payout.type).replace('.', ',')}, pero solo sale en 1 de cada ${n} giros (~${(100 / n).toFixed(1)} %): lo más probable es perderlo todo.`,
         danger: 'Girar igualmente' }))) { spinning = false; spinBtn.disabled = false; return; }
       if (!(await confirmBet('roulette', stake))) { spinning = false; spinBtn.disabled = false; return; }
       let res;
@@ -93,18 +93,21 @@ export default {
       await sleep(Math.max(0, (4200 - 12 * 120 - 66 * 25) * k));
       const t = res.type;
       releaseCoins();
+      // «La Partage»: con la Poké Ball, grupo y par/impar recuperan el 20 % de la ficha (no es un premio, es devolución).
+      const onlyPartage = res.partage > 0 && res.paid === res.partage;
       resultEl.replaceChildren(h('span', { class: 'type t-' + t }, `${res.slot} · ${TYPE_ES[t]}`),
-        res.paid ? h('b', { class: 'good' }, ` +${fmt(res.paid)}`) : h('span', { class: 'muted' }, ' sin premio'));
-      sfx(res.paid ? 'win' : 'lose');
+        onlyPartage ? h('span', { class: 'muted' }, ` La Partage: te devuelve ${fmt(res.partage)}`)
+          : res.paid ? h('b', { class: 'good' }, ` +${fmt(res.paid)}`) : h('span', { class: 'muted' }, ' sin premio'));
+      sfx(res.paid && !onlyPartage ? 'win' : 'lose');
       pop(orbit.firstChild, 1.8);
       glow(disc.parentElement, COLORS[t], 900);
-      if (res.paid) { burstEl(orbit.firstChild, COLORS[t], 22, { spread: 130 }); vibrate(30); winFx(res.paid, stake, { el: disc.parentElement, icon: '🎡' }); }
+      if (res.paid && !onlyPartage) { burstEl(orbit.firstChild, COLORS[t], 22, { spread: 130 }); vibrate(30); winFx(res.paid, stake, { el: disc.parentElement, icon: '🎡' }); }
       spinning = false; spinBtn.disabled = false;
     }
 
     hotkey(root, spin);
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🎡 Ruleta de Tipos'), speedToggle(), h('p', { class: 'muted' }, 'Tipo exacto ×18 · Grupo ×3 · Par/Impar ×2 · La Poké Ball solo paga a quien apuesta por ella.')),
+      h('div', { class: 'game-head' }, h('h1', {}, '🎡 Ruleta de Tipos'), speedToggle(), h('p', { class: 'muted' }, 'Tipo exacto ×18,2 · Grupo ×3 · Par/Impar ×2 · La Poké Ball solo paga a quien apuesta por ella, y con ella Grupo y Par/Impar recuperan el 20 % de la ficha (La Partage). Devuelve el 95,8 % en todas las apuestas.')),
       h('div', { class: 'roulette-layout' },
         h('div', { class: 'wheel-wrap' }, h('div', { class: 'wheel-pointer' }), disc, orbit, h('div', { class: 'wheel-hub' }, h('img', { class: 'pixel', src: item('master-ball'), alt: '' }))),
         h('div', { class: 'stack' },

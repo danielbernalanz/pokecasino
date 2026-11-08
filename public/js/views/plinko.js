@@ -92,7 +92,7 @@ export default {
 
     const riskBtns = Object.entries(RISK).map(([k, l]) => h('button', { class: 'chip' + (k === risk ? ' active' : ''), onclick: (e) => { risk = k; riskBtns.forEach((b) => b.classList.toggle('active', b === e.currentTarget)); draw(); } }, l));
     root.append(
-      h('div', { class: 'game-head' }, h('h1', {}, '🔻 Plinko de Poké Balls'), speedToggle(), h('p', { class: 'muted' }, 'Suelta Poké Balls y mira dónde caen. Puedes lanzar varias a la vez.')),
+      h('div', { class: 'game-head' }, h('h1', {}, '🔻 Plinko de Poké Balls'), speedToggle(), h('p', { class: 'muted' }, 'Suelta Poké Balls y mira dónde caen. Puedes lanzar varias a la vez. Devuelve de media el 97,5 % en los tres niveles de riesgo.')),
       h('div', { class: 'plinko-layout' },
         h('div', { class: 'plinko-wrap' }, board, buckets),
         h('div', { class: 'card stack' }, bet.el, h('div', {}, h('div', { class: 'muted small' }, 'Riesgo'), h('div', { class: 'row gap' }, riskBtns)),

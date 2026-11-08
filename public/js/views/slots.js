@@ -134,7 +134,7 @@ export default {
           h('div', { class: 'machine-controls' }, bet.el, h('div', { class: 'row gap' }, autoBtn, spinBtn))),
         h('div', { class: 'card paytable' },
           h('h3', {}, 'Tabla de premios'),
-          h('p', { class: 'muted small' }, 'Pagos por línea (apuesta ÷ 5). 5 líneas: 3 horizontales y 2 diagonales. Ditto sustituye a todo menos a la Master Ball. Tres Master Ball en la línea central ganan el BOTE completo; el 2 % de cada apuesta lo alimenta.'),
+          h('p', { class: 'muted small' }, 'Pagos por línea (apuesta ÷ 5). 5 líneas: 3 horizontales y 2 diagonales. Ditto sustituye a todo menos a la Master Ball. Tres Master Ball en la línea central ganan el BOTE completo; el 2 % de cada apuesta lo alimenta. Las líneas devuelven de media el 95 % y con el bote llega al 97 %.'),
           payRows)),
     );
     // Espacio / Intro: girar (o parar el Auto si está en marcha).

@@ -1,5 +1,19 @@
 [
   {
+    "version": "2026.11.08-c",
+    "date": "2026-11-08",
+    "title": "Mejores probabilidades en el casino",
+    "items": [
+      "🎡 Ruleta de Tipos: el tipo exacto paga ×18,2 (antes ×18) y llega «La Partage»: si sale la Poké Ball, las apuestas a grupo y a par/impar recuperan el 20 % de la ficha. Ahora devuelve el 95,8 % en todas las apuestas (antes 94,7 %).",
+      "🏁 Gran Carrera: las cuotas suben de 0,9 a 0,957 dividido entre la probabilidad: devuelve el 95,7 % (antes 90 %). Es la mayor mejora del casino.",
+      "🔻 Plinko: el riesgo medio y el alto devuelven ahora el 97,5 % (antes 96,4 % y 95,5 %); el bajo sigue en 97,5 %.",
+      "🎰 Pika-Slots: tres Super Ball pagan ×16 (antes ×15) y la semilla del bote baja a 2.500: las líneas devuelven el 95 % (antes 93,7 %) y, con el bote, entre el 97,1 % (apuesta de 100) y el 97,5 % (apuesta mínima).",
+      "⚡ Voltorb Flip: hemos medido el juego con una estrategia mejor que la que usábamos (deducir las pistas y retirarse justo a tiempo) y en algunos niveles devolvía más del 95 %. Hemos recalculado los divisores (niveles 1 a 8: 11,3 · 10,9 · 10,9 · 10,4 · 10,1 · 10,2 · 10,1 · 10,6) para que ni el mejor jugador del mundo gane a la larga: el pago baja entre un 1 y un 6 % en la mayoría de niveles y sube un 1 % en el nivel 7. Es el único juego en el que nos ha tocado ser más prudentes.",
+      "🃏 Video Póker 9/6, Blackjack (re-dividir Ases), Baccarat, Minas, Crash y el Desafío Pokémon ya estaban en el límite de lo que el casino puede devolver: siguen igual (99,5 %, 99,7 %, 98,9 %, 97 %, 97 % y 97 %).",
+      "⭐ La experiencia por moneda apostada y las recompensas de nivel no cambian: subes de nivel igual de deprisa que antes, en todos los juegos."
+    ]
+  },
+  {
     "version": "2026.11.08-b",
     "date": "2026-11-08",
     "title": "Blackjack: volver a dividir, Ases incluidos",

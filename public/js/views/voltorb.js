@@ -130,7 +130,7 @@ export default {
           info, msg,
           h('div', { class: 'card stack' }, bet.el, h('div', { class: 'row gap wrap' }, startBtn, cashBtn, memoBtn)),
           h('details', { class: 'card rules' }, h('summary', {}, h('b', {}, 'Cómo se paga')),
-            h('p', { class: 'small' }, 'Tus puntos se multiplican con cada carta (×2, ×3). Al retirarte o limpiar todos los ×2 y ×3 cobras: apuesta × puntos ÷ divisor del nivel (los puntos cuentan hasta ' + S.data.voltorbCap + '; con más puntos ya puedes retirarte).'),
+            h('p', { class: 'small' }, 'Tus puntos se multiplican con cada carta (×2, ×3). Al retirarte o limpiar todos los ×2 y ×3 cobras: apuesta × puntos ÷ divisor del nivel (los puntos cuentan hasta ' + S.data.voltorbCap + '; con más puntos ya puedes retirarte). Con la mejor estrategia posible (deducir las pistas y retirarse a tiempo) se recupera como mucho el 93,5 %; jugando a ojo, bastante menos.'),
             h('p', { class: 'muted small' }, mults),
             h('p', { class: 'muted small' }, 'Limpiar el tablero sube un nivel. Si explota un Voltorb bajas al nº de cartas que giraste.')))));
     hotkey(root, () => { if (live) cashGame(); else startGame(); });
