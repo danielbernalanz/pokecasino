@@ -64,7 +64,7 @@ Efecto en la Pokédex: completarla solo con tiradas pasa de ≈ 13.800 a ≈ 14.
 | Juego | RTP máximo antes | RTP máximo después | Medido (1.000.000 de rondas, estrategia del simulador) |
 |---|---|---|---|
 | Pika-Slots | 95,7 % (apuesta alta) – 97,5 % (mínima) | igual | 95,89 % ± 1,29 |
-| Ruleta de Tipos | 94,7 % | 94,7 % | 94,65 % ± 0,20 |
+| Ruleta de Tipos | 94,7 % | 94,7 % *(08-11-2026: 95,79 % con La Partage)* | 94,65 % ± 0,20 |
 | Plinko | 95,5 % (alto) – 97,5 % (bajo) | igual | 97,51 % ± 0,07 (bajo) |
 | Minas | 97 % | 97 % | 96,56 % ± 0,16 (3 Geodude, retirada tras 4 aciertos) |
 | Desafío Pokémon | (nuevo) | 97 % para un fan experto en cada dificultad (≤ 96,8 %) | ver «Desafío Pokémon» al final |
@@ -73,8 +73,8 @@ Efecto en la Pokédex: completarla solo con tiradas pasa de ≈ 13.800 a ≈ 14.
 | Video Póker 9/6 | 99,54 % (óptimo) | 99,54 % | 99,18 % ± 0,84 (jerarquía casi óptima) |
 | Blackjack | 99,45 % | 99,45 % | 99,55 % ± 0,20 (1 M); 99,45 % ± 0,08 (2 M manos) |
 | Blackjack con re-división (2026-11-08: dividir hasta 4 manos, Ases incluidos; un As dividido recibe una carta salvo que sea otro As) | — | ≈ 99,68 % (teórico, 6 barajas, S17, DAS, RSA; cota declarada 99,7 %) | 99,76 % ± 0,16 (2 M manos) |
-| Voltorb Flip (inferencia exacta) | **155-1.310 %** según nivel | **≈ 92 %** | heurística sencilla: 55-70 % |
-| Gran Carrera | ≤ 90 % | ≤ 90 % | |
+| Voltorb Flip (inferencia exacta) | **155-1.310 %** según nivel | **≈ 92 %** *(08-11-2026: con una parada óptima la misma estrategia llegaba al 91-97 %; divisores recalculados, ver «Máxima ventaja para el jugador»)* | heurística sencilla: 55-70 % |
+| Gran Carrera | ≤ 90 % | ≤ 90 % *(08-11-2026: ≤ 95,7 %)* | |
 | Duelos | 95 % (comisión 5 %) | igual | |
 | Hold'em | 100 % (suma cero) | igual | |
 
@@ -129,7 +129,7 @@ Ventaja de la casa: Video Póker 0,46 %, Blackjack 0,45-0,55 %, Baccarat ≈ 1,1
 
 **Ahora** (todo en `server/balance.js` y `server/hub.js`):
 
-* **La XP es proporcional a la ventaja de la casa**: `xp = apuesta × min(0,1; 2,5 × ventaja)`. Cada moneda que la casa espera ganar da 2,5 XP, de modo que la devolución por XP nunca puede pasar de una fracción fija de la ventaja *en ningún juego*.
+* **La XP es proporcional a la ventaja de la casa** *(desacoplada el 08-11-2026: hoy cada juego tiene su XP por moneda fija, con estos mismos valores; ver «Máxima ventaja para el jugador»)*: `xp = apuesta × min(0,1; 2,5 × ventaja)`. Cada moneda que la casa espera ganar da 2,5 XP, de modo que la devolución por XP nunca puede pasar de una fracción fija de la ventaja *en ningún juego*.
 
   | Juego | Ventaja | XP por moneda apostada |
   |---|---|---|
@@ -1046,3 +1046,33 @@ Verificado con **PokeAPI** (`data/v2/csv`, vía GitHub) y el simulador **pokemon
 ### No implementado
 * **Registro de «visto» en el historial**: la migración marca «visto» = obtenido ∪ visto previo ∪ candado; no se reconstruyen los rivales del historial de combates (no se guardan por especie).
 * **Formas y variocolor vistos por especie** (SV): sin verificar lo que registra el juego; el contador es por especie.
+
+## Máxima ventaja para el jugador (08-11-2026)
+
+Petición del anfitrión: «la mejor ventaja posible al jugador en todos los juegos sin darle una fábrica de monedas».
+Regla: para cada juego contra la casa, **retorno total máximo = RTP con la mejor estrategia + devolución por XP/niveles
+(rakeback, contado ×2 por prudencia) + bonus máximo (Amuleto × evento de fin de semana) < 100 % − margen**
+(`returnMax`, `minEdge`, `MARGIN_POLICY` en `server/balance.js`; invariantes en `test/balance.test.js`).
+La XP por moneda ya no depende de la ventaja (`XP_RATE` fija por juego, los mismos valores que antes): bajar la ventaja
+no hace subir de nivel más despacio.
+
+| Juego | RTP declarado (cota) | Retorno total máximo con todo a favor | XP por moneda |
+|---|---|---|---|
+| Pika-Slots | 97,6 % (semilla del bote 2.500, Super Ball ×16) | 99,86 % | 0,06 |
+| Ruleta de Tipos | 95,79 % (tipo ×18,2 y La Partage del 20 %; antes 94,74 %) | 99,67 % | 0,1 |
+| Plinko | 97,6 % (medio y alto subidos a 97,5 %) | 99,86 % | 0,06 |
+| Minas / Crash / Desafío | 97 % (sin cambios) | 99,82 % | 0,075 |
+| Voltorb Flip | 95,7 % (divisores recalculados con inferencia exacta + parada óptima) | 99,63 % | 0,1 |
+| Video Póker 9/6 | 99,54 % (sin cambios) | 99,97 % | 0,0115 |
+| Blackjack (re-división, Ases incluidos) | 99,7 % | 99,98 % | 0,0075 |
+| Baccarat | 98,95 % (sin cambios) | 99,94 % | 0,02675 |
+| Gran Carrera | 95,7 % (cuotas 0,957 / probabilidad; antes 0,9) | 99,63 % | 0,1 |
+
+Duelos, PvP, Hold'em y torneos no son contra la casa (comisión entre jugadores): no se tocan.
+
+Verificación: `npm test` (invariantes por juego, XP que no baja y un grinder determinista con el hub real) y
+`node scripts/sim-grinder.js` (30 días, compañero mítico variocolor, 8 colecciones, Amuleto, Huevo Suerte y evento
+todos los días, mejor estrategia del repositorio). Con 4 × 8.000 partidas por juego todos los resultados caen dentro
+de su error estadístico alrededor de un retorno < 100 % (Ruleta y Baccarat salieron +0,5 % ± 1 %, compatibles con el
+máximo teórico de 99,67 % y 99,94 %). Margen más fino: Blackjack (0,02 %) y Video Póker (0,03 %): si se añade
+cualquier devolución nueva ligada a lo apostado, hay que revisarlos primero.
